@@ -6,12 +6,14 @@ import { SettingsService } from '../settings/settings.service';
 import { badRequest, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
 import { mediaUrl } from '../catalog/catalog.sql';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class CartService {
   constructor(
     private readonly db: DbService,
     private readonly settings: SettingsService,
+    private readonly payments: PaymentsService,
   ) {}
 
   /**
@@ -148,6 +150,7 @@ export class CartService {
   async addItem(userId: string, variantId: string, quantity: number, mode: 'add' | 'set' = 'add') {
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999)
       throw badRequest('INVALID_QUANTITY', 'Cantidad inválida.');
+    await this.payments.releaseAbandoned(userId);
     await this.db.tx(async (c) => {
       const cart = await this.ensureMutableCart(userId, c);
       const existing = await this.db.one(
@@ -179,6 +182,7 @@ export class CartService {
   }
 
   async removeItem(userId: string, itemId: string) {
+    await this.payments.releaseAbandoned(userId);
     await this.db.tx(async (c) => {
       await this.ensureMutableCart(userId, c);
       const item = await this.db.one(
@@ -194,6 +198,7 @@ export class CartService {
   }
 
   async clear(userId: string) {
+    await this.payments.releaseAbandoned(userId);
     await this.db.tx(async (c) => {
       const cart = await this.ensureMutableCart(userId, c);
       const items = await this.db.many(`select id from public.cart_items where cart_id = $1 and status = 'ACTIVE'`, [cart.id], c);

@@ -56,7 +56,7 @@ export function translateDbError(e: any): Error {
       code === 'P0002' ? 404 : code === '42501' ? 403 : code === '22023' || code === '23514' ? 400 : 409;
     return new AppError(firstToken, humanize(firstToken), status);
   }
-  if (code === '23505') return new AppError('DUPLICATE', 'Ya existe un registro con esos datos.', 409);
+  if (code === '23505') return new AppError('DUPLICATE', 'Ya existe un registro con esos datos.', 409, { constraint: e?.constraint });
   if (code === '23503') return new AppError('REFERENCE_INVALID', 'Referencia inválida o en uso.', 409);
   if (code === '23514' || code === '22P02' || code === '22023')
     return new AppError('VALIDATION_FAILED', 'Los datos enviados no son válidos.', 400, { db: msg });

@@ -43,6 +43,24 @@ export const config = {
   shippoWebhookToken: process.env.SHIPPO_WEBHOOK_TOKEN || secret('SHIPPO_WEBHOOK_TOKEN', 'shippo_webhook_token'),
   /** Label format bought from Shippo (PDF, PDF_4x6, PNG, ZPLII). */
   shippoLabelFormat: process.env.SHIPPO_LABEL_FORMAT ?? 'PDF_4x6',
+  /** Stripe (cards). Keys come from .secrets/stripe_*; webhook secrets may list several (one per line). */
+  stripeSecretKey: secret('STRIPE_SECRET_KEY', 'stripe_secret_key'),
+  /** Read on demand so the key can be added without restarting the API. */
+  get stripePublishableKey() {
+    return secret('STRIPE_PUBLISHABLE_KEY', 'stripe_publishable_key');
+  },
+  stripeWebhookSecrets: (secret('STRIPE_WEBHOOK_SECRET', 'stripe_webhook_secret') ?? '').split(/[\s,]+/).filter(Boolean),
+  /** PayPal (Orders v2). PAYPAL_ENV: sandbox | live. */
+  get paypalClientId() {
+    return secret('PAYPAL_CLIENT_ID', 'paypal_client_id');
+  },
+  get paypalClientSecret() {
+    return secret('PAYPAL_CLIENT_SECRET', 'paypal_client_secret');
+  },
+  get paypalWebhookId() {
+    return secret('PAYPAL_WEBHOOK_ID', 'paypal_webhook_id');
+  },
+  paypalEnv: (process.env.PAYPAL_ENV ?? 'sandbox') as 'sandbox' | 'live',
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',

@@ -7,6 +7,7 @@ import { CurrentUser, RequestUser } from '../auth/auth';
 import { CheckoutService } from './checkout.service';
 import { DbService } from '../db/db.service';
 import { notFound } from '../common/errors';
+import { PaymentsService } from '../payments/payments.service';
 
 export class QuoteDto {
   @IsOptional() @IsObject() shipping?: Record<string, string>;
@@ -24,7 +25,7 @@ export class CardDto {
 export class PlaceOrderDto {
   @IsUUID() addressId: string;
   @IsObject() shipping: Record<string, string>;
-  @IsIn(['CARD', 'BANK_TRANSFER']) paymentMethod: 'CARD' | 'BANK_TRANSFER';
+  @IsIn(['CARD', 'PAYPAL', 'BANK_TRANSFER']) paymentMethod: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
   @IsOptional() @ValidateNested() @Type(() => CardDto) card?: CardDto;
   @IsString() @Length(8, 100) idempotencyKey: string;
 }
@@ -35,6 +36,7 @@ export class CheckoutController {
   constructor(
     private readonly checkout: CheckoutService,
     private readonly db: DbService,
+    private readonly payments: PaymentsService,
   ) {}
 
   @Post('quote')
@@ -52,6 +54,26 @@ export class CheckoutController {
   async result(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
     const own = await this.db.one(`select 1 from public.checkout_sessions where id = $1 and customer_id = $2`, [id, user.id]);
     if (!own) throw notFound('Compra');
-    return this.checkout.resultFor(id);
+    return this.checkout.resultFor(id, user.id);
+  }
+
+  /** After stripe.confirmPayment in the browser: verifies the PaymentIntent with Stripe and creates the order. */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post(':id/payments/stripe/confirm')
+  confirmStripe(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.payments.confirmStripe(id, user.id);
+  }
+
+  /** PayPal onApprove: captures the order with PayPal and creates the marketplace order. */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post(':id/payments/paypal/capture')
+  capturePaypal(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.payments.capturePaypal(id, user.id);
+  }
+
+  /** Cancels an unpaid card/PayPal payment and releases the reserved stock. */
+  @Post(':id/cancel')
+  cancel(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.payments.cancelPending(id, user.id);
   }
 }

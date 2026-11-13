@@ -258,11 +258,29 @@ async function placeOrder(t, address, items, prefer, payment) {
   }
   const quote = await api.post(t, '/checkout/quote', { addressId: address.id, shipping });
   const body = { addressId: address.id, shipping, idempotencyKey: randomUUID(), ...payment };
-  const res = await api.post(t, '/checkout/place', body);
+  let res = await api.post(t, '/checkout/place', body);
+  // Real card processor (Stripe, test mode): the browser would confirm the PaymentIntent with the
+  // Payment Element; the seed confirms it server-side with Stripe's test payment methods.
+  if (res.paymentAction?.provider === 'STRIPE') {
+    await stripeConfirm(res.paymentAction.clientSecret, payment.testPaymentMethod ?? 'pm_card_visa');
+    const c = await call(t, 'POST', `/checkout/${res.checkoutId}/payments/stripe/confirm`, {});
+    res = { ...(await api.get(t, `/checkout/${res.checkoutId}`)), confirm: c };
+  }
   return { quote, res };
 }
 
-const CARD = (name, number = '4242424242424242') => ({ paymentMethod: 'CARD', card: { number, expMonth: 12, expYear: 2030, cvc: '123', name } });
+const TEST_PM = { '4242424242424242': 'pm_card_visa', '5555555555554444': 'pm_card_mastercard', '4000000000000002': 'pm_card_chargeDeclined' };
+const CARD = (name, number = '4242424242424242') => ({ paymentMethod: 'CARD', card: { number, expMonth: 12, expYear: 2030, cvc: '123', name }, testPaymentMethod: TEST_PM[number] });
+const STRIPE_SK = secret('stripe_secret_key', 'STRIPE_SECRET_KEY');
+async function stripeConfirm(clientSecret, paymentMethod) {
+  if (!STRIPE_SK?.startsWith('sk_test_')) throw new Error('Se requiere una clave de prueba de Stripe para el seed.');
+  const pi = clientSecret.split('_secret_')[0];
+  const r = await fetch(`https://api.stripe.com/v1/payment_intents/${pi}/confirm`, {
+    method: 'POST', headers: { Authorization: `Bearer ${STRIPE_SK}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ payment_method: paymentMethod }),
+  });
+  return r.json();
+}
 
 // ------------------------------------------------------------- main
 async function main() {
@@ -446,7 +464,14 @@ async function main() {
       await api.post(juan, '/cart/items', { variantId: stocked(shoes).id, quantity: 1 });
       const q = await api.post(juan, '/checkout/quote', { addressId: addr.juanDO.id });
       if (q.groups[0].shippingOptions.some((o) => o.provider === 'SHIPPO')) warn('Shippo devolvió tarifas domésticas en RD');
-      return call(juan, 'POST', '/checkout/place', { addressId: addr.juanDO.id, shipping: { [q.groups[0].sellerId]: q.groups[0].shippingOptions[0].code }, ...CARD('Juan Perez', '4000000000000002'), idempotencyKey: randomUUID() }, { expect: 402 });
+      const placed = await api.post(juan, '/checkout/place', { addressId: addr.juanDO.id, shipping: { [q.groups[0].sellerId]: q.groups[0].shippingOptions[0].code }, ...CARD('Juan Perez', '4000000000000002'), idempotencyKey: randomUUID() });
+      if (placed.paymentAction?.provider === 'STRIPE') {
+        await stripeConfirm(placed.paymentAction.clientSecret, 'pm_card_chargeDeclined');
+        await call(juan, 'POST', `/checkout/${placed.checkoutId}/payments/stripe/confirm`, {}, { expect: 402 });
+        await call(juan, 'POST', `/checkout/${placed.checkoutId}/cancel`, {});
+        return true;
+      }
+      return placed;
     });
     void declined;
     ok('tarjeta de rechazo 4000…0002 rechazada correctamente (402)');

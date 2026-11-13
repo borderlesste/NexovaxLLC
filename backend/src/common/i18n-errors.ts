@@ -3,6 +3,16 @@ import { BaseExceptionFilter } from '@nestjs/core';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  'El pago aún no se ha completado.': 'The payment hasn’t been completed yet.',
+  'PayPal aún no confirma el pago.': 'PayPal hasn’t confirmed the payment yet.',
+  'El monto cobrado no coincide con el pedido.': 'The charged amount doesn’t match the order.',
+  'El pago no corresponde a una tarjeta.': 'This payment isn’t a card payment.',
+  'El pago no corresponde a PayPal.': 'This payment isn’t a PayPal payment.',
+  'El pago con tarjeta se está procesando. Espera unos segundos.': 'The card payment is being processed. Please wait a few seconds.',
+  'PayPal rechazó el método de pago. Elige otro método en PayPal.': 'PayPal declined the payment method. Choose another method in PayPal.',
+  'PayPal no pudo procesar la operación.': 'PayPal could not process the operation.',
+  'PayPal no respondió. Inténtalo de nuevo.': 'PayPal didn’t respond. Please try again.',
+  'Firma de webhook inválida.': 'Invalid webhook signature.',
   'Tu cuenta está restringida. Contacta a soporte.': 'Your account is restricted. Please contact support.',
   'Indica el banco y un número de cuenta o IBAN válido.': 'Enter the bank and a valid account number or IBAN.',
   'Completa banco, titular y número de cuenta para habilitar transferencias.': 'Fill in bank, account holder and account number to enable bank transfers.',
@@ -136,6 +146,8 @@ export function translateMessage(msg: string): string {
   if (m) return `The image could not be uploaded: ${m[1]}`;
   m = /^No se pudo crear la cuenta: (.*)$/.exec(msg);
   if (m) return `The account could not be created: ${m[1]}`;
+  m = /^No se pudo completar el pago: (.*)$/.exec(msg);
+  if (m) return `The payment could not be completed: ${m[1]}`;
   m = /^Shippo no pudo generar la etiqueta: (.*)$/.exec(msg);
   if (m) return `Shippo could not create the label: ${m[1]}`;
   return msg;

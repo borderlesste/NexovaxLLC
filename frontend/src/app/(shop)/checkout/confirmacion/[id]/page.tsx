@@ -1,10 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { use } from 'react';
+import { use, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Clock, Copy, Landmark, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import { get } from '@/lib/api';
+import { get, post } from '@/lib/api';
 import { money } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ErrorBox, PageLoader } from '@/components/ui/misc';
@@ -13,6 +13,14 @@ import { t } from '@/lib/i18n';
 export default function ConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const q = useQuery({ queryKey: ['checkout', id], queryFn: () => get(`/checkout/${id}`), refetchInterval: (query) => (query.state.data?.paymentStatus === 'REQUIRES_ACTION' ? 15_000 : false) });
+  // Return from a 3-D Secure redirect: verify the card payment with Stripe once.
+  const verified = useRef(false);
+  useEffect(() => {
+    const r = q.data;
+    if (!r || verified.current || r.orderId || r.provider !== 'STRIPE' || !['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD'].includes(r.paymentStatus)) return;
+    verified.current = true;
+    post(`/checkout/${id}/payments/stripe/confirm`).then(() => q.refetch()).catch((e) => toast.error(e?.message ?? t('El pago aún no se ha completado.')));
+  }, [q.data, id, q]);
   if (q.isLoading) return <PageLoader />;
   if (q.isError) return <div className="mx-auto max-w-2xl px-4 py-16"><ErrorBox message="No encontramos esta compra." /></div>;
   const r = q.data;
@@ -24,7 +32,11 @@ export default function ConfirmationPage({ params }: { params: Promise<{ id: str
         {paid ? <CheckCircle2 className="mx-auto size-16 text-emerald-500" /> : <Clock className="mx-auto size-16 text-amber-500" />}
         <h1 className="mt-4 text-3xl font-extrabold">{paid ? t('¡Gracias por tu compra!') : t('Tu pedido está reservado')}</h1>
         <p className="mt-2 text-muted">
-          {paid ? t('Tu pedido {a} fue confirmado. Te avisaremos cuando la tienda lo despache.', { a: r.orderNumber }) : t('Completa la transferencia bancaria para confirmar tu pedido.')}
+          {paid
+            ? t('Tu pedido {a} fue confirmado. Te avisaremos cuando la tienda lo despache.', { a: r.orderNumber })
+            : r.bankTransfer
+              ? t('Completa la transferencia bancaria para confirmar tu pedido.')
+              : t('Estamos confirmando tu pago con el procesador. Esta página se actualizará automáticamente.')}
         </p>
         <p className="mt-4 text-2xl font-extrabold">{money(r.amount, r.currency)}</p>
         {r.bankTransfer && (

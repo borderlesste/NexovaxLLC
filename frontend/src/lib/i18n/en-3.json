@@ -213,5 +213,20 @@
 "Banco": "Bank",
 "Titular": "Holder",
 "Cuenta": "Account",
-"Referencia": "Reference"
+"Referencia": "Reference",
+"Pagar y confirmar compra": "Pay and place order",
+"Revisa los datos de la tarjeta.": "Check your card details.",
+"No se pudo iniciar el pago con tarjeta.": "The card payment could not be started.",
+"El pago fue rechazado.": "The payment was declined.",
+"No se pudo iniciar el pago con PayPal.": "The PayPal payment could not be started.",
+"Pago con PayPal cancelado.": "PayPal payment cancelled.",
+"Pago procesado por Stripe. Los datos de tu tarjeta nunca pasan por nuestros servidores.": "Payment processed by Stripe. Your card details never touch our servers.",
+"Modo prueba de Stripe: usa": "Stripe test mode: use",
+"aprobada": "approved",
+"o": "or",
+"fondos insuficientes": "insufficient funds",
+"con cualquier fecha futura y CVC.": "with any future date and CVC.",
+"Pagarás con tu cuenta PayPal en una ventana segura. Tu pedido se confirma al aprobar el pago.": "You’ll pay with your PayPal account in a secure window. Your order is confirmed once you approve the payment.",
+"El pago aún no se ha completado.": "The payment hasn’t been completed yet.",
+"Estamos confirmando tu pago con el procesador. Esta página se actualizará automáticamente.": "We’re confirming your payment with the processor. This page will update automatically."
 }

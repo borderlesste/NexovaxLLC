@@ -10,7 +10,7 @@ import { CatalogLocaleInterceptor } from './common/i18n-catalog';
 
 async function bootstrap() {
   assertConfig();
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.enableCors({ origin: config.corsOrigins, credentials: true });

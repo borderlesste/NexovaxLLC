@@ -11,13 +11,14 @@ import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money'
 import { config } from '../config';
 import { postSaleAllocation } from './sale-ledger';
 import { orderRef, paymentRef } from '../common/refs';
+import { ONLINE_PAYMENT_TTL_MIN, PaymentsService } from '../payments/payments.service';
 import { MailService } from '../mail/mail.service';
 
 const ENGINE = 'nx-checkout-2.0';
-const PAYMENT_PROVIDER = 'RD_SANDBOX';
-const CHECKOUT_TTL_MIN = 60 * 72; // bank transfers may take up to 72 h to confirm
+const SANDBOX_PROVIDER = 'RD_SANDBOX';
+const TRANSFER_TTL_MIN = 60 * 72; // bank transfers may take up to 72 h to confirm
 
-export type PaymentMethod = 'CARD' | 'BANK_TRANSFER';
+export type PaymentMethod = 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
 
 export interface PlaceOrderInput {
   addressId: string;
@@ -68,6 +69,7 @@ export class CheckoutService {
     private readonly mail: MailService,
     private readonly tax: TaxService,
     private readonly shipping: ShippingService,
+    private readonly payments: PaymentsService,
   ) {}
 
   // ------------------------------------------------------------------ pricing
@@ -199,6 +201,8 @@ export class CheckoutService {
       });
     }
     const bt = await this.settings.get('payments.bank_transfer');
+    const stripe = this.payments.providerFor('CARD');
+    const paypal = this.payments.providerFor('PAYPAL');
     return {
       currency: cart.currency,
       addressId: address?.id ?? null,
@@ -210,8 +214,12 @@ export class CheckoutService {
       taxTotal: fromMinor(totals.tax),
       total: fromMinor(totals.subtotal + totals.shipping + totals.tax),
       paymentMethods: [
-        { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, sandbox: config.paymentEnvironment === 'TEST' },
-        { code: 'PAYPAL', name: 'PayPal', available: false, reason: 'Disponible cuando se configure la cuenta PayPal del marketplace.' },
+        stripe
+          ? { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, provider: 'STRIPE', testMode: stripe.environment === 'TEST', publishableKey: config.stripePublishableKey }
+          : { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, provider: SANDBOX_PROVIDER, sandbox: true },
+        paypal
+          ? { code: 'PAYPAL', name: 'PayPal', available: true, provider: 'PAYPAL', testMode: paypal.environment === 'TEST', clientId: config.paypalClientId }
+          : { code: 'PAYPAL', name: 'PayPal', available: false, reason: 'Disponible cuando se configure la cuenta PayPal del marketplace.' },
         { code: 'BANK_TRANSFER', name: 'Transferencia bancaria', available: !!bt?.enabled },
         { code: 'CASH_ON_DELIVERY', name: 'Pago contra entrega', available: false, reason: 'No disponible en esta versión.' },
       ],
@@ -229,11 +237,15 @@ export class CheckoutService {
         where cs.customer_id = $1 and cs.idempotency_key = $2 order by pay.created_at desc nulls last limit 1`,
       [userId, input.idempotencyKey],
     );
-    if (prior) return this.resultFor(prior.id);
+    if (prior) return this.resultFor(prior.id, userId);
 
-    if (input.paymentMethod === 'CARD') this.validateSandboxCard(input.card);
-    else if (input.paymentMethod !== 'BANK_TRANSFER' || !(await this.settings.get('payments.bank_transfer'))?.enabled)
+    const online = input.paymentMethod === 'BANK_TRANSFER' ? null : this.payments.providerFor(input.paymentMethod);
+    if (input.paymentMethod === 'CARD' && !online) this.validateSandboxCard(input.card); // local development without Stripe keys
+    else if (input.paymentMethod === 'PAYPAL' && !online) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
+    else if (input.paymentMethod === 'BANK_TRANSFER' && !(await this.settings.get('payments.bank_transfer'))?.enabled)
       throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
+    // Earlier card/PayPal attempts the buyer abandoned must not block the new checkout.
+    await this.payments.releaseAbandoned(userId);
 
     // Live shipping options are fetched before the transaction (external API calls).
     const preCart = await this.carts.getCart(userId);
@@ -257,7 +269,7 @@ export class CheckoutService {
       );
       if (!address) throw badRequest('CHECKOUT_SHIPPING_ADDRESS_REQUIRED', 'Selecciona una dirección de envío válida.');
 
-      const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MIN * 60_000);
+      const expiresAt = new Date(Date.now() + (input.paymentMethod === 'BANK_TRANSFER' ? TRANSFER_TTL_MIN : ONLINE_PAYMENT_TTL_MIN) * 60_000);
       const sessionId: string = (await this.db.one(
         `select public.create_checkout_from_cart($1, $2, $3, $4, $5) as id`,
         [cart.id, userId, input.idempotencyKey, expiresAt, corr],
@@ -398,10 +410,10 @@ export class CheckoutService {
                      provider_currency_code, checkout_currency_amount, checkout_currency_code, estimated_days, duration_terms,
                      attributes, expires_at)
              values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb, now() + interval '3 days') returning id`,
-            [quoteIds.get(o.provider), groupId, sellerId, o.provider, o.providerRateId ?? `${o.provider}:${o.code}:${groupId}`,
+            [quoteIds.get(o.provider), groupId, sellerId, o.provider, o.providerRateId ? `${o.providerRateId}|${groupId}` : `${o.provider}:${o.code}:${groupId}`,
              o.carrierCode, o.carrierName, o.serviceToken, o.serviceName, o.providerAmount ?? o.amount, o.providerCurrency ?? currency,
              o.amount, currency, o.estimatedDays, o.description || null,
-             JSON.stringify({ option_code: o.code, provider_shipment_id: o.providerShipmentId, tags: o.attributes, carrier_logo: o.carrierLogo })],
+             JSON.stringify({ option_code: o.code, provider_rate_id: o.providerRateId, provider_shipment_id: o.providerShipmentId, tags: o.attributes, carrier_logo: o.carrierLogo })],
             c,
           );
           if (o.code === chosen.code) chosenRateId = ro!.id;
@@ -441,7 +453,7 @@ export class CheckoutService {
              on acc.provider_code = cfg.provider_code and acc.environment = cfg.environment and acc.status = 'ACTIVE'
           where cfg.provider_code = $1 and cfg.environment = $2 and cfg.status = 'ACTIVE'
           order by cfg.version desc limit 1`,
-        [PAYMENT_PROVIDER, config.paymentEnvironment],
+        [online?.code ?? SANDBOX_PROVIDER, online?.environment ?? config.paymentEnvironment],
         c,
       );
       if (!prov) throw new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'El procesador de pagos no está disponible.', HttpStatus.SERVICE_UNAVAILABLE);
@@ -452,7 +464,17 @@ export class CheckoutService {
       ))!.id;
       const pay = await this.db.one(`select expected_amount::text as amount, currency_code from public.payments where id = $1`, [paymentId], c);
 
-      if (input.paymentMethod === 'CARD') {
+      if (online) {
+        const ref = await this.db.one(
+          `select cs.public_number, u.email::text as email from public.checkout_sessions cs join public.users u on u.id = cs.customer_id where cs.id = $1`,
+          [sessionId],
+          c,
+        );
+        await this.payments.startProviderPayment(c, {
+          paymentId, checkoutId: sessionId, provider: online.code, amount: pay!.amount, currency: pay!.currency_code,
+          customerEmail: ref?.email, reference: `NX-CHK-${ref?.public_number ?? ''}`, corr,
+        });
+      } else if (input.paymentMethod === 'CARD') {
         const last4 = input.card!.number.replace(/\D/g, '').slice(-4);
         const intentId: string = (await this.db.one(
           `select public.register_payment_provider_intent($1,$2,'succeeded','SUCCEEDED',null,$3,now(),$4::jsonb) as id`,
@@ -479,7 +501,7 @@ export class CheckoutService {
       return sessionId;
     });
 
-    const result = await this.resultFor(checkoutId);
+    const result = await this.resultFor(checkoutId, userId);
     if (result.orderId) this.mail.fire(() => this.mail.orderConfirmed(result.orderId));
     else if (result.bankTransfer && result.paymentId) this.mail.fire(() => this.mail.transferInstructions(result.paymentId, result.bankTransfer!));
     return result;
@@ -613,9 +635,9 @@ export class CheckoutService {
       throw new AppError('CARD_DECLINED', 'La tarjeta fue rechazada por el emisor (tarjeta de prueba de rechazo).', HttpStatus.PAYMENT_REQUIRED);
   }
 
-  async resultFor(checkoutId: string) {
+  async resultFor(checkoutId: string, userId?: string) {
     const r = await this.db.one(
-      `select cs.id, cs.public_number, cs.status, pay.id as payment_id, pay.public_number as payment_number, pay.status as payment_status,
+      `select cs.id, cs.public_number, cs.status, pay.id as payment_id, pay.public_number as payment_number, pay.status as payment_status, pay.provider_code,
               pay.expected_amount::text as amount, pay.currency_code, pay.order_id, o.public_number as order_number
          from public.checkout_sessions cs
          left join public.payments pay on pay.checkout_session_id = cs.id
@@ -624,8 +646,11 @@ export class CheckoutService {
       [checkoutId],
     );
     if (!r) throw notFound('Compra');
-    const bt = r.payment_status === 'REQUIRES_ACTION' ? await this.settings.get('payments.bank_transfer') : null;
+    const pendingOnline = ['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD'].includes(r.payment_status) && ['STRIPE', 'PAYPAL'].includes(r.provider_code);
+    const bt = r.payment_status === 'REQUIRES_ACTION' && r.provider_code === SANDBOX_PROVIDER ? await this.settings.get('payments.bank_transfer') : null;
     return {
+      provider: r.provider_code,
+      paymentAction: pendingOnline && userId ? await this.payments.clientAction(checkoutId, userId) : null,
       checkoutId: r.id,
       status: r.status,
       paymentId: r.payment_id,

@@ -30,6 +30,8 @@ Requisitos: Node 20+, pnpm 9.
    - `database_url` — cadena de conexión del rol `rd_api_runtime` (pooler de Supabase).
    - `supabase_secret_key` — clave secreta `sb_secret_…` (solo backend).
    - `data_encryption_key` — 32 bytes en base64 (`openssl rand -base64 32`) para cifrar RNC/cédula y cuentas bancarias.
+   - `stripe_secret_key` (`sk_test_…`/`sk_live_…`), `stripe_publishable_key` (`pk_…`) y `stripe_webhook_secret` (uno o varios `whsec_…`, uno por línea).
+   - `paypal_client_id`, `paypal_client_secret` y, para webhooks, `paypal_webhook_id` (sandbox por defecto; `PAYPAL_ENV=live` en producción).
    - `shippo_api_key` — clave de Shippo (`shippo_test_…` en pruebas, `shippo_live_…` en producción).
    - `shippo_webhook_token` — secreto aleatorio para el webhook de rastreo (`openssl rand -hex 24`).
    - `resend_api_key` — clave `re_…` de Resend para el correo transaccional (sin ella los correos se omiten y se registran como `SKIPPED`).
@@ -66,6 +68,14 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
 - **Impuestos:** tabla `marketplace_tax_rates` por país de destino (IVA, VAT, GST, ITBIS…), editable desde el panel; cada pedido guarda el impuesto aplicado como evidencia. Las tasas iniciales son de referencia: confírmalas con un asesor fiscal (EE. UU. queda en 0 % hasta conectar un proveedor de sales tax).
 - **Direcciones:** cualquier país ISO; estado y código postal validados donde las transportadoras los exigen (EE. UU., Canadá, México…).
 
+## Pagos (Stripe y PayPal)
+
+- **Tarjetas con Stripe:** el checkout muestra el *Payment Element* de Stripe (los datos de la tarjeta nunca pasan por nuestros servidores) y soporta 3-D Secure. Al pulsar «Pagar y confirmar compra» se crea el pago del pedido (PaymentIntent), el navegador lo confirma con Stripe y la API lo **verifica directamente con Stripe** antes de crear el pedido; una tarjeta rechazada puede reintentarse sobre el mismo pago.
+- **PayPal:** botones oficiales de PayPal; la API crea la orden de PayPal (Orders v2) y la captura al aprobarse. Se activan solos al agregar `paypal_client_id` y `paypal_client_secret` (no requiere cambios de código).
+- **Webhooks firmados (respaldo):** `POST /api/stripe/webhook` (evento `payment_intent.succeeded`) y `POST /api/paypal/webhook` (`PAYMENT.CAPTURE.COMPLETED`). Se verifican la firma y la repetición del evento, y queda constancia en `integration_webhook_receipts`; la confirmación por API y el webhook pueden llegar en cualquier orden sin duplicar pedidos.
+- **Pagos abandonados:** si el comprador vuelve a editar el carrito o inicia otra compra, el pago pendiente se cancela en el proveedor (solo si no fue cobrado) y se libera el inventario; las reservas de pagos en línea vencen a los 30 min (transferencias: 72 h).
+- **Sin claves de Stripe** (solo desarrollo local) la tarjeta usa el procesador sandbox interno. Tarjetas de prueba de Stripe: `4242 4242 4242 4242` aprobada · `4000 0027 6000 3184` 3-D Secure · `4000 0000 0000 9995` fondos insuficientes.
+
 ## Envíos con Shippo
 
 - **Checkout:** por cada tienda se cotiza en vivo con Shippo desde la dirección de despacho del vendedor hasta la del comprador (USPS, UPS, DHL Express, Canada Post, etc.), con etiquetas «Más económico» / «Más rápido». Si la ruta no tiene transportadoras (p. ej. envíos domésticos dentro de RD), se ofrecen las tarifas fijas del marketplace; el retiro en tienda aparece cuando origen y destino están en el mismo país.
@@ -76,7 +86,7 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
 
 ## Decisiones y límites del MVP
 
-- **Pagos:** proveedor `RD_SANDBOX` (entorno TEST) detrás del modelo de pagos neutral; Stripe/PayPal/AZUL se conectan registrando su configuración y un adaptador. PayPal y contra entrega aparecen como no disponibles.
+- **Pagos:** Stripe (tarjetas) y PayPal en modo prueba; transferencia bancaria confirmada por finanzas. La comisión de Stripe/PayPal no se registra aún como gasto en el libro mayor. Pago contra entrega no disponible.
 - **Correo (Resend):** la API envía los correos transaccionales directamente con Resend desde `no-reply@nexovax.com` (dominio verificado). Cada evento se registra en `public.email_deliveries` y se envía una sola vez (`dedupe_key` + `Idempotency-Key`); un fallo de correo nunca bloquea la operación.
   - Comprador: bienvenida, recuperación de contraseña, pedido confirmado, instrucciones y rechazo de transferencia, pedido enviado (con guía) y entregado, reporte recibido, respuesta y resolución de soporte.
   - Vendedor: solicitud recibida, tienda aprobada/rechazada/suspendida/reactivada, nueva venta, pedido entregado, moderación de productos, retiro pagado/fallido/cancelado.

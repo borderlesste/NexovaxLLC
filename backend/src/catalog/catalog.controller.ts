@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { config } from '../config';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
 import { CatalogService } from './catalog.service';
 import { SettingsService } from '../settings/settings.service';
@@ -34,6 +35,8 @@ export class CatalogController {
       shippingRates: s['shipping.rates'],
       liveShippingRates: !!s['shipping.shippo_enabled'],
       bankTransfer: !!s['payments.bank_transfer']?.enabled,
+      stripePublishableKey: config.stripePublishableKey && config.stripeSecretKey ? config.stripePublishableKey : null,
+      paypalClientId: config.paypalClientId && config.paypalClientSecret ? config.paypalClientId : null,
       sellerRegistration: s['features.seller_registration'],
     };
   }

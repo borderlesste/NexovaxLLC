@@ -33,6 +33,10 @@ import { TaxService } from './tax/tax.service';
 import { ShippoService } from './shipping/shippo.service';
 import { ShippingService } from './shipping/shipping.service';
 import { WebhooksController } from './shipping/webhooks.controller';
+import { StripeService } from './payments/stripe.service';
+import { PaypalService } from './payments/paypal.service';
+import { PaymentsService } from './payments/payments.service';
+import { PaymentsWebhooksController } from './payments/payments.controller';
 
 @Module({
   imports: [
@@ -47,7 +51,7 @@ import { WebhooksController } from './shipping/webhooks.controller';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController],
+  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController],
   providers: [
     DbService,
     SettingsService,
@@ -66,6 +70,9 @@ import { WebhooksController } from './shipping/webhooks.controller';
     TaxService,
     ShippoService,
     ShippingService,
+    StripeService,
+    PaypalService,
+    PaymentsService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

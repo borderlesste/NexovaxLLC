@@ -15,6 +15,7 @@ import { Field, Input } from '@/components/ui/input';
 import { Checkbox, Empty, PageLoader } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { AddressDialog, type Address } from '@/components/shop/address-form';
+import { PaypalPay, StripeBoundary, StripeCardForm, StripePayButton, type PlacedCheckout } from '@/components/checkout/online-payments';
 import { cityLine } from '@/components/shop/geo-fields';
 import { usePublicConfig } from '@/lib/config';
 import { countryName, t } from '@/lib/i18n';
@@ -41,13 +42,13 @@ function Steps({ current }: { current: number }) {
 const PAY_ICONS: Record<string, any> = { CARD: CreditCard, PAYPAL: Wallet, BANK_TRANSFER: Landmark, CASH_ON_DELIVERY: PackageCheck };
 
 export default function CheckoutPage() {
-  const { session, loading } = useAuth();
+  const { session, loading, me } = useAuth();
   const router = useRouter();
   const qc = useQueryClient();
   const [shipping, setShipping] = useState<Record<string, string>>({});
   const [addressId, setAddressId] = useState<string>('');
   const [addrDialog, setAddrDialog] = useState<{ open: boolean; address?: Address | null }>({ open: false });
-  const [method, setMethod] = useState<'CARD' | 'BANK_TRANSFER'>('CARD');
+  const [method, setMethod] = useState<'CARD' | 'PAYPAL' | 'BANK_TRANSFER'>('CARD');
   const [card, setCard] = useState({ number: '', exp: '', cvc: '', name: '' });
   const [save, setSave] = useState(true);
   const [placing, setPlacing] = useState(false);
@@ -78,6 +79,24 @@ export default function CheckoutPage() {
       <div className="mx-auto max-w-3xl px-4 py-16"><div className="card"><Empty icon={<ShoppingBag />} title={t('Tu carrito está vacío')} description={t('Agrega productos antes de finalizar la compra.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div></div>
     );
 
+  const cardMethod = q?.paymentMethods.find((m: any) => m.code === 'CARD');
+  const stripeKey: string | null = cardMethod?.provider === 'STRIPE' ? cardMethod.publishableKey ?? null : null;
+  const paypalMethod = q?.paymentMethods.find((m: any) => m.code === 'PAYPAL' && m.available);
+  const shippingSelection = () => Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
+  const resetKey = q ? JSON.stringify([addressId, shippingSelection(), q.total]) : '';
+
+  /** Creates the order's checkout + payment with the provider; the browser then completes the payment. */
+  const placeOnline = async (paymentMethod: 'CARD' | 'PAYPAL'): Promise<PlacedCheckout> => {
+    if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
+    if (q.groups.some((g: any) => !selectedFor(g))) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
+    return post('/checkout/place', { addressId, shipping: shippingSelection(), paymentMethod, idempotencyKey: uid() });
+  };
+  const onPaid = (checkoutId: string) => {
+    qc.invalidateQueries({ queryKey: ['cart'] });
+    qc.invalidateQueries({ queryKey: ['me'] });
+    router.push(`/checkout/confirmacion/${checkoutId}`);
+  };
+
   const place = async () => {
     if (!addressId) return toast.error(t('Selecciona una dirección de envío.'));
     let cardPayload;
@@ -103,6 +122,7 @@ export default function CheckoutPage() {
 
   const fmtCard = (v: string) => v.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
   return (
+    <StripeBoundary publishableKey={stripeKey} amount={q.total} currency={q.currency}>
     <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div className="flex items-center gap-8">
@@ -204,7 +224,23 @@ export default function CheckoutPage() {
                 );
               })}
             </div>
-            {method === 'CARD' && (
+            {method === 'CARD' && stripeKey && (
+              <div className="mt-5 space-y-3">
+                <StripeCardForm billing={(() => { const a = addresses.data?.find((x) => x.id === addressId); return a ? { name: a.recipientName, email: me?.email, country: a.countryCode, postalCode: a.postalCode } : undefined; })()} />
+                <p className="flex items-center gap-1.5 text-xs text-muted"><ShieldCheck className="size-4 text-brand-600" /> {t('Pago procesado por Stripe. Los datos de tu tarjeta nunca pasan por nuestros servidores.')}</p>
+                {cardMethod?.testMode && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    {t('Modo prueba de Stripe: usa')} <b>4242 4242 4242 4242</b> ({t('aprobada')}), <b>4000 0027 6000 3184</b> (3-D Secure) {t('o')} <b>4000 0000 0000 9995</b> ({t('fondos insuficientes')}), {t('con cualquier fecha futura y CVC.')}
+                  </p>
+                )}
+              </div>
+            )}
+            {method === 'PAYPAL' && paypalMethod && (
+              <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
+                {t('Pagarás con tu cuenta PayPal en una ventana segura. Tu pedido se confirma al aprobar el pago.')}
+              </p>
+            )}
+            {method === 'CARD' && !stripeKey && (
               <div className="mt-5 grid gap-4 sm:grid-cols-[1.2fr_0.8fr_0.6fr]">
                 <Field label={t('Número de tarjeta')} required className="sm:col-span-3">
                   <Input inputMode="numeric" autoComplete="cc-number" placeholder="1234 5678 9012 3456" value={card.number} onChange={(e) => setCard({ ...card, number: fmtCard(e.target.value) })} />
@@ -258,9 +294,15 @@ export default function CheckoutPage() {
             </div>
           </dl>
           <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 text-xl font-extrabold"><span>{t('Total a pagar')}</span><span className="text-brand-800">{money(q.total, q.currency)}</span></div>
+          {method === 'CARD' && stripeKey ? (
+            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!addressId} resetKey={resetKey} />
+          ) : method === 'PAYPAL' && paypalMethod ? (
+            <PaypalPay clientId={paypalMethod.clientId} currency={q.currency} place={() => placeOnline('PAYPAL')} onPaid={onPaid} disabled={!addressId} />
+          ) : (
           <Button size="lg" className="mt-5 h-14 w-full text-lg" onClick={place} loading={placing} disabled={!addressId}>
             <Lock /> {t('Confirmar compra')}
           </Button>
+          )}
           <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted"><ShieldCheck className="size-4 text-brand-600" /> {t('Tu pago es 100% seguro y encriptado.')}</p>
           <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-5 text-center text-xs">
             {[[ShieldCheck, t('Pago seguro'), t('Datos protegidos')], [PackageCheck, t('Compra protegida'), t('Garantía de entrega')], [Headphones, t('Soporte al cliente'), t('Siempre disponible')]].map(([I, lbl, d]: any) => (
@@ -273,5 +315,6 @@ export default function CheckoutPage() {
         <AddressDialog open onOpenChange={(o) => setAddrDialog({ open: o })} address={addrDialog.address} defaultCountry={cfg?.defaultCountry} onSaved={(a) => { qc.invalidateQueries({ queryKey: ['addresses'] }); setAddressId(a.id); }} />
       )}
     </div>
+    </StripeBoundary>
   );
 }
