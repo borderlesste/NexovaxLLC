@@ -5,20 +5,15 @@ import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { mediaUrl } from '../catalog/catalog.sql';
+import { CARRIERS, ShippingService } from '../shipping/shipping.service';
+import { orderRef, parseOrderRef, paymentRef } from '../common/refs';
 
 export type OrderScope = { kind: 'customer'; userId: string } | { kind: 'seller'; sellerId: string } | { kind: 'admin' };
 
-export const CARRIERS = [
-  { code: 'RD_EXPRESS', name: 'RD Express' },
-  { code: 'VIMENCA', name: 'Vimenca Courier' },
-  { code: 'CPS', name: 'CPS Courier' },
-  { code: 'DHL', name: 'DHL Express' },
-  { code: 'FEDEX', name: 'FedEx' },
-  { code: 'OWN_DELIVERY', name: 'Entrega propia del vendedor' },
-  { code: 'PICKUP', name: 'Retiro en tienda' },
-];
+export { CARRIERS };
 
 const TRACKING_LABELS: Record<string, string> = {
+  UNKNOWN: 'Estado en actualización',
   PRE_TRANSIT: 'Guía generada',
   IN_TRANSIT: 'En tránsito',
   OUT_FOR_DELIVERY: 'Salió a entrega',
@@ -34,6 +29,7 @@ export class OrdersService {
   constructor(
     private readonly db: DbService,
     private readonly mail: MailService,
+    private readonly shipping: ShippingService,
   ) {}
 
   // ------------------------------------------------------------------ listings
@@ -88,7 +84,7 @@ export class OrdersService {
         sellerOrderId: r.seller_order_id,
         sellerOrderNumber: `V-${r.seller_order_number}`,
         orderId: r.order_id,
-        orderNumber: `RD-${r.order_number}`,
+        orderNumber: orderRef(r.order_number),
         placedAt: r.placed_at,
         status: displayStatus(r),
         paymentStatus: r.payment_status,
@@ -143,7 +139,7 @@ export class OrdersService {
     const o = await this.db.one(
       `select o.*, o.public_number::text as number, ofs.grand_total::text as grand_total, ofs.product_net_amount::text as subtotal,
               ofs.shipping_total::text as shipping_total, ofs.tax_total::text as tax_total,
-              ofs.platform_commission_total::text as commission_total,
+              ofs.platform_commission_total::text as commission_total, ofs.calculation_breakdown->'tax' as tax_info,
               coalesce(up.display_name, u.email::text) as customer_name, u.email::text as customer_email, up.phone as customer_phone,
               public.order_display_status(o.id) as display_status
          from public.orders o
@@ -151,7 +147,7 @@ export class OrdersService {
          left join public.user_profiles up on up.user_id = u.id
          left join public.order_financial_snapshots ofs on ofs.order_id = o.id
         where o.id::text = $1 or o.public_number::text = $1`,
-      [orderId.replace(/^RD-/i, '')],
+      [parseOrderRef(orderId)],
     );
     if (!o) throw notFound('Pedido');
     if (scope.kind === 'customer' && o.customer_id !== scope.userId) throw notFound('Pedido');
@@ -167,11 +163,12 @@ export class OrdersService {
                 ssp.support_phone, sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
                 sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission, sofs.seller_entitlement_estimate::text as seller_net,
                 osg.id as shipping_group_id, osg.service_name, osg.carrier_name, osg.service_token, osg.customer_shipping_amount::text as shipping_amount,
-                osg.estimated_days
+                osg.estimated_days, osg.shipping_provider_code, sfa.city as origin_city, sfa.region as origin_region, sfa.country_code as origin_country
            from public.seller_orders so join public.sellers s on s.id = so.seller_id
            left join public.seller_store_profiles ssp on ssp.seller_id = s.id
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
            left join lateral (select * from public.order_shipping_groups g where g.seller_order_id = so.id order by g.created_at limit 1) osg on true
+           left join public.seller_ship_from_addresses sfa on sfa.id = osg.ship_from_address_id
           where so.order_id = $1 and ($2::uuid is null or so.seller_id = $2)
           order by so.created_at`,
         [o.id, sellerFilter],
@@ -192,12 +189,19 @@ export class OrdersService {
         [o.id, sellerFilter],
       ),
       this.db.many(
-        `select sh.id, sh.public_number, sh.seller_order_id, sh.status, sh.shipped_at, sh.delivered_at, sh.actual_carrier_name,
-                st.id as tracking_id, st.tracking_number, st.tracking_url, st.carrier_code, st.current_status,
+        `select sh.id, sh.public_number, sh.seller_order_id, sh.status, sh.shipped_at, sh.delivered_at, sh.actual_carrier_name, sh.actual_service_name,
+                sh.shipping_provider_code,
+                st.id as tracking_id, st.tracking_number, st.tracking_url, st.carrier_code, st.current_status, st.provider_tracking_id, st.source_code,
+                fa.city as from_city, fa.country_code as from_country, ta.city as to_city, ta.country_code as to_country,
+                lb.provider_label_url as label_url, lb.actual_cost_amount::text as label_cost, lb.currency_code as label_currency,
+                lb.provider_messages->>'commercial_invoice_url' as invoice_url, (lb.provider_messages->>'test')::boolean as label_test,
                 coalesce((select json_agg(json_build_object('status', te.normalized_status, 'at', te.event_at, 'detail', te.status_detail,
                                                             'city', te.location_city) order by te.event_at)
                             from public.tracking_events te where te.tracking_id = st.id), '[]') as events
            from public.shipments sh left join public.shipment_trackings st on st.shipment_id = sh.id
+           left join public.shipment_address_snapshots fa on fa.shipment_id = sh.id and fa.address_type = 'FROM'
+           left join public.shipment_address_snapshots ta on ta.shipment_id = sh.id and ta.address_type = 'TO'
+           left join lateral (select * from public.shipping_labels l where l.shipment_id = sh.id and l.status = 'PURCHASED' order by l.purchased_at desc limit 1) lb on true
           where sh.order_id = $1 and ($2::uuid is null or sh.seller_id = $2) and sh.status <> 'CANCELLED'
           order by sh.created_at`,
         [o.id, sellerFilter],
@@ -213,7 +217,7 @@ export class OrdersService {
     const timeline = this.buildTimeline(o, shipments);
     return {
       id: o.id,
-      number: `RD-${o.number}`,
+      number: orderRef(o.number),
       placedAt: o.placed_at,
       paidAt: o.paid_at,
       status: o.display_status,
@@ -221,13 +225,14 @@ export class OrdersService {
       paymentStatus: o.payment_status,
       fulfillmentStatus: o.fulfillment_status,
       currency: o.currency_code,
+      tax: o.tax_info ? { name: o.tax_info.code ?? 'Tax', rate: o.tax_info.rate != null ? Number(o.tax_info.rate) : null, country: o.tax_info.country ?? null } : null,
       totals: { subtotal: o.subtotal, shipping: o.shipping_total, tax: o.tax_total, total: o.grand_total, commission: scope.kind === 'customer' ? undefined : o.commission_total },
       customer: { id: o.customer_id, name: o.customer_name, email: scope.kind === 'customer' ? o.customer_email : maskEmail(o.customer_email, scope.kind), phone: o.customer_phone },
       shippingAddress: address
-        ? { recipientName: address.recipient_name, line1: address.line1, line2: address.line2, city: address.city, region: address.region, countryCode: address.country_code, phone: address.phone }
+        ? { recipientName: address.recipient_name, line1: address.line1, line2: address.line2, city: address.city, region: address.region, postalCode: address.postal_code, countryCode: address.country_code, phone: address.phone }
         : null,
       payment: payment
-        ? { number: `PAY-${payment.public_number}`, status: payment.status, method: payment.meta?.method ?? 'CARD', brand: payment.meta?.brand, last4: payment.meta?.last4, paidAt: payment.paid_at }
+        ? { number: paymentRef(payment.public_number), status: payment.status, method: payment.meta?.method ?? 'CARD', brand: payment.meta?.brand, last4: payment.meta?.last4, paidAt: payment.paid_at }
         : null,
       sellerOrders: sellerOrders.map((so: any) => ({
         id: so.id,
@@ -236,7 +241,8 @@ export class OrdersService {
         lifecycleStatus: so.lifecycle_status,
         fulfillmentStatus: so.fulfillment_status,
         totals: { subtotal: so.subtotal, shipping: so.shipping, tax: so.tax, total: so.total, commission: scope.kind === 'customer' ? undefined : so.commission, sellerNet: scope.kind === 'customer' ? undefined : so.seller_net },
-        shippingMethod: { name: so.service_name, carrier: so.carrier_name, code: so.service_token, amount: so.shipping_amount, estimatedDays: so.estimated_days },
+        shippingMethod: { name: so.service_name, carrier: so.carrier_name, code: so.service_token, provider: so.shipping_provider_code ?? 'MARKETPLACE', amount: so.shipping_amount, estimatedDays: so.estimated_days },
+        origin: so.origin_country ? { city: so.origin_city, region: so.origin_region, countryCode: so.origin_country } : null,
         items: items
           .filter((i: any) => i.seller_order_id === so.id)
           .map((i: any) => ({
@@ -263,6 +269,13 @@ export class OrdersService {
             number: `ENV-${s.public_number}`,
             status: s.status,
             carrier: s.actual_carrier_name,
+            service: s.actual_service_name,
+            provider: s.shipping_provider_code,
+            from: { city: s.from_city, countryCode: s.from_country },
+            to: { city: s.to_city, countryCode: s.to_country },
+            toCity: s.to_city,
+            automaticTracking: !!s.provider_tracking_id,
+            label: scope.kind === 'customer' || !s.label_url ? null : { url: s.label_url, invoiceUrl: s.invoice_url, cost: s.label_cost, currency: s.label_currency, test: !!s.label_test },
             trackingNumber: s.tracking_number,
             trackingUrl: s.tracking_url,
             trackingStatus: s.current_status,
@@ -347,10 +360,19 @@ export class OrdersService {
   }
 
   /** Packs ready fulfillments into a shipment, registers tracking and dispatches it. */
-  async ship(sellerId: string, sellerOrderId: string, actorUserId: string, input: { carrierCode: string; trackingNumber?: string; trackingUrl?: string }) {
-    const carrier = CARRIERS.find((x) => x.code === input.carrierCode);
-    if (!carrier) throw badRequest('CARRIER_INVALID', 'Selecciona una transportadora válida.');
-    await this.db.tx(async (c) => {
+  /**
+   * Ships a prepared seller order.
+   * - LABEL: buys a Shippo label for every pending shipment (groups paid with a Shippo rate).
+   * - MANUAL: the seller enters carrier + tracking (any carrier, or own delivery / pickup).
+   * Shipment rows are created once; a failed label purchase can be retried safely.
+   */
+  async ship(
+    sellerId: string,
+    sellerOrderId: string,
+    actorUserId: string,
+    input: { mode?: 'LABEL' | 'MANUAL'; carrierCode?: string; carrierName?: string; trackingNumber?: string; trackingUrl?: string },
+  ) {
+    const pending = await this.db.tx(async (c) => {
       const so = await this.sellerOrderFor(sellerId, sellerOrderId, c);
       const fulfillments = await this.db.many(
         `select f.id, f.order_shipping_group_id from public.fulfillments f
@@ -359,25 +381,31 @@ export class OrdersService {
         [so.id],
         c,
       );
-      if (!fulfillments.length) throw conflict('NOTHING_TO_SHIP', 'Primero marca el pedido como "En preparación".');
       const to = await this.db.one(`select * from public.order_address_snapshots where order_id = $1 and address_type = 'SHIPPING'`, [so.order_id], c);
       const customer = await this.db.one(`select u.email::text as email from public.orders o join public.users u on u.id = o.customer_id where o.id = $1`, [so.order_id], c);
       for (const f of fulfillments) {
         const g = await this.db.one(`select * from public.order_shipping_groups where id = $1`, [f.order_shipping_group_id], c);
-        const from = await this.db.one(`select * from public.seller_ship_from_addresses where id = $1`, [g.ship_from_address_id], c);
+        const from = await this.db.one(
+          `select a.*, coalesce(ssp.support_email, u.email::text) as contact_email
+             from public.seller_ship_from_addresses a join public.sellers s on s.id = a.seller_id join public.users u on u.id = s.owner_user_id
+             left join public.seller_store_profiles ssp on ssp.seller_id = s.id where a.id = $1`,
+          [g.ship_from_address_id],
+          c,
+        );
         const sh = await this.db.one(
           `insert into public.shipments (fulfillment_id, seller_order_id, order_id, seller_id, order_shipping_group_id, shipping_provider_code,
                    requested_carrier_code, requested_service_token, requested_service_name, actual_carrier_code, actual_carrier_name,
                    actual_service_token, actual_service_name, correlation_id)
-           values ($1,$2,$3,$4,$5,'RD_LOCAL',$6,$7,$8,$9,$10,$7,$8,$11) returning id`,
-          [f.id, so.id, so.order_id, sellerId, g.id, g.carrier_code, g.service_token, g.service_name, carrier.code, carrier.name, randomUUID()],
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$7,$10,$8,$9,$11) returning id`,
+          [f.id, so.id, so.order_id, sellerId, g.id, g.shipping_provider_code ?? 'MARKETPLACE', g.carrier_code, g.service_token, g.service_name,
+           g.carrier_name, randomUUID()],
           c,
         );
         const shipmentId = sh!.id;
         await this.db.exec(
-          `insert into public.shipment_address_snapshots (shipment_id, address_type, recipient_name, company_name, line1, line2, city, region, postal_code, country_code, phone)
-           values ($1,'FROM',$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-          [shipmentId, from.contact_name, from.company_name, from.line1, from.line2, from.city, from.region, from.postal_code, from.country_code, from.phone],
+          `insert into public.shipment_address_snapshots (shipment_id, address_type, recipient_name, company_name, line1, line2, city, region, postal_code, country_code, phone, email)
+           values ($1,'FROM',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [shipmentId, from.contact_name, from.company_name, from.line1, from.line2, from.city, from.region, from.postal_code, from.country_code, from.phone, from.contact_email],
           c,
         );
         await this.db.exec(
@@ -408,19 +436,123 @@ export class OrdersService {
             c,
           );
         await this.db.exec(`select public.mark_shipment_ready($1)`, [shipmentId], c);
-        const tracking = input.trackingNumber?.trim() || `RD-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1e4)}`;
-        await this.db.exec(
-          `select public.register_external_tracking($1,'RD_LOCAL',$2,$3,$4,'EXTERNAL_MANUAL')`,
-          [shipmentId, carrier.code, tracking, input.trackingUrl?.trim() || null],
-          c,
-        );
-        await this.db.exec(`select public.dispatch_shipment($1)`, [shipmentId], c);
-        const tr = await this.db.one(`select id from public.shipment_trackings where shipment_id = $1 order by created_at desc limit 1`, [shipmentId], c);
-        await this.trackingEvent(c, tr!.id, 'IN_TRANSIT', `El vendedor despachó el paquete con ${carrier.name}.`, from.city);
       }
+      const ready = await this.db.many(
+        `select sh.id, sh.shipping_provider_code, sa.city as from_city
+           from public.shipments sh left join public.shipment_address_snapshots sa on sa.shipment_id = sh.id and sa.address_type = 'FROM'
+          where sh.seller_order_id = $1 and sh.status in ('READY_TO_SHIP','LABEL_CREATED')
+            and not exists (select 1 from public.shipment_trackings st where st.shipment_id = sh.id)
+          order by sh.created_at`,
+        [so.id],
+        c,
+      );
+      if (!ready.length && !fulfillments.length) throw conflict('NOTHING_TO_SHIP', 'Primero marca el pedido como "En preparación".');
+      return ready as { id: string; shipping_provider_code: string; from_city: string }[];
     });
+
+    const mode = input.mode ?? (pending.some((p) => p.shipping_provider_code === 'SHIPPO') && this.shipping.shippoEnabled ? 'LABEL' : 'MANUAL');
+    const results: any[] = [];
+    for (const p of pending) {
+      if (mode === 'LABEL') {
+        const label = await this.shipping.buyLabel(p.id);
+        await this.db.tx(async (c) => {
+          await this.db.exec(`select public.dispatch_shipment($1)`, [p.id], c);
+        });
+        results.push({ shipmentId: p.id, ...label });
+      } else {
+        const carrier = CARRIERS.find((x) => x.code === input.carrierCode);
+        if (!carrier) throw badRequest('CARRIER_INVALID', 'Selecciona una transportadora válida.');
+        const carrierName = carrier.code === 'OTHER' ? input.carrierName?.trim() : carrier.name;
+        if (!carrierName) throw badRequest('CARRIER_NAME_REQUIRED', 'Indica el nombre de la transportadora.');
+        const internal = ['OWN_DELIVERY', 'PICKUP'].includes(carrier.code);
+        const tracking = input.trackingNumber?.trim() || (internal ? `NX-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1e4)}` : '');
+        if (!tracking) throw badRequest('TRACKING_REQUIRED', 'Indica el número de guía de la transportadora.');
+        await this.db.tx(async (c) => {
+          await this.db.exec(
+            `update public.shipments set actual_carrier_code = $2, actual_carrier_name = $3 where id = $1`,
+            [p.id, carrier.code, carrierName],
+            c,
+          );
+          await this.db.exec(
+            `select public.register_external_tracking($1,$2,$3,$4,$5,'EXTERNAL_MANUAL')`,
+            [p.id, p.shipping_provider_code ?? 'MARKETPLACE', carrier.code, tracking, input.trackingUrl?.trim() || null],
+            c,
+          );
+          await this.db.exec(`select public.dispatch_shipment($1)`, [p.id], c);
+          const tr = await this.db.one(`select id from public.shipment_trackings where shipment_id = $1 order by created_at desc limit 1`, [p.id], c);
+          await this.trackingEvent(c, tr!.id, 'IN_TRANSIT', `El vendedor despachó el paquete con ${carrierName}.`, p.from_city);
+        });
+        this.shipping.watchManualTracking(carrier.code, tracking, p.id).catch(() => undefined);
+        results.push({ shipmentId: p.id, trackingNumber: tracking, carrier: carrierName });
+      }
+    }
     this.mail.fire(() => this.mail.sellerOrderShipped(sellerOrderId));
-    return { ok: true };
+    return { ok: true, mode, shipments: results };
+  }
+
+  /** Pulls carrier tracking (Shippo) for one shipment and applies new events. */
+  async refreshShipmentTracking(scope: OrderScope, shipmentId: string) {
+    const s = await this.db.one(
+      `select sh.id, sh.seller_id, sh.order_id, o.customer_id, st.id as tracking_id, st.provider_tracking_id
+         from public.shipments sh join public.orders o on o.id = sh.order_id
+         left join lateral (select * from public.shipment_trackings x where x.shipment_id = sh.id order by x.created_at desc limit 1) st on true
+        where sh.id = $1`,
+      [shipmentId],
+    );
+    if (!s) throw notFound('Envío');
+    if (scope.kind === 'seller' && s.seller_id !== scope.sellerId) throw notFound('Envío');
+    if (scope.kind === 'customer' && s.customer_id !== scope.userId) throw notFound('Envío');
+    if (!s.tracking_id || !s.provider_tracking_id) throw conflict('TRACKING_NOT_AUTOMATIC', 'Este envío se actualiza manualmente por el vendedor.');
+    return (await this.syncTracking(s.tracking_id)) ?? { applied: 0, delivered: false, status: 'UNCHANGED' };
+  }
+
+  /** Applies provider tracking for one tracking row and runs delivery side effects. */
+  async syncTracking(trackingId: string) {
+    const r = await this.shipping.refreshTracking(trackingId);
+    if (r?.applied) await this.afterTrackingApplied(trackingId, r.delivered);
+    return r;
+  }
+
+  /** Webhook entry (Shippo `track_updated`). */
+  async ingestShippoTrack(payload: any) {
+    const data = payload?.data ?? payload;
+    const carrier = data?.carrier;
+    const number = data?.tracking_number;
+    if (!carrier || !number) return { ignored: true };
+    const t = await this.db.one(
+      `select st.id, st.shipment_id, sh.order_id from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id
+        where st.tracking_number = $1 and (st.provider_tracking_id = $2 or st.provider_tracking_id is null) order by st.created_at desc limit 1`,
+      [number, carrier],
+    );
+    if (!t) return { ignored: true };
+    const { normalizeTrack } = await import('../shipping/shippo.service');
+    const track = normalizeTrack(data);
+    const r = await this.shipping.applyTrack(t, track.history.length ? track.history : track.current ? [track.current] : []);
+    if (r.applied) await this.afterTrackingApplied(t.id, r.delivered);
+    return { applied: r.applied };
+  }
+
+  private async afterTrackingApplied(trackingId: string, delivered: boolean) {
+    if (!delivered) return;
+    const t = await this.db.one(`select st.shipment_id, sh.order_id from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id where st.id = $1`, [trackingId]);
+    if (!t) return;
+    await this.db.tx((c) => this.releaseDeliveredFunds(c, t.order_id));
+    this.mail.fire(() => this.mail.shipmentDelivered(t.shipment_id));
+  }
+
+  /** Background job: refreshes tracking of shipments with automatic (Shippo) tracking. */
+  async pollTracking() {
+    const rows = await this.shipping.pendingTrackings(25);
+    let n = 0;
+    for (const r of rows) {
+      try {
+        const res = await this.syncTracking(r.id);
+        if (res?.applied) n++;
+      } catch (e: any) {
+        this.logger.warn(`Tracking refresh failed for ${r.id}: ${e?.message}`);
+      }
+    }
+    return n;
   }
 
   /** Seller/admin updates the delivery progress of a shipment (manual carrier tracking). */
@@ -453,7 +585,7 @@ export class OrdersService {
 
   private async trackingEvent(c: PoolClient, trackingId: string, status: string, detail: string, city?: string | null) {
     await this.db.exec(
-      `select public.apply_tracking_event($1,$2,$3,now(),$4,null,$5,$6,null,null,'DO',null,null,$7::jsonb)`,
+      `select public.apply_tracking_event($1,$2,$3,now(),$4,null,$5,$6,null,null,null,null,null,$7::jsonb)`,
       [trackingId, `manual:${trackingId}:${status}:${Date.now()}`, status, status.toLowerCase(), detail, city ?? null, JSON.stringify({ source: 'manual' })],
       c,
     );

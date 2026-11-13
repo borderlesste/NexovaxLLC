@@ -29,6 +29,10 @@ import { AdminService } from './admin/admin.service';
 import { AdminController } from './admin/admin.controller';
 import { JobsService } from './jobs.service';
 import { MailService } from './mail/mail.service';
+import { TaxService } from './tax/tax.service';
+import { ShippoService } from './shipping/shippo.service';
+import { ShippingService } from './shipping/shipping.service';
+import { WebhooksController } from './shipping/webhooks.controller';
 
 @Module({
   imports: [
@@ -43,7 +47,7 @@ import { MailService } from './mail/mail.service';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController],
+  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController],
   providers: [
     DbService,
     SettingsService,
@@ -59,6 +63,9 @@ import { MailService } from './mail/mail.service';
     AdminService,
     JobsService,
     MailService,
+    TaxService,
+    ShippoService,
+    ShippingService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

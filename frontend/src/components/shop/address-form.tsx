@@ -1,46 +1,52 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { errorMessage, get, post, put } from '@/lib/api';
+import { errorMessage, post, put } from '@/lib/api';
+import { t } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth';
 import { Dialog, Checkbox } from '@/components/ui/misc';
 import { Field, Input, Select } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { GeoFields } from './geo-fields';
 
 export interface Address {
   id: string;
   label?: string | null;
   recipientName: string;
+  companyName?: string | null;
   line1: string;
   line2?: string | null;
   city: string;
-  cityId: string;
   region?: string | null;
+  postalCode?: string | null;
+  countryCode: string;
   phone?: string | null;
   isDefaultShipping: boolean;
 }
 
-export function AddressDialog({ open, onOpenChange, address, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; address?: Address | null; onSaved: (a: Address) => void }) {
-  const cities = useQuery({ queryKey: ['cities'], queryFn: () => get('/geo/cities'), staleTime: Infinity });
+export function AddressDialog({ open, onOpenChange, address, onSaved, defaultCountry }: { open: boolean; onOpenChange: (o: boolean) => void; address?: Address | null; onSaved: (a: Address) => void; defaultCountry?: string }) {
+  const { me } = useAuth();
   const [f, setF] = useState(() => ({
-    label: address?.label ?? 'Casa',
-    recipientName: address?.recipientName ?? '',
+    label: address?.label ?? t('Casa'),
+    recipientName: address?.recipientName ?? me?.displayName ?? '',
     line1: address?.line1 ?? '',
     line2: address?.line2 ?? '',
-    cityId: address?.cityId ?? '',
+    countryCode: address?.countryCode ?? defaultCountry ?? '',
+    city: address?.city ?? '',
     region: address?.region ?? '',
-    phone: address?.phone ?? '',
+    postalCode: address?.postalCode ?? '',
+    phone: address?.phone ?? me?.phone ?? '',
     isDefaultShipping: address?.isDefaultShipping ?? false,
   }));
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
   const save = async () => {
-    if (!f.recipientName.trim() || !f.line1.trim() || !f.cityId) return toast.error('Completa nombre, dirección y ciudad.');
+    if (!f.recipientName.trim() || !f.line1.trim() || !f.countryCode || !f.city.trim()) return toast.error(t('Completa nombre, dirección, país y ciudad.'));
     setSaving(true);
     try {
-      const body = { ...f, cityId: Number(f.cityId), phone: f.phone || undefined, line2: f.line2 || undefined, region: f.region || undefined };
+      const body = { ...f, phone: f.phone || undefined, line2: f.line2 || undefined, region: f.region || undefined, postalCode: f.postalCode || undefined };
       const r = address ? await put(`/me/addresses/${address.id}`, body) : await post('/me/addresses', body);
-      toast.success('Dirección guardada.');
+      toast.success(t('Dirección guardada.'));
       onSaved(r);
       onOpenChange(false);
     } catch (e) {
@@ -50,22 +56,21 @@ export function AddressDialog({ open, onOpenChange, address, onSaved }: { open: 
     }
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={address ? 'Editar dirección' : 'Agregar nueva dirección'} size="lg"
-      footer={<><Button variant="secondary" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={save} loading={saving}>Guardar dirección</Button></>}>
+    <Dialog open={open} onOpenChange={onOpenChange} title={address ? t('Editar dirección') : t('Agregar nueva dirección')} size="lg"
+      footer={<><Button variant="secondary" onClick={() => onOpenChange(false)}>{t('Cancelar')}</Button><Button onClick={save} loading={saving}>{t('Guardar dirección')}</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre de la dirección"><Select value={f.label} onChange={(e) => set('label', e.target.value)}><option>Casa</option><option>Trabajo</option><option>Otra</option></Select></Field>
-        <Field label="Nombre de quien recibe" required><Input value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder="Ej. Juan Pérez" /></Field>
-        <Field label="Dirección" required className="sm:col-span-2"><Input value={f.line1} onChange={(e) => set('line1', e.target.value)} placeholder="Calle, número, sector" /></Field>
-        <Field label="Referencia / apartamento" className="sm:col-span-2"><Input value={f.line2} onChange={(e) => set('line2', e.target.value)} placeholder="Ej. Edificio 3, apto 2B, frente al colmado" /></Field>
-        <Field label="Ciudad" required>
-          <Select value={f.cityId} onChange={(e) => set('cityId', e.target.value)}>
-            <option value="">Selecciona una ciudad</option>
-            {(cities.data ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <Field label={t('Nombre de la dirección')}>
+          <Select value={f.label} onChange={(e) => set('label', e.target.value)}>
+            {[t('Casa'), t('Trabajo'), t('Otra')].map((o) => <option key={o}>{o}</option>)}
+            {f.label && ![t('Casa'), t('Trabajo'), t('Otra')].includes(f.label) && <option>{f.label}</option>}
           </Select>
         </Field>
-        <Field label="Provincia / sector"><Input value={f.region} onChange={(e) => set('region', e.target.value)} placeholder="Ej. Distrito Nacional" /></Field>
-        <Field label="Teléfono"><Input value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+1 (809) 555-1234" /></Field>
-        <div className="flex items-end"><Checkbox checked={f.isDefaultShipping} onChange={(v) => set('isDefaultShipping', v)} label="Usar como predeterminada" /></div>
+        <Field label={t('Nombre de quien recibe')} required><Input value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder={t('Nombre y apellido')} /></Field>
+        <Field label={t('Dirección')} required className="sm:col-span-2"><Input value={f.line1} onChange={(e) => set('line1', e.target.value)} placeholder={t('Calle y número')} /></Field>
+        <Field label={t('Apartamento, suite o referencia')} className="sm:col-span-2"><Input value={f.line2} onChange={(e) => set('line2', e.target.value)} placeholder={t('Ej. Apto 2B, edificio 3')} /></Field>
+        <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
+        <Field label={t('Teléfono')} hint={t('(con código de país)')}><Input value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+1 305 555 1234" /></Field>
+        <div className="flex items-end"><Checkbox checked={f.isDefaultShipping} onChange={(v) => set('isDefaultShipping', v)} label={t('Usar como predeterminada')} /></div>
       </div>
     </Dialog>
   );

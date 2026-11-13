@@ -11,14 +11,26 @@ export interface ShippingRate {
   requires_address: boolean;
 }
 
+export interface BankTransferSettings {
+  enabled: boolean;
+  bank_name: string;
+  account_holder: string;
+  account_number: string;
+  routing_or_swift?: string | null;
+  iban?: string | null;
+  instructions: string;
+}
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
   'marketplace.support_email': string;
   'marketplace.currency': string;
   'marketplace.locale': string;
-  'tax.itbis_rate': number;
+  'marketplace.default_country': string;
   'shipping.rates': ShippingRate[];
+  'shipping.shippo_enabled': boolean;
+  'payments.bank_transfer': BankTransferSettings;
   'features.featured_products': boolean;
   'features.seller_registration': boolean;
   'features.mandatory_moderation': boolean;
@@ -26,13 +38,15 @@ export interface PlatformSettings {
 }
 
 const DEFAULTS: PlatformSettings = {
-  'marketplace.name': 'RD Marketplace Multivendedor',
+  'marketplace.name': 'NEXOVAX',
   'marketplace.base_url': 'http://localhost:3000',
-  'marketplace.support_email': 'soporte@rdmarketplace.do',
-  'marketplace.currency': 'DOP',
-  'marketplace.locale': 'es-DO',
-  'tax.itbis_rate': 0.18,
+  'marketplace.support_email': 'soporte@nexovax.com',
+  'marketplace.currency': 'USD',
+  'marketplace.locale': 'es',
+  'marketplace.default_country': 'US',
   'shipping.rates': [],
+  'shipping.shippo_enabled': true,
+  'payments.bank_transfer': { enabled: false, bank_name: '', account_holder: '', account_number: '', instructions: '' },
   'features.featured_products': true,
   'features.seller_registration': true,
   'features.mandatory_moderation': true,
@@ -69,7 +83,7 @@ export class SettingsService {
   }
 
   async currency(client?: Queryable) {
-    return (await this.get('marketplace.currency', client)) || 'DOP';
+    return (await this.get('marketplace.currency', client)) || 'USD';
   }
 
   /** Publishes new versions for every changed key (audited by activate_system_setting_value). */

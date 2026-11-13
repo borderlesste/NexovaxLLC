@@ -28,9 +28,12 @@ export class CatalogController {
       name: s['marketplace.name'],
       currency: s['marketplace.currency'],
       locale: s['marketplace.locale'],
+      locales: ['es', 'en'],
+      defaultCountry: s['marketplace.default_country'],
       supportEmail: s['marketplace.support_email'],
-      itbisRate: s['tax.itbis_rate'],
       shippingRates: s['shipping.rates'],
+      liveShippingRates: !!s['shipping.shippo_enabled'],
+      bankTransfer: !!s['payments.bank_transfer']?.enabled,
       sellerRegistration: s['features.seller_registration'],
     };
   }

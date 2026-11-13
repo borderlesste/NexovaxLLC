@@ -7,6 +7,7 @@ import { useToggleFavorite } from './hooks';
 import { Button } from '@/components/ui/button';
 import { get } from '@/lib/api';
 import { useAddToCart } from './hooks';
+import { t, getIntlLocale } from '@/lib/i18n';
 
 export interface ProductCardData {
   id: string;
@@ -38,7 +39,7 @@ export function Stars({ value, count, size = 'sm' }: { value: number; count?: nu
     <span className={cn('inline-flex items-center gap-1 text-muted', size === 'sm' ? 'text-xs' : 'text-sm')}>
       <Star className={cn('fill-amber-400 text-amber-400', size === 'sm' ? 'size-3.5' : 'size-4')} />
       <b className="font-semibold text-ink">{value ? value.toFixed(1) : '—'}</b>
-      {count !== undefined && <span>({count.toLocaleString('es-DO')})</span>}
+      {count !== undefined && <span>({count.toLocaleString(getIntlLocale())})</span>}
     </span>
   );
 }
@@ -67,7 +68,7 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
       <button
         onClick={() => fav.toggle(p.id)}
         className="absolute right-4 top-4 z-10 grid size-8 place-items-center rounded-full bg-white/90 text-ink shadow-sm transition hover:text-brand-600"
-        aria-label="Agregar a favoritos"
+        aria-label={t('Agregar a favoritos')}
       >
         <Heart className={cn('size-4', isFavorite && 'fill-brand-600 text-brand-600')} />
       </button>
@@ -75,7 +76,7 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         <div className="relative aspect-square overflow-hidden rounded-xl bg-surface">
           <ProductImage src={p.imageUrl} alt={p.title} className="size-full transition duration-300 group-hover:scale-105" />
           {p.discountPercent ? <span className="absolute left-2 top-2 rounded-md bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">-{p.discountPercent}%</span> : null}
-          {out && <span className="absolute bottom-2 left-2 rounded-md bg-ink/80 px-2 py-0.5 text-xs font-semibold text-white">Agotado</span>}
+          {out && <span className="absolute bottom-2 left-2 rounded-md bg-ink/80 px-2 py-0.5 text-xs font-semibold text-white">{t('Agotado')}</span>}
         </div>
         <h3 className="mt-3 line-clamp-2 min-h-10 text-sm font-bold leading-5 text-ink">{p.title}</h3>
       </Link>
@@ -89,7 +90,7 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
       </div>
       {showAddToCart && (
         <Button size="sm" className="mt-3 w-full" onClick={quickAdd} loading={adding} disabled={out}>
-          <ShoppingCart /> {out ? 'Agotado' : 'Añadir al carrito'}
+          <ShoppingCart /> {out ? t('Agotado') : t('Añadir al carrito')}
         </Button>
       )}
     </div>

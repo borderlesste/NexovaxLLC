@@ -7,6 +7,7 @@ import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader, Empty } from '@/components/ui/misc';
 import { useAuth } from '@/lib/auth';
 import { get } from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { session, loading, isStaff, isAdmin, me } = useAuth();
@@ -17,24 +18,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [loading, session, router, pathname]);
   const dash = useQuery({ queryKey: ['admin-attention'], queryFn: () => get('/admin/dashboard?days=7'), enabled: isStaff, refetchInterval: 60_000 });
   if (loading || !session || !me) return <PageLoader />;
-  if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title="Acceso restringido" description="Esta sección es solo para el equipo del marketplace." /></div>;
+  if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title={t('Acceso restringido')} description={t('Esta sección es solo para el equipo del marketplace.')} /></div>;
   const a = dash.data?.attention;
   const nav = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutGrid },
-    { href: '/admin/productos', label: 'Productos', icon: Package },
-    { href: '/admin/pedidos', label: 'Pedidos', icon: ShoppingCart },
-    { href: '/admin/categorias', label: 'Categorías', icon: Layers },
-    { href: '/admin/vendedores', label: 'Vendedores', icon: Users, badge: a?.sellers_pending || null },
-    { href: '/admin/moderacion', label: 'Moderación', icon: Shield, badge: a?.products_pending || null },
-    { href: '/admin/reportes', label: 'Reportes y soporte', icon: AlertTriangle, badge: a?.open_tickets || null },
+    { href: '/admin/dashboard', label: t('Dashboard'), icon: LayoutGrid },
+    { href: '/admin/productos', label: t('Productos'), icon: Package },
+    { href: '/admin/pedidos', label: t('Pedidos'), icon: ShoppingCart },
+    { href: '/admin/categorias', label: t('Categorías'), icon: Layers },
+    { href: '/admin/vendedores', label: t('Vendedores'), icon: Users, badge: a?.sellers_pending || null },
+    { href: '/admin/moderacion', label: t('Moderación'), icon: Shield, badge: a?.products_pending || null },
+    { href: '/admin/reportes', label: t('Reportes y soporte'), icon: AlertTriangle, badge: a?.open_tickets || null },
     ...(isAdmin
       ? [
-          { href: '/admin/finanzas', label: 'Finanzas', icon: DollarSign, badge: a?.transfers_pending || null },
-          { href: '/admin/comisiones', label: 'Comisiones y payouts', icon: Coins, badge: (a?.payouts_pending ?? 0) + (a?.payout_accounts_pending ?? 0) || null },
-          { href: '/admin/usuarios', label: 'Usuarios', icon: UserCog },
-          { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
+          { href: '/admin/finanzas', label: t('Finanzas'), icon: DollarSign, badge: a?.transfers_pending || null },
+          { href: '/admin/comisiones', label: t('Comisiones y payouts'), icon: Coins, badge: (a?.payouts_pending ?? 0) + (a?.payout_accounts_pending ?? 0) || null },
+          { href: '/admin/usuarios', label: t('Usuarios'), icon: UserCog },
+          { href: '/admin/configuracion', label: t('Configuración'), icon: Settings },
         ]
       : []),
   ];
-  return <DashboardShell title="Marketplace" subtitle="Panel de administración" nav={nav}>{children}</DashboardShell>;
+  return <DashboardShell title="NEXOVAX" subtitle={t('Panel de administración')} nav={nav}>{children}</DashboardShell>;
 }

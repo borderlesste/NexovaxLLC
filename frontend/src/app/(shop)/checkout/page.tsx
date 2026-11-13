@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  Building2, Check, ChevronLeft, CreditCard, Headphones, Home, Landmark, Lock, MapPin, PackageCheck, Pencil, Plus, ShieldCheck, ShoppingBag, Store, Truck, Wallet,
+  Zap, Building2, Check, ChevronLeft, CreditCard, Headphones, Home, Landmark, Lock, MapPin, PackageCheck, Pencil, Plus, ShieldCheck, ShoppingBag, Store, Truck, Wallet,
 } from 'lucide-react';
 import { errorMessage, get, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -15,9 +15,12 @@ import { Field, Input } from '@/components/ui/input';
 import { Checkbox, Empty, PageLoader } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { AddressDialog, type Address } from '@/components/shop/address-form';
+import { cityLine } from '@/components/shop/geo-fields';
+import { usePublicConfig } from '@/lib/config';
+import { countryName, t } from '@/lib/i18n';
 
 function Steps({ current }: { current: number }) {
-  const steps = ['Carrito', 'Envío', 'Pago', 'Confirmación'];
+  const steps = [t('Carrito'), t('Envío'), t('Pago'), t('Confirmación')];
   return (
     <ol className="flex items-center">
       {steps.map((s, i) => (
@@ -58,32 +61,35 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!addressId && addresses.data?.length) setAddressId((addresses.data.find((a) => a.isDefaultShipping) ?? addresses.data[0]).id);
   }, [addresses.data, addressId]);
+  const cfg = usePublicConfig();
   const quote = useQuery({
-    queryKey: ['checkout-quote', shipping],
-    queryFn: () => post('/checkout/quote', { shipping }),
-    enabled: !!session,
+    queryKey: ['checkout-quote', addressId, shipping],
+    queryFn: () => post('/checkout/quote', { shipping, addressId: addressId || undefined }),
+    enabled: !!session && addresses.isFetched,
     placeholderData: (prev) => prev,
   });
   const q = quote.data;
   const items = useMemo(() => q?.groups.flatMap((g: any) => g.items) ?? [], [q]);
+  const selectedFor = (g: any) => (g.shippingOptions.some((o: any) => o.code === shipping[g.sellerId]) ? shipping[g.sellerId] : g.selectedShipping);
 
   if (loading || !session || (quote.isLoading && !q)) return <PageLoader />;
   if (quote.isError && !q)
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16"><div className="card"><Empty icon={<ShoppingBag />} title="Tu carrito está vacío" description="Agrega productos antes de finalizar la compra." action={<Button asChild><Link href="/catalogo">Explorar productos</Link></Button>} /></div></div>
+      <div className="mx-auto max-w-3xl px-4 py-16"><div className="card"><Empty icon={<ShoppingBag />} title={t('Tu carrito está vacío')} description={t('Agrega productos antes de finalizar la compra.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div></div>
     );
 
   const place = async () => {
-    if (!addressId) return toast.error('Selecciona una dirección de envío.');
+    if (!addressId) return toast.error(t('Selecciona una dirección de envío.'));
     let cardPayload;
     if (method === 'CARD') {
       const [mm, yy] = card.exp.split('/').map((s) => s.trim());
-      if (!card.number || !mm || !yy || !card.cvc || !card.name) return toast.error('Completa los datos de la tarjeta.');
+      if (!card.number || !mm || !yy || !card.cvc || !card.name) return toast.error(t('Completa los datos de la tarjeta.'));
       cardPayload = { number: card.number.replace(/\s/g, ''), expMonth: Number(mm), expYear: Number(yy), cvc: card.cvc, name: card.name };
     }
     setPlacing(true);
     try {
-      const shippingSel = Object.fromEntries(q.groups.map((g: any) => [g.sellerId, shipping[g.sellerId] ?? g.selectedRate]));
+      if (q.groups.some((g: any) => !selectedFor(g))) return toast.error(t('No hay métodos de envío disponibles para esta dirección.'));
+      const shippingSel = Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
       const r = await post('/checkout/place', { addressId, shipping: shippingSel, paymentMethod: method, card: cardPayload, idempotencyKey: idem });
       qc.invalidateQueries({ queryKey: ['cart'] });
       qc.invalidateQueries({ queryKey: ['me'] });
@@ -100,10 +106,10 @@ export default function CheckoutPage() {
     <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div className="flex items-center gap-8">
-          <Link href="/carrito" className="hidden items-center gap-1 text-sm font-semibold sm:flex"><ChevronLeft className="size-4" /> Volver al carrito</Link>
+          <Link href="/carrito" className="hidden items-center gap-1 text-sm font-semibold sm:flex"><ChevronLeft className="size-4" /> {t('Volver al carrito')}</Link>
           <div>
-            <h1 className="text-3xl font-extrabold">Finalizar compra</h1>
-            <p className="text-sm text-muted">Completa los pasos para realizar tu pedido de forma segura.</p>
+            <h1 className="text-3xl font-extrabold">{t('Finalizar compra')}</h1>
+            <p className="text-sm text-muted">{t('Completa los pasos para realizar tu pedido de forma segura.')}</p>
           </div>
         </div>
         <Steps current={method ? 2 : 1} />
@@ -115,7 +121,7 @@ export default function CheckoutPage() {
           <section className="card p-5">
             <div className="mb-4 flex items-start gap-3">
               <MapPin className="mt-0.5 size-6 text-brand-600" />
-              <div><h2 className="text-lg font-bold">Dirección de envío</h2><p className="text-sm text-muted">Indica dónde deseas recibir tu pedido.</p></div>
+              <div><h2 className="text-lg font-bold">{t('Dirección de envío')}</h2><p className="text-sm text-muted">{t('Indica dónde deseas recibir tu pedido.')}</p></div>
             </div>
             <div className="space-y-3">
               {(addresses.data ?? []).map((a) => (
@@ -123,16 +129,16 @@ export default function CheckoutPage() {
                   <input type="radio" checked={addressId === a.id} onChange={() => setAddressId(a.id)} className="mt-1 size-4 accent-brand-600" />
                   {a.label === 'Trabajo' ? <Building2 className="mt-0.5 size-5 shrink-0" /> : <Home className="mt-0.5 size-5 shrink-0" />}
                   <div className="min-w-0 flex-1 text-sm">
-                    <p className="font-bold">{a.label ?? 'Dirección'} · {a.recipientName}</p>
+                    <p className="font-bold">{a.label ?? t('Dirección')} · {a.recipientName}</p>
                     <p className="text-muted">{a.line1}{a.line2 ? `, ${a.line2}` : ''}</p>
-                    <p className="text-muted">{a.city}{a.region ? `, ${a.region}` : ''}, República Dominicana</p>
+                    <p className="text-muted">{cityLine(a)}</p>
                   </div>
-                  {a.isDefaultShipping && <span className="rounded-md bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700">Predeterminada</span>}
-                  <button type="button" onClick={(e) => { e.preventDefault(); setAddrDialog({ open: true, address: a }); }} className="text-muted hover:text-brand-700" aria-label="Editar"><Pencil className="size-4" /></button>
+                  {a.isDefaultShipping && <span className="rounded-md bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700">{t('Predeterminada')}</span>}
+                  <button type="button" onClick={(e) => { e.preventDefault(); setAddrDialog({ open: true, address: a }); }} className="text-muted hover:text-brand-700" aria-label={t('Editar')}><Pencil className="size-4" /></button>
                 </label>
               ))}
               <button onClick={() => setAddrDialog({ open: true, address: null })} className="flex w-full items-center gap-2 rounded-xl border border-dashed border-brand-300 px-4 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-50">
-                <Plus className="size-4" /> Agregar nueva dirección
+                <Plus className="size-4" /> {t('Agregar nueva dirección')}
               </button>
             </div>
           </section>
@@ -141,24 +147,38 @@ export default function CheckoutPage() {
           <section className="card p-5">
             <div className="mb-4 flex items-start gap-3">
               <Truck className="mt-0.5 size-6 text-brand-600" />
-              <div><h2 className="text-lg font-bold">Método de envío</h2><p className="text-sm text-muted">Elige cómo deseas recibir tu pedido{q.groups.length > 1 ? ' de cada tienda' : ''}.</p></div>
+              <div><h2 className="text-lg font-bold">{t('Método de envío')}</h2><p className="text-sm text-muted">{t('Elige cómo deseas recibir tu pedido')}{q.groups.length > 1 ? t(' de cada tienda') : ''}.</p></div>
             </div>
             <div className="space-y-5">
               {q.groups.map((g: any) => (
                 <div key={g.sellerId}>
                   {q.groups.length > 1 && <p className="mb-2 flex items-center gap-1.5 text-sm font-bold"><Store className="size-4 text-brand-600" /> {g.sellerName}</p>}
+                  {g.liveRates && <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><Zap className="size-3.5" /> {t('Tarifas en vivo de transportadoras')}</p>}
                   <div className="space-y-2">
-                    {g.rates.map((r: any) => {
-                      const sel = (shipping[g.sellerId] ?? g.selectedRate) === r.code;
+                    {g.shippingOptions.map((r: any) => {
+                      const sel = selectedFor(g) === r.code;
                       return (
                         <label key={r.code} className={cn('flex cursor-pointer items-center gap-3 rounded-xl border p-4', sel ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200' : 'border-line')}>
                           <input type="radio" checked={sel} onChange={() => setShipping((s) => ({ ...s, [g.sellerId]: r.code }))} className="size-4 accent-brand-600" />
-                          {r.code === 'PICKUP' ? <Store className="size-5" /> : <Truck className="size-5" />}
-                          <div className="flex-1 text-sm"><p className="font-bold">{r.name}</p><p className="text-muted">{r.description}</p></div>
-                          <span className="font-bold">{Number(r.amount) === 0 ? 'Gratis' : money(r.amount)}</span>
+                          {r.carrierLogo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.carrierLogo} alt={r.carrierName} className="h-6 w-10 shrink-0 object-contain" />
+                          ) : r.code === 'PICKUP' ? <Store className="size-5 shrink-0" /> : <Truck className="size-5 shrink-0" />}
+                          <div className="min-w-0 flex-1 text-sm">
+                            <p className="flex flex-wrap items-center gap-1.5 font-bold">
+                              {t(r.serviceName)}
+                              {r.attributes?.includes('CHEAPEST') && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">{t('Más económico')}</span>}
+                              {r.attributes?.includes('FASTEST') && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-600">{t('Más rápido')}</span>}
+                            </p>
+                            <p className="text-muted">{r.estimatedDays ? t('Entrega estimada: {n} días', { n: r.estimatedDays }) : t(r.description)}</p>
+                          </div>
+                          <span className="whitespace-nowrap font-bold">{Number(r.amount) === 0 ? t('Gratis') : money(r.amount, q.currency)}</span>
                         </label>
                       );
                     })}
+                    {!g.shippingOptions.length && (
+                      <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('Esta tienda no envía a la dirección seleccionada.')} {g.shippingMessages?.[0] ?? ''}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -169,7 +189,7 @@ export default function CheckoutPage() {
           <section className="card p-5">
             <div className="mb-4 flex items-start gap-3">
               <CreditCard className="mt-0.5 size-6 text-brand-600" />
-              <div><h2 className="text-lg font-bold">Método de pago</h2><p className="text-sm text-muted">Selecciona tu forma de pago.</p></div>
+              <div><h2 className="text-lg font-bold">{t('Método de pago')}</h2><p className="text-sm text-muted">{t('Selecciona tu forma de pago.')}</p></div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {q.paymentMethods.map((m: any) => {
@@ -179,35 +199,35 @@ export default function CheckoutPage() {
                   <button key={m.code} disabled={!m.available} title={m.reason} onClick={() => setMethod(m.code)}
                     className={cn('flex items-center gap-3 rounded-xl border p-3 text-left text-sm font-semibold', sel ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200' : 'border-line', !m.available && 'cursor-not-allowed opacity-50')}>
                     <span className={cn('grid size-4 place-items-center rounded-full border', sel ? 'border-brand-600' : 'border-gray-300')}>{sel && <span className="size-2 rounded-full bg-brand-600" />}</span>
-                    <Icon className="size-5 shrink-0" /> <span className="leading-tight">{m.name}{!m.available && <span className="block text-[11px] font-normal text-muted">No disponible</span>}</span>
+                    <Icon className="size-5 shrink-0" /> <span className="leading-tight">{t(m.name)}{!m.available && <span className="block text-[11px] font-normal text-muted">{t('No disponible')}</span>}</span>
                   </button>
                 );
               })}
             </div>
             {method === 'CARD' && (
               <div className="mt-5 grid gap-4 sm:grid-cols-[1.2fr_0.8fr_0.6fr]">
-                <Field label="Número de tarjeta" required className="sm:col-span-3">
+                <Field label={t('Número de tarjeta')} required className="sm:col-span-3">
                   <Input inputMode="numeric" autoComplete="cc-number" placeholder="1234 5678 9012 3456" value={card.number} onChange={(e) => setCard({ ...card, number: fmtCard(e.target.value) })} />
                 </Field>
-                <Field label="Nombre en la tarjeta" required><Input autoComplete="cc-name" placeholder="Ej. Juan Pérez" value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} /></Field>
-                <Field label="Fecha de vencimiento" required>
-                  <Input inputMode="numeric" autoComplete="cc-exp" placeholder="MM / AA" value={card.exp} onChange={(e) => {
+                <Field label={t('Nombre en la tarjeta')} required><Input autoComplete="cc-name" placeholder={t('Ej. Juan Pérez')} value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} /></Field>
+                <Field label={t('Fecha de vencimiento')} required>
+                  <Input inputMode="numeric" autoComplete="cc-exp" placeholder={t('MM / AA')} value={card.exp} onChange={(e) => {
                     const d = e.target.value.replace(/\D/g, '').slice(0, 4);
                     setCard({ ...card, exp: d.length > 2 ? `${d.slice(0, 2)} / ${d.slice(2)}` : d });
                   }} />
                 </Field>
-                <Field label="CVV" required><Input inputMode="numeric" autoComplete="cc-csc" placeholder="123" value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, '').slice(0, 4) })} /></Field>
-                <div className="sm:col-span-3"><Checkbox checked={save} onChange={setSave} label="Guardar esta tarjeta para futuras compras" /></div>
+                <Field label={t('CVV')} required><Input inputMode="numeric" autoComplete="cc-csc" placeholder="123" value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, '').slice(0, 4) })} /></Field>
+                <div className="sm:col-span-3"><Checkbox checked={save} onChange={setSave} label={t('Guardar esta tarjeta para futuras compras')} /></div>
                 {q.paymentMethods.find((m: any) => m.code === 'CARD')?.sandbox && (
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:col-span-3">
-                    Entorno de pruebas: usa <b>4242 4242 4242 4242</b> (aprobada) o <b>4000 0000 0000 0002</b> (rechazada), con cualquier fecha futura y CVV.
+                    {t('Entorno de pruebas: usa')}{' '}<b>4242 4242 4242 4242</b> {t('(aprobada) o')}{' '}<b>4000 0000 0000 0002</b> {t('(rechazada), con cualquier fecha futura y CVV.')}
                   </p>
                 )}
               </div>
             )}
             {method === 'BANK_TRANSFER' && (
               <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
-                Al confirmar recibirás los datos bancarios y una referencia. Reservamos tu inventario por 72 horas y confirmaremos tu pedido cuando validemos la transferencia.
+                {t('Al confirmar recibirás los datos bancarios y una referencia. Reservamos tu inventario por 72 horas y confirmaremos tu pedido cuando validemos la transferencia.')}
               </p>
             )}
           </section>
@@ -215,7 +235,7 @@ export default function CheckoutPage() {
 
         {/* summary */}
         <aside className="card h-fit p-6 lg:sticky lg:top-24">
-          <h2 className="flex items-center gap-3 text-xl font-bold"><ShoppingBag className="size-6 text-brand-600" /> Resumen del pedido</h2>
+          <h2 className="flex items-center gap-3 text-xl font-bold"><ShoppingBag className="size-6 text-brand-600" /> {t('Resumen del pedido')}</h2>
           <ul className="mt-4 max-h-80 divide-y divide-line overflow-y-auto border-y border-line scrollbar-thin">
             {items.map((i: any) => (
               <li key={i.id} className="flex gap-3 py-3">
@@ -223,31 +243,34 @@ export default function CheckoutPage() {
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-bold">{i.title}</p>
                   <p className="text-muted">{Object.entries(i.attributes ?? {}).map(([k, v]) => `${k}: ${v}`).join(' | ')}</p>
-                  <p className="text-muted">Cantidad: {i.quantity}</p>
+                  <p className="text-muted">{t('Cantidad:')}{' '}{i.quantity}</p>
                 </div>
-                <b className="text-sm">{money(i.lineTotal)}</b>
+                <b className="text-sm">{money(i.lineTotal, q.currency)}</b>
               </li>
             ))}
           </ul>
           <dl className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between"><dt>Subtotal</dt><dd>{money(q.subtotal)}</dd></div>
-            <div className="flex justify-between"><dt>Envío</dt><dd>{Number(q.shipping) === 0 ? 'Gratis' : money(q.shipping)}</dd></div>
-            <div className="flex justify-between"><dt>Impuestos (ITBIS {Math.round(q.itbisRate * 100)}%)</dt><dd>{money(q.tax)}</dd></div>
+            <div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{money(q.subtotal, q.currency)}</dd></div>
+            <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{Number(q.shipping) === 0 ? t('Gratis') : money(q.shipping, q.currency)}</dd></div>
+            <div className="flex justify-between">
+              <dt>{q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('Impuestos')}{q.tax.country && <span className="text-muted"> · {countryName(q.tax.country)}</span>}</dt>
+              <dd>{money(q.taxTotal, q.currency)}</dd>
+            </div>
           </dl>
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 text-xl font-extrabold"><span>Total a pagar</span><span className="text-brand-800">{money(q.total)}</span></div>
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 text-xl font-extrabold"><span>{t('Total a pagar')}</span><span className="text-brand-800">{money(q.total, q.currency)}</span></div>
           <Button size="lg" className="mt-5 h-14 w-full text-lg" onClick={place} loading={placing} disabled={!addressId}>
-            <Lock /> Confirmar compra
+            <Lock /> {t('Confirmar compra')}
           </Button>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted"><ShieldCheck className="size-4 text-brand-600" /> Tu pago es 100% seguro y encriptado.</p>
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted"><ShieldCheck className="size-4 text-brand-600" /> {t('Tu pago es 100% seguro y encriptado.')}</p>
           <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-5 text-center text-xs">
-            {[[ShieldCheck, 'Pago seguro', 'Datos protegidos'], [PackageCheck, 'Compra protegida', 'Garantía de entrega'], [Headphones, 'Soporte al cliente', 'Siempre disponible']].map(([I, t, d]: any) => (
-              <div key={t}><I className="mx-auto size-6 text-brand-600" /><p className="mt-1 font-bold">{t}</p><p className="text-muted">{d}</p></div>
+            {[[ShieldCheck, t('Pago seguro'), t('Datos protegidos')], [PackageCheck, t('Compra protegida'), t('Garantía de entrega')], [Headphones, t('Soporte al cliente'), t('Siempre disponible')]].map(([I, lbl, d]: any) => (
+              <div key={lbl}><I className="mx-auto size-6 text-brand-600" /><p className="mt-1 font-bold">{t(lbl)}</p><p className="text-muted">{d}</p></div>
             ))}
           </div>
         </aside>
       </div>
       {addrDialog.open && (
-        <AddressDialog open onOpenChange={(o) => setAddrDialog({ open: o })} address={addrDialog.address} onSaved={(a) => { qc.invalidateQueries({ queryKey: ['addresses'] }); setAddressId(a.id); }} />
+        <AddressDialog open onOpenChange={(o) => setAddrDialog({ open: o })} address={addrDialog.address} defaultCountry={cfg?.defaultCountry} onSaved={(a) => { qc.invalidateQueries({ queryKey: ['addresses'] }); setAddressId(a.id); }} />
       )}
     </div>
   );

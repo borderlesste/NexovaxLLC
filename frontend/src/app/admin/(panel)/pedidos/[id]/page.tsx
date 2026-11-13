@@ -1,4 +1,5 @@
 'use client';
+import { t } from '@/lib/i18n';
 import { use } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get } from '@/lib/api';
@@ -13,7 +14,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
   if (q.isError) return <ErrorBox message="No encontramos este pedido." />;
   return (
     <>
-      <PageHeader crumbs={[{ label: 'Pedidos', href: '/admin/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description={`Cliente: ${q.data.customer.name} · ${q.data.customer.email}`} />
+      <PageHeader crumbs={[{ label: t('Pedidos'), href: '/admin/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description={`Cliente: ${q.data.customer.name} · ${q.data.customer.email}`} />
       <OrderDetailView order={q.data} role="admin" onChanged={() => q.refetch()} />
     </>
   );

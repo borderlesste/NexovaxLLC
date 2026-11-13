@@ -8,19 +8,22 @@ import {
 } from 'class-validator';
 import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
 import { SellerService } from './seller.service';
-import { OrdersService, CARRIERS } from '../orders/orders.service';
+import { OrdersService } from '../orders/orders.service';
+import { CARRIERS } from '../shipping/shipping.service';
 import { badRequest } from '../common/errors';
 
 const PHONE = /^\+?[0-9][0-9 ().-]{5,47}$/;
 const upload = { limits: { fileSize: 10 * 1024 * 1024, files: 8 } };
 
-class ShipFromDto {
+export class ShipFromDto {
   @IsString() @Length(2, 120) contactName: string;
   @IsString() @Length(3, 200) line1: string;
   @IsOptional() @IsString() @MaxLength(200) line2?: string;
-  @Type(() => Number) @IsInt() cityId: number;
+  @IsString() @Length(2, 2) countryCode: string;
+  @IsString() @Length(2, 100) city: string;
   @IsOptional() @IsString() @MaxLength(80) region?: string;
-  @IsOptional() @Matches(PHONE) phone?: string;
+  @IsOptional() @IsString() @MaxLength(20) postalCode?: string;
+  @Matches(PHONE, { message: 'Teléfono inválido.' }) phone: string;
 }
 
 export class OnboardingDto {
@@ -29,8 +32,10 @@ export class OnboardingDto {
   @IsOptional() @IsEmail() supportEmail?: string;
   @IsOptional() @Matches(PHONE) supportPhone?: string;
   @IsString() @Length(3, 160) legalName: string;
-  @IsIn(['PERSONA_FISICA', 'SRL', 'SA', 'EIRL', 'OTRO']) entityType: any;
-  @IsString() @Length(9, 20) taxId: string;
+  @IsIn(['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER']) entityType: any;
+  @IsString() @Length(2, 2) countryCode: string;
+  @IsString() @Length(3, 30) taxId: string;
+  @IsOptional() @IsString() @MaxLength(60) timezone?: string;
   @ValidateNested() @Type(() => ShipFromDto) address: ShipFromDto;
 }
 
@@ -93,7 +98,9 @@ export class AdjustDto {
 }
 
 export class ShipDto {
-  @IsString() carrierCode: string;
+  @IsOptional() @IsIn(['LABEL', 'MANUAL']) mode?: 'LABEL' | 'MANUAL';
+  @IsOptional() @IsString() carrierCode?: string;
+  @IsOptional() @IsString() @MaxLength(60) carrierName?: string;
   @IsOptional() @IsString() @MaxLength(60) trackingNumber?: string;
   @IsOptional() @IsString() @MaxLength(300) trackingUrl?: string;
 }
@@ -109,9 +116,11 @@ export class PayoutAccountDto {
   @IsString() @Length(2, 120) holderName: string;
   @IsOptional() @IsString() @MaxLength(80) bankName?: string;
   @IsOptional() @IsString() @MaxLength(34) accountNumber?: string;
-  @IsOptional() @IsIn(['AHORROS', 'CORRIENTE']) accountType?: string;
+  @IsOptional() @IsIn(['CHECKING', 'SAVINGS']) accountType?: string;
+  @IsOptional() @IsString() @MaxLength(20) routingOrSwift?: string;
+  @IsOptional() @IsString() @Length(2, 2) countryCode?: string;
   @IsOptional() @IsEmail() email?: string;
-  @IsOptional() @IsIn(['DOP', 'USD']) currency?: string;
+  @IsOptional() @Matches(/^[A-Z]{3}$/) currency?: string;
   @IsOptional() @IsString() @MaxLength(40) alias?: string;
   @IsOptional() @IsBoolean() isPrimary?: boolean;
   @IsOptional() @IsString() @MaxLength(20) documentId?: string;
@@ -119,6 +128,7 @@ export class PayoutAccountDto {
 
 export class PayoutRequestDto {
   @IsUUID() accountId: string;
+  @IsOptional() @Matches(/^[A-Z]{3}$/) currency?: string;
   @Type(() => Number) @IsNumber() @Min(1) amount: number;
   @IsString() @Length(8, 100) idempotencyKey: string;
 }
@@ -143,6 +153,11 @@ export class SellerController {
   @Get('store')
   store(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
     return this.seller.store(this.sid(user, h));
+  }
+
+  @Put('store/ship-from')
+  updateShipFrom(@CurrentUser() user: RequestUser, @Body() dto: ShipFromDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.updateShipFrom(this.sid(user, h), dto);
   }
 
   @Put('store')
@@ -256,6 +271,11 @@ export class SellerController {
   @Post('seller-orders/:id/ship')
   ship(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ShipDto, @Headers('x-seller-id') h?: string) {
     return this.orders.ship(this.sid(user, h), id, user.id, dto);
+  }
+
+  @Post('shipments/:id/refresh-tracking')
+  refreshTracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
+    return this.orders.refreshShipmentTracking({ kind: 'seller', sellerId: this.sid(user, h) }, id);
   }
 
   @Post('shipments/:id/tracking')

@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 export type Tone = 'green' | 'amber' | 'red' | 'blue' | 'violet' | 'gray';
 
 const MAP: Record<string, [string, Tone]> = {
@@ -42,6 +44,12 @@ const MAP: Record<string, [string, Tone]> = {
   CLOSED: ['Cerrado', 'gray'],
   // tracking
   IN_TRANSIT: ['En tránsito', 'blue'],
+  PRE_TRANSIT: ['Etiqueta creada', 'violet'],
+  LABEL_CREATED: ['Etiqueta creada', 'violet'],
+  READY_TO_SHIP: ['Listo para enviar', 'violet'],
+  RETURNED: ['Devuelto', 'red'],
+  FAILURE: ['Entrega fallida', 'red'],
+  UNKNOWN: ['En actualización', 'gray'],
   OUT_FOR_DELIVERY: ['En ruta', 'blue'],
   EXCEPTION: ['Incidencia', 'red'],
   // inventory
@@ -55,8 +63,14 @@ const MAP: Record<string, [string, Tone]> = {
 
 export function statusInfo(code?: string | null): [string, Tone] {
   if (!code) return ['—', 'gray'];
-  return MAP[code] ?? [code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' '), 'gray'];
+  const hit = MAP[code];
+  return hit ? [t(hit[0]), hit[1]] : [code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' '), 'gray'];
 }
+
+export const priorityLabel = (code: string): [string, Tone] => {
+  const p = PRIORITY[code];
+  return p ? [t(p[0]), p[1]] : [code, 'gray'];
+};
 
 export const PRIORITY: Record<string, [string, Tone]> = {
   LOW: ['Baja', 'gray'],

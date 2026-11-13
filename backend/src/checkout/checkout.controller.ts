@@ -10,6 +10,7 @@ import { notFound } from '../common/errors';
 
 export class QuoteDto {
   @IsOptional() @IsObject() shipping?: Record<string, string>;
+  @IsOptional() @IsUUID() addressId?: string;
 }
 
 export class CardDto {

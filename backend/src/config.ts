@@ -37,14 +37,20 @@ export const config = {
   publicApiUrl: process.env.PUBLIC_API_URL ?? 'http://localhost:4000/api',
   /** Public storefront URL used to build links inside e-mails. */
   webUrl: (process.env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
+  /** Shippo (multi-carrier rates, labels and tracking). Without a key only marketplace flat rates are offered. */
+  shippoApiKey: secret('SHIPPO_API_KEY', 'shippo_api_key'),
+  /** Shared secret expected as `?token=` on the Shippo webhook URL. */
+  shippoWebhookToken: process.env.SHIPPO_WEBHOOK_TOKEN || secret('SHIPPO_WEBHOOK_TOKEN', 'shippo_webhook_token'),
+  /** Label format bought from Shippo (PDF, PDF_4x6, PNG, ZPLII). */
+  shippoLabelFormat: process.env.SHIPPO_LABEL_FORMAT ?? 'PDF_4x6',
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
-  mailFrom: process.env.MAIL_FROM ?? 'RD Marketplace <no-reply@nexovax.com>',
+  mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',
   mailReplyTo: process.env.MAIL_REPLY_TO || undefined,
   /** Development/QA: deliver every e-mail to this address instead of the real recipient. */
   mailRedirectTo: process.env.MAIL_REDIRECT_TO?.trim() || undefined,
   /** Recipient domains that never receive e-mail (demo/seed accounts), to protect sender reputation. */
-  mailSuppressDomains: (process.env.MAIL_SUPPRESS_DOMAINS ?? 'rdmarketplace.do,example.com,example.org,test.local')
+  mailSuppressDomains: (process.env.MAIL_SUPPRESS_DOMAINS ?? 'rdmarketplace.do,demo.nexovax.com,example.com,example.org,test.local')
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
 };
 

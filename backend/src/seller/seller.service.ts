@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
+import { normalizeAddress, normalizeCountry, resolveCityId } from '../common/geo';
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
@@ -18,9 +19,22 @@ export interface OnboardingInput {
   supportEmail?: string;
   supportPhone?: string;
   legalName: string;
-  entityType: 'PERSONA_FISICA' | 'SRL' | 'SA' | 'EIRL' | 'OTRO';
-  taxId: string; // RNC o cédula
-  address: { line1: string; line2?: string; cityId: number; region?: string; phone?: string; contactName: string };
+  entityType: 'INDIVIDUAL' | 'SOLE_PROPRIETOR' | 'COMPANY' | 'PARTNERSHIP' | 'NONPROFIT' | 'OTHER';
+  countryCode: string; // registration country (ISO 3166-1 alpha-2)
+  taxId: string; // national tax identifier (EIN, RFC, NIF, RNC, CUIT…)
+  timezone?: string;
+  address: ShipFromInput;
+}
+
+export interface ShipFromInput {
+  contactName: string;
+  line1: string;
+  line2?: string;
+  countryCode: string;
+  city: string;
+  region?: string;
+  postalCode?: string;
+  phone: string;
 }
 
 export interface VariantInput {
@@ -49,7 +63,16 @@ export interface ProductInput {
   action?: 'SAVE_DRAFT' | 'SUBMIT';
 }
 
-const ENTITY_TYPES = ['PERSONA_FISICA', 'SRL', 'SA', 'EIRL', 'OTRO'];
+const ENTITY_TYPES = ['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER'];
+const validTimezone = (tz?: string) => {
+  if (!tz) return 'UTC';
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return 'UTC';
+  }
+};
 
 @Injectable()
 export class SellerService {
@@ -66,9 +89,12 @@ export class SellerService {
     if (!(await this.settings.get('features.seller_registration')))
       throw new AppError('SELLER_REGISTRATION_CLOSED', 'El registro de vendedores está cerrado temporalmente.', HttpStatus.FORBIDDEN);
     if (!ENTITY_TYPES.includes(input.entityType)) throw badRequest('ENTITY_TYPE_INVALID', 'Tipo de entidad inválido.');
-    const taxDigits = input.taxId.replace(/\D/g, '');
-    if (!(taxDigits.length === 9 || taxDigits.length === 11))
-      throw badRequest('TAX_ID_INVALID', 'Ingresa un RNC (9 dígitos) o cédula (11 dígitos) válido.');
+    const taxDigits = input.taxId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (taxDigits.length < 4 || taxDigits.length > 20)
+      throw badRequest('TAX_ID_INVALID', 'Ingresa un número de identificación fiscal válido.');
+    const registration = { countryCode: await normalizeCountry(this.db, input.countryCode) };
+    const geo = await normalizeAddress(this.db, input.address);
+    const me = await this.db.one(`select locale from public.users where id = $1`, [user.id]);
     const currency = await this.settings.currency();
     const sellerId = await this.db.tx(async (c) => {
       let slug = slugify(input.storeName, 60);
@@ -82,24 +108,24 @@ export class SellerService {
       const id = s!.id;
       await this.db.exec(
         `insert into public.seller_store_profiles (seller_id, display_name, short_description, support_email, support_phone, locale, timezone)
-         values ($1,$2,$3,$4,$5,'es-DO','America/Santo_Domingo')`,
-        [id, input.storeName.trim(), input.shortDescription?.trim() || null, input.supportEmail?.trim() || null, input.supportPhone?.trim() || null],
+         values ($1,$2,$3,$4,$5,$6,$7)`,
+        [id, input.storeName.trim(), input.shortDescription?.trim() || null, input.supportEmail?.trim() || null, input.supportPhone?.trim() || null,
+         me?.locale === 'en' ? 'en' : 'es', validTimezone(input.timezone)],
         c,
       );
       await this.db.exec(
         `insert into public.seller_legal_profiles (seller_id, legal_name, entity_type_code, registration_country_code, tax_identifier_ciphertext, encryption_key_version)
-         values ($1,$2,$3,'DO',$4,$5)`,
-        [id, input.legalName.trim(), input.entityType, encrypt(taxDigits), KEY_VERSION],
+         values ($1,$2,$3,$4,$5,$6)`,
+        [id, input.legalName.trim(), input.entityType, registration.countryCode, encrypt(taxDigits), KEY_VERSION],
         c,
       );
-      const city = await this.db.one(`select id, name from public.city_references where id = $1 and country_code = 'DO'`, [input.address.cityId], c);
-      if (!city) throw badRequest('CITY_SELECTION_REQUIRED', 'Selecciona la ciudad de despacho.');
+      const cityId = await resolveCityId(this.db, geo.countryCode, geo.city, geo.region, c);
       const addr = await this.db.one(
         `insert into public.seller_ship_from_addresses (seller_id, label, warehouse_code, contact_name, company_name, line1, line2, city, city_id,
-                 region, country_code, phone, is_default)
-         values ($1,'Almacén principal','MAIN',$2,$3,$4,$5,$6,$7,$8,'DO',$9,true) returning id`,
+                 region, postal_code, country_code, phone, is_default)
+         values ($1,'Almacén principal','MAIN',$2,$3,$4,$5,$6,$11,$7,$8,$9,$10,true) returning id`,
         [id, input.address.contactName.trim(), input.storeName.trim(), input.address.line1.trim(), input.address.line2?.trim() || null,
-         city.name, city.id, input.address.region?.trim() || null, input.address.phone?.trim() || null],
+         geo.city, geo.region, geo.postalCode, geo.countryCode, input.address.phone.trim(), cityId],
         c,
       );
       await this.db.exec(
@@ -117,8 +143,8 @@ export class SellerService {
       );
       await this.db.exec(
         `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, metadata)
-         values ($1,'KYB','RD_MANUAL','PENDING',now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text))`,
-        [id, last4(taxDigits), input.entityType],
+         values ($1,'KYB','RD_MANUAL','PENDING',now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
+        [id, last4(taxDigits), input.entityType, registration.countryCode],
         c,
       ).catch(() => undefined);
       await this.db.exec(`update public.sellers set status = 'PENDING_VERIFICATION', verification_status = 'PENDING' where id = $1`, [id], c);
@@ -137,7 +163,8 @@ export class SellerService {
   async store(sellerId: string) {
     const s = await this.db.one(
       `select s.id, s.slug, s.status, s.verification_status, s.created_at, s.activated_at, ssp.*, slp.legal_name, slp.entity_type_code,
-              a.id as address_id, a.contact_name, a.line1, a.line2, a.city, a.city_id::text as city_id, a.region, a.phone as address_phone
+              slp.registration_country_code,
+              a.id as address_id, a.contact_name, a.line1, a.line2, a.city, a.region, a.postal_code, a.country_code, a.phone as address_phone
          from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
          left join public.seller_legal_profiles slp on slp.seller_id = s.id
          left join lateral (select * from public.seller_ship_from_addresses x where x.seller_id = s.id and x.status = 'ACTIVE' order by x.is_default desc limit 1) a on true
@@ -161,10 +188,28 @@ export class SellerService {
       bannerUrl: s.banner_asset_id ? mediaUrl(s.banner_asset_id) : null,
       legalName: s.legal_name,
       entityType: s.entity_type_code,
+      countryCode: s.registration_country_code,
+      locale: s.locale,
+      timezone: s.timezone,
       shipFrom: s.address_id
-        ? { id: s.address_id, contactName: s.contact_name, line1: s.line1, line2: s.line2, city: s.city, cityId: s.city_id, region: s.region, phone: s.address_phone }
+        ? { id: s.address_id, contactName: s.contact_name, line1: s.line1, line2: s.line2, city: s.city, region: s.region, postalCode: s.postal_code,
+            countryCode: s.country_code, phone: s.address_phone }
         : null,
     };
+  }
+
+  /** Updates the default ship-from address (used for carrier rates and labels). */
+  async updateShipFrom(sellerId: string, input: ShipFromInput) {
+    const geo = await normalizeAddress(this.db, input);
+    const cityId = await resolveCityId(this.db, geo.countryCode, geo.city, geo.region);
+    const n = await this.db.exec(
+      `update public.seller_ship_from_addresses set contact_name = $2, line1 = $3, line2 = $4, city = $5, city_id = $10, region = $6,
+              postal_code = $7, country_code = $8, phone = $9, validation_status = 'NOT_VALIDATED', validated_at = null, updated_at = now()
+        where id = (select id from public.seller_ship_from_addresses where seller_id = $1 and status = 'ACTIVE' order by is_default desc limit 1)`,
+      [sellerId, input.contactName.trim(), input.line1.trim(), input.line2?.trim() || null, geo.city, geo.region, geo.postalCode, geo.countryCode, input.phone.trim(), cityId],
+    );
+    if (!n) throw notFound('Dirección de despacho');
+    return this.store(sellerId);
   }
 
   async updateStore(sellerId: string, input: { displayName?: string; shortDescription?: string; description?: string; supportEmail?: string; supportPhone?: string }) {
@@ -801,29 +846,29 @@ export class SellerService {
               coalesce(sum(sofs.seller_entitlement_estimate),0)::text as net, coalesce(sum(sofs.product_net_amount),0)::text as products
          from public.seller_orders so join public.orders o on o.id = so.order_id
          join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
-        where so.seller_id = $1 and o.placed_at >= now() - ($2 || ' days')::interval and so.lifecycle_status <> 'CANCELLED'`,
-      [sellerId, days],
+        where so.seller_id = $1 and o.placed_at >= now() - ($2 || ' days')::interval and so.lifecycle_status <> 'CANCELLED' and so.currency_code = $3`,
+      [sellerId, days, currency],
     );
     const series = await this.db.many(
       `select d::date as day, coalesce(sum(sofs.customer_total),0)::text as sales, coalesce(sum(sofs.seller_entitlement_estimate),0)::text as profit
          from generate_series(current_date - ($2::int - 1), current_date, interval '1 day') d
          left join public.orders o on o.placed_at::date = d::date
-         left join public.seller_orders so on so.order_id = o.id and so.seller_id = $1 and so.lifecycle_status <> 'CANCELLED'
+         left join public.seller_orders so on so.order_id = o.id and so.seller_id = $1 and so.lifecycle_status <> 'CANCELLED' and so.currency_code = $3
          left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
         group by d order by d`,
-      [sellerId, days],
+      [sellerId, days, currency],
     );
     const movements = await this.db.many(
       `select * from (
-         select o.placed_at as at, 'SALE' as kind, 'Venta #V-' || so.public_number as concept, sofs.seller_entitlement_estimate::text as amount
+         select o.placed_at as at, 'SALE' as kind, 'Venta #V-' || so.public_number as concept, sofs.seller_entitlement_estimate::text as amount, so.currency_code as currency
            from public.seller_orders so join public.orders o on o.id = so.order_id
            join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id where so.seller_id = $1
          union all
-         select o.placed_at, 'COMMISSION', 'Comisión de plataforma #V-' || so.public_number, (-sofs.platform_commission_total)::text
+         select o.placed_at, 'COMMISSION', 'Comisión de plataforma #V-' || so.public_number, (-sofs.platform_commission_total)::text, so.currency_code
            from public.seller_orders so join public.orders o on o.id = so.order_id
            join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id where so.seller_id = $1 and sofs.platform_commission_total > 0
          union all
-         select coalesce(p.paid_at, p.requested_at), 'PAYOUT', 'Retiro #PO-' || p.public_number || ' (' || lower(p.status) || ')', (-p.requested_amount)::text
+         select coalesce(p.paid_at, p.requested_at), 'PAYOUT', 'Retiro #PO-' || p.public_number || ' (' || lower(p.status) || ')', (-p.requested_amount)::text, p.currency_code
            from public.payouts p where p.seller_id = $1 and p.status not in ('CANCELLED','FAILED')
        ) m order by at desc limit 15`,
       [sellerId],
@@ -839,8 +884,15 @@ export class SellerService {
         order by cand.specificity_rank desc, cand.priority desc limit 1`,
       [sellerId],
     );
+    const otherBalances = await this.db.many(
+      `select currency_code as currency, pending_amount::text as pending, available_amount::text as available
+         from public.seller_balance_projections where seller_id = $1 and currency_code <> $2 and (pending_amount <> 0 or available_amount <> 0)
+        order by currency_code`,
+      [sellerId, currency],
+    );
     return {
       currency,
+      otherBalances,
       balances: { pending: bal?.pending ?? '0.00', available: bal?.available ?? '0.00', reserve: bal?.reserve ?? '0.00' },
       period: { gross: agg!.gross, commission: agg!.commission, net: agg!.net, products: agg!.products },
       commissionRate: commissionRate ? Number(commissionRate.rate) : null,
@@ -859,14 +911,23 @@ export class SellerService {
     );
   }
 
-  async addPayoutAccount(user: RequestUser, sellerId: string, input: { methodCode: 'BANK_ACCOUNT' | 'PAYPAL' | 'DIGITAL_WALLET'; holderName: string; bankName?: string; accountNumber?: string; accountType?: string; email?: string; currency?: string; alias?: string; isPrimary?: boolean; documentId?: string }) {
+  async addPayoutAccount(user: RequestUser, sellerId: string, input: { methodCode: 'BANK_ACCOUNT' | 'PAYPAL' | 'DIGITAL_WALLET'; holderName: string; bankName?: string; accountNumber?: string; accountType?: string; routingOrSwift?: string; countryCode?: string; email?: string; currency?: string; alias?: string; isPrimary?: boolean; documentId?: string }) {
+    const currency = (input.currency ?? (await this.settings.currency())).toUpperCase();
+    const cur = await this.db.one(`select 1 from public.currencies where code = $1 and is_active`, [currency]);
+    if (!cur) throw badRequest('CURRENCY_INVALID', 'Moneda no soportada.');
+    const store = await this.db.one(`select registration_country_code from public.seller_legal_profiles where seller_id = $1`, [sellerId]);
+    const country = (input.countryCode ?? store?.registration_country_code ?? 'US').toUpperCase();
+    if (!(await this.db.one(`select 1 from public.countries where alpha2 = $1`, [country]))) throw badRequest('COUNTRY_INVALID', 'Selecciona un país válido.');
     const details: Record<string, string | undefined> = { holder_name: input.holderName.trim() };
     let label: string;
     let tail: string | null = null;
     if (input.methodCode === 'BANK_ACCOUNT') {
-      if (!input.bankName || !input.accountNumber || !/^\d{6,20}$/.test(input.accountNumber.replace(/\D/g, '')))
-        throw badRequest('BANK_ACCOUNT_INVALID', 'Indica el banco y un número de cuenta válido.');
-      Object.assign(details, { bank_name: input.bankName, account_number: input.accountNumber.replace(/\D/g, ''), account_type: input.accountType ?? 'AHORROS', document_id: input.documentId });
+      const acct = (input.accountNumber ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!input.bankName || !/^[A-Z0-9]{4,34}$/.test(acct))
+        throw badRequest('BANK_ACCOUNT_INVALID', 'Indica el banco y un número de cuenta o IBAN válido.');
+      input.accountNumber = acct;
+      Object.assign(details, { bank_name: input.bankName, account_number: acct, account_type: input.accountType ?? 'CHECKING',
+        routing_or_swift: input.routingOrSwift?.trim().toUpperCase() || undefined, document_id: input.documentId });
       label = input.alias?.trim() || input.bankName;
       tail = last4(input.accountNumber);
     } else {
@@ -882,21 +943,22 @@ export class SellerService {
       const r = await this.db.one(
         `insert into public.seller_payout_accounts (seller_id, provider_code, environment, method_code, destination_details_ciphertext,
                  encryption_key_version, display_label, display_last4, country_code, status, verification_status, metadata, created_by)
-         values ($1,'RD_MANUAL','TEST',$2,$3,$4,$5,$6,'DO','PENDING','PENDING',$7::jsonb,$8) returning id`,
+         values ($1,'RD_MANUAL','TEST',$2,$3,$4,$5,$6,$9,'PENDING','PENDING',$7::jsonb,$8) returning id`,
         [sellerId, input.methodCode, encrypt(JSON.stringify(details)), String(KEY_VERSION), label, tail, JSON.stringify({
           is_primary: !!input.isPrimary || !hasAny,
-          currency: input.currency ?? 'DOP',
+          currency,
+          country,
           holder_name: input.holderName.trim(),
           bank_name: input.bankName ?? null,
           account_type: input.accountType ?? null,
           email_hint: input.email ? input.email.replace(/^(.{3}).*(@.*)$/, '$1***$2') : null,
-        }), user.id],
+        }), user.id, country],
         c,
       );
       await this.db.exec(
         `insert into public.seller_payout_account_currencies (payout_account_id, seller_id, currency_code, is_enabled, is_default)
          values ($1,$2,$3,true,true)`,
-        [r!.id, sellerId, input.currency ?? 'DOP'],
+        [r!.id, sellerId, currency],
         c,
       );
       return r!.id;
@@ -930,8 +992,8 @@ export class SellerService {
     );
   }
 
-  async requestPayout(user: RequestUser, sellerId: string, input: { accountId: string; amount: number | string; idempotencyKey: string }) {
-    const currency = await this.settings.currency();
+  async requestPayout(user: RequestUser, sellerId: string, input: { accountId: string; amount: number | string; idempotencyKey: string; currency?: string }) {
+    const currency = (input.currency ?? (await this.settings.currency())).toUpperCase();
     const acc = await this.db.one(`select status, verification_status from public.seller_payout_accounts where id = $1 and seller_id = $2`, [input.accountId, sellerId]);
     if (!acc) throw notFound('Método de cobro');
     if (acc.status !== 'ACTIVE' || acc.verification_status !== 'VERIFIED')

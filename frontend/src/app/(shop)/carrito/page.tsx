@@ -10,6 +10,7 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Empty, PageLoader } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
+import { t } from '@/lib/i18n';
 
 export default function CartPage() {
   const { session, loading } = useAuth();
@@ -26,7 +27,7 @@ export default function CartPage() {
   if (!session)
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
-        <div className="card"><Empty icon={<ShoppingCart />} title="Inicia sesión para ver tu carrito" action={<Button asChild><Link href="/auth/iniciar-sesion?next=/carrito">Iniciar sesión</Link></Button>} /></div>
+        <div className="card"><Empty icon={<ShoppingCart />} title={t('Inicia sesión para ver tu carrito')} action={<Button asChild><Link href="/auth/iniciar-sesion?next=/carrito">{t('Iniciar sesión')}</Link></Button>} /></div>
       </div>
     );
   if (cart.isLoading) return <PageLoader />;
@@ -34,10 +35,10 @@ export default function CartPage() {
   const hasIssues = c?.groups.some((g: any) => g.items.some((i: any) => i.issue));
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 lg:px-8">
-      <Breadcrumbs items={[{ label: 'Carrito' }]} />
-      <h1 className="mt-4 text-3xl font-extrabold">Tu carrito</h1>
+      <Breadcrumbs items={[{ label: t('Carrito') }]} />
+      <h1 className="mt-4 text-3xl font-extrabold">{t('Tu carrito')}</h1>
       {!c?.groups.length ? (
-        <div className="card mt-6"><Empty icon={<ShoppingCart />} title="Tu carrito está vacío" description="Explora el catálogo y agrega productos de tus tiendas favoritas." action={<Button asChild><Link href="/catalogo">Explorar productos</Link></Button>} /></div>
+        <div className="card mt-6"><Empty icon={<ShoppingCart />} title={t('Tu carrito está vacío')} description={t('Explora el catálogo y agrega productos de tus tiendas favoritas.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-4">
@@ -57,11 +58,11 @@ export default function CartPage() {
                         {i.issue && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-700"><AlertTriangle className="size-3.5" /> {i.issue}</p>}
                         <div className="mt-3 flex flex-wrap items-center gap-4">
                           <div className="inline-flex items-center rounded-lg border border-line">
-                            <button className="grid size-9 place-items-center disabled:opacity-40" disabled={i.quantity <= 1 || upd.isPending} onClick={() => upd.mutate({ id: i.id, quantity: i.quantity - 1 })} aria-label="Menos"><Minus className="size-4" /></button>
+                            <button className="grid size-9 place-items-center disabled:opacity-40" disabled={i.quantity <= 1 || upd.isPending} onClick={() => upd.mutate({ id: i.id, quantity: i.quantity - 1 })} aria-label={t('Menos')}><Minus className="size-4" /></button>
                             <span className="w-9 text-center text-sm font-semibold">{i.quantity}</span>
-                            <button className="grid size-9 place-items-center disabled:opacity-40" disabled={i.quantity >= i.stock || upd.isPending} onClick={() => upd.mutate({ id: i.id, quantity: i.quantity + 1 })} aria-label="Más"><Plus className="size-4" /></button>
+                            <button className="grid size-9 place-items-center disabled:opacity-40" disabled={i.quantity >= i.stock || upd.isPending} onClick={() => upd.mutate({ id: i.id, quantity: i.quantity + 1 })} aria-label={t('Más')}><Plus className="size-4" /></button>
                           </div>
-                          <button className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline" onClick={() => rem.mutate(i.id)}><Trash2 className="size-4" /> Eliminar</button>
+                          <button className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline" onClick={() => rem.mutate(i.id)}><Trash2 className="size-4" /> {t('Eliminar')}</button>
                         </div>
                       </div>
                       <div className="text-right">
@@ -75,17 +76,17 @@ export default function CartPage() {
             ))}
           </div>
           <div className="card h-fit p-5 lg:sticky lg:top-24">
-            <h2 className="text-lg font-bold">Resumen</h2>
+            <h2 className="text-lg font-bold">{t('Resumen')}</h2>
             <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted">Productos ({c.itemCount})</span><b>{money(c.subtotal)}</b></div>
-              <div className="flex justify-between"><span className="text-muted">Envío e impuestos</span><span className="text-muted">Se calculan en el pago</span></div>
+              <div className="flex justify-between"><span className="text-muted">{t('Productos (')}{c.itemCount})</span><b>{money(c.subtotal)}</b></div>
+              <div className="flex justify-between"><span className="text-muted">{t('Envío e impuestos')}</span><span className="text-muted">{t('Se calculan en el pago')}</span></div>
             </div>
-            <div className="mt-4 flex justify-between border-t border-line pt-4 text-lg font-extrabold"><span>Subtotal</span><span>{money(c.subtotal)}</span></div>
+            <div className="mt-4 flex justify-between border-t border-line pt-4 text-lg font-extrabold"><span>{t('Subtotal')}</span><span>{money(c.subtotal)}</span></div>
             <Button size="lg" className="mt-5 w-full" asChild disabled={hasIssues}>
-              <Link href="/checkout">Continuar al pago <ArrowRight /></Link>
+              <Link href="/checkout">{t('Continuar al pago')}{' '}<ArrowRight /></Link>
             </Button>
-            {hasIssues && <p className="mt-2 text-xs text-amber-700">Corrige los productos marcados antes de continuar.</p>}
-            <Link href="/catalogo" className="mt-3 block text-center text-sm font-semibold text-brand-700">Seguir comprando</Link>
+            {hasIssues && <p className="mt-2 text-xs text-amber-700">{t('Corrige los productos marcados antes de continuar.')}</p>}
+            <Link href="/catalogo" className="mt-3 block text-center text-sm font-semibold text-brand-700">{t('Seguir comprando')}</Link>
           </div>
         </div>
       )}

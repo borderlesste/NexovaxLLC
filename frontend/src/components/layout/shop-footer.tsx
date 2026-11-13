@@ -1,5 +1,7 @@
+'use client';
 import Link from 'next/link';
 import { Logo } from './logo';
+import { t } from '@/lib/i18n';
 
 
 const Social = {
@@ -20,34 +22,34 @@ export function ShopFooter() {
       <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)_auto] lg:px-8">
         <div>
           <Logo invert />
-          <p className="mt-4 max-w-xs text-sm text-brand-200">El marketplace dominicano que conecta compradores y vendedores en un solo lugar.</p>
+          <p className="mt-4 max-w-xs text-sm text-brand-200">{t('El marketplace global que conecta compradores y vendedores de todo el mundo en un solo lugar.')}</p>
         </div>
         {cols.map((c) => (
           <div key={c.title}>
-            <p className="mb-3 font-bold text-white">{c.title}</p>
+            <p className="mb-3 font-bold text-white">{t(c.title)}</p>
             <ul className="space-y-1.5 text-sm">
               {c.links.map(([l, h]) => (
-                <li key={l}><Link href={h} className="text-brand-200 hover:text-white">{l}</Link></li>
+                <li key={l}><Link href={h} className="text-brand-200 hover:text-white">{t(l)}</Link></li>
               ))}
             </ul>
           </div>
         ))}
         <div>
-          <p className="mb-3 font-bold text-white">Síguenos</p>
+          <p className="mb-3 font-bold text-white">{t('Síguenos')}</p>
           <div className="flex gap-3 text-brand-200">
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="hover:text-white">{Social.facebook}</a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:text-white">{Social.instagram}</a>
-            <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube" className="hover:text-white">{Social.youtube}</a>
+            <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label={t('Facebook')} className="hover:text-white">{Social.facebook}</a>
+            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label={t('Instagram')} className="hover:text-white">{Social.instagram}</a>
+            <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label={t('YouTube')} className="hover:text-white">{Social.youtube}</a>
           </div>
         </div>
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1400px] flex-wrap justify-between gap-2 px-4 py-4 text-xs text-brand-300 lg:px-8">
-          <span>© {new Date().getFullYear()} RD Marketplace. Todos los derechos reservados.</span>
+          <span>© {new Date().getFullYear()} {t('NEXOVAX.')}{' '}{t('Todos los derechos reservados.')}</span>
           <span className="flex gap-4">
-            <Link href="/ayuda#terminos">Términos y condiciones</Link>
-            <Link href="/ayuda#privacidad">Privacidad</Link>
-            <Link href="/ayuda#cookies">Cookies</Link>
+            <Link href="/ayuda#terminos">{t('Términos y condiciones')}</Link>
+            <Link href="/ayuda#privacidad">{t('Privacidad')}</Link>
+            <Link href="/ayuda#cookies">{t('Cookies')}</Link>
           </span>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
+import { orderRef, parseOrderRef, parseTicketRef, ticketRef } from '../common/refs';
 import { badRequest, notFound } from '../common/errors';
 import { RequestUser } from '../auth/auth';
 
@@ -49,7 +50,7 @@ export class SupportService {
     if (input.orderNumber?.trim()) {
       const o = await this.db.one(
         `select id from public.orders where public_number::text = $1 and customer_id = $2`,
-        [input.orderNumber.trim().replace(/^#?RD-?/i, ''), user.id],
+        [parseOrderRef(input.orderNumber), user.id],
       );
       orderId = o?.id ?? null;
     }
@@ -72,11 +73,11 @@ export class SupportService {
     });
     this.mail.fire(() => this.mail.supportTicketCreated(id));
     const t = await this.db.one(`select public_number from public.support_tickets where id = $1`, [id]);
-    return { id, code: `RD-REP-${t!.public_number}` };
+    return { id, code: ticketRef(t!.public_number) };
   }
 
   async track(code: string, user?: RequestUser) {
-    const num = code.trim().toUpperCase().replace(/^RD-REP-?/, '').replace(/^REP-?/, '');
+    const num = parseTicketRef(code);
     if (!/^\d+$/.test(num)) throw badRequest('CODE_INVALID', 'Código de seguimiento inválido.');
     const t = await this.db.one(
       `select t.id, t.public_number, t.status, t.subject, t.created_at, t.updated_at, t.requester_user_id, c.name as category
@@ -86,7 +87,7 @@ export class SupportService {
     if (!t) throw notFound('Reporte');
     const mine = user?.id === t.requester_user_id;
     return {
-      code: `RD-REP-${t.public_number}`,
+      code: ticketRef(t.public_number),
       status: t.status,
       statusLabel: STATUS_LABEL[t.status],
       category: t.category,
@@ -104,7 +105,7 @@ export class SupportService {
         where t.requester_user_id = $1 order by t.created_at desc limit 50`,
       [user.id],
     );
-    return rows.map((r: any) => ({ id: r.id, code: `RD-REP-${r.public_number}`, status: r.status, statusLabel: STATUS_LABEL[r.status], subject: r.subject, priority: r.priority_code, category: r.category, createdAt: r.created_at, updatedAt: r.updated_at }));
+    return rows.map((r: any) => ({ id: r.id, code: ticketRef(r.public_number), status: r.status, statusLabel: STATUS_LABEL[r.status], subject: r.subject, priority: r.priority_code, category: r.category, createdAt: r.created_at, updatedAt: r.updated_at }));
   }
 
   // ------------------------------------------------------------------ admin
@@ -127,7 +128,7 @@ export class SupportService {
       where.push(`c.code = $${params.length}`);
     }
     if (q.search?.trim()) {
-      params.push(`%${q.search.trim().replace(/^RD-REP-?/i, '')}%`);
+      params.push(`%${parseTicketRef(q.search)}%`);
       where.push(`(t.public_number::text ilike $${params.length} or t.subject ilike $${params.length} or coalesce(up.display_name, u.email::text) ilike $${params.length})`);
     }
     const page = Math.max(q.page ?? 1, 1);
@@ -205,7 +206,7 @@ export class SupportService {
     return {
       id: t.id,
       code: `REP-${t.public_number}`,
-      trackingCode: `RD-REP-${t.public_number}`,
+      trackingCode: ticketRef(t.public_number),
       status: t.status,
       statusLabel: STATUS_LABEL[t.status],
       subject: t.subject,
@@ -216,7 +217,7 @@ export class SupportService {
       requester: { name: t.requester, email: t.requester_email, verified: t.verified, type: t.requester_type },
       team: t.team_name ? { name: t.team_name, code: t.team_code, id: t.current_team_id } : null,
       assignee: t.assignee,
-      orderNumber: t.order_number ? `RD-${t.order_number}` : null,
+      orderNumber: t.order_number ? orderRef(t.order_number) : null,
       sla: { firstResponseDueAt: t.first_response_due_at, resolutionDueAt: t.resolution_due_at, firstResponseAt: t.first_response_at },
       messages: messages.map((m: any) => ({ id: m.id, body: m.body, at: m.sent_at, author: m.author, staff: ['SUPPORT_AGENT', 'MODERATOR'].includes(m.role) })),
       history: history.map((h: any) => ({ from: h.from_status, to: h.to_status, toLabel: STATUS_LABEL[h.to_status], at: h.created_at, actor: h.actor, reason: h.reason })),

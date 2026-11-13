@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean, IsEmail, IsInt, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
 import { AccountService } from './account.service';
@@ -13,6 +13,11 @@ export class RegisterDto {
   @IsString() @Length(3, 120) fullName: string;
   @IsEmail({}, { message: 'Correo electrónico inválido.' }) email: string;
   @IsString() @MinLength(8) @MaxLength(72) password: string;
+  @IsOptional() @IsIn(['es', 'en']) locale?: string;
+}
+
+export class LocaleDto {
+  @IsIn(['es', 'en']) locale: string;
 }
 
 export class RecoveryDto {
@@ -35,7 +40,8 @@ export class AddressDto {
   @IsOptional() @IsString() @MaxLength(120) companyName?: string;
   @IsString() @Length(3, 200) line1: string;
   @IsOptional() @IsString() @MaxLength(200) line2?: string;
-  @Type(() => Number) @IsInt() cityId: number;
+  @IsString() @Length(2, 2) countryCode: string;
+  @IsString() @Length(2, 100) city: string;
   @IsOptional() @IsString() @MaxLength(80) region?: string;
   @IsOptional() @IsString() @MaxLength(20) postalCode?: string;
   @IsOptional() @Matches(PHONE, { message: 'Teléfono inválido.' }) phone?: string;
@@ -79,10 +85,15 @@ export class AccountController {
     return this.account.changePassword(user, dto.password);
   }
 
+  @Put('me/locale')
+  setLocale(@CurrentUser() user: RequestUser, @Body() dto: LocaleDto) {
+    return this.account.setLocale(user, dto.locale);
+  }
+
   @Public()
-  @Get('geo/cities')
-  cities(@Query('q') q?: string) {
-    return this.account.cities(q);
+  @Get('geo/countries')
+  countries() {
+    return this.account.countries();
   }
 
   @Get('me/addresses')

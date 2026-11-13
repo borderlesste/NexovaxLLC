@@ -36,6 +36,11 @@ export class OrdersController {
     return this.orders.updateTracking({ kind: 'customer', userId: user.id }, id, 'DELIVERED');
   }
 
+  @Post('shipments/:id/refresh-tracking')
+  refreshTracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.orders.refreshShipmentTracking({ kind: 'customer', userId: user.id }, id);
+  }
+
   @Post('items/:itemId/review')
   async review(@CurrentUser() user: RequestUser, @Param('itemId', ParseUUIDPipe) itemId: string, @Body() dto: ReviewDto) {
     const item = await this.db.one(

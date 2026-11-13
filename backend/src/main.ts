@@ -1,10 +1,12 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { assertConfig, config } from './config';
+import { LocalizedExceptionFilter } from './common/i18n-errors';
+import { CatalogLocaleInterceptor } from './common/i18n-catalog';
 
 async function bootstrap() {
   assertConfig();
@@ -12,6 +14,8 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.enableCors({ origin: config.corsOrigins, credentials: true });
+  app.useGlobalFilters(new LocalizedExceptionFilter(app.get(HttpAdapterHost).httpAdapter));
+  app.useGlobalInterceptors(new CatalogLocaleInterceptor());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -25,8 +29,8 @@ async function bootstrap() {
     }),
   );
   const doc = new DocumentBuilder()
-    .setTitle('RD Marketplace API')
-    .setDescription('API REST del marketplace multivendedor (NestJS + Supabase).')
+    .setTitle('NEXOVAX API')
+    .setDescription('REST API of the NEXOVAX multi-vendor marketplace (NestJS + Supabase).')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

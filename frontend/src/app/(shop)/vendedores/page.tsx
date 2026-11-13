@@ -9,16 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Empty, Skeleton } from '@/components/ui/misc';
 import { LogoMark } from '@/components/layout/logo';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 export default function SellersPage() {
   const [q, setQ] = useState('');
   const sellers = useQuery({ queryKey: ['sellers', q], queryFn: () => get(`/sellers?q=${encodeURIComponent(q)}`) });
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8">
-      <Breadcrumbs items={[{ label: 'Vendedores' }]} />
+      <Breadcrumbs items={[{ label: t('Vendedores') }]} />
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div><h1 className="text-3xl font-extrabold">Tiendas del marketplace</h1><p className="text-muted">Descubre vendedores dominicanos verificados.</p></div>
-        <Input icon={<Search />} placeholder="Buscar tienda…" value={q} onChange={(e) => setQ(e.target.value)} className="w-72" />
+        <div><h1 className="text-3xl font-extrabold">{t('Tiendas del marketplace')}</h1><p className="text-muted">{t('Descubre vendedores verificados de todo el mundo.')}</p></div>
+        <Input icon={<Search />} placeholder={t('Buscar tienda…')} value={q} onChange={(e) => setQ(e.target.value)} className="w-72" />
       </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {sellers.isLoading && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
@@ -29,12 +30,12 @@ export default function SellersPage() {
             {s.shortDescription && <p className="mt-1 line-clamp-2 text-sm text-muted">{s.shortDescription}</p>}
             <div className="mt-3 flex gap-4 text-sm text-muted">
               <span className="inline-flex items-center gap-1"><Star className="size-4 fill-amber-400 text-amber-400" /> {s.rating ? s.rating.toFixed(1) : '—'}</span>
-              <span className="inline-flex items-center gap-1"><Box className="size-4" /> {s.products} productos</span>
+              <span className="inline-flex items-center gap-1"><Box className="size-4" /> {s.products} {t('productos')}</span>
             </div>
           </Link>
         ))}
       </div>
-      {sellers.data?.length === 0 && <div className="card mt-6"><Empty icon={<Store />} title="No encontramos tiendas" action={<Button asChild><Link href="/vendedor/registro">Abre tu tienda</Link></Button>} /></div>}
+      {sellers.data?.length === 0 && <div className="card mt-6"><Empty icon={<Store />} title={t('No encontramos tiendas')} action={<Button asChild><Link href="/vendedor/registro">{t('Abre tu tienda')}</Link></Button>} /></div>}
     </div>
   );
 }

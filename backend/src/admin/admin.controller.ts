@@ -43,6 +43,13 @@ export class SettingsDto {
   @IsOptional() @IsObject() settings?: Record<string, any>;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(0.5) commissionRate?: number;
 }
+export class TaxRateDto {
+  @IsString() @Length(2, 2) countryCode: string;
+  @IsString() @Length(1, 40) taxName: string;
+  @Type(() => Number) @IsNumber() @Min(0) @Max(0.99) rate: number;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() @MaxLength(300) notes?: string;
+}
 export class RoleDto {
   @IsIn(['CUSTOMER', 'SELLER', 'SUPPORT', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN']) role: any;
   @IsBoolean() grant: boolean;
@@ -110,6 +117,12 @@ export class AdminController {
   @Post('shipments/:id/tracking')
   tracking(@Param('id', ParseUUIDPipe) id: string, @Body() dto: { status: any; detail?: string }) {
     return this.orders.updateTracking({ kind: 'admin' }, id, dto.status, dto.detail);
+  }
+
+  @Roles('SUPPORT')
+  @Post('shipments/:id/refresh-tracking')
+  refreshTracking(@Param('id', ParseUUIDPipe) id: string) {
+    return this.orders.refreshShipmentTracking({ kind: 'admin' }, id);
   }
 
   // sellers
@@ -228,6 +241,25 @@ export class AdminController {
   @Put('settings')
   updateSettings(@CurrentUser() user: RequestUser, @Body() dto: SettingsDto) {
     return this.admin.updateSettings(user, { ...(dto.settings ?? {}), commissionRate: dto.commissionRate });
+  }
+
+  // tax rates (destination country)
+  @Roles('ADMIN')
+  @Get('tax-rates')
+  taxRates() {
+    return this.admin.taxRates();
+  }
+
+  @Roles('ADMIN')
+  @Put('tax-rates')
+  saveTaxRate(@CurrentUser() user: RequestUser, @Body() dto: TaxRateDto) {
+    return this.admin.saveTaxRate(user, dto);
+  }
+
+  @Roles('ADMIN')
+  @Delete('tax-rates/:country')
+  deleteTaxRate(@Param('country') country: string) {
+    return this.admin.deleteTaxRate(country);
   }
 
   // users

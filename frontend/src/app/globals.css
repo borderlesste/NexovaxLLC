@@ -3,25 +3,32 @@
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #7c4dff;
-  --color-brand-600: #5b2be0;
-  --color-brand-700: #4c1fc0;
-  --color-brand-800: #3b1696;
-  --color-brand-900: #26105e;
-  --color-brand-950: #1a0b40;
+  /* NEXOVAX — blue from the logo (#0A6CF5) and orange accent (#F5901A) */
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e8ff;
+  --color-brand-200: #bcd6ff;
+  --color-brand-300: #8ebbfd;
+  --color-brand-400: #5a98fa;
+  --color-brand-500: #2f80f7;
+  --color-brand-600: #0a6cf5;
+  --color-brand-700: #0757cc;
+  --color-brand-800: #0c47a1;
+  --color-brand-900: #0f3a7d;
+  --color-brand-950: #0b2450;
 
-  --color-ink: #14112b;
-  --color-muted: #6b6785;
-  --color-line: #e8e5f3;
-  --color-surface: #f8f7fd;
+  --color-accent-50: #fff6eb;
+  --color-accent-100: #feead0;
+  --color-accent-400: #f8a541;
+  --color-accent-500: #f5901a;
+  --color-accent-600: #dd7a0b;
+
+  --color-ink: #0f172a;
+  --color-muted: #5f6b7d;
+  --color-line: #e3e8f0;
+  --color-surface: #f6f8fc;
 
   --radius-card: 14px;
-  --shadow-card: 0 1px 2px rgb(20 17 43 / 0.04), 0 4px 16px rgb(91 43 224 / 0.05);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(10 108 245 / 0.06);
 }
 
 @layer base {

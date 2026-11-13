@@ -1,42 +1,39 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, CheckCircle2, Headphones, LayoutGrid, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CheckCircle2, Globe2, Headphones, LayoutGrid, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import { serverGet } from '@/lib/server-api';
 import { ProductGrid, ProductImage } from '@/components/shop/product-card';
+import { getT } from '@/lib/i18n/server';
 import { CategoryIcon } from '@/components/shop/category-icon';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/misc';
 
 export const revalidate = 30;
 
-function Hero({ preview }: { preview: any[] }) {
+async function Hero({ preview }: { preview: any[] }) {
+  const t = await getT();
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-white via-brand-50 to-brand-100">
       <div className="absolute -right-24 -top-24 size-[520px] rounded-full bg-brand-200/50 blur-3xl" />
       <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-lg bg-brand-100 px-3 py-1.5 text-sm font-semibold text-brand-700">
-            El marketplace de RD
-            <svg viewBox="0 0 30 20" className="h-3.5 w-5 rounded-[2px] shadow-sm" aria-label="Bandera de República Dominicana">
-              <rect width="30" height="20" fill="#fff" />
-              <rect width="13" height="8" fill="#002d62" /><rect x="17" width="13" height="8" fill="#ce1126" />
-              <rect y="12" width="13" height="8" fill="#ce1126" /><rect x="17" y="12" width="13" height="8" fill="#002d62" />
-            </svg>
+          <span className="inline-flex items-center gap-2 rounded-lg bg-accent-50 px-3 py-1.5 text-sm font-semibold text-accent-600">
+            <Globe2 className="size-4" /> {t('Tiendas de todo el mundo, un solo carrito')}
           </span>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-brand-950 sm:text-5xl">
-            Compra en tus tiendas favoritas y apoya a vendedores dominicanos
+            {t('Compra a vendedores de todo el mundo con envíos a tu puerta')}
           </h1>
-          <p className="mt-4 max-w-lg text-lg text-muted">Miles de productos, múltiples tiendas y una sola plataforma segura, rápida y confiable.</p>
+          <p className="mt-4 max-w-lg text-lg text-muted">{t('Miles de productos, múltiples tiendas y una sola plataforma segura, con tarifas de envío en tiempo real e impuestos claros.')}</p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button size="lg" asChild>
-              <Link href="/catalogo"><ShoppingCart /> Explorar productos <ArrowRight /></Link>
+              <Link href="/catalogo"><ShoppingCart /> {t('Explorar productos')} <ArrowRight /></Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/vendedor/registro"><Store /> Vender en RD Marketplace</Link>
+              <Link href="/vendedor/registro"><Store /> {t('Vender en NEXOVAX')}</Link>
             </Button>
           </div>
           <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink">
-            {['Compras seguras', 'Vendedores verificados', 'Soporte local'].map((t) => (
-              <span key={t} className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-4 text-brand-600" /> {t}</span>
+            {['Compras seguras', 'Vendedores verificados', 'Envíos internacionales'].map((x) => (
+              <span key={x} className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-4 text-brand-600" /> {t(x)}</span>
             ))}
           </div>
         </div>
@@ -67,6 +64,7 @@ function Hero({ preview }: { preview: any[] }) {
 }
 
 export default async function HomePage() {
+  const t = await getT();
   const data = await serverGet<any>('/home', 30);
   const categories = data?.categories ?? [];
   const featured = data?.featured ?? [];
@@ -76,40 +74,40 @@ export default async function HomePage() {
       <div className="mx-auto max-w-[1400px] px-4 lg:px-8">
         <section className="mt-12">
           <div className="mb-5 flex items-end justify-between">
-            <h2 className="text-2xl font-extrabold">Explora por categorías</h2>
-            <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">Ver todas las categorías <ArrowRight className="size-4" /></Link>
+            <h2 className="text-2xl font-extrabold">{t('Explora por categorías')}</h2>
+            <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver todas las categorías')} <ArrowRight className="size-4" /></Link>
           </div>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-10">
             {categories.slice(0, 9).map((c: any) => (
               <Link key={c.id} href={`/catalogo/categorias/${c.slug}`} className="card flex flex-col items-center gap-2 px-2 py-4 text-center transition hover:-translate-y-0.5 hover:border-brand-200">
                 <CategoryIcon slug={c.slug} className="size-8 text-brand-600" strokeWidth={1.6} />
-                <span className="line-clamp-1 text-sm font-semibold">{c.name}</span>
+                <span className="line-clamp-1 text-sm font-semibold">{t(c.name)}</span>
               </Link>
             ))}
             <Link href="/catalogo" className="card flex flex-col items-center gap-2 px-2 py-4 text-center transition hover:-translate-y-0.5">
               <LayoutGrid className="size-8 text-brand-600" strokeWidth={1.6} />
-              <span className="text-sm font-semibold">Más</span>
+              <span className="text-sm font-semibold">{t('Más')}</span>
             </Link>
           </div>
         </section>
 
         <section className="mt-12">
           <div className="mb-5 flex items-end justify-between">
-            <h2 className="text-2xl font-extrabold">Productos destacados</h2>
-            <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">Ver más productos <ArrowRight className="size-4" /></Link>
+            <h2 className="text-2xl font-extrabold">{t('Productos destacados')}</h2>
+            <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver más productos')} <ArrowRight className="size-4" /></Link>
           </div>
           {featured.length ? (
             <ProductGrid items={featured.slice(0, 12)} />
           ) : (
-            <div className="card"><Empty title="Pronto verás productos aquí" description="Los vendedores están preparando su catálogo." /></div>
+            <div className="card"><Empty title={t('Pronto verás productos aquí')} description={t('Los vendedores están preparando su catálogo.')} /></div>
           )}
         </section>
 
         {data?.deals?.length ? (
           <section className="mt-12">
             <div className="mb-5 flex items-end justify-between">
-              <h2 className="text-2xl font-extrabold">Ofertas de la semana</h2>
-              <Link href="/catalogo?onSale=true" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">Ver ofertas <ArrowRight className="size-4" /></Link>
+              <h2 className="text-2xl font-extrabold">{t('Ofertas de la semana')}</h2>
+              <Link href="/catalogo?onSale=true" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver ofertas')} <ArrowRight className="size-4" /></Link>
             </div>
             <ProductGrid items={data.deals} />
           </section>
@@ -119,32 +117,32 @@ export default async function HomePage() {
           <Link href="/vendedor/registro" className="card relative flex items-center gap-5 overflow-hidden bg-gradient-to-r from-brand-50 to-white p-6 transition hover:shadow-lg">
             <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Store className="size-8" /></div>
             <div>
-              <h3 className="text-xl font-extrabold">¿Eres vendedor?</h3>
-              <p className="mt-1 text-sm text-muted">Crea tu tienda, publica tus productos y llega a más clientes en todo el país.</p>
+              <h3 className="text-xl font-extrabold">{t('¿Eres vendedor?')}</h3>
+              <p className="mt-1 text-sm text-muted">{t('Crea tu tienda, publica tus productos y vende a clientes de todo el mundo.')}</p>
             </div>
             <ArrowRight className="ml-auto size-6 shrink-0 text-brand-600" />
           </Link>
           <div className="card flex items-center gap-5 bg-gradient-to-r from-white to-brand-50 p-6">
             <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><ShieldCheck className="size-8" /></div>
             <div>
-              <h3 className="text-xl font-extrabold">Compra con confianza</h3>
-              <p className="mt-1 text-sm text-muted">Pagos seguros, protección al comprador y soporte local.</p>
+              <h3 className="text-xl font-extrabold">{t('Compra con confianza')}</h3>
+              <p className="mt-1 text-sm text-muted">{t('Pagos seguros, protección al comprador y soporte en tu idioma.')}</p>
             </div>
           </div>
         </section>
 
         <section className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            [Truck, 'Envíos a todo RD', 'Recibe tus pedidos en la puerta de tu hogar.'],
+            [Truck, 'Envíos internacionales', 'Tarifas en vivo de USPS, UPS, DHL y más, con rastreo.'],
             [ShieldCheck, 'Pagos seguros', 'Tus compras protegidas con métodos confiables.'],
             [BadgeCheck, 'Vendedores verificados', 'Tiendas reales y con reputación comprobada.'],
-            [Headphones, 'Soporte local', 'Te acompañamos en todo el proceso.'],
-          ].map(([Icon, t, d]: any) => (
-            <div key={t} className="flex items-start gap-3">
+            [Headphones, 'Soporte en tu idioma', 'Te acompañamos en español e inglés.'],
+          ].map(([Icon, title, d]: any) => (
+            <div key={title} className="flex items-start gap-3">
               <Icon className="size-9 shrink-0 text-brand-600" strokeWidth={1.6} />
               <div>
-                <p className="font-bold">{t}</p>
-                <p className="text-sm text-muted">{d}</p>
+                <p className="font-bold">{t(title)}</p>
+                <p className="text-sm text-muted">{t(d)}</p>
               </div>
             </div>
           ))}

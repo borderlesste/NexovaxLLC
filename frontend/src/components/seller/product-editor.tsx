@@ -7,12 +7,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, post, put, upload } from '@/lib/api';
-import { cn, money } from '@/lib/utils';
+import { cn, money, currencySymbol } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
+import { t } from '@/lib/i18n';
 
 interface Opt { name: string; values: { label: string; swatch?: string | null }[] }
 interface Var { id?: string; key: string; optionValues: Record<string, string>; sku: string; price: string; compareAtPrice: string; stock: string; active: boolean }
@@ -105,15 +106,15 @@ export function ProductEditor({ productId }: { productId?: string }) {
   });
 
   const save = async (action: 'SAVE_DRAFT' | 'SUBMIT') => {
-    if (!f.title.trim() || !effectiveCategory || f.description.trim().length < 10) return toast.error('Completa nombre, categoría y una descripción (mínimo 10 caracteres).');
-    if (variants.some((v) => v.active && (!v.sku.trim() || !(Number(v.price) > 0)))) return toast.error('Cada variante necesita SKU y precio mayor que cero.');
-    if (![ship.weightKg, ship.lengthCm, ship.widthCm, ship.heightCm].every((x) => Number(x) > 0)) return toast.error('Indica el peso y las dimensiones del paquete (sección Envío y dimensiones).');
+    if (!f.title.trim() || !effectiveCategory || f.description.trim().length < 10) return toast.error(t('Completa nombre, categoría y una descripción (mínimo 10 caracteres).'));
+    if (variants.some((v) => v.active && (!v.sku.trim() || !(Number(v.price) > 0)))) return toast.error(t('Cada variante necesita SKU y precio mayor que cero.'));
+    if (![ship.weightKg, ship.lengthCm, ship.widthCm, ship.heightCm].every((x) => Number(x) > 0)) return toast.error(t('Indica el peso y las dimensiones del paquete (sección Envío y dimensiones).'));
     setSaving(action === 'SUBMIT' ? 'submit' : 'draft');
     try {
       const r = productId ? await put(`/seller/products/${productId}`, payload(action)) : await post('/seller/products', payload(action));
       qc.invalidateQueries({ queryKey: ['seller-products'] });
       qc.setQueryData(['seller-product', r.id], r);
-      toast.success(action === 'SUBMIT' ? (r.status === 'ACTIVE' ? 'Producto publicado.' : 'Producto enviado a revisión.') : 'Borrador guardado.');
+      toast.success(action === 'SUBMIT' ? (r.status === 'ACTIVE' ? 'Producto publicado.' : t('Producto enviado a revisión.')) : 'Borrador guardado.');
       if (!productId) router.replace(`/vendedor/productos/${r.id}/editar`);
       else existing.refetch();
     } catch (e) {
@@ -125,14 +126,14 @@ export function ProductEditor({ productId }: { productId?: string }) {
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
-    if (!productId) return toast.info('Guarda el borrador primero para poder subir imágenes.');
+    if (!productId) return toast.info(t('Guarda el borrador primero para poder subir imágenes.'));
     const form = new FormData();
     Array.from(files).forEach((file) => form.append('files', file));
     setUploading(true);
     try {
       const r = await upload(`/seller/products/${productId}/media`, form);
       qc.setQueryData(['seller-product', productId], r);
-      toast.success('Imágenes subidas.');
+      toast.success(t('Imágenes subidas.'));
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -153,58 +154,58 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const media = (existing.data ?? product)?.media ?? [];
   const single = !options.some((o) => o.name.trim() && o.values.length);
 
-  if (productId && !loaded) return <div className="grid min-h-[50vh] place-items-center text-muted">Cargando producto…</div>;
+  if (productId && !loaded) return <div className="grid min-h-[50vh] place-items-center text-muted">{t('Cargando producto…')}</div>;
 
   return (
     <>
-      <PageHeader crumbs={[{ label: 'Productos', href: '/vendedor/productos' }, { label: productId ? 'Editar producto' : 'Crear producto' }]}
-        title={productId ? 'Editar producto' : 'Crear producto'}
-        description="Completa la información, configura sus variantes y publícalo."
+      <PageHeader crumbs={[{ label: t('Productos'), href: '/vendedor/productos' }, { label: productId ? t('Editar producto') : t('Crear producto') }]}
+        title={productId ? t('Editar producto') : t('Crear producto')}
+        description={t('Completa la información, configura sus variantes y publícalo.')}
         actions={<>
           {product && <StatusBadge status={product.status} className="self-center" />}
-          <Button variant="secondary" onClick={() => save('SAVE_DRAFT')} loading={saving === 'draft'}><Save /> Guardar borrador</Button>
-          <Button onClick={() => save('SUBMIT')} loading={saving === 'submit'}><Check /> Publicar</Button>
+          <Button variant="secondary" onClick={() => save('SAVE_DRAFT')} loading={saving === 'draft'}><Save /> {t('Guardar borrador')}</Button>
+          <Button onClick={() => save('SUBMIT')} loading={saving === 'submit'}><Check /> {t('Publicar')}</Button>
         </>} />
       {product?.lastReview?.status && ['REJECTED', 'CHANGES_REQUESTED'].includes(product.lastReview.status) && (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><b>Moderación:</b> {product.lastReview.decision_reason}</div>
+        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><b>{t('Moderación:')}</b> {product.lastReview.decision_reason}</div>
       )}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <div className="space-y-5">
           <Card>
-            <CardHeader icon={<Info />} title="Información básica" subtitle="Datos principales del producto." />
+            <CardHeader icon={<Info />} title={t('Información básica')} subtitle={t('Datos principales del producto.')} />
             <div className="grid gap-4 p-5 sm:grid-cols-3">
-              <Field label="Nombre del producto" required className="sm:col-span-3"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Ej. Zapatillas deportivas running" maxLength={140} /></Field>
-              <Field label="Categoría" required>
+              <Field label={t('Nombre del producto')} required className="sm:col-span-3"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder={t('Ej. Zapatillas deportivas running')} maxLength={140} /></Field>
+              <Field label={t('Categoría')} required>
                 <Select value={f.parentCategoryId} onChange={(e) => setF({ ...f, parentCategoryId: e.target.value, categoryId: '' })}>
-                  <option value="">Selecciona una categoría</option>{cats.data?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">{t('Selecciona una categoría')}</option>{cats.data?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
               </Field>
-              <Field label="Subcategoría" required={!!parent?.children.length}>
+              <Field label={t('Subcategoría')} required={!!parent?.children.length}>
                 <Select value={f.categoryId} onChange={(e) => setF({ ...f, categoryId: e.target.value })} disabled={!parent?.children.length}>
-                  <option value="">Selecciona una subcategoría</option>{parent?.children.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">{t('Selecciona una subcategoría')}</option>{parent?.children.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
               </Field>
-              <Field label="Marca"><Input value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} placeholder="Ej. Nike, Adidas, Xiaomi" /></Field>
-              <Field label="Descripción corta" className="sm:col-span-3"><Input value={f.shortDescription} onChange={(e) => setF({ ...f, shortDescription: e.target.value })} placeholder="Resumen que aparece bajo el título" maxLength={300} /></Field>
-              <Field label="Descripción del producto" required className="sm:col-span-3">
-                <Textarea rows={6} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={5000} placeholder="Describe tu producto de forma clara y detallada. Incluye sus características, beneficios, materiales, uso recomendado, etc." />
-                <p className="mt-1 text-right text-xs text-muted">{f.description.length} / 5,000 caracteres</p>
+              <Field label={t('Marca')}><Input value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} placeholder={t('Ej. Nike, Adidas, Xiaomi')} /></Field>
+              <Field label={t('Descripción corta')} className="sm:col-span-3"><Input value={f.shortDescription} onChange={(e) => setF({ ...f, shortDescription: e.target.value })} placeholder={t('Resumen que aparece bajo el título')} maxLength={300} /></Field>
+              <Field label={t('Descripción del producto')} required className="sm:col-span-3">
+                <Textarea rows={6} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={5000} placeholder={t('Describe tu producto de forma clara y detallada. Incluye sus características, beneficios, materiales, uso recomendado, etc.')} />
+                <p className="mt-1 text-right text-xs text-muted">{f.description.length} {t('/ 5,000 caracteres')}</p>
               </Field>
             </div>
           </Card>
 
           {attrDefs.data?.length ? (
             <Card>
-              <CardHeader icon={<SlidersHorizontal />} title="Atributos" subtitle="Atributos asociados a la categoría seleccionada." />
+              <CardHeader icon={<SlidersHorizontal />} title={t('Atributos')} subtitle={t('Atributos asociados a la categoría seleccionada.')} />
               <div className="grid gap-4 p-5 sm:grid-cols-3">
                 {attrDefs.data.slice(0, 12).map((a: any) => {
                   const values: string[] | undefined = a.validation?.allowed_values ?? a.validation?.enum;
                   return (
                     <Field key={a.id} label={`${a.name}${a.unit ? ` (${a.unit})` : ''}`} required={a.required}>
                       {values?.length ? (
-                        <Select value={attrs[a.id] ?? ''} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })}><option value="">Selecciona</option>{values.map((v) => <option key={v}>{v}</option>)}</Select>
+                        <Select value={attrs[a.id] ?? ''} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })}><option value="">{t('Selecciona')}</option>{values.map((v) => <option key={v}>{v}</option>)}</Select>
                       ) : a.dataType === 'BOOLEAN' ? (
-                        <Select value={attrs[a.id] ?? ''} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })}><option value="">—</option><option value="true">Sí</option><option value="false">No</option></Select>
+                        <Select value={attrs[a.id] ?? ''} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })}><option value="">—</option><option value="true">{t('Sí')}</option><option value="false">{t('No')}</option></Select>
                       ) : (
                         <Input value={attrs[a.id] ?? ''} inputMode={a.dataType === 'NUMBER' ? 'decimal' : undefined} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })} />
                       )}
@@ -216,19 +217,19 @@ export function ProductEditor({ productId }: { productId?: string }) {
           ) : null}
 
           <Card>
-            <CardHeader icon={<Tag />} title="Variantes" subtitle="Configura las opciones del producto (talla, color, etc.) para generar combinaciones con SKU." />
+            <CardHeader icon={<Tag />} title={t('Variantes')} subtitle={t('Configura las opciones del producto (talla, color, etc.) para generar combinaciones con SKU.')} />
             <div className="space-y-4 p-5">
               {options.map((o, i) => (
                 <div key={i} className="grid gap-2 sm:grid-cols-[180px_1fr_auto]">
-                  <Input value={o.name} placeholder="Ej. Talla" onChange={(e) => { const n = [...options]; n[i] = { ...o, name: e.target.value }; setOpts(n); }} />
+                  <Input value={o.name} placeholder={t('Ej. Talla')} onChange={(e) => { const n = [...options]; n[i] = { ...o, name: e.target.value }; setOpts(n); }} />
                   <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-line bg-white px-2 py-1">
                     {o.values.map((v, j) => (
                       <span key={j} className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-800">
                         {v.swatch && <span className="size-3 rounded-full border border-black/10" style={{ background: v.swatch }} />} {v.label}
-                        <button onClick={() => { const n = [...options]; n[i] = { ...o, values: o.values.filter((_, k) => k !== j) }; setOpts(n); }} aria-label="Quitar"><X className="size-3" /></button>
+                        <button onClick={() => { const n = [...options]; n[i] = { ...o, values: o.values.filter((_, k) => k !== j) }; setOpts(n); }} aria-label={t('Quitar')}><X className="size-3" /></button>
                       </span>
                     ))}
-                    <input className="min-w-24 flex-1 text-sm outline-none" placeholder="Escribe y presiona Enter" value={newValue[i] ?? ''}
+                    <input className="min-w-24 flex-1 text-sm outline-none" placeholder={t('Escribe y presiona Enter')} value={newValue[i] ?? ''}
                       onChange={(e) => setNewValue({ ...newValue, [i]: e.target.value })}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter' && e.key !== ',') return;
@@ -242,28 +243,28 @@ export function ProductEditor({ productId }: { productId?: string }) {
                         setNewValue({ ...newValue, [i]: '' });
                       }} />
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setOpts(options.filter((_, k) => k !== i))} aria-label="Eliminar opción"><Trash2 /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => setOpts(options.filter((_, k) => k !== i))} aria-label={t('Eliminar opción')}><Trash2 /></Button>
                 </div>
               ))}
               <div className="flex flex-wrap gap-2">
-                {options.length < 3 && <Button variant="outline" size="sm" onClick={() => setOptions([...options, { name: '', values: [] }])}><Plus /> Agregar opción de variante</Button>}
-                {templates.data?.map((t: any) => (
-                  <Button key={t.code} variant="soft" size="sm" onClick={() => !options.some((o) => o.name === t.name) && setOpts([...options, { name: t.name, values: (t.values ?? []).map((v: any) => ({ label: typeof v === 'string' ? v : v.label ?? v.value, swatch: v.swatch ?? null })) }])}>
-                    <Wand2 /> Usar plantilla “{t.name}”
+                {options.length < 3 && <Button variant="outline" size="sm" onClick={() => setOptions([...options, { name: '', values: [] }])}><Plus /> {t('Agregar opción de variante')}</Button>}
+                {templates.data?.map((lbl: any) => (
+                  <Button key={lbl.code} variant="soft" size="sm" onClick={() => !options.some((o) => o.name === lbl.name) && setOpts([...options, { name: lbl.name, values: (lbl.values ?? []).map((v: any) => ({ label: typeof v === 'string' ? v : v.label ?? v.value, swatch: v.swatch ?? null })) }])}>
+                    <Wand2 /> {t('Usar plantilla “')}{lbl.name}”
                   </Button>
                 ))}
               </div>
-              {!single && <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800"><b>Combinaciones generadas:</b> {activeCount} variantes.</p>}
+              {!single && <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800"><b>{t('Combinaciones generadas:')}</b> {activeCount} {t('variantes.')}</p>}
               <div className="overflow-x-auto rounded-xl border border-line">
                 <table className="w-full min-w-[620px] text-sm">
-                  <thead className="bg-surface text-left text-xs font-semibold text-muted"><tr><th className="px-3 py-2">Variante</th><th>SKU</th><th>Precio (RD$)</th><th>Precio anterior</th><th>Stock</th><th>Activa</th></tr></thead>
+                  <thead className="bg-surface text-left text-xs font-semibold text-muted"><tr><th className="px-3 py-2">{t('Variante')}</th><th>{t('SKU')}</th><th>{`${t('Precio')} (${currencySymbol()})`}</th><th>{t('Precio anterior')}</th><th>{t('Stock')}</th><th>{t('Activa')}</th></tr></thead>
                   <tbody className="divide-y divide-line">
                     {variants.map((v, i) => (
                       <tr key={v.key} className={cn(!v.active && 'opacity-50')}>
-                        <td className="px-3 py-2 font-semibold">{Object.values(v.optionValues).join(' / ') || 'Única'}</td>
+                        <td className="px-3 py-2 font-semibold">{Object.values(v.optionValues).join(' / ') || t('Única')}</td>
                         <td className="py-2 pr-2"><Input className="h-9" value={v.sku} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, sku: e.target.value.toUpperCase() } : x))} /></td>
                         <td className="py-2 pr-2"><Input className="h-9" inputMode="decimal" value={v.price} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="0.00" /></td>
-                        <td className="py-2 pr-2"><Input className="h-9" inputMode="decimal" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="Opcional" /></td>
+                        <td className="py-2 pr-2"><Input className="h-9" inputMode="decimal" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder={t('Opcional')} /></td>
                         <td className="py-2 pr-2"><Input className="h-9 w-24" inputMode="numeric" value={v.stock} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, stock: e.target.value.replace(/\D/g, '') } : x))} /></td>
                         <td className="py-2 pr-3"><input type="checkbox" checked={v.active} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, active: e.target.checked } : x))} className="size-4 accent-brand-600" /></td>
                       </tr>
@@ -273,7 +274,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
               </div>
               {variants.length > 1 && (
                 <Button variant="ghost" size="sm" onClick={() => setVariants(variants.map((v) => ({ ...v, price: variants[0].price, compareAtPrice: variants[0].compareAtPrice })))}>
-                  Aplicar el precio de la primera variante a todas
+                  {t('Aplicar el precio de la primera variante a todas')}
                 </Button>
               )}
             </div>
@@ -282,7 +283,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
 
         <div className="space-y-5">
           <Card>
-            <CardHeader icon={<ImageIcon />} title="Medios del producto" subtitle="Imagen principal y galería (máx. 8)." />
+            <CardHeader icon={<ImageIcon />} title={t('Medios del producto')} subtitle={t('Imagen principal y galería (máx. 8).')} />
             <div className="p-5">
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden onChange={(e) => onFiles(e.target.files)} />
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
@@ -290,16 +291,16 @@ export function ProductEditor({ productId }: { productId?: string }) {
                   className="col-span-2 row-span-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/40 p-4 text-center text-sm hover:bg-brand-50"
                   onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onFiles(e.dataTransfer.files); }}>
                   <UploadCloud className="size-9 text-brand-600" />
-                  <b className="mt-2">{uploading ? 'Subiendo…' : 'Sube las imágenes'}</b>
-                  <span className="text-xs text-muted">Arrastra y suelta o selecciona. JPG, PNG o WebP. Máx. 10 MB.</span>
-                  {!productId && <span className="mt-1 text-xs font-semibold text-amber-700">Guarda el borrador para habilitar.</span>}
+                  <b className="mt-2">{uploading ? 'Subiendo…' : t('Sube las imágenes')}</b>
+                  <span className="text-xs text-muted">{t('Arrastra y suelta o selecciona. JPG, PNG o WebP. Máx. 10 MB.')}</span>
+                  {!productId && <span className="mt-1 text-xs font-semibold text-amber-700">{t('Guarda el borrador para habilitar.')}</span>}
                 </button>
                 {media.map((m: any) => (
                   <div key={m.id} className={cn('group relative overflow-hidden rounded-xl border-2 bg-surface', m.isPrimary ? 'border-brand-600' : 'border-line')}>
                     <img src={m.url} alt="" className="aspect-square w-full object-contain" />
                     <div className="absolute inset-x-0 bottom-0 flex justify-between bg-white/90 p-1 opacity-0 transition group-hover:opacity-100">
-                      <button onClick={() => mediaAction(m.id, 'primary')} title="Principal" aria-label="Principal"><Star className={cn('size-4', m.isPrimary && 'fill-amber-400 text-amber-400')} /></button>
-                      <button onClick={() => mediaAction(m.id, 'delete')} title="Eliminar" aria-label="Eliminar"><Trash2 className="size-4 text-red-600" /></button>
+                      <button onClick={() => mediaAction(m.id, 'primary')} title={t('Principal')} aria-label={t('Principal')}><Star className={cn('size-4', m.isPrimary && 'fill-amber-400 text-amber-400')} /></button>
+                      <button onClick={() => mediaAction(m.id, 'delete')} title={t('Eliminar')} aria-label={t('Eliminar')}><Trash2 className="size-4 text-red-600" /></button>
                     </div>
                   </div>
                 ))}
@@ -308,38 +309,38 @@ export function ProductEditor({ productId }: { productId?: string }) {
           </Card>
 
           <Card>
-            <CardHeader icon={<Truck />} title="Envío y dimensiones" subtitle="Información para el cálculo y la gestión del envío." />
+            <CardHeader icon={<Truck />} title={t('Envío y dimensiones')} subtitle={t('Información para el cálculo y la gestión del envío.')} />
             <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
-              <Field label="Peso (kg)" required><Input inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
-              <Field label="Largo (cm)" required><Input inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label="Ancho (cm)" required><Input inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label="Alto (cm)" required><Input inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label={t('Peso (kg)')} required><Input inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
+              <Field label={t('Largo (cm)')} required><Input inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label={t('Ancho (cm)')} required><Input inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label={t('Alto (cm)')} required><Input inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
             </div>
           </Card>
 
           <Card>
-            <CardHeader icon={<Layers />} title="Organización y estado" subtitle="Visibilidad y estado del producto en el marketplace." />
+            <CardHeader icon={<Layers />} title={t('Organización y estado')} subtitle={t('Visibilidad y estado del producto en el marketplace.')} />
             <div className="space-y-3 p-5 text-sm">
-              <div className="flex items-center justify-between"><span>Estado actual</span>{product ? <StatusBadge status={product.status} /> : <StatusBadge status="DRAFT" />}</div>
-              <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Globe className="size-4 text-muted" /> Visibilidad</span><b>Pública al aprobarse</b></div>
-              <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted">“Publicar” envía el producto a moderación. Una vez aprobado aparecerá en el catálogo. Los cambios de precio y stock se aplican de inmediato.</p>
-              {variants[0]?.price && <p className="text-xs text-muted">Precio desde: <b className="text-ink">{money(Math.min(...variants.filter((v) => v.active && v.price).map((v) => Number(v.price))))}</b></p>}
+              <div className="flex items-center justify-between"><span>{t('Estado actual')}</span>{product ? <StatusBadge status={product.status} /> : <StatusBadge status="DRAFT" />}</div>
+              <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Globe className="size-4 text-muted" /> {t('Visibilidad')}</span><b>{t('Pública al aprobarse')}</b></div>
+              <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted">{t('“Publicar” envía el producto a moderación. Una vez aprobado aparecerá en el catálogo. Los cambios de precio y stock se aplican de inmediato.')}</p>
+              {variants[0]?.price && <p className="text-xs text-muted">{t('Precio desde:')}{' '}<b className="text-ink">{money(Math.min(...variants.filter((v) => v.active && v.price).map((v) => Number(v.price))))}</b></p>}
             </div>
           </Card>
 
           <Card>
-            <CardHeader icon={<Link2 />} title="SEO / Enlace" subtitle="Mejora el posicionamiento y el enlace del producto." />
+            <CardHeader icon={<Link2 />} title={t('SEO / Enlace')} subtitle={t('Mejora el posicionamiento y el enlace del producto.')} />
             <div className="grid gap-4 p-5">
-              <Field label="Slug / URL amigable"><Input value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder="zapatillas-running" /><p className="mt-1 text-xs text-muted">/producto/{f.slug || '…'}</p></Field>
-              <Field label="Meta título"><Input value={f.metaTitle} onChange={(e) => setF({ ...f, metaTitle: e.target.value })} maxLength={60} /><p className="mt-1 text-right text-xs text-muted">{f.metaTitle.length} / 60</p></Field>
-              <Field label="Meta descripción"><Textarea rows={2} value={f.metaDescription} onChange={(e) => setF({ ...f, metaDescription: e.target.value })} maxLength={160} /><p className="mt-1 text-right text-xs text-muted">{f.metaDescription.length} / 160</p></Field>
+              <Field label={t('Slug / URL amigable')}><Input value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder={t('zapatillas-running')} /><p className="mt-1 text-xs text-muted">{t('/producto/')}{f.slug || '…'}</p></Field>
+              <Field label={t('Meta título')}><Input value={f.metaTitle} onChange={(e) => setF({ ...f, metaTitle: e.target.value })} maxLength={60} /><p className="mt-1 text-right text-xs text-muted">{f.metaTitle.length} / 60</p></Field>
+              <Field label={t('Meta descripción')}><Textarea rows={2} value={f.metaDescription} onChange={(e) => setF({ ...f, metaDescription: e.target.value })} maxLength={160} /><p className="mt-1 text-right text-xs text-muted">{f.metaDescription.length} / 160</p></Field>
             </div>
           </Card>
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="secondary" onClick={() => save('SAVE_DRAFT')} loading={saving === 'draft'}><FileText /> Guardar borrador</Button>
-        <Button onClick={() => save('SUBMIT')} loading={saving === 'submit'}><Check /> Publicar</Button>
+        <Button variant="secondary" onClick={() => save('SAVE_DRAFT')} loading={saving === 'draft'}><FileText /> {t('Guardar borrador')}</Button>
+        <Button onClick={() => save('SUBMIT')} loading={saving === 'submit'}><Check /> {t('Publicar')}</Button>
       </div>
     </>
   );

@@ -49,7 +49,15 @@ export class CartService {
         await this.db.exec(`update public.carts set status = 'ACTIVE', version = version + 1 where id = $1`, [cart.id], c);
       return { id: cart.id, currency_code: cart.currency_code };
     }
-    if (cart) return cart;
+    if (cart && cart.currency_code === currency) return cart;
+    if (cart) {
+      // The marketplace currency changed: carts priced in the old currency are retired.
+      await this.db.exec(
+        `update public.carts set status = 'ABANDONED', abandoned_at = now(), version = version + 1 where id = $1 and status = 'ACTIVE'`,
+        [cart.id],
+        c,
+      );
+    }
     return (await this.db.one(
       `insert into public.carts (customer_id, currency_code, status) values ($1, $2, 'ACTIVE') returning id, currency_code`,
       [userId, currency],
@@ -64,8 +72,9 @@ export class CartService {
       [userId],
       client,
     );
-    const currency = cart?.currency_code ?? (await this.settings.currency());
-    if (!cart) return emptyCart(currency);
+    const marketplaceCurrency = await this.settings.currency();
+    const currency = cart?.currency_code ?? marketplaceCurrency;
+    if (!cart || (cart.status === 'ACTIVE' && cart.currency_code !== marketplaceCurrency)) return emptyCart(marketplaceCurrency);
     const rows = await this.db.many(
       `select ci.id, ci.quantity::int as quantity, ci.variant_id, ci.product_id, ci.seller_id,
               p.title, p.slug, p.status as product_status, v.sku, v.title as variant_title, v.status as variant_status,

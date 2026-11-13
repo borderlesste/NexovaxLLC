@@ -5,6 +5,7 @@ import { get } from '@/lib/api';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { ErrorBox, PageLoader } from '@/components/ui/misc';
 import { OrderDetailView } from '@/components/orders/order-detail';
+import { t } from '@/lib/i18n';
 
 export default function SellerOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -14,7 +15,7 @@ export default function SellerOrderPage({ params }: { params: Promise<{ id: stri
   if (q.isError) return <ErrorBox message="No encontramos este pedido." />;
   return (
     <>
-      <PageHeader crumbs={[{ label: 'Pedidos', href: '/vendedor/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description="Prepara el pedido, registra el envío y actualiza el seguimiento." />
+      <PageHeader crumbs={[{ label: t('Pedidos'), href: '/vendedor/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description={t('Prepara el pedido, registra el envío y actualiza el seguimiento.')} />
       <OrderDetailView order={q.data} role="seller" onChanged={() => { q.refetch(); qc.invalidateQueries({ queryKey: ['seller-order-counts'] }); }} />
     </>
   );

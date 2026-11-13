@@ -19,6 +19,7 @@ import { ProductCard, ProductImage, Stars } from '@/components/shop/product-card
 import { useAddToCart, useRequireAuth, useToggleFavorite } from '@/components/shop/hooks';
 import { post, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
+import { t, getIntlLocale } from '@/lib/i18n';
 
 export function ProductDetail({ initial }: { initial: any }) {
   const router = useRouter();
@@ -55,7 +56,7 @@ export function ProductDetail({ initial }: { initial: any }) {
     p.variants.some((v: any) => v.optionValues?.[optionId] === valueId && v.stock > 0 && p.options.every((o: any) => o.id === optionId || !selected[o.id] || v.optionValues?.[o.id] === selected[o.id]));
 
   const addToCart = async (buyNow = false) => {
-    if (!variant) return toast.error('Selecciona una combinación disponible.');
+    if (!variant) return toast.error(t('Selecciona una combinación disponible.'));
     const r = await cart.add(variant.id, qty);
     if (r && buyNow) router.push('/checkout');
   };
@@ -65,7 +66,7 @@ export function ProductDetail({ initial }: { initial: any }) {
     setAsking(true);
     try {
       const r = await post('/conversations', { productId: p.id, message: question });
-      toast.success('Mensaje enviado al vendedor.');
+      toast.success(t('Mensaje enviado al vendedor.'));
       router.push(`/mensajes?c=${r.id}`);
     } catch (e) {
       toast.error(errorMessage(e));
@@ -93,11 +94,11 @@ export function ProductDetail({ initial }: { initial: any }) {
             <div className="relative flex-1">
               <div className="card relative overflow-hidden bg-brand-50/40">
                 <ProductImage src={images[img]?.url} alt={p.title} className="aspect-square w-full" />
-                <button onClick={() => fav.toggle(p.id)} className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-white shadow" aria-label="Favorito">
+                <button onClick={() => fav.toggle(p.id)} className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-white shadow" aria-label={t('Favorito')}>
                   <Heart className={cn('size-5', p.isFavorite && 'fill-brand-600 text-brand-600')} />
                 </button>
                 {images[img]?.url && (
-                  <button onClick={() => setZoom(true)} className="absolute bottom-4 right-4 grid size-10 place-items-center rounded-full bg-white shadow" aria-label="Ampliar">
+                  <button onClick={() => setZoom(true)} className="absolute bottom-4 right-4 grid size-10 place-items-center rounded-full bg-white shadow" aria-label={t('Ampliar')}>
                     <Maximize2 className="size-4" />
                   </button>
                 )}
@@ -111,14 +112,14 @@ export function ProductDetail({ initial }: { initial: any }) {
           <div>
             <div className="flex flex-wrap gap-2">
               {p.brand && <Badge tone="violet"><Store className="size-3" /> {p.brand.name}</Badge>}
-              <Badge tone="green"><Check className="size-3" /> Producto publicado</Badge>
+              <Badge tone="green"><Check className="size-3" /> {t('Producto publicado')}</Badge>
             </div>
             <h1 className="mt-3 text-3xl font-extrabold leading-tight">{p.title}</h1>
             {p.shortDescription && <p className="mt-2 text-muted">{p.shortDescription}</p>}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
               <Stars value={p.rating} count={p.reviewCount} size="md" />
               <span className="h-4 w-px bg-line" />
-              <span className="inline-flex items-center gap-1 text-muted"><ShoppingCart className="size-4" /> <b className="text-ink">{p.soldCount.toLocaleString('es-DO')}</b> ventas</span>
+              <span className="inline-flex items-center gap-1 text-muted"><ShoppingCart className="size-4" /> <b className="text-ink">{p.soldCount.toLocaleString(getIntlLocale())}</b> {t('ventas')}</span>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span className="text-4xl font-extrabold">{price ? money(price) : '—'}</span>
@@ -140,7 +141,7 @@ export function ProductDetail({ initial }: { initial: any }) {
               const swatch = o.displayType === 'SWATCH';
               return (
                 <div key={o.id} className="mt-5">
-                  <p className="mb-2 text-sm font-semibold">{o.name}: <span className="font-normal">{cur?.label ?? 'Selecciona'}</span></p>
+                  <p className="mb-2 text-sm font-semibold">{o.name}: <span className="font-normal">{cur?.label ?? t('Selecciona')}</span></p>
                   <div className="flex flex-wrap gap-2">
                     {o.values.map((v: any) => {
                       const avail = isAvailable(o.id, v.id);
@@ -160,21 +161,21 @@ export function ProductDetail({ initial }: { initial: any }) {
               );
             })}
             <div className="mt-5">
-              <p className="mb-2 text-sm font-semibold">Cantidad</p>
+              <p className="mb-2 text-sm font-semibold">{t('Cantidad')}</p>
               <div className="flex items-center gap-4">
                 <div className="inline-flex items-center rounded-lg border border-line bg-white">
-                  <button className="grid size-10 place-items-center" onClick={() => setQty((x) => Math.max(1, x - 1))} aria-label="Menos"><Minus className="size-4" /></button>
+                  <button className="grid size-10 place-items-center" onClick={() => setQty((x) => Math.max(1, x - 1))} aria-label={t('Menos')}><Minus className="size-4" /></button>
                   <span className="w-10 text-center font-semibold">{qty}</span>
-                  <button className="grid size-10 place-items-center" onClick={() => setQty((x) => Math.min(Math.max(stock, 1), x + 1))} aria-label="Más"><Plus className="size-4" /></button>
+                  <button className="grid size-10 place-items-center" onClick={() => setQty((x) => Math.min(Math.max(stock, 1), x + 1))} aria-label={t('Más')}><Plus className="size-4" /></button>
                 </div>
                 <span className={cn('text-sm', stock > 0 ? 'text-emerald-600' : 'text-red-600')}>
-                  {!variant ? 'Combinación no disponible' : stock > 0 ? (stock <= 5 ? `¡Solo quedan ${stock}!` : `${stock} disponibles`) : 'Agotado'}
+                  {!variant ? t('Combinación no disponible') : stock > 0 ? (stock <= 5 ? t('¡Solo quedan {a}!', { a: stock }) : `${stock} disponibles`) : t('Agotado')}
                 </span>
               </div>
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Button size="lg" onClick={() => addToCart(false)} loading={cart.isPending} disabled={!variant || stock <= 0}><ShoppingCart /> Agregar al carrito</Button>
-              <Button size="lg" variant="outline" onClick={() => addToCart(true)} disabled={!variant || stock <= 0}><Zap /> Comprar ahora</Button>
+              <Button size="lg" onClick={() => addToCart(false)} loading={cart.isPending} disabled={!variant || stock <= 0}><ShoppingCart /> {t('Agregar al carrito')}</Button>
+              <Button size="lg" variant="outline" onClick={() => addToCart(true)} disabled={!variant || stock <= 0}><Zap /> {t('Comprar ahora')}</Button>
             </div>
           </div>
         </div>
@@ -182,32 +183,32 @@ export function ProductDetail({ initial }: { initial: any }) {
         <div className="space-y-4">
           <div className="card p-5">
             <div className="flex items-center justify-between">
-              <p className="font-bold">Vendido por</p>
-              <Link href={`/tienda/${p.seller.slug}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">Ver tienda <ExternalLink className="size-3.5" /></Link>
+              <p className="font-bold">{t('Vendido por')}</p>
+              <Link href={`/tienda/${p.seller.slug}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">{t('Ver tienda')}{' '}<ExternalLink className="size-3.5" /></Link>
             </div>
             <div className="mt-3 flex items-center gap-3">
               <div className="grid size-14 place-items-center rounded-full bg-brand-50 text-brand-600"><Store className="size-7" /></div>
               <div>
                 <p className="flex items-center gap-1 text-lg font-bold">{p.seller.name} {p.seller.verified && <BadgeCheck className="size-5 fill-brand-600 text-white" />}</p>
-                <p className="text-sm text-muted">{p.seller.verified ? 'Vendedor verificado' : 'Vendedor'}</p>
+                <p className="text-sm text-muted">{p.seller.verified ? t('Vendedor verificado') : t('Vendedor')}</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-              <span className="inline-flex items-center gap-1"><Star className="size-4 fill-amber-400 text-amber-400" /> <b className="text-ink">{p.sellerStats.rating ? p.sellerStats.rating.toFixed(1) : '—'}</b> ({p.sellerStats.reviews.toLocaleString('es-DO')} valoraciones)</span>
-              <span className="inline-flex items-center gap-1"><Box className="size-4" /> <b className="text-ink">{p.sellerStats.products.toLocaleString('es-DO')}</b> productos</span>
+              <span className="inline-flex items-center gap-1"><Star className="size-4 fill-amber-400 text-amber-400" /> <b className="text-ink">{p.sellerStats.rating ? p.sellerStats.rating.toFixed(1) : '—'}</b> ({p.sellerStats.reviews.toLocaleString(getIntlLocale())} {t('valoraciones)')}</span>
+              <span className="inline-flex items-center gap-1"><Box className="size-4" /> <b className="text-ink">{p.sellerStats.products.toLocaleString(getIntlLocale())}</b> {t('productos')}</span>
             </div>
-            <Button variant="soft" className="mt-4 w-full" onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> Contactar vendedor</Button>
+            <Button variant="soft" className="mt-4 w-full" onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> {t('Contactar vendedor')}</Button>
           </div>
           <div className="card divide-y divide-line px-5">
             {[
-              [Truck, 'Envío a todo el país', 'Recíbelo entre 2 y 5 días hábiles.'],
-              [ShieldCheck, 'Compra segura', 'Tus datos están protegidos.'],
-              [RotateCcw, 'Devoluciones', 'Hasta 30 días según políticas de la tienda.'],
-              [CreditCard, 'Múltiples medios de pago', 'Tarjetas y transferencias bancarias.'],
-            ].map(([Icon, t, d]: any) => (
-              <div key={t} className="flex gap-3 py-4">
+              [Truck, t('Envíos nacionales e internacionales'), t('Tarifa y tiempo según tu dirección, calculados en el checkout.')],
+              [ShieldCheck, t('Compra segura'), t('Tus datos están protegidos.')],
+              [RotateCcw, t('Devoluciones'), t('Hasta 30 días según políticas de la tienda.')],
+              [CreditCard, t('Múltiples medios de pago'), t('Tarjetas y transferencias bancarias.')],
+            ].map(([Icon, lbl, d]: any) => (
+              <div key={lbl} className="flex gap-3 py-4">
                 <Icon className="size-6 shrink-0 text-brand-600" />
-                <div><p className="font-bold">{t}</p><p className="text-sm text-muted">{d}</p></div>
+                <div><p className="font-bold">{t(lbl)}</p><p className="text-sm text-muted">{d}</p></div>
               </div>
             ))}
           </div>
@@ -221,16 +222,16 @@ export function ProductDetail({ initial }: { initial: any }) {
             value={tab}
             onChange={setTab}
             options={[
-              { value: 'desc', label: <span className="flex items-center gap-2"><FileText className="size-4" /> Descripción</span> },
-              { value: 'specs', label: <span className="flex items-center gap-2"><List className="size-4" /> Especificaciones</span> },
-              { value: 'reviews', label: <span className="flex items-center gap-2"><Star className="size-4" /> Opiniones ({p.reviewCount})</span> },
-              { value: 'questions', label: <span className="flex items-center gap-2"><HelpCircle className="size-4" /> Preguntas</span> },
+              { value: 'desc', label: <span className="flex items-center gap-2"><FileText className="size-4" /> {t('Descripción')}</span> },
+              { value: 'specs', label: <span className="flex items-center gap-2"><List className="size-4" /> {t('Especificaciones')}</span> },
+              { value: 'reviews', label: <span className="flex items-center gap-2"><Star className="size-4" /> {t('Opiniones (')}{p.reviewCount})</span> },
+              { value: 'questions', label: <span className="flex items-center gap-2"><HelpCircle className="size-4" /> {t('Preguntas')}</span> },
             ]}
           />
           <div className="p-6">
             {tab === 'desc' && (
               <div>
-                <h2 className="text-xl font-bold">Descripción del producto</h2>
+                <h2 className="text-xl font-bold">{t('Descripción del producto')}</h2>
                 <p className="mt-3 whitespace-pre-line leading-relaxed text-ink/90">{p.description}</p>
               </div>
             )}
@@ -240,9 +241,9 @@ export function ProductDetail({ initial }: { initial: any }) {
                   {p.specifications.map((s: any) => (
                     <div key={s.code} className="flex justify-between gap-4 border-b border-line py-2.5 text-sm"><dt className="text-muted">{s.name}</dt><dd className="font-semibold">{s.value}</dd></div>
                   ))}
-                  {p.variants[0]?.sku && <div className="flex justify-between gap-4 border-b border-line py-2.5 text-sm"><dt className="text-muted">SKU</dt><dd className="font-semibold">{variant?.sku ?? p.variants[0].sku}</dd></div>}
+                  {p.variants[0]?.sku && <div className="flex justify-between gap-4 border-b border-line py-2.5 text-sm"><dt className="text-muted">{t('SKU')}</dt><dd className="font-semibold">{variant?.sku ?? p.variants[0].sku}</dd></div>}
                 </dl>
-              ) : <Empty title="Sin especificaciones" description="El vendedor no agregó especificaciones técnicas." />
+              ) : <Empty title={t('Sin especificaciones')} description={t('El vendedor no agregó especificaciones técnicas.')} />
             )}
             {tab === 'reviews' && (
               <div className="grid gap-6 md:grid-cols-[220px_1fr]">
@@ -265,38 +266,38 @@ export function ProductDetail({ initial }: { initial: any }) {
                       <div className="flex items-center justify-between"><Stars value={r.rating} /><span className="text-xs text-muted">{fmtDate(r.createdAt)}</span></div>
                       {r.title && <p className="mt-1 font-semibold">{r.title}</p>}
                       {r.body && <p className="mt-1 text-sm text-ink/90">{r.body}</p>}
-                      <p className="mt-1 text-xs text-muted">{r.author} · Compra verificada</p>
+                      <p className="mt-1 text-xs text-muted">{r.author} {t('· Compra verificada')}</p>
                     </div>
-                  )) : <Empty title="Aún no hay opiniones" description="Las opiniones provienen de compradores que recibieron el producto." />}
+                  )) : <Empty title={t('Aún no hay opiniones')} description={t('Las opiniones provienen de compradores que recibieron el producto.')} />}
                 </div>
               </div>
             )}
             {tab === 'questions' && (
               <div className="text-center">
-                <Empty icon={<HelpCircle />} title="¿Tienes una pregunta?" description="Escríbele directamente al vendedor; te responderá en tu bandeja de mensajes." action={<Button onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> Preguntar al vendedor</Button>} />
+                <Empty icon={<HelpCircle />} title={t('¿Tienes una pregunta?')} description={t('Escríbele directamente al vendedor; te responderá en tu bandeja de mensajes.')} action={<Button onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> {t('Preguntar al vendedor')}</Button>} />
               </div>
             )}
           </div>
         </div>
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Productos relacionados</h2>
-            <Link href={`/catalogo/categorias/${p.category.slug}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">Ver más <ArrowRight className="size-4" /></Link>
+            <h2 className="text-xl font-bold">{t('Productos relacionados')}</h2>
+            <Link href={`/catalogo/categorias/${p.category.slug}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">{t('Ver más')}{' '}<ArrowRight className="size-4" /></Link>
           </div>
           {p.related.length ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
               {p.related.slice(0, 4).map((r: any) => <ProductCard key={r.id} p={r} />)}
             </div>
-          ) : <Empty title="Sin productos relacionados" />}
+          ) : <Empty title={t('Sin productos relacionados')} />}
         </div>
       </div>
 
       <Dialog open={zoom} onOpenChange={setZoom} title={p.title} size="xl">
         <ProductImage src={images[img]?.url} alt={p.title} className="mx-auto max-h-[70vh] w-full" />
       </Dialog>
-      <Dialog open={askOpen} onOpenChange={setAskOpen} title="Preguntar al vendedor" description={`${p.seller.name} · ${p.title}`}
-        footer={<><Button variant="secondary" onClick={() => setAskOpen(false)}>Cancelar</Button><Button onClick={ask} loading={asking} disabled={question.trim().length < 3}>Enviar mensaje</Button></>}>
-        <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ej. ¿Tienen disponible la talla 42? ¿Cuánto tarda el envío a Santiago?" maxLength={1000} />
+      <Dialog open={askOpen} onOpenChange={setAskOpen} title={t('Preguntar al vendedor')} description={`${p.seller.name} · ${p.title}`}
+        footer={<><Button variant="secondary" onClick={() => setAskOpen(false)}>{t('Cancelar')}</Button><Button onClick={ask} loading={asking} disabled={question.trim().length < 3}>{t('Enviar mensaje')}</Button></>}>
+        <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('Ej. ¿Tienen disponible la talla 42? ¿Cuánto tarda el envío a mi ciudad?')} maxLength={1000} />
       </Dialog>
     </div>
   );

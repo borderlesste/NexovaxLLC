@@ -16,8 +16,9 @@ mkdirSync(OUT, { recursive: true });
 const problems = [];
 const browser = await chromium.launch();
 
-async function session(email) {
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-DO' });
+async function session(email, lang = 'es') {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: lang === 'en' ? 'en-US' : 'es-ES' });
+  await ctx.addCookies([{ name: 'nx_locale', value: lang, url: BASE }]);
   const page = await ctx.newPage();
   page.on('console', (m) => m.type() === 'error' && !/favicon|Failed to load resource/.test(m.text()) && problems.push(`[${email ?? 'public'}] console: ${m.text().slice(0, 200)} @ ${page.url()}`));
   page.on('pageerror', (e) => problems.push(`[${email ?? 'public'}] exception: ${e.message.slice(0, 200)} @ ${page.url()}`));
@@ -25,10 +26,11 @@ async function session(email) {
     if (r.url().includes('/api/') && r.status() >= 500) problems.push(`[${email ?? 'public'}] API ${r.status()} ${r.url().replace(BASE, '')}`);
   });
   if (email) {
+    const en = lang === 'en';
     await page.goto(`${BASE}/auth/iniciar-sesion`);
-    await page.getByPlaceholder('Ej. usuario@correo.com').fill(email);
-    await page.getByPlaceholder('Ingresa tu contraseña').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Iniciar sesión' }).last().click();
+    await page.getByPlaceholder(en ? 'E.g. user@email.com' : 'Ej. usuario@correo.com').fill(email);
+    await page.getByPlaceholder(en ? 'Enter your password' : 'Ingresa tu contraseña').fill(PASSWORD);
+    await page.getByRole('button', { name: en ? 'Sign in' : 'Iniciar sesión' }).last().click();
     await page.waitForURL((u) => !u.pathname.startsWith('/auth'), { timeout: 20000 });
   }
   return { ctx, page };
@@ -61,7 +63,7 @@ async function visit(page, path, name, waitFor) {
 
 // buyer
 {
-  const { ctx, page } = await session('juan.perez@rdmarketplace.do');
+  const { ctx, page } = await session('juan.perez@demo.nexovax.com');
   await visit(page, '/producto/bocina-portatil-splash', 'comprador-producto', 'Agregar al carrito');
   await page.getByRole('button', { name: 'Agregar al carrito' }).click();
   await page.waitForTimeout(2500);
@@ -83,7 +85,7 @@ async function visit(page, path, name, waitFor) {
 
 // seller
 {
-  const { ctx, page } = await session('deportiva@rdmarketplace.do');
+  const { ctx, page } = await session('deportiva@demo.nexovax.com');
   await visit(page, '/vendedor/dashboard', 'V01-dashboard-vendedor', 'Ventas de mi tienda');
   await visit(page, '/vendedor/productos', 'vendedor-productos', 'Productos');
   await page.locator('a[href*="/editar"]').first().click();
@@ -103,7 +105,7 @@ async function visit(page, path, name, waitFor) {
 
 // admin
 {
-  const { ctx, page } = await session('admin@rdmarketplace.do');
+  const { ctx, page } = await session('admin@demo.nexovax.com');
   await visit(page, '/admin/dashboard', 'A01-dashboard', 'Resumen de ventas');
   await visit(page, '/admin/productos', 'A02-productos', 'Productos registrados');
   await visit(page, '/admin/pedidos', 'A03-pedidos', 'Pedidos totales');
@@ -118,6 +120,43 @@ async function visit(page, path, name, waitFor) {
   await visit(page, '/admin/reportes', 'A09-reportes', 'Bandeja de reportes');
   await visit(page, '/admin/finanzas', 'A10-finanzas', 'Finanzas del marketplace');
   await visit(page, '/admin/usuarios', 'admin-usuarios', 'Usuarios');
+  await ctx.close();
+}
+
+// English pass (buyer with live-rate checkout + order tracking, seller and admin)
+{
+  const { ctx, page } = await session(null, 'en');
+  await visit(page, '/', 'EN-home', 'Browse by category');
+  await visit(page, '/producto/audifonos-bluetooth-max', 'EN-product', 'Add to cart');
+  await ctx.close();
+}
+{
+  const { ctx, page } = await session('maria.gomez@demo.nexovax.com', 'en');
+  await visit(page, '/producto/cargador-rapido-usb-c-65w', 'EN-buyer-product', 'Add to cart');
+  await page.getByRole('button', { name: 'Add to cart' }).first().click();
+  await page.waitForTimeout(2500);
+  await visit(page, '/checkout', 'EN-checkout', 'Live carrier rates');
+  await visit(page, '/cuenta/pedidos', 'EN-orders', 'My orders');
+  await page.locator('a[href^="/cuenta/pedidos/"]').first().click();
+  await page.getByText('Package route').first().waitFor({ timeout: 15000 }).catch(() => problems.push('EN order tracking did not render'));
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/EN-tracking.png`, fullPage: true });
+  await page.request.delete(`${BASE}/api/cart`).catch(() => undefined);
+  await ctx.close();
+}
+{
+  const { ctx, page } = await session('techstore@demo.nexovax.com', 'en');
+  await visit(page, '/vendedor/dashboard', 'EN-seller-dashboard', 'My store sales');
+  await visit(page, '/vendedor/configuracion', 'EN-seller-settings', 'Ship-from address');
+  await ctx.close();
+}
+{
+  const { ctx, page } = await session('admin@demo.nexovax.com', 'en');
+  await visit(page, '/admin/dashboard', 'EN-admin-dashboard', 'Sales overview');
+  await visit(page, '/admin/configuracion', 'EN-admin-settings', 'Marketplace information');
+  await page.getByRole('button', { name: 'Taxes' }).click();
+  await page.getByText('Taxes by destination country').first().waitFor({ timeout: 10000 }).catch(() => problems.push('EN tax tab did not render'));
+  await page.screenshot({ path: `${OUT}/EN-admin-taxes.png`, fullPage: true });
   await ctx.close();
 }
 

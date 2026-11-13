@@ -2,16 +2,18 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
-import { SettingsService, ShippingRate } from '../settings/settings.service';
+import { SettingsService } from '../settings/settings.service';
+import { TaxService } from '../tax/tax.service';
+import { Parcel, ShippingService } from '../shipping/shipping.service';
 import { CartService } from '../cart/cart.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
 import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money';
 import { config } from '../config';
 import { postSaleAllocation } from './sale-ledger';
+import { orderRef, paymentRef } from '../common/refs';
 import { MailService } from '../mail/mail.service';
 
-const ENGINE = 'rd-checkout-1.0';
-const SHIPPING_PROVIDER = 'RD_LOCAL';
+const ENGINE = 'nx-checkout-2.0';
 const PAYMENT_PROVIDER = 'RD_SANDBOX';
 const CHECKOUT_TTL_MIN = 60 * 72; // bank transfers may take up to 72 h to confirm
 
@@ -64,6 +66,8 @@ export class CheckoutService {
     private readonly settings: SettingsService,
     private readonly carts: CartService,
     private readonly mail: MailService,
+    private readonly tax: TaxService,
+    private readonly shipping: ShippingService,
   ) {}
 
   // ------------------------------------------------------------------ pricing
@@ -123,65 +127,92 @@ export class CheckoutService {
     return { amount: bounded, raw, base };
   }
 
-  private async activeRates(): Promise<ShippingRate[]> {
-    const rates = await this.settings.get('shipping.rates');
-    return Array.isArray(rates) ? rates : [];
+  /** Default (or chosen) shipping address of the buyer, or null. */
+  private async buyerAddress(userId: string, addressId?: string | null, c?: PoolClient) {
+    return this.db.one(
+      `select * from public.addresses where user_id = $1 and deleted_at is null and ($2::uuid is null or id = $2)
+        order by (id = $2) desc nulls last, is_default_shipping desc, created_at limit 1`,
+      [userId, addressId ?? null],
+      c,
+    );
+  }
+
+  /** Shipping options for every seller group of the current cart (also used to validate the order). */
+  private async groupOptions(cartId: string, groups: any[], address: any, currency: string) {
+    const dims = await this.db.many(
+      `select ci.seller_id, ci.variant_id, ci.quantity::int as qty, v.weight_value, v.weight_unit, v.length_value, v.width_value, v.height_value, v.dimension_unit
+         from public.cart_items ci join public.product_variants v on v.id = ci.variant_id
+        where ci.cart_id = $1 and ci.status = 'ACTIVE'`,
+      [cartId],
+    );
+    const out = new Map<string, Awaited<ReturnType<ShippingService['options']>> & { parcel: Parcel }>();
+    await Promise.all(
+      groups.map(async (g: any) => {
+        const purchasable = new Set(g.items.filter((i: any) => i.purchasable).map((i: any) => i.variantId));
+        const parcel = ShippingService.parcelFor(dims.filter((d: any) => d.seller_id === g.sellerId && purchasable.has(d.variant_id)));
+        const origin = await this.shipping.originFor(g.sellerId);
+        const res = await this.shipping.options(origin, address, parcel, currency);
+        out.set(g.sellerId, { ...res, parcel });
+      }),
+    );
+    return out;
   }
 
   /** Price preview from the current cart (no writes). Used by the checkout screen. */
-  async quote(userId: string, input: { shipping?: Record<string, string> }) {
+  async quote(userId: string, input: { addressId?: string; shipping?: Record<string, string> }) {
     const cart = await this.carts.getCart(userId);
     if (!cart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
-    const rates = await this.activeRates();
-    const taxRate = String(await this.settings.get('tax.itbis_rate'));
-    const lines = await this.db.many(
-      `select ci.variant_id, ci.seller_id, ci.product_id, p.category_id from public.cart_items ci
-         join public.products p on p.id = ci.product_id
-        where ci.cart_id = $1 and ci.status = 'ACTIVE'`,
-      [cart.id],
-    );
-    const meta = new Map(lines.map((l: any) => [l.variant_id, l]));
+    const address = await this.buyerAddress(userId, input.addressId);
+    const tax = await this.tax.forCountry(address?.country_code);
+    const optionsBySeller = await this.groupOptions(cart.id, cart.groups, address, cart.currency);
     const groups = [];
-    let totals = { subtotal: 0n, shipping: 0n, tax: 0n };
+    const totals = { subtotal: 0n, shipping: 0n, tax: 0n };
     for (const g of cart.groups) {
       const items = g.items.filter((i: any) => i.purchasable);
       let subtotal = 0n;
-      let tax = 0n;
+      let taxAmount = 0n;
       for (const i of items) {
         const net = toMinor(i.unitPrice) * BigInt(i.quantity);
         subtotal += net;
-        tax += applyRate(net, taxRate);
-        void meta;
+        taxAmount += applyRate(net, tax.rate);
       }
-      const code = input.shipping?.[g.sellerId] ?? rates[0]?.code;
-      const rate = rates.find((r) => r.code === code) ?? rates[0];
-      const shipping = rate ? toMinor(rate.amount) : 0n;
+      const opt = optionsBySeller.get(g.sellerId)!;
+      const chosen = opt.options.find((o) => o.code === input.shipping?.[g.sellerId]) ?? opt.options[0] ?? null;
+      const shipping = chosen ? toMinor(chosen.amount) : 0n;
       totals.subtotal += subtotal;
       totals.shipping += shipping;
-      totals.tax += tax;
+      totals.tax += taxAmount;
       groups.push({
         ...g,
         items,
-        rates,
-        selectedRate: rate?.code ?? null,
+        shippingOptions: opt.options.map((o) => ({
+          code: o.code, provider: o.provider, carrierName: o.carrierName, serviceName: o.serviceName, description: o.description,
+          amount: o.amount, estimatedDays: o.estimatedDays, attributes: o.attributes, carrierLogo: o.carrierLogo,
+        })),
+        shippingMessages: opt.messages,
+        liveRates: opt.liveRates,
+        selectedShipping: chosen?.code ?? null,
         subtotal: fromMinor(subtotal),
         shipping: fromMinor(shipping),
-        tax: fromMinor(tax),
-        total: fromMinor(subtotal + shipping + tax),
+        tax: fromMinor(taxAmount),
+        total: fromMinor(subtotal + shipping + taxAmount),
       });
     }
+    const bt = await this.settings.get('payments.bank_transfer');
     return {
       currency: cart.currency,
+      addressId: address?.id ?? null,
+      destinationCountry: address?.country_code ?? null,
       groups,
-      itbisRate: Number(taxRate),
+      tax: { name: tax.taxName, rate: Number(tax.rate), country: tax.countryCode },
       subtotal: fromMinor(totals.subtotal),
       shipping: fromMinor(totals.shipping),
-      tax: fromMinor(totals.tax),
+      taxTotal: fromMinor(totals.tax),
       total: fromMinor(totals.subtotal + totals.shipping + totals.tax),
       paymentMethods: [
         { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, sandbox: config.paymentEnvironment === 'TEST' },
         { code: 'PAYPAL', name: 'PayPal', available: false, reason: 'Disponible cuando se configure la cuenta PayPal del marketplace.' },
-        { code: 'BANK_TRANSFER', name: 'Transferencia bancaria', available: true },
+        { code: 'BANK_TRANSFER', name: 'Transferencia bancaria', available: !!bt?.enabled },
         { code: 'CASH_ON_DELIVERY', name: 'Pago contra entrega', available: false, reason: 'No disponible en esta versión.' },
       ],
     };
@@ -201,8 +232,20 @@ export class CheckoutService {
     if (prior) return this.resultFor(prior.id);
 
     if (input.paymentMethod === 'CARD') this.validateSandboxCard(input.card);
-    else if (input.paymentMethod !== 'BANK_TRANSFER')
+    else if (input.paymentMethod !== 'BANK_TRANSFER' || !(await this.settings.get('payments.bank_transfer'))?.enabled)
       throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
+
+    // Live shipping options are fetched before the transaction (external API calls).
+    const preCart = await this.carts.getCart(userId);
+    if (!preCart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
+    const preAddress = await this.buyerAddress(userId, input.addressId);
+    if (!preAddress || preAddress.id !== input.addressId) throw badRequest('CHECKOUT_SHIPPING_ADDRESS_REQUIRED', 'Selecciona una dirección de envío válida.');
+    const optionsBySeller = await this.groupOptions(preCart.id, preCart.groups, preAddress, preCart.currency);
+    for (const g of preCart.groups) {
+      const code = input.shipping?.[g.sellerId];
+      if (!code || !optionsBySeller.get(g.sellerId)!.options.some((o) => o.code === code))
+        throw conflict('SHIPPING_OPTION_UNAVAILABLE', 'Una opción de envío ya no está disponible. Revisa los métodos de envío.');
+    }
 
     const checkoutId = await this.db.tx(async (c) => {
       const corr = randomUUID();
@@ -226,9 +269,9 @@ export class CheckoutService {
       await this.db.exec(
         `insert into public.checkout_address_snapshots (checkout_session_id, source_address_id, address_type, recipient_name,
                  line1, line2, city, region, postal_code, country_code, phone, company_name, metadata)
-         values ($1,$2,'SHIPPING',$3,$4,$5,$6,$7,$8,$9,$10,$11, jsonb_build_object('city_id', $12::text, 'label', $13::text))`,
+         values ($1,$2,'SHIPPING',$3,$4,$5,$6,$7,$8,$9,$10,$11, jsonb_build_object('label', $12::text))`,
         [sessionId, address.id, address.recipient_name, address.line1, address.line2, address.city, address.region,
-         address.postal_code, address.country_code, address.phone, address.company_name, address.city_id, address.label],
+         address.postal_code, address.country_code, address.phone, address.company_name, address.label],
         c,
       );
 
@@ -273,7 +316,6 @@ export class CheckoutService {
       }
 
       // ---- fulfillment groups (seller + origin location)
-      const rates = await this.activeRates();
       const groupIds = new Map<string, string>();
       const groupItemQty = new Map<string, { groupKey: string; item: any; qty: number }>();
       for (const a of allocations) {
@@ -313,7 +355,7 @@ export class CheckoutService {
           [sessionId, groupId, sellerId, ENGINE],
           c,
         );
-        const pkg = this.packageFor(groupAllocs);
+        const pkg = ShippingService.parcelFor(groupAllocs.map((a) => ({ ...a.item, qty: a.qty })));
         const declared = groupAllocs.reduce((acc, a) => acc + toMinor(a.item.unit_price) * BigInt(a.qty), 0n);
         const pk = await this.db.one(
           `insert into public.checkout_packages (package_plan_id, package_sequence, seller_id, weight_value, weight_unit,
@@ -332,47 +374,55 @@ export class CheckoutService {
           );
         await this.db.exec(`select public.mark_checkout_package_plan_ready($1)`, [plan!.id], c);
 
-        const quoteId: string = (await this.db.one(
-          `select public.create_shipping_quote_request($1,$2,$3,$4,$5,null,$6::jsonb,$7) as id`,
-          [sessionId, groupId, plan!.id, SHIPPING_PROVIDER, `${input.idempotencyKey}:quote:${groupId}`,
-           JSON.stringify({ provider: SHIPPING_PROVIDER, destination_city: address.city, package: pkg }), corr],
-          c,
-        ))!.id;
-
-        const chosenCode = input.shipping?.[sellerId] ?? rates[0]?.code;
-        const chosen = rates.find((r) => r.code === chosenCode);
-        if (!chosen) throw badRequest('SHIPPING_RATE_INVALID', 'Selecciona un método de envío válido.');
+        // Shipping options were quoted for the whole seller cart; a seller with several origin
+        // locations is charged once (on its first group) and the rest ship under the same option.
+        const opt = optionsBySeller.get(sellerId)!;
+        const chosen = opt.options.find((o) => o.code === input.shipping![sellerId])!;
+        const firstGroupOfSeller = !shippingBySeller.has(sellerId);
+        const charge = firstGroupOfSeller ? toMinor(chosen.amount) : 0n;
+        const quoteIds = new Map<string, string>();
+        for (const provider of Array.from(new Set(opt.options.map((o) => o.provider)))) {
+          const qid: string = (await this.db.one(
+            `select public.create_shipping_quote_request($1,$2,$3,$4,$5,null,$6::jsonb,$7) as id`,
+            [sessionId, groupId, plan!.id, provider, `${input.idempotencyKey}:quote:${groupId}:${provider}`,
+             JSON.stringify({ provider, destination: { city: address.city, region: address.region, postal_code: address.postal_code, country: address.country_code }, package: pkg }), corr],
+            c,
+          ))!.id;
+          quoteIds.set(provider, qid);
+        }
         let chosenRateId: string | null = null;
-        for (const r of rates) {
+        for (const o of opt.options) {
           const ro = await this.db.one(
             `insert into public.shipping_rate_options (quote_request_id, fulfillment_group_id, seller_id, shipping_provider_code,
                      provider_rate_id, carrier_code, carrier_name, service_token, service_name, provider_amount,
                      provider_currency_code, checkout_currency_amount, checkout_currency_code, estimated_days, duration_terms,
-                     expires_at)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$10,$11,$12,$13, now() + interval '3 days') returning id`,
-            [quoteId, groupId, sellerId, SHIPPING_PROVIDER, `${SHIPPING_PROVIDER}:${r.code}:${groupId}`,
-             r.code === 'PICKUP' ? 'PICKUP' : 'RD_EXPRESS', r.code === 'PICKUP' ? 'Retiro en tienda' : 'RD Express',
-             r.code, r.name, fromMinor(toMinor(r.amount)), currency, r.estimated_days, r.description],
+                     attributes, expires_at)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb, now() + interval '3 days') returning id`,
+            [quoteIds.get(o.provider), groupId, sellerId, o.provider, o.providerRateId ?? `${o.provider}:${o.code}:${groupId}`,
+             o.carrierCode, o.carrierName, o.serviceToken, o.serviceName, o.providerAmount ?? o.amount, o.providerCurrency ?? currency,
+             o.amount, currency, o.estimatedDays, o.description || null,
+             JSON.stringify({ option_code: o.code, provider_shipment_id: o.providerShipmentId, tags: o.attributes, carrier_logo: o.carrierLogo })],
             c,
           );
-          if (r.code === chosen.code) chosenRateId = ro!.id;
+          if (o.code === chosen.code) chosenRateId = ro!.id;
         }
-        await this.db.exec(
-          `update public.shipping_quote_requests set status = 'READY', completed_at = now(), expires_at = now() + interval '3 days' where id = $1`,
-          [quoteId],
-          c,
-        );
+        for (const qid of quoteIds.values())
+          await this.db.exec(
+            `update public.shipping_quote_requests set status = 'READY', completed_at = now(), expires_at = now() + interval '3 days' where id = $1`,
+            [qid],
+            c,
+          );
         await this.db.exec(
           `select public.select_checkout_shipping_rate($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`,
-          [sessionId, groupId, chosenRateId, fromMinor(toMinor(chosen.amount)), `${input.idempotencyKey}:ship:${groupId}`, userId,
-           JSON.stringify({ rate_code: chosen.code, source: 'shipping.rates setting' }), corr],
+          [sessionId, groupId, chosenRateId, fromMinor(charge), `${input.idempotencyKey}:ship:${groupId}`, userId,
+           JSON.stringify({ option_code: chosen.code, provider: chosen.provider, provider_rate_id: chosen.providerRateId, charged_on_first_group: firstGroupOfSeller }), corr],
           c,
         );
-        shippingBySeller.set(sellerId, (shippingBySeller.get(sellerId) ?? 0n) + toMinor(chosen.amount));
+        shippingBySeller.set(sellerId, (shippingBySeller.get(sellerId) ?? 0n) + charge);
       }
 
       // ---- authoritative financial calculation
-      await this.calculate(c, sessionId, currency, items, shippingBySeller, corr);
+      await this.calculate(c, sessionId, currency, items, shippingBySeller, corr, address.country_code);
 
       // ---- inventory reservations
       for (const a of allocations) {
@@ -436,8 +486,10 @@ export class CheckoutService {
   }
 
   /** Writes calculation run + immutable snapshots + commission evidence, then finalizes. */
-  private async calculate(c: PoolClient, sessionId: string, currency: string, items: any[], shippingBySeller: Map<string, Minor>, corr: string) {
-    const taxRate = String(await this.settings.get('tax.itbis_rate', c));
+  private async calculate(c: PoolClient, sessionId: string, currency: string, items: any[], shippingBySeller: Map<string, Minor>, corr: string, destinationCountry: string) {
+    const taxInfo = await this.tax.forCountry(destinationCountry, c);
+    const taxRate = taxInfo.rate;
+    const taxEvidence = { code: taxInfo.taxName, rate: taxRate, country: destinationCountry, source: 'marketplace_tax_rates' };
     const dec = await this.db.one(`select decimal_places from public.currencies where code = $1`, [currency], c);
     const rev = await this.db.one(`select coalesce(max(revision),0)+1 as r from public.checkout_calculation_runs where checkout_session_id = $1`, [sessionId], c);
     const run = await this.db.one(
@@ -469,7 +521,7 @@ export class CheckoutService {
          values ($1,$2,$3,$4,$5,$6,$7,0,$8,$8,$9,$10,0,0,$11,$12,$13::jsonb)`,
         [runId, sessionId, l.key, l.sellerId, l.quantity, fromMinor(l.unit), fromMinor(l.gross), fromMinor(l.net), fromMinor(l.tax),
          fromMinor(l.commission), fromMinor(l.entitlement), currency,
-         JSON.stringify({ engine: ENGINE, tax: { code: 'ITBIS', rate: taxRate, base: fromMinor(l.net) }, commission_rule_version_id: l.rule?.versionId ?? null })],
+         JSON.stringify({ engine: ENGINE, tax: { ...taxEvidence, base: fromMinor(l.net) }, commission_rule_version_id: l.rule?.versionId ?? null })],
         c,
       );
       if (l.rule) {
@@ -530,7 +582,7 @@ export class CheckoutService {
                  customer_total, currency_code, calculation_breakdown)
          values ($1,$2,$3,$4,0,$5,$6,$7,0,$8,0,0,$9,$10,$11,$12::jsonb)`,
         [runId, sessionId, sellerId, fromMinor(gross), fromMinor(net), fromMinor(ship), fromMinor(tax), fromMinor(com), fromMinor(ent),
-         fromMinor(total), currency, JSON.stringify({ engine: ENGINE, shipping_provider: SHIPPING_PROVIDER })],
+         fromMinor(total), currency, JSON.stringify({ engine: ENGINE, tax: taxEvidence })],
         c,
       );
       G.gross += gross; G.net += net; G.ship += ship; G.tax += tax; G.com += com; G.ent += ent; G.total += total;
@@ -541,24 +593,10 @@ export class CheckoutService {
                referral_commission_total, processor_fee_estimate, seller_entitlement_estimate_total, currency_code, calculation_breakdown)
        values ($1,$2,$3,0,$4,$5,$6,0,$7,$8,0,0,$9,$10,$11::jsonb)`,
       [runId, sessionId, fromMinor(G.gross), fromMinor(G.net), fromMinor(G.ship), fromMinor(G.tax), fromMinor(G.total), fromMinor(G.com),
-       fromMinor(G.ent), currency, JSON.stringify({ engine: ENGINE, tax: { code: 'ITBIS', rate: taxRate } })],
+       fromMinor(G.ent), currency, JSON.stringify({ engine: ENGINE, tax: taxEvidence })],
       c,
     );
     await this.db.exec(`select public.finalize_checkout_calculation_run($1)`, [runId], c);
-  }
-
-  private packageFor(allocs: { item: any; qty: number }[]) {
-    let weight = 0;
-    let length = 0, width = 0, height = 0;
-    for (const a of allocs) {
-      const w = a.item.weight_value ? Number(a.item.weight_value) * (a.item.weight_unit === 'g' ? 0.001 : a.item.weight_unit === 'lb' ? 0.4536 : a.item.weight_unit === 'oz' ? 0.02835 : 1) : 0.5;
-      weight += w * a.qty;
-      const f = a.item.dimension_unit === 'mm' ? 0.1 : a.item.dimension_unit === 'm' ? 100 : a.item.dimension_unit === 'in' ? 2.54 : 1;
-      length = Math.max(length, a.item.length_value ? Number(a.item.length_value) * f : 30);
-      width = Math.max(width, a.item.width_value ? Number(a.item.width_value) * f : 20);
-      height += (a.item.height_value ? Number(a.item.height_value) * f : 10) * a.qty;
-    }
-    return { weightKg: Math.max(weight, 0.1).toFixed(3), length: length.toFixed(1), width: width.toFixed(1), height: Math.min(Math.max(height, 1), 200).toFixed(1) };
   }
 
   private validateSandboxCard(card?: PlaceOrderInput['card']) {
@@ -586,6 +624,7 @@ export class CheckoutService {
       [checkoutId],
     );
     if (!r) throw notFound('Compra');
+    const bt = r.payment_status === 'REQUIRES_ACTION' ? await this.settings.get('payments.bank_transfer') : null;
     return {
       checkoutId: r.id,
       status: r.status,
@@ -594,18 +633,18 @@ export class CheckoutService {
       amount: r.amount,
       currency: r.currency_code,
       orderId: r.order_id,
-      orderNumber: r.order_number ? `RD-${r.order_number}` : null,
-      bankTransfer:
-        r.payment_status === 'REQUIRES_ACTION'
-          ? {
-              reference: `RD-PAY-${r.payment_number}`,
-              bank: 'Banco de Reservas (Banreservas)',
-              accountName: 'RD Marketplace SRL',
-              accountNumber: '960-123456-7',
-              accountType: 'Cuenta corriente',
-              instructions: 'Transfiere el monto exacto e incluye la referencia. Tu pedido se confirmará cuando validemos el pago (máx. 72 h).',
-            }
-          : null,
+      orderNumber: r.order_number ? orderRef(r.order_number) : null,
+      bankTransfer: bt
+        ? {
+            reference: paymentRef(r.payment_number),
+            bank: bt.bank_name,
+            accountName: bt.account_holder,
+            accountNumber: bt.account_number,
+            routingOrSwift: bt.routing_or_swift ?? null,
+            iban: bt.iban ?? null,
+            instructions: bt.instructions,
+          }
+        : null,
     };
   }
 }

@@ -1,4 +1,5 @@
 'use client';
+import { t, getLocale, switchLocale } from '@/lib/i18n';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
@@ -13,6 +14,7 @@ export interface Me {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  locale?: 'es' | 'en';
   avatarUrl?: string | null;
   memberSince: string;
   roles: Role[];
@@ -63,12 +65,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const me = session ? meQ.data : undefined;
   const seller = me?.sellers[0];
   useEffect(() => setSellerContext(seller?.id ?? null), [seller?.id]);
+  // Apply the account's saved language once per browser (an explicit choice is kept in the cookie).
+  useEffect(() => {
+    const saved = (me as any)?.locale;
+    if (saved && saved !== getLocale() && !document.cookie.split('; ').some((c) => c.startsWith('nx_locale='))) switchLocale(saved);
+  }, [me]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) {
-      if (/invalid login/i.test(error.message)) throw new Error('Correo o contraseña incorrectos.');
-      if (/email not confirmed/i.test(error.message)) throw new Error('Debes confirmar tu correo antes de iniciar sesión.');
+      if (/invalid login/i.test(error.message)) throw new Error(t('Correo o contraseña incorrectos.'));
+      if (/email not confirmed/i.test(error.message)) throw new Error(t('Debes confirmar tu correo antes de iniciar sesión.'));
       throw new Error(error.message);
     }
   }, []);

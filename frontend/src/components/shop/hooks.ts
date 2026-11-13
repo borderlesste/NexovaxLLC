@@ -1,4 +1,5 @@
 'use client';
+import { t } from '@/lib/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -10,7 +11,7 @@ export function useRequireAuth() {
   const router = useRouter();
   return (next?: string) => {
     if (session) return true;
-    toast.info('Inicia sesión para continuar.');
+    toast.info(t('Inicia sesión para continuar.'));
     router.push(`/auth/iniciar-sesion?next=${encodeURIComponent(next ?? window.location.pathname + window.location.search)}`);
     return false;
   };
@@ -24,7 +25,7 @@ export function useAddToCart() {
     onSuccess: (cart) => {
       qc.setQueryData(['cart'], cart);
       qc.invalidateQueries({ queryKey: ['me'] });
-      toast.success('Producto agregado al carrito.');
+      toast.success(t('Producto agregado al carrito.'));
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -45,7 +46,7 @@ export function useToggleFavorite() {
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['me'] });
       qc.invalidateQueries({ queryKey: ['favorites'] });
-      toast.success(r.favorite ? 'Agregado a favoritos.' : 'Eliminado de favoritos.');
+      toast.success(r.favorite ? 'Agregado a favoritos.' : t('Eliminado de favoritos.'));
     },
     onError: (e) => toast.error(errorMessage(e)),
   });

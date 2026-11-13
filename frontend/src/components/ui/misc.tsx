@@ -5,6 +5,10 @@ import * as SwitchPrimitive from '@radix-ui/react-switch';
 import { ChevronLeft, ChevronRight, Inbox, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
+import { getIntlLocale, t } from '@/lib/i18n';
+
+const tx = (v: React.ReactNode) => (typeof v === 'string' ? t(v) : v);
+
 
 export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={cn('size-5 animate-spin text-brand-600', className)} />;
@@ -26,8 +30,8 @@ export function Empty({ icon, title, description, action }: { icon?: React.React
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
       <div className="mb-3 grid size-14 place-items-center rounded-2xl bg-brand-50 text-brand-500 [&_svg]:size-7">{icon ?? <Inbox />}</div>
-      <p className="text-base font-bold">{title}</p>
-      {description && <p className="mt-1 max-w-sm text-sm text-muted">{description}</p>}
+      <p className="text-base font-bold">{t(title)}</p>
+      {description && <p className="mt-1 max-w-sm text-sm text-muted">{t(description)}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -36,10 +40,10 @@ export function Empty({ icon, title, description, action }: { icon?: React.React
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-      {message}
+      {t(message)}
       {onRetry && (
         <button onClick={onRetry} className="ml-2 font-semibold underline">
-          Reintentar
+          {t('Reintentar')}
         </button>
       )}
     </div>
@@ -76,7 +80,7 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
             value === o.value ? 'border-brand-600 text-brand-700' : 'border-transparent text-muted hover:text-ink',
           )}
         >
-          {o.label}
+          {tx(o.label)}
           {o.count !== undefined && <span className={cn('rounded-full px-2 py-0.5 text-[11px]', value === o.value ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-muted')}>{o.count}</span>}
         </button>
       ))}
@@ -113,10 +117,10 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         >
           <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
             <div>
-              <DialogPrimitive.Title className="text-lg font-bold">{title}</DialogPrimitive.Title>
-              {description && <DialogPrimitive.Description className="mt-0.5 text-sm text-muted">{description}</DialogPrimitive.Description>}
+              <DialogPrimitive.Title className="text-lg font-bold">{tx(title)}</DialogPrimitive.Title>
+              {description && <DialogPrimitive.Description className="mt-0.5 text-sm text-muted">{tx(description)}</DialogPrimitive.Description>}
             </div>
-            <DialogPrimitive.Close className="rounded-lg p-1 text-muted hover:bg-surface" aria-label="Cerrar">
+            <DialogPrimitive.Close className="rounded-lg p-1 text-muted hover:bg-surface" aria-label={t('Cerrar')}>
               <X className="size-5" />
             </DialogPrimitive.Close>
           </div>
@@ -153,12 +157,12 @@ export function Pagination({ page, pageSize, total, onPage, label = 'resultados'
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-muted">
       <span>
-        Mostrando <b className="text-ink">{from}–{to}</b> de <b className="text-ink">{total.toLocaleString('es-DO')}</b> {label}
+        {t('Mostrando')} <b className="text-ink">{from}–{to}</b> {t('de')} <b className="text-ink">{total.toLocaleString(getIntlLocale())}</b> {t(label)}
       </span>
       {pages > 1 && (
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-            <ChevronLeft /> Anterior
+            <ChevronLeft /> {t('Anterior')}
           </Button>
           {nums.map((n, i) =>
             n === '…' ? (
@@ -170,7 +174,7 @@ export function Pagination({ page, pageSize, total, onPage, label = 'resultados'
             ),
           )}
           <Button variant="ghost" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
-            Siguiente <ChevronRight />
+            {t('Siguiente')} <ChevronRight />
           </Button>
         </div>
       )}
@@ -182,7 +186,7 @@ export function Checkbox({ checked, onChange, label, className }: { checked: boo
   return (
     <label className={cn('inline-flex cursor-pointer items-center gap-2 text-sm', className)}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 rounded border-line accent-brand-600" />
-      {label}
+      {tx(label)}
     </label>
   );
 }

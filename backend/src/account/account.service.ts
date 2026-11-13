@@ -6,6 +6,7 @@ import { RequestUser, invalidateUserCache } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { MailService } from '../mail/mail.service';
 import { config } from '../config';
+import { normalizeAddress, REAL_COUNTRY, resolveCityId } from '../common/geo';
 
 export interface AddressInput {
   label?: string;
@@ -13,7 +14,8 @@ export interface AddressInput {
   companyName?: string;
   line1: string;
   line2?: string;
-  cityId: number;
+  countryCode: string;
+  city: string;
   region?: string;
   postalCode?: string;
   phone?: string;
@@ -21,6 +23,8 @@ export interface AddressInput {
 }
 
 const clean = (v?: string | null) => (v && v.trim() ? v.trim() : null);
+export const LOCALES = ['es', 'en'] as const;
+export type Locale = (typeof LOCALES)[number];
 
 @Injectable()
 export class AccountService {
@@ -31,7 +35,7 @@ export class AccountService {
   ) {}
 
   /** Creates the Supabase identity; DB trigger provisions marketplace user + CUSTOMER role. */
-  async register(input: { fullName: string; email: string; password: string }) {
+  async register(input: { fullName: string; email: string; password: string; locale?: string }) {
     if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(input.password))
       throw badRequest('WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, con letras y números.');
     const user = await this.supa.createUser(input.email.trim().toLowerCase(), input.password, input.fullName.trim());
@@ -42,6 +46,8 @@ export class AccountService {
        on conflict (user_id) do update set first_name = excluded.first_name, last_name = excluded.last_name, display_name = excluded.display_name`,
       [user.id, first, rest.join(' ') || null, input.fullName.trim()],
     );
+    if (input.locale && (LOCALES as readonly string[]).includes(input.locale))
+      await this.db.exec(`update public.users set locale = $2 where id = $1`, [user.id, input.locale]);
     this.mail.fire(() => this.mail.welcome(user.id));
     return { id: user.id, email: user.email, confirmed: !!user.email_confirmed_at };
   }
@@ -66,7 +72,7 @@ export class AccountService {
 
   async me(user: RequestUser) {
     const p = await this.db.one(
-      `select u.id, u.email::text as email, u.status, u.created_at, u.email_verified_at,
+      `select u.id, u.email::text as email, u.status, u.created_at, u.email_verified_at, u.locale,
               up.first_name, up.last_name, up.display_name, up.phone, up.avatar_asset_id
          from public.users u left join public.user_profiles up on up.user_id = u.id where u.id = $1`,
       [user.id],
@@ -94,6 +100,7 @@ export class AccountService {
       lastName: p.last_name,
       displayName: p.display_name ?? ([p.first_name, p.last_name].filter(Boolean).join(' ') || p.email),
       phone: p.phone,
+      locale: (LOCALES as readonly string[]).includes(p.locale) ? p.locale : 'es',
       avatarUrl: p.avatar_asset_id ? mediaUrl(p.avatar_asset_id) : null,
       roles: user.roles,
       sellers: user.sellers,
@@ -115,6 +122,12 @@ export class AccountService {
     return this.me(user);
   }
 
+  async setLocale(user: RequestUser, locale: string) {
+    if (!(LOCALES as readonly string[]).includes(locale)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
+    await this.db.exec(`update public.users set locale = $2 where id = $1`, [user.id, locale]);
+    return { locale };
+  }
+
   async changePassword(user: RequestUser, password: string) {
     if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password))
       throw badRequest('WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, con letras y números.');
@@ -123,18 +136,13 @@ export class AccountService {
   }
 
   // ---------------------------------------------------------------- addresses
-  cities(q?: string) {
-    return this.db.many(
-      `select id::text as id, name, admin1_code from public.city_references
-        where country_code = 'DO' and ($1::text is null or name ilike '%' || $1 || '%')
-        order by population desc limit 60`,
-      [clean(q)],
-    );
+  countries() {
+    return this.db.many(`select alpha2 as code, alpha3, name from public.countries where is_active and ${REAL_COUNTRY} order by name`);
   }
 
   async addresses(userId: string) {
     const rows = await this.db.many(
-      `select id, label, recipient_name, company_name, line1, line2, city, city_id::text as city_id, region, postal_code,
+      `select id, label, recipient_name, company_name, line1, line2, city, region, postal_code,
               country_code, phone, is_default_shipping
          from public.addresses where user_id = $1 and deleted_at is null
         order by is_default_shipping desc, created_at`,
@@ -145,8 +153,8 @@ export class AccountService {
 
   async createAddress(userId: string, a: AddressInput) {
     return this.db.tx(async (c) => {
-      const city = await this.db.one(`select id, name from public.city_references where id = $1 and country_code = 'DO'`, [a.cityId], c);
-      if (!city) throw badRequest('CITY_SELECTION_REQUIRED', 'Selecciona una ciudad válida.');
+      const geo = await normalizeAddress(this.db, a, c);
+      const cityId = await resolveCityId(this.db, geo.countryCode, geo.city, geo.region, c);
       const hasAny = await this.db.one(`select 1 from public.addresses where user_id = $1 and deleted_at is null limit 1`, [userId], c);
       const makeDefault = a.isDefaultShipping || !hasAny;
       if (makeDefault)
@@ -154,9 +162,9 @@ export class AccountService {
       const row = await this.db.one(
         `insert into public.addresses (user_id, label, recipient_name, company_name, line1, line2, city, city_id, region,
                                        postal_code, country_code, phone, is_default_shipping)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DO',$11,$12) returning *, city_id::text as city_id`,
-        [userId, clean(a.label), a.recipientName.trim(), clean(a.companyName), a.line1.trim(), clean(a.line2), city.name, city.id,
-         clean(a.region), clean(a.postalCode), clean(a.phone), makeDefault],
+         values ($1,$2,$3,$4,$5,$6,$7,$13,$8,$9,$10,$11,$12) returning *`,
+        [userId, clean(a.label), a.recipientName.trim(), clean(a.companyName), a.line1.trim(), clean(a.line2), geo.city,
+         geo.region, geo.postalCode, geo.countryCode, clean(a.phone), makeDefault, cityId],
         c,
       );
       return mapAddress(row);
@@ -167,16 +175,16 @@ export class AccountService {
     return this.db.tx(async (c) => {
       const existing = await this.db.one(`select id from public.addresses where id = $1 and user_id = $2 and deleted_at is null`, [id, userId], c);
       if (!existing) throw notFound('Dirección');
-      const city = await this.db.one(`select id, name from public.city_references where id = $1 and country_code = 'DO'`, [a.cityId], c);
-      if (!city) throw badRequest('CITY_SELECTION_REQUIRED', 'Selecciona una ciudad válida.');
+      const geo = await normalizeAddress(this.db, a, c);
+      const cityId = await resolveCityId(this.db, geo.countryCode, geo.city, geo.region, c);
       if (a.isDefaultShipping)
         await this.db.exec(`update public.addresses set is_default_shipping = false where user_id = $1 and id <> $2`, [userId, id], c);
       const row = await this.db.one(
-        `update public.addresses set label=$3, recipient_name=$4, company_name=$5, line1=$6, line2=$7, city=$8, city_id=$9,
-                region=$10, postal_code=$11, phone=$12, is_default_shipping = coalesce($13, is_default_shipping)
-          where id = $1 and user_id = $2 returning *, city_id::text as city_id`,
-        [id, userId, clean(a.label), a.recipientName.trim(), clean(a.companyName), a.line1.trim(), clean(a.line2), city.name, city.id,
-         clean(a.region), clean(a.postalCode), clean(a.phone), a.isDefaultShipping ?? null],
+        `update public.addresses set label=$3, recipient_name=$4, company_name=$5, line1=$6, line2=$7, city=$8, city_id=$14,
+                region=$9, postal_code=$10, country_code=$11, phone=$12, is_default_shipping = coalesce($13, is_default_shipping)
+          where id = $1 and user_id = $2 returning *`,
+        [id, userId, clean(a.label), a.recipientName.trim(), clean(a.companyName), a.line1.trim(), clean(a.line2), geo.city,
+         geo.region, geo.postalCode, geo.countryCode, clean(a.phone), a.isDefaultShipping ?? null, cityId],
         c,
       );
       return mapAddress(row);
@@ -249,7 +257,6 @@ function mapAddress(r: any) {
     line1: r.line1,
     line2: r.line2,
     city: r.city,
-    cityId: r.city_id,
     region: r.region,
     postalCode: r.postal_code,
     countryCode: r.country_code,

@@ -1,6 +1,7 @@
 'use client';
 import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { icon?: React.ReactNode; suffix?: React.ReactNode }>(
   ({ className, icon, suffix, ...props }, ref) => (
@@ -62,7 +63,7 @@ export function Label({ children, required, hint, className }: { children: React
 export function Field({ label, required, hint, error, children, className }: { label?: React.ReactNode; required?: boolean; hint?: React.ReactNode; error?: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      {label && <Label required={required} hint={hint}>{label}</Label>}
+      {label && <Label required={required} hint={typeof hint === 'string' ? t(hint) : hint}>{typeof label === 'string' ? t(label) : label}</Label>}
       {children}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>

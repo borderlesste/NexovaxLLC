@@ -1,4 +1,6 @@
+'use client';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 
 export function Card({ className, children, ...p }: React.HTMLAttributes<HTMLDivElement>) {
   return (
@@ -8,14 +10,16 @@ export function Card({ className, children, ...p }: React.HTMLAttributes<HTMLDiv
   );
 }
 
+const tx = (v: React.ReactNode) => (typeof v === 'string' ? t(v) : v);
+
 export function CardHeader({ title, subtitle, icon, action, className }: { title: React.ReactNode; subtitle?: React.ReactNode; icon?: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (
     <div className={cn('flex items-start justify-between gap-3 border-b border-line px-5 py-4', className)}>
       <div className="flex items-start gap-3">
         {icon && <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 [&_svg]:size-5">{icon}</div>}
         <div>
-          <h3 className="text-base font-bold text-ink">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
+          <h3 className="text-base font-bold text-ink">{tx(title)}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-muted">{tx(subtitle)}</p>}
         </div>
       </div>
       {action}
@@ -28,7 +32,7 @@ export function StatCard({ label, value, icon, change, hint, tone = 'brand' }: {
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between">
-        <p className="text-sm font-medium text-muted">{label}</p>
+        <p className="text-sm font-medium text-muted">{t(label)}</p>
         {icon && <div className={cn('grid size-10 place-items-center rounded-xl [&_svg]:size-5', toneCls)}>{icon}</div>}
       </div>
       <p className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-[28px]">{value}</p>
@@ -40,7 +44,7 @@ export function StatCard({ label, value, icon, change, hint, tone = 'brand' }: {
               {change.toFixed(1)} %
             </span>
           )}
-          {hint}
+          {hint ? t(hint) : null}
         </p>
       )}
     </Card>

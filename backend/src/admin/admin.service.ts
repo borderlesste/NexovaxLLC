@@ -3,7 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { SettingsService, PlatformSettings } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
-import { SellerService } from '../seller/seller.service';
+import { OnboardingInput, SellerService } from '../seller/seller.service';
+import { TaxService } from '../tax/tax.service';
+import { normalizeCountry } from '../common/geo';
+import { ORDER_PREFIX } from '../common/refs';
+import { config } from '../config';
+
+export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'MXN', 'DOP', 'COP', 'CLP', 'PEN', 'ARS', 'BRL'];
 import { badRequest, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
 import { slugify } from '../common/slug';
@@ -22,33 +28,35 @@ export class AdminService {
     private readonly supa: SupabaseAdminService,
     private readonly sellers: SellerService,
     private readonly mail: MailService,
+    private readonly tax: TaxService,
   ) {}
 
   // ------------------------------------------------------------------ dashboard
   async dashboard(days = 30) {
     const period = `${days} days`;
+    const currency = await this.settings.currency();
     const [cur, prev, sellers, products, series, mix, attention] = await Promise.all([
       this.db.one(
         `select coalesce(sum(ofs.grand_total),0)::text as sales, count(*)::int as orders
            from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED'`,
-        [period],
+          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2`,
+        [period, currency],
       ),
       this.db.one(
         `select coalesce(sum(ofs.grand_total),0)::text as sales, count(*)::int as orders
            from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-          where o.placed_at >= now() - ($1::interval * 2) and o.placed_at < now() - $1::interval and o.lifecycle_status <> 'CANCELLED'`,
-        [period],
+          where o.placed_at >= now() - ($1::interval * 2) and o.placed_at < now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2`,
+        [period, currency],
       ),
       this.db.one(`select count(*) filter (where status = 'ACTIVE')::int as active, count(*)::int as total from public.sellers`),
       this.db.one(`select count(*) filter (where status = 'ACTIVE')::int as active, count(*) filter (where status <> 'ARCHIVED')::int as total from public.products`),
       this.db.many(
         `select d::date as day, coalesce(sum(ofs.grand_total),0)::text as sales, count(o.id)::int as orders
            from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
-           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED'
+           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2
            left join public.order_financial_snapshots ofs on ofs.order_id = o.id
           group by d order by d`,
-        [days],
+        [days, currency],
       ),
       this.db.many(`select public.order_display_status(id) as status, count(*)::int as count from public.orders group by 1`),
       this.db.one(
@@ -62,12 +70,13 @@ export class AdminService {
       ),
     ]);
     const recent = await this.db.many(
-      `select o.id, 'RD-' || o.public_number as number, coalesce(up.display_name, u.email::text) as customer, o.placed_at,
-              ofs.grand_total::text as total, public.order_display_status(o.id) as status
+      `select o.id, '${ORDER_PREFIX}-' || o.public_number as number, coalesce(up.display_name, u.email::text) as customer, o.placed_at,
+              ofs.grand_total::text as total, o.currency_code as currency, public.order_display_status(o.id) as status
          from public.orders o join public.users u on u.id = o.customer_id left join public.user_profiles up on up.user_id = u.id
          left join public.order_financial_snapshots ofs on ofs.order_id = o.id order by o.placed_at desc limit 6`,
     );
     return {
+      currency,
       kpis: {
         sales: cur!.sales,
         salesChange: pct(cur!.sales, prev!.sales),
@@ -260,7 +269,7 @@ export class AdminService {
 
   async sellerAction(admin: RequestUser, sellerId: string, action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE', reason?: string) {
     await this.db.tx(async (c) => {
-      const s = await this.db.one(`select status, owner_user_id from public.sellers where id = $1 for update`, [sellerId], c);
+      const s = await this.db.one(`select status, owner_user_id, suspended_at from public.sellers where id = $1 for update`, [sellerId], c);
       if (!s) throw notFound('Vendedor');
       let to: string;
       if (action === 'APPROVE' && ['PENDING_VERIFICATION', 'DRAFT', 'REJECTED'].includes(s.status)) to = 'ACTIVE';
@@ -299,6 +308,13 @@ export class AdminService {
           [sellerId],
           c,
         );
+      // Reactivation restores the listings the suspension paused (not the ones the seller paused earlier).
+      if (action === 'REACTIVATE' && s.suspended_at)
+        await this.db.exec(
+          `update public.products set status = 'ACTIVE', paused_at = null where seller_id = $1 and status = 'PAUSED' and paused_at >= $2`,
+          [sellerId, s.suspended_at],
+          c,
+        );
       invalidateUserCache(s.owner_user_id);
     });
     this.mail.fire(() => this.mail.sellerStatusChanged(sellerId, action, reason));
@@ -306,11 +322,11 @@ export class AdminService {
   }
 
   /** "Nuevo vendedor": creates the owner account (if needed) and the store, already approved. */
-  async createSeller(admin: RequestUser, input: { ownerName: string; ownerEmail: string; password?: string; storeName: string; legalName: string; entityType: any; taxId: string; address: any }) {
+  async createSeller(admin: RequestUser, input: OnboardingInput & { ownerName: string; ownerEmail: string; password?: string }) {
     let ownerId = await this.supa.findUserIdByEmail(input.ownerEmail.trim().toLowerCase());
     let tempPassword: string | undefined;
     if (!ownerId) {
-      tempPassword = input.password || `Rd${randomUUID().replace(/-/g, '').slice(0, 10)}9`;
+      tempPassword = input.password || `Nx${randomUUID().replace(/-/g, '').slice(0, 10)}9`;
       const u = await this.supa.createUser(input.ownerEmail.trim().toLowerCase(), tempPassword, input.ownerName);
       ownerId = u.id;
       await this.db.exec(`insert into public.user_profiles (user_id, display_name) values ($1,$2) on conflict (user_id) do nothing`, [ownerId, input.ownerName]);
@@ -392,6 +408,7 @@ export class AdminService {
 
   // ------------------------------------------------------------------ commissions & payouts
   async commissions(q: { from?: string; to?: string }) {
+    const currency = await this.settings.currency();
     const from = q.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const to = q.to ?? new Date().toISOString();
     const [rows, kpis, monthly, rule] = await Promise.all([
@@ -402,32 +419,35 @@ export class AdminService {
                 (select max(p.paid_at) from public.payouts p where p.seller_id = s.id and p.status = 'PAID') as last_paid_at,
                 (select p.status from public.payouts p where p.seller_id = s.id order by p.requested_at desc limit 1) as last_payout_status
            from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
-           left join public.seller_orders so on so.seller_id = s.id and so.lifecycle_status <> 'CANCELLED'
+           left join public.seller_orders so on so.seller_id = s.id and so.lifecycle_status <> 'CANCELLED' and so.currency_code = $3
                  and exists (select 1 from public.orders o where o.id = so.order_id and o.placed_at >= $1 and o.placed_at < $2)
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
-           left join public.seller_balance_projections bp on bp.seller_id = s.id and bp.currency_code = 'DOP'
+           left join public.seller_balance_projections bp on bp.seller_id = s.id and bp.currency_code = $3
           where s.status in ('ACTIVE','SUSPENDED')
           group by s.id, ssp.display_name, bp.available_amount, bp.pending_amount order by sum(sofs.product_net_amount) desc nulls last`,
-        [from, to],
+        [from, to, currency],
       ),
       this.db.one(
         `select (select coalesce(sum(ofs.platform_commission_total),0)::text from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-                  where o.placed_at >= date_trunc('month', now()) and o.lifecycle_status <> 'CANCELLED') as month_commission,
-                (select coalesce(sum(requested_amount),0)::text from public.payouts where status in ('REQUESTED','APPROVAL_REQUIRED','APPROVED','PROCESSING')) as payouts_pending,
-                (select coalesce(sum(requested_amount),0)::text from public.payouts where status = 'PAID') as payouts_paid,
-                (select count(*) from public.seller_balance_projections where available_amount > 0)::int as sellers_with_balance`,
+                  where o.placed_at >= date_trunc('month', now()) and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $1) as month_commission,
+                (select coalesce(sum(requested_amount),0)::text from public.payouts where status in ('REQUESTED','APPROVAL_REQUIRED','APPROVED','PROCESSING') and currency_code = $1) as payouts_pending,
+                (select coalesce(sum(requested_amount),0)::text from public.payouts where status = 'PAID' and currency_code = $1) as payouts_paid,
+                (select count(*) from public.seller_balance_projections where available_amount > 0 and currency_code = $1)::int as sellers_with_balance`,
+        [currency],
       ),
       this.db.many(
         `select to_char(m, 'YYYY-MM') as month, coalesce(sum(ofs.platform_commission_total),0)::text as commission
            from generate_series(date_trunc('month', now()) - interval '11 months', date_trunc('month', now()), interval '1 month') m
-           left join public.orders o on date_trunc('month', o.placed_at) = m and o.lifecycle_status <> 'CANCELLED'
+           left join public.orders o on date_trunc('month', o.placed_at) = m and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $1
            left join public.order_financial_snapshots ofs on ofs.order_id = o.id
           group by m order by m`,
+        [currency],
       ),
       this.currentCommission(),
     ]);
     const payouts = await this.payouts({});
     return {
+      currency,
       period: { from, to },
       kpis,
       commissionRate: rule?.rate ?? null,
@@ -445,7 +465,7 @@ export class AdminService {
       `select v.id, d.percentage_rate::text as rate, v.effective_from from public.business_rule_groups g
          join public.business_rule_versions v on v.rule_group_id = g.id and v.status = 'ACTIVE'
          join public.commission_rule_definitions d on d.rule_version_id = v.id
-        where g.code = 'RD-GLOBAL-COMMISSION' order by v.effective_from desc limit 1`,
+        where g.code = 'RD-GLOBAL-COMMISSION' order by v.effective_from desc limit 1`, // stable internal rule code
     );
     return r ? { versionId: r.id, rate: Number(r.rate), effectiveFrom: r.effective_from } : null;
   }
@@ -501,7 +521,7 @@ export class AdminService {
   // ------------------------------------------------------------------ pending bank transfers
   async pendingTransfers() {
     return this.db.many(
-      `select p.id, 'RD-PAY-' || p.public_number as reference, p.expected_amount::text as amount, p.currency_code as currency, p.created_at as "createdAt",
+      `select p.id, '${ORDER_PREFIX}-PAY-' || p.public_number as reference, p.expected_amount::text as amount, p.currency_code as currency, p.created_at as "createdAt",
               coalesce(up.display_name, u.email::text) as customer, u.email::text as email, cs.expires_at as "expiresAt"
          from public.payments p join public.checkout_sessions cs on cs.id = p.checkout_session_id
          join public.users u on u.id = p.customer_id left join public.user_profiles up on up.user_id = u.id
@@ -561,27 +581,29 @@ export class AdminService {
   // ------------------------------------------------------------------ finance overview
   async finance(days = 30) {
     const period = `${days} days`;
+    const currency = await this.settings.currency();
     const [k, series, sellers] = await Promise.all([
       this.db.one(
         `select coalesce(sum(ofs.grand_total),0)::text as gmv, coalesce(sum(ofs.platform_commission_total),0)::text as commission,
                 coalesce(sum(ofs.seller_entitlement_estimate_total),0)::text as seller_payable, coalesce(sum(ofs.tax_total),0)::text as tax,
                 coalesce(sum(ofs.shipping_total),0)::text as shipping, count(*)::int as orders
            from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED'`,
-        [period],
+          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2`,
+        [period, currency],
       ),
       this.db.many(
         `select d::date as day, coalesce(sum(ofs.platform_commission_total),0)::text as commission,
                 coalesce(sum(ofs.seller_entitlement_estimate_total),0)::text as sellers
            from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
-           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED'
+           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2
            left join public.order_financial_snapshots ofs on ofs.order_id = o.id group by d order by d`,
-        [days],
+        [days, currency],
       ),
       this.db.one(`select count(*) filter (where status = 'ACTIVE')::int as active from public.sellers`),
     ]);
-    const paid = await this.db.one(`select coalesce(sum(requested_amount),0)::text as paid from public.payouts where status = 'PAID' and paid_at >= now() - $1::interval`, [period]);
+    const paid = await this.db.one(`select coalesce(sum(requested_amount),0)::text as paid from public.payouts where status = 'PAID' and paid_at >= now() - $1::interval and currency_code = $2`, [period, currency]);
     return {
+      currency,
       kpis: { ...k, payoutsPaid: paid!.paid, activeSellers: sellers!.active, avgCommissionRate: Number(k!.gmv) > 0 ? Number(k!.commission) / Number(fromMinor(toMinor(k!.gmv) - toMinor(k!.tax) - toMinor(k!.shipping))) : null },
       series,
       payouts: (await this.payouts({})).slice(0, 8),
@@ -593,21 +615,25 @@ export class AdminService {
   async getSettings() {
     const [settings, commission, system] = await Promise.all([this.settings.all(), this.currentCommission(), this.systemStatus()]);
     const payout = await this.db.one(
-      `select ppd.minimum_payout_amount::text as minimum, ppd.approval_mode, ppd.hold_period_seconds::int as hold
+      `select ppd.minimum_payout_amount::text as minimum, ppd.approval_mode, ppd.hold_period_seconds::int as hold, ppd.currency_code as currency
          from public.business_rule_groups g join public.business_rule_versions v on v.rule_group_id = g.id and v.status = 'ACTIVE'
-         join public.payout_policy_definitions ppd on ppd.rule_version_id = v.id where g.code = 'RD-GLOBAL-PAYOUT-DOP' limit 1`,
+         join public.payout_policy_definitions ppd on ppd.rule_version_id = v.id
+        where g.rule_type_code = 'PAYOUT_POLICY' and ppd.currency_code = $1 order by v.effective_from desc limit 1`,
+      [settings['marketplace.currency']],
     );
+    const [taxRates, currencies] = await Promise.all([this.tax.list(), this.db.many(`select code, name, decimal_places from public.currencies where code = any($1) order by code`, [SUPPORTED_CURRENCIES])]);
     const roles = await this.db.many(
       `select r.code, r.name, r.description, (select count(*) from public.user_roles ur where ur.role_id = r.id and ur.revoked_at is null)::int as users,
               (select count(*) from public.role_permissions rp where rp.role_id = r.id and rp.revoked_at is null)::int as permissions
          from public.roles r where r.is_active order by r.code`,
     );
-    return { settings, commission, payoutPolicy: payout, roles, system };
+    return { settings, commission, payoutPolicy: payout, roles, system, taxRates, currencies };
   }
 
   async updateSettings(admin: RequestUser, patch: Partial<PlatformSettings> & { commissionRate?: number }) {
     const { commissionRate, ...rest } = patch;
-    if (rest['tax.itbis_rate'] != null && (rest['tax.itbis_rate'] < 0 || rest['tax.itbis_rate'] > 1)) throw badRequest('TAX_INVALID', 'Tasa de impuesto inválida.');
+    await this.validateSettings(rest);
+    if (rest['marketplace.currency']) await this.ensurePayoutPolicy(admin, rest['marketplace.currency']);
     if (Object.keys(rest).length) await this.settings.update(admin.id, rest);
     if (commissionRate != null) {
       if (commissionRate < 0 || commissionRate > 0.5) throw badRequest('COMMISSION_INVALID', 'La comisión debe estar entre 0 % y 50 %.');
@@ -633,6 +659,71 @@ export class AdminService {
     return this.getSettings();
   }
 
+  private async validateSettings(s: Partial<PlatformSettings>) {
+    const cur = s['marketplace.currency'];
+    if (cur != null && !SUPPORTED_CURRENCIES.includes(cur)) throw badRequest('CURRENCY_INVALID', 'Moneda no soportada.');
+    const loc = s['marketplace.locale'];
+    if (loc != null && !['es', 'en'].includes(loc)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
+    if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
+    const rates = s['shipping.rates'];
+    if (rates != null) {
+      if (!Array.isArray(rates) || rates.some((r) => !r?.code || !r?.name || !(Number(r.amount) >= 0)))
+        throw badRequest('SHIPPING_RATES_INVALID', 'Revisa las tarifas de envío.');
+    }
+    const bt = s['payments.bank_transfer'];
+    if (bt != null && bt.enabled && (!bt.bank_name?.trim() || !bt.account_holder?.trim() || !bt.account_number?.trim()))
+      throw badRequest('BANK_TRANSFER_INVALID', 'Completa banco, titular y número de cuenta para habilitar transferencias.');
+  }
+
+  /** Every marketplace currency needs an active payout policy; clones the current one when missing. */
+  private async ensurePayoutPolicy(admin: RequestUser, currency: string) {
+    const exists = await this.db.one(
+      `select 1 from public.business_rule_groups g join public.business_rule_versions v on v.rule_group_id = g.id and v.status = 'ACTIVE'
+         join public.payout_policy_definitions ppd on ppd.rule_version_id = v.id
+        where g.rule_type_code = 'PAYOUT_POLICY' and ppd.currency_code = $1`,
+      [currency],
+    );
+    if (exists) return;
+    await this.db.tx(async (c) => {
+      const code = `NX-GLOBAL-PAYOUT-${currency}`;
+      const g = await this.db.one(
+        `insert into public.business_rule_groups (rule_type_code, code, name, description, scope_type_code, priority, application_mode)
+         values ('PAYOUT_POLICY',$1,$2,'Libera fondos al entregar el pedido; retiros bajo demanda con aprobación manual.','GLOBAL',0,'EXCLUSIVE')
+         on conflict do nothing returning id`,
+        [code, `Política de retiros ${currency}`],
+        c,
+      );
+      const groupId = g?.id ?? (await this.db.one(`select id from public.business_rule_groups where code = $1`, [code], c))!.id;
+      const v = await this.db.one(
+        `select (public.create_business_rule_version($1,$2,'{}'::jsonb,$3,'APPLICATION','Nueva moneda del marketplace',null)).id as id`,
+        [groupId, admin.id, `Política ${currency}`],
+        c,
+      );
+      await this.db.exec(
+        `insert into public.payout_policy_definitions (rule_version_id, currency_code, release_trigger_code, hold_period_seconds, reserve_rate,
+                 reserve_hold_seconds, minimum_payout_amount, maximum_payout_amount, approval_mode, approval_threshold_amount, require_distinct_approver,
+                 schedule_mode, automatic_submission, require_seller_active, block_open_return, block_open_dispute, provider_fee_funding_source_code)
+         values ($1,$2,'DELIVERED',0,0,0,$3,null,'MANUAL',null,false,'ON_DEMAND',false,true,true,true,'PLATFORM')`,
+        [v!.id, currency, currency === 'USD' || currency === 'EUR' || currency === 'GBP' || currency === 'CAD' ? 25 : 500],
+        c,
+      );
+      await this.db.exec(`select public.publish_business_rule_version($1,$2,now(),'APPLICATION','Nueva moneda del marketplace',null)`, [v!.id, admin.id], c);
+    });
+  }
+
+  // ------------------------------------------------------------------ tax rates
+  taxRates() {
+    return this.tax.list();
+  }
+
+  saveTaxRate(admin: RequestUser, input: { countryCode: string; taxName: string; rate: number; isActive?: boolean; notes?: string }) {
+    return this.tax.upsert(admin.id, input);
+  }
+
+  deleteTaxRate(countryCode: string) {
+    return this.tax.remove(countryCode);
+  }
+
   async systemStatus() {
     const started = Date.now();
     let db = 'Operativo';
@@ -646,6 +737,8 @@ export class AdminService {
       { code: 'API', name: 'API', description: 'Servicios de integración y acceso.', status: db === 'Operativo' ? 'Operativo' : 'Degradado', latencyMs: Date.now() - started },
       { code: 'PAYMENTS', name: 'Pagos', description: 'Procesamiento de transacciones.', status: pay!.n > 0 ? 'Operativo' : 'Sin configurar' },
       { code: 'STORAGE', name: 'Almacenamiento', description: 'Archivos, imágenes y recursos.', status: this.supa.enabled ? 'Operativo' : 'Sin configurar' },
+      { code: 'SHIPPING', name: 'Envíos (Shippo)', description: 'Tarifas en vivo, etiquetas y rastreo.', status: config.shippoApiKey ? (config.shippoApiKey.startsWith('shippo_test_') ? 'Modo prueba' : 'Operativo') : 'Sin configurar' },
+      { code: 'EMAIL', name: 'Correo (Resend)', description: 'Notificaciones transaccionales.', status: config.resendApiKey ? 'Operativo' : 'Sin configurar' },
       { code: 'MODERATION', name: 'Moderación', description: 'Cola de revisión y aprobaciones.', status: 'Operativo' },
     ];
   }
