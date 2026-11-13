@@ -83,9 +83,9 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         <Store className="size-3.5 shrink-0" /> <span className="truncate">{p.seller.name}</span>
       </Link>
       <div className="mt-1.5"><Stars value={p.rating} count={p.reviewCount} /></div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-lg font-extrabold">{p.price ? money(p.price) : '—'}</span>
-        {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) && <span className="text-xs text-muted line-through">{money(p.compareAtPrice)}</span>}
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+        <span className="whitespace-nowrap text-lg font-extrabold">{p.price ? money(p.price) : '—'}</span>
+        {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) && <span className="whitespace-nowrap text-xs text-muted line-through">{money(p.compareAtPrice)}</span>}
       </div>
       {showAddToCart && (
         <Button size="sm" className="mt-3 w-full" onClick={quickAdd} loading={adding} disabled={out}>

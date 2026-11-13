@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "description": "RD Marketplace Multivendedor — MVP (Next.js + NestJS + Supabase)",
   "packageManager": "pnpm@9.15.4",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "pnpm -r --parallel --filter ./backend --filter ./frontend dev",
     "dev:api": "pnpm --filter @rd/backend dev",
@@ -16,5 +18,8 @@
     "env": "node scripts/write-env.mjs",
     "seed": "pnpm --filter @rd/backend seed",
     "e2e": "node scripts/e2e-smoke.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
   }
 }

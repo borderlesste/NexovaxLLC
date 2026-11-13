@@ -16,7 +16,7 @@ export function Logo({ subtitle = 'Multivendedor', href = '/', invert = false, c
     <Link href={href} className="flex items-center gap-2.5" aria-label="RD Marketplace - inicio">
       <LogoMark className={invert ? 'text-white' : undefined} />
       {!compact && (
-        <span className="leading-tight">
+        <span className="whitespace-nowrap leading-tight">
           <span className={cn('block text-lg font-extrabold tracking-tight', invert ? 'text-white' : 'text-ink')}>RD Marketplace</span>
           <span className={cn('block text-[13px] font-medium', invert ? 'text-brand-200' : 'text-muted')}>{subtitle}</span>
         </span>

@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Empty, PageLoader, Pills } from '@/components/ui/misc';
 import { AreaTrend, Donut } from '@/components/charts/charts';
 
-const MIX: Record<string, string> = { DELIVERED: 'Completados', COMPLETED: 'Completados', PROCESSING: 'En proceso', SHIPPED: 'En proceso', PREPARING: 'En proceso', PAID: 'Pendientes', PENDING_PAYMENT: 'Pendientes' };
+const MIX: Record<string, string> = { DELIVERED: 'Completados', COMPLETED: 'Completados', CLOSED: 'Completados', PROCESSING: 'En proceso', SHIPPED: 'Enviados', PARTIALLY_SHIPPED: 'Enviados', PARTIALLY_DELIVERED: 'Enviados', PREPARING: 'En proceso', PAID: 'En proceso', PENDING: 'Pendientes', PENDING_PAYMENT: 'Pendientes', CANCELLED: 'Cancelados', RETURNED: 'Devueltos', REFUNDED: 'Devueltos' };
 
 function download(name: string, rows: any[][]) {
   const csv = rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');

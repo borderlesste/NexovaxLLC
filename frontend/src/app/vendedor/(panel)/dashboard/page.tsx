@@ -46,7 +46,7 @@ export default function SellerDashboard() {
           <CardHeader title="Mis pedidos" subtitle="Resumen de pedidos de la tienda" />
           <div className="p-5">
             <Donut data={[...mixMap.entries()].map(([name, value]) => ({ name, value }))} total={totalOrders} label="pedidos" />
-            <p className="mt-5 flex items-center gap-2 border-t border-line pt-4 text-xs text-muted"><Truck className="size-4" /> Tienes <b className="text-ink">{d.kpis.pendingOrders} pedidos</b> que requieren preparación y seguimiento.</p>
+            <p className="mt-5 border-t border-line pt-4 text-xs text-muted"><Truck className="mr-1 inline size-4" /> Tienes <b className="text-ink">{d.kpis.pendingOrders} pedidos</b> que requieren preparación y seguimiento.</p>
           </div>
         </Card>
       </div>
@@ -58,7 +58,7 @@ export default function SellerDashboard() {
               {d.lowStock.map((i: any) => (
                 <div key={i.variantId} className="flex items-center gap-3 border-b border-line px-5 py-4 sm:odd:border-r">
                   <ProductImage src={i.imageUrl} alt={i.title} className="size-14 shrink-0 rounded-xl bg-surface" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{i.title}</p><p className="text-xs text-muted">Stock disponible: {i.available}</p></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{i.title}</p><p className="truncate text-xs text-muted">{i.variantTitle ? `${i.variantTitle} · ` : ''}Stock disponible: {i.available}</p></div>
                   <StatusBadge status={i.state} label={i.state === 'OK' ? 'Disponible' : i.state === 'LOW' ? 'Stock bajo' : 'Stock agotado'} />
                 </div>
               ))}

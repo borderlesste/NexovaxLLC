@@ -15,7 +15,12 @@ function Hero({ preview }: { preview: any[] }) {
       <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
         <div>
           <span className="inline-flex items-center gap-2 rounded-lg bg-brand-100 px-3 py-1.5 text-sm font-semibold text-brand-700">
-            El marketplace de RD <span aria-hidden>🇩🇴</span>
+            El marketplace de RD
+            <svg viewBox="0 0 30 20" className="h-3.5 w-5 rounded-[2px] shadow-sm" aria-label="Bandera de República Dominicana">
+              <rect width="30" height="20" fill="#fff" />
+              <rect width="13" height="8" fill="#002d62" /><rect x="17" width="13" height="8" fill="#ce1126" />
+              <rect y="12" width="13" height="8" fill="#ce1126" /><rect x="17" y="12" width="13" height="8" fill="#002d62" />
+            </svg>
           </span>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-brand-950 sm:text-5xl">
             Compra en tus tiendas favoritas y apoya a vendedores dominicanos

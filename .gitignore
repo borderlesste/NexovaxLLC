@@ -16,3 +16,4 @@ next-env.d.ts
 # Local design references (large binaries) and local agent settings
 interfaces/
 .claude/settings.local.json
+ui-shots/

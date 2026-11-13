@@ -35,6 +35,7 @@ Requisitos: Node 20+, pnpm 9.
 3. API: `pnpm --filter @rd/backend build && node backend/dist/main.js` (puerto 4000; Swagger en http://localhost:4000/api/docs).
 4. Web: `pnpm --filter @rd/frontend build && pnpm --filter @rd/frontend start` (puerto 3000; `/api/*` se redirige a la API).
 5. Datos de demostración + prueba de punta a punta: `node backend/scripts/seed.mjs` (idempotente).
+6. Verificación visual de las 40 pantallas (Playwright, web en :3000 y API en :4000): `node scripts/ui-check.mjs ui-shots` — inicia sesión por rol desde la UI real, captura cada pantalla y falla si hay errores de consola, excepciones o respuestas 5xx. Requiere `npx playwright install chromium` (en WSL sin sudo, exportar `LD_LIBRARY_PATH` con `libnss3`/`libnspr4`).
 
 ### Cuentas de demostración (contraseña `RdDemo2026!`)
 
