@@ -84,7 +84,7 @@ export class SettingsService {
         const row = await this.db.one<{ id: string }>(
           `insert into public.system_setting_values (setting_key, version_number, scope_type, value, checksum, created_by_user_id)
            values ($1, coalesce((select max(version_number) from public.system_setting_values where setting_key = $1), 0) + 1,
-                   'GLOBAL', $2::jsonb, extensions.digest($2::text, 'sha256'), $3)
+                   'GLOBAL', $2::jsonb, decode(repeat('00', 32), 'hex'), $3)
            returning id`,
           [key, JSON.stringify(value), actorUserId],
           c,

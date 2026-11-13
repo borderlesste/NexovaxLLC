@@ -66,7 +66,7 @@ export class SupabaseAdminService {
   }
 
   async findUserIdByEmail(email: string): Promise<string | null> {
-    const row = await this.db.one<{ id: string }>(`select id from public.users where email = $1::extensions.citext`, [email]);
+    const row = await this.db.one<{ id: string }>(`select id from public.users where lower(email::text) = lower($1)`, [email]);
     return row?.id ?? null;
   }
 

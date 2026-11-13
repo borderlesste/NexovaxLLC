@@ -95,6 +95,9 @@ importers:
       jest:
         specifier: ^30.5.2
         version: 30.5.2(@types/node@22.20.5)
+      lucide-static:
+        specifier: ^1.72.0
+        version: 1.72.0
       pino-pretty:
         specifier: ^13.2.0
         version: 13.2.0
@@ -3840,6 +3843,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  lucide-static@1.72.0:
+    resolution: {integrity: sha512-QhdZ60O7Zcs/e8gw40uMfEn055xZTHBZoNi0xb+/1R2dTd0v4FXS46VL6rKSwC+V92tLBiqsAbCcijy7Wy4j4w==}
 
   luxon@3.5.0:
     resolution: {integrity: sha512-rh+Zjr6DNfUYR3bPwJEnuwDdqMbxZW7LOQfUN4B54+Cl+0o5zaU9RJ6bcidfDtC1cWCZXQ+nvX8bf6bAji37QQ==}
@@ -9125,6 +9131,8 @@ snapshots:
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
+
+  lucide-static@1.72.0: {}
 
   luxon@3.5.0: {}
 
