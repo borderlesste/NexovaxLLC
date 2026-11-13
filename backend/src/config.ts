@@ -20,8 +20,8 @@ export const config = {
   port: Number(process.env.PORT ?? 4000),
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:3000').split(',').map((s) => s.trim()),
   databaseUrl: secret('DATABASE_URL', 'database_url'),
-  supabaseUrl: process.env.SUPABASE_URL ?? 'https://oncwajkjomplextntpye.supabase.co',
-  supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_Ul_2a_610N97ximhM-jjkg_NCAU5Ojd',
+  supabaseUrl: secret('SUPABASE_URL', 'supabase_url') ?? '',
+  supabasePublishableKey: secret('SUPABASE_PUBLISHABLE_KEY', 'supabase_publishable_key') ?? '',
   supabaseSecretKey: secret('SUPABASE_SECRET_KEY', 'supabase_secret_key'),
   /** AES-256-GCM key (base64, 32 bytes) for payout destination details. */
   dataEncryptionKey: secret('DATA_ENCRYPTION_KEY', 'data_encryption_key'),
@@ -75,5 +75,6 @@ export const config = {
 export function assertConfig() {
   const missing: string[] = [];
   if (!config.databaseUrl) missing.push('DATABASE_URL (.secrets/database_url)');
+  if (!config.supabaseUrl) missing.push('SUPABASE_URL (.secrets/supabase_url)');
   if (missing.length) throw new Error(`Missing configuration: ${missing.join(', ')}`);
 }

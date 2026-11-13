@@ -25,10 +25,11 @@ const root = resolve(here, '..', '..');
 const secret = (f, env) => process.env[env] || (existsSync(resolve(root, '.secrets', f)) ? readFileSync(resolve(root, '.secrets', f), 'utf8').trim() : undefined);
 
 const API = process.env.API_URL ?? 'http://localhost:4000/api';
-const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://oncwajkjomplextntpye.supabase.co';
-const PUBLISHABLE = process.env.SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_Ul_2a_610N97ximhM-jjkg_NCAU5Ojd';
+const SUPABASE_URL = secret('supabase_url', 'SUPABASE_URL');
+const PUBLISHABLE = secret('supabase_publishable_key', 'SUPABASE_PUBLISHABLE_KEY');
 const DATABASE_URL = secret('database_url', 'DATABASE_URL');
-const PASSWORD = process.env.SEED_PASSWORD ?? 'RdDemo2026!';
+const PASSWORD = secret('seed_password', 'SEED_PASSWORD');
+if (!PASSWORD) throw new Error('Define la contraseña de las cuentas demo en .secrets/seed_password o SEED_PASSWORD.');
 
 const db = new pg.Pool({ connectionString: DATABASE_URL.replace(/([?&])sslmode=[^&]*&?/, '$1').replace(/[?&]$/, ''), ssl: { rejectUnauthorized: false }, max: 2 });
 

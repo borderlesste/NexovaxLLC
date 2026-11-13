@@ -7,7 +7,7 @@ Monolito modular según `# Stack tecnológico recomendado par.md`:
 |---|---|
 | Frontend | Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · Radix UI (estilo shadcn) · Lucide · TanStack Query · React Hook Form/Zod · Recharts · Sonner |
 | Backend | NestJS 11 · REST + OpenAPI (`/api/docs`) · `pg` · `jose` (JWT de Supabase vía JWKS) · class-validator · throttler · schedule · nestjs-pino · sharp |
-| Datos e identidad | Supabase (PostgreSQL 17, Auth, Storage) — proyecto **BovedaNegra** |
+| Datos e identidad | Supabase (PostgreSQL 17, Auth, Storage) |
 | Workspace | pnpm workspaces (`frontend`, `backend`) |
 
 ## Estructura
@@ -27,7 +27,9 @@ interfaces/         Pantallas de referencia (no versionadas)
 Requisitos: Node 20+, pnpm 9.
 
 1. Secretos en `.secrets/` (uno por archivo, una línea):
-   - `database_url` — cadena de conexión del rol `rd_api_runtime` (pooler de Supabase).
+   - `seed_password` — contraseña de las cuentas de demostración que crea el seed (no se versiona).
+   - `supabase_url` y `supabase_publishable_key` — URL del proyecto Supabase y su clave pública (`sb_publishable_…`).
+   - `database_url` — cadena de conexión del rol de la API (pooler de Supabase).
    - `supabase_secret_key` — clave secreta `sb_secret_…` (solo backend).
    - `data_encryption_key` — 32 bytes en base64 (`openssl rand -base64 32`) para cifrar RNC/cédula y cuentas bancarias.
    - `stripe_secret_key` (`sk_test_…`/`sk_live_…`), `stripe_publishable_key` (`pk_…`) y `stripe_webhook_secret` (uno o varios `whsec_…`, uno por línea).
@@ -42,7 +44,7 @@ Requisitos: Node 20+, pnpm 9.
 5. Datos de demostración + prueba de punta a punta: `node backend/scripts/seed.mjs` (idempotente).
 6. Verificación visual de las pantallas en español y en inglés (Playwright, web en :3000 y API en :4000): `node scripts/ui-check.mjs ui-shots` — inicia sesión por rol desde la UI real, captura cada pantalla y falla si hay errores de consola, excepciones o respuestas 5xx. Requiere `npx playwright install chromium` (en WSL sin sudo, exportar `LD_LIBRARY_PATH` con `libnss3`/`libnspr4`).
 
-### Cuentas de demostración (contraseña `RdDemo2026!`)
+### Cuentas de demostración (contraseña en `.secrets/seed_password` o `SEED_PASSWORD`)
 
 | Rol | Correo |
 |---|---|

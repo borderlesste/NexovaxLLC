@@ -6,11 +6,12 @@
  * Usage: node scripts/ui-check.mjs [outDir]   (web on :3000, API on :4000)
  */
 import { chromium } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 
 const BASE = process.env.WEB_URL ?? 'http://localhost:3000';
 const OUT = process.argv[2] ?? 'ui-shots';
-const PASSWORD = process.env.SEED_PASSWORD ?? 'RdDemo2026!';
+const PASSWORD = process.env.SEED_PASSWORD ?? (existsSync('.secrets/seed_password') ? readFileSync('.secrets/seed_password', 'utf8').trim() : '');
+if (!PASSWORD) throw new Error('Define SEED_PASSWORD o .secrets/seed_password.');
 mkdirSync(OUT, { recursive: true });
 
 const problems = [];
