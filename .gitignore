@@ -1,0 +1,18 @@
+node_modules/
+.secrets/
+.env
+.env.*
+!.env.example
+dist/
+.next/
+coverage/
+*.log
+*:Zone.Identifier
+.DS_Store
+.turbo/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local design references (large binaries) and local agent settings
+interfaces/
+.claude/settings.local.json

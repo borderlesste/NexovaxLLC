@@ -1,0 +1,49 @@
+{
+  "name": "@rd/backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest --passWithNoTests",
+    "seed": "node dist/scripts/seed.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11",
+    "@nestjs/config": "^4",
+    "@nestjs/core": "^11",
+    "@nestjs/platform-express": "^11",
+    "@nestjs/schedule": "^5",
+    "@nestjs/swagger": "^11",
+    "@nestjs/throttler": "^6",
+    "@supabase/supabase-js": "^2.119.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "jose": "^6.2.17",
+    "multer": "^2.5.0",
+    "nestjs-pino": "^5.3.1",
+    "pg": "^8.23.1",
+    "pino-http": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11",
+    "@nestjs/schematics": "^11",
+    "@nestjs/testing": "^11",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^22",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.5.2",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.2",
+    "ts-jest": "^29.4.15",
+    "typescript": "~5.7"
+  }
+}

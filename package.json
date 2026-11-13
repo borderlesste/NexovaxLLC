@@ -1,0 +1,20 @@
+{
+  "name": "rd-marketplace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "RD Marketplace Multivendedor — MVP (Next.js + NestJS + Supabase)",
+  "packageManager": "pnpm@9.15.4",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./backend --filter ./frontend dev",
+    "dev:api": "pnpm --filter @rd/backend dev",
+    "dev:web": "pnpm --filter @rd/frontend dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "env": "node scripts/write-env.mjs",
+    "seed": "pnpm --filter @rd/backend seed",
+    "e2e": "node scripts/e2e-smoke.mjs"
+  }
+}
