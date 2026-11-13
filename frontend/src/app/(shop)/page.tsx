@@ -13,49 +13,47 @@ async function Hero({ preview }: { preview: any[] }) {
   const t = await getT();
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-white via-brand-50 to-brand-100">
-      <div className="absolute -right-24 -top-24 size-[520px] rounded-full bg-brand-200/50 blur-3xl" />
-      <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
+      <div className="absolute -right-24 -top-32 size-[420px] rounded-full bg-brand-200/50 blur-3xl" />
+      <div className="relative mx-auto grid max-w-[1400px] items-center gap-6 px-4 py-5 lg:grid-cols-[1.8fr_1fr] lg:px-8 lg:py-5">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-lg bg-accent-50 px-3 py-1.5 text-sm font-semibold text-accent-600">
-            <Globe2 className="size-4" /> {t('Tiendas de todo el mundo, un solo carrito')}
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2.5 py-1 text-xs font-semibold text-accent-600">
+            <Globe2 className="size-3.5" /> {t('Tiendas de todo el mundo, un solo carrito')}
           </span>
-          <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-brand-950 sm:text-5xl">
+          <h1 className="mt-2.5 text-xl font-extrabold leading-tight tracking-tight text-balance text-brand-950 sm:text-[26px]">
             {t('Compra a vendedores de todo el mundo con envíos a tu puerta')}
           </h1>
-          <p className="mt-4 max-w-lg text-lg text-muted">{t('Miles de productos, múltiples tiendas y una sola plataforma segura, con tarifas de envío en tiempo real e impuestos claros.')}</p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button size="lg" asChild>
+          <p className="mt-1 max-w-3xl text-sm text-muted">{t('Miles de productos, múltiples tiendas y una sola plataforma segura, con tarifas de envío en tiempo real e impuestos claros.')}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2.5">
+            <Button asChild>
               <Link href="/catalogo"><ShoppingCart /> {t('Explorar productos')} <ArrowRight /></Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
+            <Button variant="outline" asChild>
               <Link href="/vendedor/registro"><Store /> {t('Vender en NEXOVAX')}</Link>
             </Button>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink">
-            {['Compras seguras', 'Vendedores verificados', 'Envíos internacionales'].map((x) => (
-              <span key={x} className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-4 text-brand-600" /> {t(x)}</span>
-            ))}
+            <div className="hidden flex-wrap gap-x-4 gap-y-1 text-xs text-ink xl:flex xl:pl-2">
+              {['Compras seguras', 'Vendedores verificados', 'Envíos internacionales'].map((x) => (
+                <span key={x} className="inline-flex items-center gap-1"><CheckCircle2 className="size-3.5 text-brand-600" /> {t(x)}</span>
+              ))}
+            </div>
           </div>
         </div>
         <div className="relative hidden lg:block">
-          <div className="relative ml-auto w-[92%] rounded-2xl border-[10px] border-ink bg-white p-4 shadow-2xl">
-            <div className="mb-3 flex items-center gap-2 border-b border-line pb-2">
-              <span className="size-2.5 rounded-full bg-red-400" /><span className="size-2.5 rounded-full bg-amber-400" /><span className="size-2.5 rounded-full bg-emerald-400" />
-              <span className="ml-3 h-5 flex-1 rounded bg-surface" />
+          <div className="ml-auto w-full max-w-[360px] rounded-xl border-[5px] border-ink bg-white p-2 shadow-xl">
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-red-400" /><span className="size-2 rounded-full bg-amber-400" /><span className="size-2 rounded-full bg-emerald-400" />
+              <span className="ml-2 h-3 flex-1 rounded bg-surface" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              {(preview.length ? preview : Array.from({ length: 6 })).slice(0, 6).map((p: any, i) => (
-                <div key={i} className="rounded-xl bg-surface p-2">
-                  <ProductImage src={p?.imageUrl} alt={p?.title ?? ''} className="aspect-square w-full rounded-lg" />
-                  <div className="mt-1.5 h-2 w-3/4 rounded bg-brand-100" />
-                  <div className="mt-1 h-2 w-1/2 rounded bg-brand-200" />
+            <div className="grid grid-cols-4 gap-2">
+              {(preview.length ? preview : Array.from({ length: 4 })).slice(0, 4).map((p: any, i) => (
+                <div key={i} className="rounded-lg bg-surface p-1.5">
+                  <ProductImage src={p?.imageUrl} alt={p?.title ?? ''} className="aspect-square w-full rounded-md" />
+                  <div className="mt-1 h-1.5 w-3/4 rounded bg-brand-100" />
                 </div>
               ))}
             </div>
-            <div className="mx-auto -mb-[26px] mt-4 h-3 w-[110%] -translate-x-[4.5%] rounded-b-xl bg-ink/90" />
           </div>
-          <div className="absolute -bottom-6 -left-2 grid size-36 place-items-center rounded-3xl bg-brand-600 text-white shadow-2xl">
-            <Store className="size-16" />
+          <div className="absolute -bottom-3 right-[345px] grid size-12 place-items-center rounded-2xl bg-brand-600 text-white shadow-xl">
+            <Store className="size-6" />
           </div>
         </div>
       </div>
