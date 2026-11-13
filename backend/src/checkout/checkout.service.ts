@@ -8,6 +8,7 @@ import { AppError, badRequest, conflict, notFound } from '../common/errors';
 import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money';
 import { config } from '../config';
 import { postSaleAllocation } from './sale-ledger';
+import { MailService } from '../mail/mail.service';
 
 const ENGINE = 'rd-checkout-1.0';
 const SHIPPING_PROVIDER = 'RD_LOCAL';
@@ -62,6 +63,7 @@ export class CheckoutService {
     private readonly db: DbService,
     private readonly settings: SettingsService,
     private readonly carts: CartService,
+    private readonly mail: MailService,
   ) {}
 
   // ------------------------------------------------------------------ pricing
@@ -427,7 +429,10 @@ export class CheckoutService {
       return sessionId;
     });
 
-    return this.resultFor(checkoutId);
+    const result = await this.resultFor(checkoutId);
+    if (result.orderId) this.mail.fire(() => this.mail.orderConfirmed(result.orderId));
+    else if (result.bankTransfer && result.paymentId) this.mail.fire(() => this.mail.transferInstructions(result.paymentId, result.bankTransfer!));
+    return result;
   }
 
   /** Writes calculation run + immutable snapshots + commission evidence, then finalizes. */

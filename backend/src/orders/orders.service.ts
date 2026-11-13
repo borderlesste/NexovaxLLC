@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
+import { MailService } from '../mail/mail.service';
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { mediaUrl } from '../catalog/catalog.sql';
 
@@ -30,7 +31,10 @@ const TRACKING_LABELS: Record<string, string> = {
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly mail: MailService,
+  ) {}
 
   // ------------------------------------------------------------------ listings
   async list(scope: OrderScope, q: { status?: string; search?: string; page?: number; pageSize?: number; from?: string; to?: string; sellerId?: string }) {
@@ -415,6 +419,7 @@ export class OrdersService {
         await this.trackingEvent(c, tr!.id, 'IN_TRANSIT', `El vendedor despachó el paquete con ${carrier.name}.`, from.city);
       }
     });
+    this.mail.fire(() => this.mail.sellerOrderShipped(sellerOrderId));
     return { ok: true };
   }
 
@@ -442,6 +447,7 @@ export class OrdersService {
       await this.trackingEvent(c, s.tracking_id, status, detail?.trim() || labels[status], city);
       if (status === 'DELIVERED') await this.releaseDeliveredFunds(c, s.order_id);
     });
+    if (status === 'DELIVERED') this.mail.fire(() => this.mail.shipmentDelivered(shipmentId));
     return { ok: true };
   }
 

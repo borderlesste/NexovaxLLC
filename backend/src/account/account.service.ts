@@ -4,6 +4,8 @@ import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { badRequest, notFound } from '../common/errors';
 import { RequestUser, invalidateUserCache } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
+import { MailService } from '../mail/mail.service';
+import { config } from '../config';
 
 export interface AddressInput {
   label?: string;
@@ -25,6 +27,7 @@ export class AccountService {
   constructor(
     private readonly db: DbService,
     private readonly supa: SupabaseAdminService,
+    private readonly mail: MailService,
   ) {}
 
   /** Creates the Supabase identity; DB trigger provisions marketplace user + CUSTOMER role. */
@@ -39,7 +42,26 @@ export class AccountService {
        on conflict (user_id) do update set first_name = excluded.first_name, last_name = excluded.last_name, display_name = excluded.display_name`,
       [user.id, first, rest.join(' ') || null, input.fullName.trim()],
     );
+    this.mail.fire(() => this.mail.welcome(user.id));
     return { id: user.id, email: user.email, confirmed: !!user.email_confirmed_at };
+  }
+
+  /**
+   * Password recovery through our own e-mail (Resend): generates a one-time
+   * Supabase recovery token and mails a link to /auth/restablecer. Always
+   * answers OK so the endpoint cannot be used to discover accounts.
+   */
+  async requestPasswordRecovery(email: string) {
+    const normalized = email.trim().toLowerCase();
+    const userId = await this.supa.findUserIdByEmail(normalized);
+    if (userId) {
+      this.mail.fire(async () => {
+        const tokenHash = await this.supa.recoveryTokenHash(normalized);
+        if (!tokenHash) return;
+        await this.mail.passwordRecovery(userId, normalized, `${config.webUrl}/auth/restablecer?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`);
+      });
+    }
+    return { ok: true };
   }
 
   async me(user: RequestUser) {

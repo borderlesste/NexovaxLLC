@@ -28,6 +28,7 @@ import { SupportController } from './support/support.controller';
 import { AdminService } from './admin/admin.service';
 import { AdminController } from './admin/admin.controller';
 import { JobsService } from './jobs.service';
+import { MailService } from './mail/mail.service';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { JobsService } from './jobs.service';
     SupportService,
     AdminService,
     JobsService,
+    MailService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

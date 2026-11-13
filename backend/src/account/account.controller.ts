@@ -15,6 +15,10 @@ export class RegisterDto {
   @IsString() @MinLength(8) @MaxLength(72) password: string;
 }
 
+export class RecoveryDto {
+  @IsEmail({}, { message: 'Correo electrónico inválido.' }) email: string;
+}
+
 export class ProfileDto {
   @IsOptional() @IsString() @MaxLength(80) firstName?: string;
   @IsOptional() @IsString() @MaxLength(80) lastName?: string;
@@ -51,6 +55,13 @@ export class AccountController {
   @Post('auth/register')
   register(@Body() dto: RegisterDto) {
     return this.account.register(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('auth/password-recovery')
+  passwordRecovery(@Body() dto: RecoveryDto) {
+    return this.account.requestPasswordRecovery(dto.email);
   }
 
   @Get('me')

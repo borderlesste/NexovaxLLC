@@ -10,6 +10,7 @@ import { slugify } from '../common/slug';
 import { invalidateUserCache, RequestUser, RoleCode } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { postSaleAllocation } from '../checkout/sale-ledger';
+import { MailService } from '../mail/mail.service';
 
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
 
@@ -20,6 +21,7 @@ export class AdminService {
     private readonly settings: SettingsService,
     private readonly supa: SupabaseAdminService,
     private readonly sellers: SellerService,
+    private readonly mail: MailService,
   ) {}
 
   // ------------------------------------------------------------------ dashboard
@@ -183,6 +185,7 @@ export class AdminService {
       await this.sellers.transition(c, productId, 'PENDING_REVIEW', decision === 'APPROVE' ? 'ACTIVE' : decision === 'REJECT' ? 'REJECTED' : 'DRAFT', admin.id,
         note?.trim() || (decision === 'APPROVE' ? 'Aprobado por moderación' : 'Moderación'));
     });
+    this.mail.fire(() => this.mail.productModerated(productId, decision, note));
     return { ok: true };
   }
 
@@ -298,6 +301,7 @@ export class AdminService {
         );
       invalidateUserCache(s.owner_user_id);
     });
+    this.mail.fire(() => this.mail.sellerStatusChanged(sellerId, action, reason));
     return this.sellerDetail(sellerId);
   }
 
@@ -490,6 +494,7 @@ export class AdminService {
         await this.db.exec(`select public.cancel_payout($1,$2,$3,$4,now())`, [payoutId, admin.id, input.reason ?? 'Cancelado por finanzas', corr], c);
       }
     });
+    if (action !== 'APPROVE') this.mail.fire(() => this.mail.payoutUpdated(payoutId, action, action === 'MARK_PAID' ? input.reference : input.reason));
     return { ok: true };
   }
 
@@ -526,6 +531,7 @@ export class AdminService {
       await postSaleAllocation(this.db, c, paymentId, admin.id, corr);
       return r!.order_id;
     });
+    this.mail.fire(() => this.mail.orderConfirmed(orderId));
     return { orderId };
   }
 
@@ -538,7 +544,7 @@ export class AdminService {
       if (cs && !['CANCELLED', 'COMPLETED', 'EXPIRED', 'FAILED'].includes(cs.status))
         await this.db.exec(`select public.cancel_checkout_session($1,$2,'TRANSFER_NOT_RECEIVED',null)`, [p.checkout_session_id, p.customer_id], c).catch(() => undefined);
     });
-    void reason;
+    this.mail.fire(() => this.mail.transferRejected(paymentId, reason));
     return { ok: true };
   }
 

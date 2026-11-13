@@ -65,6 +65,16 @@ export class SupabaseAdminService {
     if (error) throw new AppError('AUTH_PROVIDER_ERROR', error.message, HttpStatus.BAD_GATEWAY);
   }
 
+  /** One-time recovery token (hashed) for a password-reset link we e-mail ourselves. */
+  async recoveryTokenHash(email: string): Promise<string | null> {
+    const { data, error } = await this.admin.auth.admin.generateLink({ type: 'recovery', email });
+    if (error) {
+      this.logger.warn(`generateLink(recovery) failed: ${error.message}`);
+      return null;
+    }
+    return data.properties?.hashed_token ?? null;
+  }
+
   async findUserIdByEmail(email: string): Promise<string | null> {
     const row = await this.db.one<{ id: string }>(`select id from public.users where lower(email::text) = lower($1)`, [email]);
     return row?.id ?? null;

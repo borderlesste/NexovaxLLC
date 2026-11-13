@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Mail, MailCheck } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { ApiError, post } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 
@@ -15,10 +15,14 @@ export default function RecoverPage() {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const { error } = await supabase().auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: `${window.location.origin}/auth/restablecer` });
-    setBusy(false);
-    if (error) setError(/rate/i.test(error.message) ? 'Demasiados intentos. Espera unos minutos.' : 'No pudimos enviar el correo. Inténtalo más tarde.');
-    else setSent(true);
+    try {
+      await post('/auth/password-recovery', { email: email.trim().toLowerCase() });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 429 ? 'Demasiados intentos. Espera unos minutos.' : 'No pudimos enviar el correo. Inténtalo más tarde.');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <form onSubmit={submit} className="card mx-auto max-w-md rounded-3xl p-8">

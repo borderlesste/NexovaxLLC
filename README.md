@@ -30,7 +30,8 @@ Requisitos: Node 20+, pnpm 9.
    - `database_url` — cadena de conexión del rol `rd_api_runtime` (pooler de Supabase).
    - `supabase_secret_key` — clave secreta `sb_secret_…` (solo backend).
    - `data_encryption_key` — 32 bytes en base64 (`openssl rand -base64 32`) para cifrar RNC/cédula y cuentas bancarias.
-   También pueden pasarse como variables de entorno: `DATABASE_URL`, `SUPABASE_SECRET_KEY`, `DATA_ENCRYPTION_KEY`.
+   - `resend_api_key` — clave `re_…` de Resend para el correo transaccional (sin ella los correos se omiten y se registran como `SKIPPED`).
+   También pueden pasarse como variables de entorno: `DATABASE_URL`, `SUPABASE_SECRET_KEY`, `DATA_ENCRYPTION_KEY`, `RESEND_API_KEY`.
 2. `pnpm install`
 3. API: `pnpm --filter @rd/backend build && node backend/dist/main.js` (puerto 4000; Swagger en http://localhost:4000/api/docs).
 4. Web: `pnpm --filter @rd/frontend build && pnpm --filter @rd/frontend start` (puerto 3000; `/api/*` se redirige a la API).
@@ -60,6 +61,11 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
 
 - **Pagos:** proveedor `RD_SANDBOX` (entorno TEST) detrás del modelo de pagos neutral; Stripe/PayPal/AZUL se conectan registrando su configuración y un adaptador. PayPal y contra entrega aparecen como no disponibles.
 - **Envíos:** proveedor interno `RD_LOCAL` con tarifas configurables (Estándar, Express, Retiro en tienda); el vendedor registra transportadora, guía y eventos.
-- **Correo:** las cuentas creadas por la API se confirman al instante (`AUTH_AUTO_CONFIRM=true`) porque el SMTP por defecto de Supabase solo entrega al equipo del proyecto. En producción, configurar SMTP (p. ej. Resend) y desactivar esa opción.
+- **Correo (Resend):** la API envía los correos transaccionales directamente con Resend desde `no-reply@nexovax.com` (dominio verificado). Cada evento se registra en `public.email_deliveries` y se envía una sola vez (`dedupe_key` + `Idempotency-Key`); un fallo de correo nunca bloquea la operación.
+  - Comprador: bienvenida, recuperación de contraseña, pedido confirmado, instrucciones y rechazo de transferencia, pedido enviado (con guía) y entregado, reporte recibido, respuesta y resolución de soporte.
+  - Vendedor: solicitud recibida, tienda aprobada/rechazada/suspendida/reactivada, nueva venta, pedido entregado, moderación de productos, retiro pagado/fallido/cancelado.
+  - La recuperación de contraseña no usa el SMTP de Supabase: la API genera un token de un solo uso (`auth.admin.generateLink`) y envía el enlace a `/auth/restablecer`, que lo canjea con `verifyOtp`.
+  - Variables: `MAIL_FROM` (por defecto `RD Marketplace <no-reply@nexovax.com>`), `MAIL_REPLY_TO`, `WEB_URL` (base de los enlaces; en producción la URL pública), `MAIL_SUPPRESS_DOMAINS` (por defecto los dominios demo `rdmarketplace.do`, `example.com`… nunca reciben correo) y `MAIL_REDIRECT_TO` (QA: desvía todos los correos a una dirección, p. ej. `delivered@resend.dev`).
+  - Las cuentas creadas por la API se confirman al instante (`AUTH_AUTO_CONFIRM=true`).
 - **Mensajería:** actualización por sondeo (5 s); Supabase Realtime requeriría políticas RLS de lectura para el navegador.
 - **Ciudades:** catálogo local de 49 ciudades de RD (fuente countries.dev, ids GeoNames).

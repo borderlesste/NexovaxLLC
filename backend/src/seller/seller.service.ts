@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
+import { MailService } from '../mail/mail.service';
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
@@ -56,6 +57,7 @@ export class SellerService {
     private readonly db: DbService,
     private readonly settings: SettingsService,
     private readonly supa: SupabaseAdminService,
+    private readonly mail: MailService,
   ) {}
 
   // ------------------------------------------------------------------ onboarding
@@ -128,6 +130,7 @@ export class SellerService {
       return id;
     });
     invalidateUserCache(user.id);
+    this.mail.fire(() => this.mail.sellerApplicationReceived(sellerId));
     return { sellerId, status: 'PENDING_VERIFICATION' };
   }
 

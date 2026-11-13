@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
+import { MailService } from '../mail/mail.service';
 import { badRequest, notFound } from '../common/errors';
 import { RequestUser } from '../auth/auth';
 
@@ -28,7 +29,10 @@ const STATUS_LABEL: Record<string, string> = {
 
 @Injectable()
 export class SupportService {
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly mail: MailService,
+  ) {}
 
   catalogs() {
     return Promise.all([
@@ -66,6 +70,7 @@ export class SupportService {
       if (team) await this.db.exec(`update public.support_tickets set current_team_id = $2 where id = $1 and current_team_id is null`, [r!.id, team.id], c);
       return r!.id;
     });
+    this.mail.fire(() => this.mail.supportTicketCreated(id));
     const t = await this.db.one(`select public_number from public.support_tickets where id = $1`, [id]);
     return { id, code: `RD-REP-${t!.public_number}` };
   }
@@ -240,6 +245,7 @@ export class SupportService {
 
   async transition(staff: RequestUser, ticketId: string, status: string, reason?: string) {
     await this.db.tx((c) => this.db.exec(`select public.transition_support_ticket($1,$2,$3,$4)`, [ticketId, status, staff.id, reason ?? null], c));
+    this.mail.fire(() => this.mail.supportStatusChanged(ticketId, status));
     return this.adminDetail(ticketId);
   }
 
@@ -260,6 +266,7 @@ export class SupportService {
       await this.db.exec(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb)`, [t.conversation_id, staff.id, body.trim(), randomUUID()], c);
       if (t.status === 'OPEN') await this.db.exec(`select public.transition_support_ticket($1,'IN_PROGRESS',$2,'Primera respuesta')`, [ticketId, staff.id], c);
     });
+    if (!internal) this.mail.fire(() => this.mail.supportReply(ticketId, body));
     return this.adminDetail(ticketId);
   }
 
