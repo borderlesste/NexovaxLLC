@@ -194,6 +194,12 @@ export class AdminController {
   }
 
   @Roles('ADMIN')
+  @Post('finance/reconcile-sales')
+  reconcileSales(@CurrentUser() user: RequestUser) {
+    return this.admin.reconcileSales(user);
+  }
+
+  @Roles('ADMIN')
   @Get('transfers')
   transfers() {
     return this.admin.pendingTransfers();

@@ -9,6 +9,7 @@ import { fromMinor, toMinor } from '../common/money';
 import { slugify } from '../common/slug';
 import { invalidateUserCache, RequestUser, RoleCode } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
+import { postSaleAllocation } from '../checkout/sale-ledger';
 
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
 
@@ -522,6 +523,7 @@ export class AdminService {
         c,
       );
       await this.db.exec(`select public.post_payment_capture_to_ledger($1,$2,$3,$4)`, [paymentId, `capture:${paymentId}`, admin.id, corr], c);
+      await postSaleAllocation(this.db, c, paymentId, admin.id, corr);
       return r!.order_id;
     });
     return { orderId };
@@ -538,6 +540,16 @@ export class AdminService {
     });
     void reason;
     return { ok: true };
+  }
+
+  /** Posts the SALE allocation for paid payments that are missing it (idempotent). */
+  async reconcileSales(admin: RequestUser) {
+    const rows = await this.db.many(
+      `select p.id from public.payments p where p.status = 'PAID' and p.order_id is not null
+          and not exists (select 1 from public.financial_allocation_sets s where s.payment_id = p.id and s.purpose_code = 'SALE' and s.status = 'POSTED')`,
+    );
+    for (const r of rows) await this.db.tx((c) => postSaleAllocation(this.db, c, r.id, admin.id, randomUUID()));
+    return { posted: rows.length };
   }
 
   // ------------------------------------------------------------------ finance overview

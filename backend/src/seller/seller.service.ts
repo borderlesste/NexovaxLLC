@@ -890,6 +890,12 @@ export class SellerService {
         }), user.id],
         c,
       );
+      await this.db.exec(
+        `insert into public.seller_payout_account_currencies (payout_account_id, seller_id, currency_code, is_enabled, is_default)
+         values ($1,$2,$3,true,true)`,
+        [r!.id, sellerId, input.currency ?? 'DOP'],
+        c,
+      );
       return r!.id;
     });
     return { id };

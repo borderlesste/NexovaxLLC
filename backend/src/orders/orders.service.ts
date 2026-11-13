@@ -146,7 +146,7 @@ export class OrdersService {
          join public.users u on u.id = o.customer_id
          left join public.user_profiles up on up.user_id = u.id
          left join public.order_financial_snapshots ofs on ofs.order_id = o.id
-        where o.id = $1 or o.public_number::text = $1`,
+        where o.id::text = $1 or o.public_number::text = $1`,
       [orderId.replace(/^RD-/i, '')],
     );
     if (!o) throw notFound('Pedido');

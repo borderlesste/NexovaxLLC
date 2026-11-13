@@ -334,6 +334,7 @@ async function main() {
     const shoes = await bySlug('Zapatillas Running RD');
     const v42 = shoes.variants.find((v) => Object.values(v.optionValues).length && v.stock > 1) ?? shoes.variants[0];
     const phones = await bySlug('Audífonos Bluetooth Max');
+    await call(juan, 'DELETE', '/cart');
     await api.post(juan, '/cart/items', { variantId: v42.id, quantity: 1 });
     await api.post(juan, '/cart/items', { variantId: phones.variants[0].id, quantity: 1 });
     const quote = await api.post(juan, '/checkout/quote', {});
@@ -351,6 +352,7 @@ async function main() {
 
     log('Segunda compra con tarjeta (otra tienda, retiro en tienda)');
     const coffee = await bySlug('Cafetera Eléctrica 12 Tazas');
+    await call(juan, 'DELETE', '/cart');
     await api.post(juan, '/cart/items', { variantId: coffee.variants[0].id, quantity: 1 });
     const q2 = await api.post(juan, '/checkout/quote', {});
     const r2 = await api.post(juan, '/checkout/place', { addressId: addresses[0].id, shipping: Object.fromEntries(q2.groups.map((g) => [g.sellerId, 'PICKUP'])), paymentMethod: 'CARD', card: { number: '5555555555554444', expMonth: 8, expYear: 2029, cvc: '321', name: 'Juan Perez' }, idempotencyKey: randomUUID() });
@@ -366,6 +368,7 @@ async function main() {
     log('Compra por transferencia bancaria + confirmación de finanzas');
     const watch = await bySlug('Smartwatch Sport');
     const shirt = await bySlug('Camisa de Lino Caribe');
+    await call(maria, 'DELETE', '/cart');
     await api.post(maria, '/cart/items', { variantId: watch.variants[0].id, quantity: 1 });
     await api.post(maria, '/cart/items', { variantId: shirt.variants.find((v) => v.stock > 0).id, quantity: 2 });
     const q = await api.post(maria, '/checkout/quote', {});
@@ -402,6 +405,17 @@ async function main() {
       if (deliver) {
         await api.post(t, `/seller/shipments/${sh.id}/tracking`, { status: 'DELIVERED', detail: 'Entregado al cliente en la puerta de su hogar.', city: 'Santo Domingo' });
         ok(`${o.orderNumber} entregado`);
+      }
+    }
+    if (deliver) {
+      // orders shipped in an earlier run that are still in transit
+      const shipped = await api.get(t, '/seller/orders?status=SHIPPED');
+      for (const o of shipped.items) {
+        const detail = await api.get(t, `/seller/orders/${o.orderId}`);
+        for (const sh of detail.sellerOrders[0].shipments.filter((x) => x.trackingStatus !== 'DELIVERED')) {
+          await api.post(t, `/seller/shipments/${sh.id}/tracking`, { status: 'DELIVERED', detail: 'Entregado al cliente en la puerta de su hogar.', city: 'Santo Domingo' });
+          ok(`${o.orderNumber} entregado`);
+        }
       }
     }
   }

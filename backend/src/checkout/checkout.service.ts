@@ -7,6 +7,7 @@ import { CartService } from '../cart/cart.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
 import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money';
 import { config } from '../config';
+import { postSaleAllocation } from './sale-ledger';
 
 const ENGINE = 'rd-checkout-1.0';
 const SHIPPING_PROVIDER = 'RD_LOCAL';
@@ -272,6 +273,7 @@ export class CheckoutService {
       // ---- fulfillment groups (seller + origin location)
       const rates = await this.activeRates();
       const groupIds = new Map<string, string>();
+      const groupItemQty = new Map<string, { groupKey: string; item: any; qty: number }>();
       for (const a of allocations) {
         const key = `${a.item.seller_id}:${a.locationId}`;
         if (!groupIds.has(key)) {
@@ -284,11 +286,16 @@ export class CheckoutService {
           );
           groupIds.set(key, g!.id);
         }
+        const gi = `${key}|${a.item.id}`;
+        const cur = groupItemQty.get(gi);
+        if (cur) cur.qty += a.qty;
+        else groupItemQty.set(gi, { groupKey: key, item: a.item, qty: a.qty });
+      }
+      for (const { groupKey, item, qty } of groupItemQty.values()) {
         await this.db.exec(
           `insert into public.checkout_fulfillment_group_items (fulfillment_group_id, checkout_session_id, checkout_item_id, seller_id, quantity)
-           values ($1,$2,$3,$4,$5)
-           on conflict (fulfillment_group_id, checkout_item_id) do update set quantity = checkout_fulfillment_group_items.quantity + excluded.quantity`,
-          [groupIds.get(key), sessionId, a.item.id, a.item.seller_id, a.qty],
+           values ($1,$2,$3,$4,$5)`,
+          [groupIds.get(groupKey), sessionId, item.id, item.seller_id, qty],
           c,
         );
       }
@@ -408,6 +415,7 @@ export class CheckoutService {
           c,
         );
         await this.db.exec(`select public.post_payment_capture_to_ledger($1,$2,$3,$4)`, [paymentId, `capture:${paymentId}`, userId, corr], c);
+        await postSaleAllocation(this.db, c, paymentId, userId, corr);
       } else {
         const intentId: string = (await this.db.one(
           `select public.register_payment_provider_intent($1,$2,'awaiting_transfer','REQUIRES_ACTION',null,null,now(),$3::jsonb) as id`,
