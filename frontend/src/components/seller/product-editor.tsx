@@ -107,6 +107,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const save = async (action: 'SAVE_DRAFT' | 'SUBMIT') => {
     if (!f.title.trim() || !effectiveCategory || f.description.trim().length < 10) return toast.error('Completa nombre, categoría y una descripción (mínimo 10 caracteres).');
     if (variants.some((v) => v.active && (!v.sku.trim() || !(Number(v.price) > 0)))) return toast.error('Cada variante necesita SKU y precio mayor que cero.');
+    if (![ship.weightKg, ship.lengthCm, ship.widthCm, ship.heightCm].every((x) => Number(x) > 0)) return toast.error('Indica el peso y las dimensiones del paquete (sección Envío y dimensiones).');
     setSaving(action === 'SUBMIT' ? 'submit' : 'draft');
     try {
       const r = productId ? await put(`/seller/products/${productId}`, payload(action)) : await post('/seller/products', payload(action));
@@ -309,10 +310,10 @@ export function ProductEditor({ productId }: { productId?: string }) {
           <Card>
             <CardHeader icon={<Truck />} title="Envío y dimensiones" subtitle="Información para el cálculo y la gestión del envío." />
             <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
-              <Field label="Peso (kg)"><Input inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
-              <Field label="Largo (cm)"><Input inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label="Ancho (cm)"><Input inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label="Alto (cm)"><Input inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label="Peso (kg)" required><Input inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
+              <Field label="Largo (cm)" required><Input inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label="Ancho (cm)" required><Input inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label="Alto (cm)" required><Input inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
             </div>
           </Card>
 

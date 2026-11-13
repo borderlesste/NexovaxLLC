@@ -44,7 +44,12 @@ async function call(token, method, path, body, { form, expect } = {}) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch(`${API}${path}`, { method, headers, body: payload });
+  let res = await fetch(`${API}${path}`, { method, headers, body: payload });
+  for (let i = 0; res.status === 429 && i < 6; i++) {
+    warn(`límite de solicitudes en ${path}; esperando 20 s…`);
+    await new Promise((r) => setTimeout(r, 20_000));
+    res = await fetch(`${API}${path}`, { method, headers, body: payload });
+  }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (expect !== undefined) {
@@ -183,6 +188,12 @@ function catIndex(tree) {
   return m;
 }
 
+function dims(p) {
+  const w = p.weight;
+  const [l, wd, h] = w >= 5 ? [60, 50, 40] : w >= 1.2 ? [40, 30, 20] : w >= 0.5 ? [32, 22, 14] : [25, 18, 8];
+  return { lengthCm: l, widthCm: wd, heightCm: h };
+}
+
 function buildVariants(p) {
   const opts = p.options ?? [];
   const combos = opts.reduce((acc, o) => acc.flatMap((a) => o.values.map((v) => ({ ...a, [o.name]: v.label }))), [{}]);
@@ -193,7 +204,7 @@ function buildVariants(p) {
     price: p.price,
     compareAtPrice: p.compare ?? null,
     stock: Math.max(0, p.stock - (i % 3)),
-    weightKg: p.weight,
+    weightKg: p.weight, ...dims(p),
   }));
 }
 
@@ -266,7 +277,19 @@ async function main() {
     const t = sellerTokens[s.email];
     const list = await api.get(t, '/seller/products?pageSize=100');
     for (const p of s.products) {
-      if (list.items.some((x) => x.title === p.title)) continue;
+      const existing = list.items.find((x) => x.title === p.title);
+      if (existing) {
+        const cur = await api.get(t, `/seller/products/${existing.id}`);
+        if (cur.variants.some((v) => !v.lengthCm)) {
+          await api.put(t, `/seller/products/${existing.id}`, {
+            title: cur.title, categoryId: cur.categoryId, brandName: cur.brandName, shortDescription: cur.shortDescription, description: cur.description,
+            options: cur.options.map((o) => ({ name: o.name, values: o.values.map((v) => ({ label: v.label, swatch: v.swatch })) })),
+            variants: cur.variants.map((v) => ({ id: v.id, sku: v.sku, optionValues: v.optionValues, price: Number(v.price), compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null, stock: v.stock, weightKg: p.weight, ...dims(p) })),
+            action: 'SAVE_DRAFT',
+          });
+        }
+        continue;
+      }
       const cat = cats.get(p.cat);
       if (!cat) throw new Error(`Categoría no encontrada: ${p.cat}`);
       const created = await api.post(t, '/seller/products', {
@@ -279,7 +302,7 @@ async function main() {
       await api.post(t, `/seller/products/${created.id}/media`, undefined, { form });
       await api.put(t, `/seller/products/${created.id}`, {
         title: p.title, categoryId: cat.id, brandName: p.brand, shortDescription: p.short, description: p.desc,
-        options: p.options ?? [], variants: created.variants.map((v) => ({ id: v.id, sku: v.sku, optionValues: v.optionValues, price: Number(v.price), compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null, stock: v.stock, weightKg: p.weight })),
+        options: p.options ?? [], variants: created.variants.map((v) => ({ id: v.id, sku: v.sku, optionValues: v.optionValues, price: Number(v.price), compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null, stock: v.stock, weightKg: p.weight, ...dims(p) })),
         action: 'SUBMIT',
       });
     }

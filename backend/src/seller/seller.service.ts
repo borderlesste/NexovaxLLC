@@ -578,7 +578,7 @@ export class SellerService {
     if (active && toMinor(active.amount) === toMinor(amount) && (active.compare_at ? toMinor(active.compare_at) : null) === (compare ? toMinor(compare) : null)) return;
     const pv = await this.db.one(
       `insert into public.variant_price_versions (variant_id, seller_id, currency_code, version_number, amount, compare_at_amount, status, created_by, updated_by)
-       values ($1,$2,$3,(select coalesce(max(version_number),0)+1 from public.variant_price_versions where variant_id = $1 and currency_code = $3),$4,$5,'DRAFT',$6,$6)
+       values ($1,$2,$3::varchar,(select coalesce(max(version_number),0)+1 from public.variant_price_versions where variant_id = $1 and currency_code = $3::varchar),$4,$5,'DRAFT',$6,$6)
        returning id`,
       [variantId, sellerId, currency, amount, compare, actor],
       c,
@@ -962,6 +962,8 @@ export class SellerService {
       combos.add(combo);
       if (!(toMinor(v.price) > 0n)) throw badRequest('PRICE_INVALID', `El precio de ${v.sku} debe ser mayor que cero.`);
       if (!Number.isInteger(Number(v.stock)) || Number(v.stock) < 0) throw badRequest('STOCK_INVALID', `Stock inválido para ${v.sku}.`);
+      if (!(Number(v.weightKg) > 0) || !(Number(v.lengthCm) > 0) || !(Number(v.widthCm) > 0) || !(Number(v.heightCm) > 0))
+        throw badRequest('SHIPPING_DIMENSIONS_REQUIRED', 'Indica peso (kg) y dimensiones (largo, ancho y alto en cm) del paquete para calcular el envío.');
     }
   }
 
