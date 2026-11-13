@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-200: #ddd6fe;
+  --color-brand-300: #c4b5fd;
+  --color-brand-400: #a78bfa;
+  --color-brand-500: #7c4dff;
+  --color-brand-600: #5b2be0;
+  --color-brand-700: #4c1fc0;
+  --color-brand-800: #3b1696;
+  --color-brand-900: #26105e;
+  --color-brand-950: #1a0b40;
+
+  --color-ink: #14112b;
+  --color-muted: #6b6785;
+  --color-line: #e8e5f3;
+  --color-surface: #f8f7fd;
+
+  --radius-card: 14px;
+  --shadow-card: 0 1px 2px rgb(20 17 43 / 0.04), 0 4px 16px rgb(91 43 224 / 0.05);
+}
+
+@layer base {
+  html {
+    color: var(--color-ink);
+    background: var(--color-surface);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100dvh;
+  }
+  * {
+    border-color: var(--color-line);
+  }
+  ::selection {
+    background: var(--color-brand-200);
+  }
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@utility card {
+  background: white;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.recharts-cartesian-axis-tick-value {
+  font-size: 11px;
+  fill: var(--color-muted);
+}

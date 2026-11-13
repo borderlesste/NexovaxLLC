@@ -17,6 +17,17 @@ import { CartController } from './cart/cart.controller';
 import { CheckoutService } from './checkout/checkout.service';
 import { CheckoutController } from './checkout/checkout.controller';
 import { HealthController } from './health.controller';
+import { OrdersService } from './orders/orders.service';
+import { OrdersController } from './orders/orders.controller';
+import { SellerService } from './seller/seller.service';
+import { SellerController } from './seller/seller.controller';
+import { MessagingService } from './messaging/messaging.service';
+import { MessagingController } from './messaging/messaging.controller';
+import { SupportService } from './support/support.service';
+import { SupportController } from './support/support.controller';
+import { AdminService } from './admin/admin.service';
+import { AdminController } from './admin/admin.controller';
+import { JobsService } from './jobs.service';
 
 @Module({
   imports: [
@@ -31,7 +42,7 @@ import { HealthController } from './health.controller';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController],
+  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController],
   providers: [
     DbService,
     SettingsService,
@@ -40,6 +51,12 @@ import { HealthController } from './health.controller';
     AccountService,
     CartService,
     CheckoutService,
+    OrdersService,
+    SellerService,
+    MessagingService,
+    SupportService,
+    AdminService,
+    JobsService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

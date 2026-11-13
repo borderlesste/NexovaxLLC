@@ -1,0 +1,20 @@
+'use client';
+import { use } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { get } from '@/lib/api';
+import { PageHeader } from '@/components/layout/dashboard-shell';
+import { ErrorBox, PageLoader } from '@/components/ui/misc';
+import { OrderDetailView } from '@/components/orders/order-detail';
+
+export default function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const q = useQuery({ queryKey: ['admin-order', id], queryFn: () => get(`/admin/orders/${id}`) });
+  if (q.isLoading) return <PageLoader />;
+  if (q.isError) return <ErrorBox message="No encontramos este pedido." />;
+  return (
+    <>
+      <PageHeader crumbs={[{ label: 'Pedidos', href: '/admin/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description={`Cliente: ${q.data.customer.name} · ${q.data.customer.email}`} />
+      <OrderDetailView order={q.data} role="admin" onChanged={() => q.refetch()} />
+    </>
+  );
+}
