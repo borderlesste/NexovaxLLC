@@ -84,8 +84,8 @@ export default function ProfilePage() {
             {me.avatarUrl && <button type="button" onClick={removePhoto} disabled={photoBusy} className="inline-flex items-center gap-1 text-red-600 hover:underline"><Trash2 className="size-3" /> {t('Quitar')}</button>}
           </div>
           <p className="mt-1 text-[11px] text-muted">{t('JPG, PNG, WebP o AVIF · máx. 8 MB')}</p>
-          <p className="mt-4 text-xl font-extrabold">{me.displayName}</p>
-          <p className="text-sm text-muted">{me.email}</p>
+          <p className="mt-4 max-w-full break-all text-xl font-extrabold">{me.displayName}</p>
+          <p className="max-w-full break-all text-sm text-muted">{me.email}</p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
             {me.roles.map((r) => <Badge key={r} tone="violet">{r === 'SELLER' ? <Store className="size-3" /> : r === 'CUSTOMER' ? <ShoppingBag className="size-3" /> : <Shield className="size-3" />} {roleLabels[r] ?? r}</Badge>)}
           </div>
