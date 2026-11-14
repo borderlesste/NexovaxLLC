@@ -245,5 +245,13 @@
 "Ir a iniciar sesión": "Go to sign in",
 "Enlace externo proporcionado por la tienda": "External link provided by the store",
 "sitio externo": "external site",
-"(opcional, solo https)": "(optional, https only)"
+"(opcional, solo https)": "(optional, https only)",
+"Foto de perfil actualizada.": "Profile photo updated.",
+"Foto de perfil eliminada.": "Profile photo removed.",
+"Cambiar foto de perfil": "Change profile photo",
+"Cambiar foto": "Change photo",
+"Subir foto": "Upload photo",
+"JPG, PNG, WebP o AVIF · máx. 8 MB": "JPG, PNG, WebP or AVIF · max 8 MB",
+"Formato no permitido. Usa JPG, PNG, WebP o AVIF.": "Format not allowed. Use JPG, PNG, WebP or AVIF.",
+"La imagen supera 8 MB.": "The image exceeds 8 MB."
 }

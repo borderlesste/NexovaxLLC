@@ -141,6 +141,19 @@ export class AccountService {
     return this.me(user);
   }
 
+  async setAvatar(user: RequestUser, file?: Express.Multer.File) {
+    if (!file) throw badRequest('NO_FILES', 'Selecciona una imagen.');
+    await this.supa.setUserAvatar(user.id, file);
+    invalidateUserCache(user.id);
+    return this.me(user);
+  }
+
+  async removeAvatar(user: RequestUser) {
+    await this.supa.removeUserAvatar(user.id);
+    invalidateUserCache(user.id);
+    return this.me(user);
+  }
+
   async setLocale(user: RequestUser, locale: string) {
     if (!(LOCALES as readonly string[]).includes(locale)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
     await this.db.exec(`update public.users set locale = $2 where id = $1`, [user.id, locale]);

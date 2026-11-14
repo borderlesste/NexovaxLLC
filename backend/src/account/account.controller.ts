@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
@@ -85,6 +86,18 @@ export class AccountController {
   @Put('me/profile')
   updateProfile(@CurrentUser() user: RequestUser, @Body() dto: ProfileDto) {
     return this.account.updateProfile(user, dto);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 5, parts: 6 } }))
+  setAvatar(@CurrentUser() user: RequestUser, @UploadedFile() file?: Express.Multer.File) {
+    return this.account.setAvatar(user, file);
+  }
+
+  @Delete('me/avatar')
+  removeAvatar(@CurrentUser() user: RequestUser) {
+    return this.account.removeAvatar(user);
   }
 
   @Put('me/password')

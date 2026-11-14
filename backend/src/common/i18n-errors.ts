@@ -49,6 +49,7 @@ const EN: Record<string, string> = {
   'Solo un super administrador puede asignar este rol.': 'Only a super administrator can assign this role.',
   'Falta la clave de idempotencia.': 'Missing idempotency key.',
   'La imagen supera 8 MB.': 'The image exceeds 8 MB.',
+  'Selecciona una imagen.': 'Select an image.',
   'No hay suficiente inventario para uno de los productos de tu carrito.': 'There isn’t enough stock for one of the products in your cart.',
   'Acción inválida.': 'Invalid action.',
   'El archivo no es una imagen válida.': 'The file is not a valid image.',

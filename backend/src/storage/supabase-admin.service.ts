@@ -1,6 +1,8 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import sharp, { Metadata, OutputInfo } from 'sharp';
+import sharp, { Metadata, OutputInfo, Sharp } from 'sharp';
+
+type UploadFile = { buffer: Buffer; mimetype: string; originalname?: string; size: number };
 import { randomUUID } from 'node:crypto';
 import { config } from '../config';
 import { AppError } from '../common/errors';
@@ -125,6 +127,30 @@ export class SupabaseAdminService {
     visibility: 'PUBLIC' | 'PRIVATE' = 'PUBLIC',
     client?: Queryable,
   ): Promise<string> {
+    const { out, meta } = await this.processImage(file, (img) => img.resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }));
+    const key = `${sellerId}/${folder}/${randomUUID()}.webp`;
+    const { error } = await this.admin.storage.from(config.mediaBucket).upload(key, out, {
+      contentType: 'image/webp',
+      upsert: false,
+    });
+    if (error) throw new AppError('UPLOAD_FAILED', `No se pudo subir la imagen: ${error.message}`, HttpStatus.BAD_GATEWAY);
+    const row = await this.db.one<{ id: string }>(
+      `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,
+                                  original_filename, mime_type, size_bytes, width_pixels, height_pixels, visibility,
+                                  status, uploaded_at, ready_at)
+       values ($1,$2,'SUPABASE',$3,$4,$5,'image/webp',$6,$7,$8,$9,'READY',now(),now())
+       returning id`,
+      [userId, sellerId, config.mediaBucket, key, file.originalname?.slice(0, 200) ?? null, out.length, meta.width, meta.height, visibility],
+      client,
+    );
+    return row!.id;
+  }
+
+  /**
+   * Validates an uploaded image (declared and real format, size, dimensions, no
+   * animation) from its header before decoding, then re-encodes it to WebP.
+   */
+  private async processImage(file: UploadFile, transform: (img: Sharp) => Sharp): Promise<{ out: Buffer; meta: OutputInfo }> {
     if (!ALLOWED_IMAGE.includes(file.mimetype))
       throw new AppError('UNSUPPORTED_IMAGE', 'Formato no permitido. Usa JPG, PNG, WebP o AVIF.');
     if (file.size > MAX_IMAGE_BYTES || file.buffer.length > MAX_IMAGE_BYTES) throw new AppError('IMAGE_TOO_LARGE', 'La imagen supera 8 MB.');
@@ -147,9 +173,7 @@ export class SupabaseAdminService {
     let meta: OutputInfo;
     try {
       const r = await withImageSlot(() =>
-        sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS, failOn: 'error', pages: 1 })
-          .rotate()
-          .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        transform(sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS, failOn: 'error', pages: 1 }).rotate())
           .webp({ quality: 86 })
           .toBuffer({ resolveWithObject: true }),
       );
@@ -158,22 +182,66 @@ export class SupabaseAdminService {
     } catch {
       throw new AppError('INVALID_IMAGE', 'El archivo no es una imagen válida.');
     }
-    const key = `${sellerId}/${folder}/${randomUUID()}.webp`;
-    const { error } = await this.admin.storage.from(config.mediaBucket).upload(key, out, {
-      contentType: 'image/webp',
-      upsert: false,
-    });
+    return { out, meta };
+  }
+
+  /**
+   * Profile photo: square 512×512 WebP in the private avatars bucket (served by
+   * /api/media/:id). Replaces and deletes the previous photo.
+   */
+  async setUserAvatar(userId: string, file: UploadFile): Promise<string> {
+    const { out, meta } = await this.processImage(file, (img) => img.resize({ width: 512, height: 512, fit: 'cover', position: 'attention' }));
+    const key = `${userId}/avatar/${randomUUID()}.webp`;
+    const { error } = await this.admin.storage.from(config.avatarBucket).upload(key, out, { contentType: 'image/webp', upsert: false });
     if (error) throw new AppError('UPLOAD_FAILED', `No se pudo subir la imagen: ${error.message}`, HttpStatus.BAD_GATEWAY);
-    const row = await this.db.one<{ id: string }>(
-      `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,
-                                  original_filename, mime_type, size_bytes, width_pixels, height_pixels, visibility,
-                                  status, uploaded_at, ready_at)
-       values ($1,$2,'SUPABASE',$3,$4,$5,'image/webp',$6,$7,$8,$9,'READY',now(),now())
-       returning id`,
-      [userId, sellerId, config.mediaBucket, key, file.originalname?.slice(0, 200) ?? null, out.length, meta.width, meta.height, visibility],
-      client,
-    );
-    return row!.id;
+    let previous: { id: string; storage_key: string } | null = null;
+    try {
+      previous = await this.db.tx(async (c) => {
+        const old = await this.db.one<{ id: string; storage_key: string }>(
+          `select a.id, a.storage_key from public.user_profiles up join public.assets a on a.id = up.avatar_asset_id
+            where up.user_id = $1 and a.storage_bucket = $2 for update of up`,
+          [userId, config.avatarBucket],
+          c,
+        );
+        const row = await this.db.one<{ id: string }>(
+          `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,
+                                      original_filename, mime_type, size_bytes, width_pixels, height_pixels, visibility,
+                                      status, uploaded_at, ready_at)
+           values ($1,null,'SUPABASE',$2,$3,$4,'image/webp',$5,$6,$7,'PUBLIC','READY',now(),now()) returning id`,
+          [userId, config.avatarBucket, key, file.originalname?.slice(0, 200) ?? null, out.length, meta.width, meta.height],
+          c,
+        );
+        await this.db.exec(
+          `insert into public.user_profiles (user_id, avatar_asset_id) values ($1, $2)
+           on conflict (user_id) do update set avatar_asset_id = excluded.avatar_asset_id`,
+          [userId, row!.id],
+          c,
+        );
+        if (old) await this.db.exec(`update public.assets set status = 'DELETED', deleted_at = now() where id = $1`, [old.id], c);
+        return old;
+      });
+    } catch (e) {
+      await this.admin.storage.from(config.avatarBucket).remove([key]).catch(() => undefined);
+      throw e;
+    }
+    if (previous) await this.admin.storage.from(config.avatarBucket).remove([previous.storage_key]).catch((e) => this.logger.warn(`avatar cleanup: ${e?.message}`));
+    return key;
+  }
+
+  /** Removes the profile photo (falls back to the initials avatar). */
+  async removeUserAvatar(userId: string) {
+    const old = await this.db.tx(async (c) => {
+      const a = await this.db.one<{ id: string; storage_key: string; storage_bucket: string }>(
+        `select a.id, a.storage_key, a.storage_bucket from public.user_profiles up join public.assets a on a.id = up.avatar_asset_id
+          where up.user_id = $1 for update of up`,
+        [userId],
+        c,
+      );
+      await this.db.exec(`update public.user_profiles set avatar_asset_id = null where user_id = $1`, [userId], c);
+      if (a?.storage_bucket === config.avatarBucket) await this.db.exec(`update public.assets set status = 'DELETED', deleted_at = now() where id = $1`, [a.id], c);
+      return a;
+    });
+    if (old?.storage_bucket === config.avatarBucket) await this.admin.storage.from(config.avatarBucket).remove([old.storage_key]).catch(() => undefined);
   }
 
   async download(bucket: string, key: string): Promise<Buffer> {

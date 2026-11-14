@@ -39,6 +39,7 @@ export const config = {
     process.env.PAYMENT_SANDBOX_ENABLED === 'true' && process.env.NODE_ENV !== 'production' && (process.env.PAYMENT_ENVIRONMENT ?? 'TEST') !== 'LIVE',
   mediaBucket: 'rd-product-images',
   documentsBucket: 'rd-seller-documents',
+  avatarBucket: 'nx-user-avatars',
   publicApiUrl: process.env.PUBLIC_API_URL ?? 'http://localhost:4000/api',
   /** Public storefront URL used to build links inside e-mails. */
   webUrl: (process.env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
