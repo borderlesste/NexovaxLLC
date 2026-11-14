@@ -741,12 +741,14 @@ export class AdminService {
     if (loc != null && !['es', 'en'].includes(loc)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
-      'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications']);
+      'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications',
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
     const text = (v: unknown, min: number, max: number, re?: RegExp) =>
       typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
+    validateHelpAndSocial(s);
     if (s['marketplace.name'] != null && !text(s['marketplace.name'], 2, 60, /\p{L}/u)) throw badRequest('NAME_INVALID', 'El nombre del marketplace no es válido.');
     if (s['marketplace.support_email'] != null && !text(s['marketplace.support_email'], 6, 254, /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/))
       throw badRequest('EMAIL_INVALID', 'Correo electrónico inválido.');
@@ -969,5 +971,62 @@ export class AdminService {
     });
     invalidateUserCache(userId);
     return { ok: true };
+  }
+}
+
+/** Help center texts (Spanish required, English optional) and footer social links. */
+const SOCIAL_HOSTS: Record<string, string[]> = {
+  facebook: ['facebook.com', 'fb.com'], instagram: ['instagram.com'], youtube: ['youtube.com', 'youtu.be'], x: ['x.com', 'twitter.com'],
+  tiktok: ['tiktok.com'], linkedin: ['linkedin.com'], whatsapp: ['wa.me', 'whatsapp.com'], pinterest: ['pinterest.com'],
+};
+function validateHelpAndSocial(s: Record<string, any>) {
+  const multi = (v: unknown, min: number, max: number) =>
+    typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u0009\u000b-\u001f<>]/.test(v) && /\p{L}/u.test(v);
+  const optional = (v: unknown, min: number, max: number) => v == null || v === '' || multi(v, min, max);
+  const clean = (o: any, keys: string[]) => Object.fromEntries(keys.filter((k) => o[k] != null && String(o[k]).trim() !== '').map((k) => [k, typeof o[k] === 'string' ? o[k].trim() : o[k]]));
+  const faq = s['help.faq'];
+  if (faq != null) {
+    if (!Array.isArray(faq) || faq.length > 40) throw badRequest('HELP_INVALID', 'Máximo 40 preguntas frecuentes.');
+    faq.forEach((f: any, i: number) => {
+      if (!f || !multi(f.q, 5, 200) || !multi(f.a, 5, 2000) || !optional(f.qEn, 5, 200) || !optional(f.aEn, 5, 2000))
+        throw badRequest('HELP_INVALID', `Revisa la pregunta ${i + 1}: pregunta de 5 a 200 caracteres y respuesta de 5 a 2.000, sin etiquetas.`);
+    });
+    s['help.faq'] = faq.map((f: any) => clean(f, ['q', 'a', 'qEn', 'aEn']));
+  }
+  const sellers = s['help.sellers'];
+  if (sellers != null) {
+    if (typeof sellers !== 'object' || !Array.isArray(sellers.sections) || sellers.sections.length > 12) throw badRequest('HELP_INVALID', 'Máximo 12 secciones de ayuda para vendedores.');
+    sellers.sections.forEach((x: any, i: number) => {
+      if (!x || !multi(x.title, 3, 120) || !multi(x.body, 5, 3000) || !optional(x.titleEn, 3, 120) || !optional(x.bodyEn, 5, 3000))
+        throw badRequest('HELP_INVALID', `Revisa la sección ${i + 1} de vendedores: título de 3 a 120 caracteres y texto de 5 a 3.000.`);
+    });
+    s['help.sellers'] = { sections: sellers.sections.map((x: any) => clean(x, ['title', 'body', 'titleEn', 'bodyEn'])) };
+  }
+  const com = s['help.commissions'];
+  if (com != null) {
+    if (typeof com !== 'object' || !multi(com.body, 5, 3000) || !optional(com.bodyEn, 5, 3000) || typeof com.showRate !== 'boolean' || typeof com.showPayoutMinimum !== 'boolean')
+      throw badRequest('HELP_INVALID', 'Revisa el texto de comisiones (5 a 3.000 caracteres).');
+    s['help.commissions'] = { ...clean(com, ['body', 'bodyEn']), showRate: com.showRate, showPayoutMinimum: com.showPayoutMinimum };
+  }
+  const social = s['social.links'];
+  if (social != null) {
+    if (!Array.isArray(social) || social.length > 8) throw badRequest('SOCIAL_INVALID', 'Máximo 8 redes sociales.');
+    const seen = new Set<string>();
+    s['social.links'] = social.map((l: any) => {
+      const hosts = SOCIAL_HOSTS[l?.network];
+      if (!hosts) throw badRequest('SOCIAL_INVALID', 'Red social no soportada.');
+      if (seen.has(l.network)) throw badRequest('SOCIAL_INVALID', 'Cada red social solo puede aparecer una vez.');
+      seen.add(l.network);
+      let u: URL;
+      try {
+        u = new URL(String(l.url).trim());
+      } catch {
+        throw badRequest('SOCIAL_INVALID', `El enlace de ${l.network} no es válido.`);
+      }
+      const host = u.hostname.replace(/^www\./, '').replace(/^m\./, '');
+      if (u.protocol !== 'https:' || !hosts.some((h) => host === h || host.endsWith('.' + h)) || u.pathname.length < 2)
+        throw badRequest('SOCIAL_INVALID', `El enlace de ${l.network} debe ser https://${hosts[0]}/tu-perfil`);
+      return { network: l.network, url: u.toString() };
+    });
   }
 }

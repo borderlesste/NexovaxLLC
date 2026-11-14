@@ -45,6 +45,12 @@ export interface BankTransferSettings {
   instructions: string;
 }
 
+export interface HelpFaq { q: string; a: string; qEn?: string; aEn?: string }
+export interface HelpSection { title: string; body: string; titleEn?: string; bodyEn?: string }
+export interface HelpCommissions { body: string; bodyEn?: string; showRate: boolean; showPayoutMinimum: boolean }
+export type SocialNetwork = 'facebook' | 'instagram' | 'youtube' | 'x' | 'tiktok' | 'linkedin' | 'whatsapp' | 'pinterest';
+export interface SocialLink { network: SocialNetwork; url: string }
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
@@ -59,6 +65,10 @@ export interface PlatformSettings {
   'features.seller_registration': boolean;
   'features.mandatory_moderation': boolean;
   'features.email_notifications': boolean;
+  'help.faq': HelpFaq[];
+  'help.sellers': { sections: HelpSection[] };
+  'help.commissions': HelpCommissions;
+  'social.links': SocialLink[];
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -75,6 +85,30 @@ const DEFAULTS: PlatformSettings = {
   'features.seller_registration': true,
   'features.mandatory_moderation': true,
   'features.email_notifications': true,
+  'help.faq': [
+    { q: '¿Cómo compro en NEXOVAX?', a: 'Agrega productos al carrito desde cualquier tienda, ve a "Finalizar compra", elige tu dirección, el método de envío de cada tienda y paga con tarjeta o transferencia bancaria.' },
+    { q: '¿Qué métodos de pago aceptan?', a: 'Tarjetas de crédito y débito, y transferencias bancarias. Con transferencia reservamos tu inventario por 72 horas mientras validamos el pago.' },
+    { q: '¿Cuánto cuesta el envío?', a: 'Depende del origen de la tienda y de tu dirección. Mostramos tarifas en vivo de transportadoras (USPS, UPS, DHL Express y otras) o las tarifas del marketplace, y el retiro en tienda cuando está disponible.' },
+    { q: '¿Hacen envíos internacionales?', a: 'Sí. Las tiendas despachan desde distintos países; en el checkout verás las transportadoras disponibles para tu país. Los envíos internacionales pueden estar sujetos a impuestos y aranceles de importación del país de destino.' },
+    { q: '¿Cómo se calculan los impuestos?', a: 'Aplicamos el impuesto al consumo del país de destino (IVA, VAT, GST, ITBIS…) sobre el precio de los productos. Verás el detalle antes de confirmar la compra.' },
+    { q: '¿Cómo sigo mi pedido?', a: 'En "Mi cuenta → Mis pedidos" verás el estado, la transportadora, el número de guía y el historial de eventos de cada envío. Los envíos con etiqueta se actualizan automáticamente.' },
+    { q: '¿Puedo devolver un producto?', a: 'Sí, según la política de cada tienda (hasta 30 días). Escríbele al vendedor desde tu pedido o reporta un problema.' },
+    { q: '¿Cómo vendo en NEXOVAX?', a: 'Crea una cuenta, completa el registro de tu tienda con tu país y tu identificación fiscal, y espera la verificación. Luego publica tus productos; pasan por moderación antes de mostrarse.' },
+  ],
+  'help.sellers': {
+    sections: [
+      { title: 'Registra tu tienda', body: 'Crea una cuenta y completa el registro de tu tienda con tu país, tu identificación fiscal y la dirección desde donde despachas. El equipo verifica los datos antes de activar la tienda.' },
+      { title: 'Publica tus productos', body: 'Agrega fotos, descripción, atributos, variantes, precio, inventario y medidas del paquete. Cada publicación pasa por moderación antes de mostrarse en el catálogo.' },
+      { title: 'Envía tus pedidos', body: 'Compra la etiqueta desde tu panel (se descuenta del envío que pagó el cliente) o despacha por tu cuenta y registra la guía: en ese caso recibes lo que el cliente pagó por el envío.' },
+      { title: 'Devoluciones', body: 'Revisa las solicitudes, recibe e inspecciona los productos. Puedes tener una política propia más favorable que la del marketplace desde Devoluciones en tu panel.' },
+    ],
+  },
+  'help.commissions': {
+    body: 'La plataforma cobra una comisión por venta sobre el valor de los productos (sin envío ni impuestos), configurada por la administración y visible en tu panel de finanzas. Los fondos de cada pedido se liberan a tu saldo disponible cuando el pedido se entrega; luego puedes solicitar un retiro (o programarlo) a tu cuenta verificada.',
+    showRate: true,
+    showPayoutMinimum: true,
+  },
+  'social.links': [],
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */

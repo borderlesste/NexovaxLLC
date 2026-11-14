@@ -13,6 +13,7 @@ export interface PublicConfig {
   bankTransfer: boolean;
   sellerRegistration: boolean;
   stripePublishableKey?: string | null;
+  social?: { network: string; url: string }[];
 }
 
 export function usePublicConfig() {

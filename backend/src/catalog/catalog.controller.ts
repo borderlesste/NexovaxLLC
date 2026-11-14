@@ -1,3 +1,4 @@
+import { DbService } from '../db/db.service';
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { config } from '../config';
@@ -15,6 +16,7 @@ export class CatalogController {
   constructor(
     private readonly catalog: CatalogService,
     private readonly settings: SettingsService,
+    private readonly db: DbService,
   ) {}
 
   @Get('home')
@@ -38,6 +40,42 @@ export class CatalogController {
       stripePublishableKey: config.stripePublishableKey && config.stripeSecretKey ? config.stripePublishableKey : null,
       paypalClientId: config.paypalClientId && config.paypalClientSecret ? config.paypalClientId : null,
       sellerRegistration: s['features.seller_registration'],
+      social: s['social.links'] ?? [],
+    };
+  }
+
+  /** Help center content (FAQ, seller guide, commissions with the current rate and payout minimum). */
+  @Get('help')
+  async help() {
+    const s = await this.settings.all();
+    const currency = s['marketplace.currency'] || 'USD';
+    const [rate, payout] = await Promise.all([
+      this.db.one(
+        `select d.percentage_rate::text as rate from public.get_business_rule_candidates('PLATFORM_COMMISSION', null, null, null, null, now()) cand
+           join public.commission_rule_definitions d on d.rule_version_id = cand.rule_version_id
+          where cand.scope_type_code = 'GLOBAL' order by cand.priority desc limit 1`,
+      ),
+      this.db.one(
+        `select ppd.minimum_payout_amount::text as minimum, ppd.hold_period_seconds::int as hold from public.business_rule_groups g
+           join public.business_rule_versions v on v.rule_group_id = g.id and v.status = 'ACTIVE'
+           join public.payout_policy_definitions ppd on ppd.rule_version_id = v.id
+          where g.rule_type_code = 'PAYOUT_POLICY' and ppd.currency_code = $1 limit 1`,
+        [currency],
+      ),
+    ]);
+    const c = s['help.commissions'];
+    return {
+      faq: s['help.faq'] ?? [],
+      sellers: s['help.sellers']?.sections ?? [],
+      commissions: {
+        body: c.body,
+        bodyEn: c.bodyEn ?? null,
+        rate: c.showRate && rate ? Number(rate.rate) : null,
+        payoutMinimum: c.showPayoutMinimum && payout ? payout.minimum : null,
+        holdDays: payout ? Math.round(Number(payout.hold) / 86400) : null,
+        currency,
+      },
+      social: s['social.links'] ?? [],
     };
   }
 

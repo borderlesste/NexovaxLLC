@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users,
+  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageLoader, Switch } from '@/components/ui/misc';
 import { CountrySelect } from '@/components/shop/geo-fields';
 import { RateZone } from '@/components/admin/rate-zone';
+import { HelpEditor } from '@/components/admin/help-editor';
 
 const TABS = [
   ['general', 'General', Settings],
@@ -25,6 +26,7 @@ const TABS = [
   ['shipping', 'Envíos', Truck],
   ['payments', 'Pagos', Landmark],
   ['notifications', 'Notificaciones', Bell],
+  ['help', 'Ayuda y redes', BookOpen],
   ['roles', 'Roles y permisos', Users],
 ] as const;
 
@@ -245,6 +247,7 @@ export default function SettingsPage() {
               </div>
             </Card>
           )}
+          {tab === 'help' && <HelpEditor settings={s} />}
           {tab === 'notifications' && (
             <Card>
               <CardHeader icon={<Bell />} title={t('Notificaciones')} subtitle={t('Canales de aviso a compradores y vendedores.')} />

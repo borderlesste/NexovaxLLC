@@ -2,13 +2,10 @@
 import Link from 'next/link';
 import { Logo } from './logo';
 import { t } from '@/lib/i18n';
+import { usePublicConfig } from '@/lib/config';
+import { SOCIAL_ICONS, SOCIAL_NAMES } from './social-icons';
 
 
-const Social = {
-  facebook: <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden><path d="M13.5 21v-7.5h2.5l.4-3h-2.9V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3z"/></svg>,
-  instagram: <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>,
-  youtube: <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2 26 26 0 0 0 2 12a26 26 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8A26 26 0 0 0 22 12a26 26 0 0 0-.4-4.8zM10 15V9l5.2 3L10 15z"/></svg>,
-};
 
 const cols = [
   { title: 'Marketplace', links: [['Inicio', '/'], ['Categorías', '/catalogo'], ['Ofertas', '/catalogo?onSale=true'], ['Vendedores', '/vendedores']] },
@@ -17,6 +14,8 @@ const cols = [
 ];
 
 export function ShopFooter() {
+  const cfg = usePublicConfig();
+  const social = (cfg?.social ?? []).filter((l) => SOCIAL_ICONS[l.network]);
   return (
     <footer className="mt-16 bg-brand-950 text-brand-100">
       <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)_auto] lg:px-8">
@@ -34,14 +33,16 @@ export function ShopFooter() {
             </ul>
           </div>
         ))}
-        <div>
-          <p className="mb-3 font-bold text-white">{t('Síguenos')}</p>
-          <div className="flex gap-3 text-brand-200">
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label={t('Facebook')} className="hover:text-white">{Social.facebook}</a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label={t('Instagram')} className="hover:text-white">{Social.instagram}</a>
-            <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label={t('YouTube')} className="hover:text-white">{Social.youtube}</a>
+        {social.length > 0 ? (
+          <div data-footer-social>
+            <p className="mb-3 font-bold text-white">{t('Síguenos')}</p>
+            <div className="flex flex-wrap gap-3 text-brand-200">
+              {social.map((l) => (
+                <a key={l.network} href={l.url} target="_blank" rel="noopener noreferrer" aria-label={SOCIAL_NAMES[l.network]} title={SOCIAL_NAMES[l.network]} className="hover:text-white">{SOCIAL_ICONS[l.network]}</a>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : <div />}
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1400px] flex-wrap justify-between gap-2 px-4 py-4 text-xs text-brand-300 lg:px-8">
