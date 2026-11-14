@@ -5,7 +5,7 @@ import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { AppError, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
-import { normalizeTrack, NormalizedTrackEvent, ShippoAddress, ShippoParcel, ShippoService } from './shippo.service';
+import { normalizeTrack, NormalizedTrackEvent, ShippoAddress, ShippoParcel, ShippoRate, ShippoService } from './shippo.service';
 
 export const SHIPPO = 'SHIPPO';
 export const MARKETPLACE = 'MARKETPLACE';
@@ -28,7 +28,12 @@ export interface ShippingOption {
   providerCurrency: string | null;
   attributes: string[];
   carrierLogo: string | null;
+  /** Shippo carrier account behind the rate (used to skip carriers that can't issue labels). */
+  carrierAccountId?: string | null;
 }
+
+/** Shippo rejects labels from carrier accounts whose registration isn't finished. */
+const REGISTRATION_ERROR = /(not yet registered|registration is not complete|registration_error|activate account|accept the terms|terms and conditions|account (is )?(not active|inactive|disabled|suspended))/i;
 
 export interface OriginAddress {
   id: string;
@@ -100,6 +105,95 @@ export class ShippingService {
     private readonly shippo: ShippoService,
   ) {}
 
+  // ------------------------------------------------------------------ carrier label capability
+  private statusCache: { at: number; map: Map<string, { status: string; reason: string | null }> } | null = null;
+
+  private async carrierStatuses() {
+    if (this.statusCache && Date.now() - this.statusCache.at < 30_000) return this.statusCache.map;
+    const rows = await this.db.many<{ carrier_account_id: string; status: string; reason: string | null }>(
+      `select carrier_account_id, status, reason from public.shipping_carrier_status where environment = $1`, [this.shippo.testMode ? 'TEST' : 'LIVE']);
+    this.statusCache = { at: Date.now(), map: new Map(rows.map((r) => [r.carrier_account_id, { status: r.status, reason: r.reason }])) };
+    return this.statusCache.map;
+  }
+
+  async setCarrierStatus(accountId: string, carrier: string, name: string | null, status: 'UNKNOWN' | 'OK' | 'BLOCKED', reason: string | null) {
+    await this.db.exec(
+      `insert into public.shipping_carrier_status (carrier_account_id, carrier, carrier_name, environment, status, reason, checked_at)
+       values ($1,$2,$3,$4,$5,$6,now())
+       on conflict (carrier_account_id) do update set status = excluded.status, reason = excluded.reason, carrier_name = coalesce(excluded.carrier_name, shipping_carrier_status.carrier_name), checked_at = now()`,
+      [accountId, carrier, name, this.shippo.testMode ? 'TEST' : 'LIVE', status, reason?.slice(0, 500) ?? null],
+    );
+    this.statusCache = null;
+  }
+
+  /** Records what a label attempt tells about the carrier account (registration errors block it). */
+  private async learnFromLabel(rate: ShippoRate, ok: boolean, messages: string[]) {
+    if (!rate.carrier_account) return;
+    const carrier = rate.provider.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    if (ok) return this.setCarrierStatus(rate.carrier_account, carrier, rate.provider, 'OK', null);
+    const reg = messages.find((m) => REGISTRATION_ERROR.test(m));
+    if (reg) {
+      this.logger.warn(`Carrier ${rate.provider} (${rate.carrier_account}) blocked: ${reg.slice(0, 160)}`);
+      await this.setCarrierStatus(rate.carrier_account, carrier, rate.provider, 'BLOCKED', reg);
+    }
+  }
+
+  /**
+   * Test mode only (test labels are free): buys one test label per carrier account
+   * not checked yet, on the same route, to learn whether it can really issue labels.
+   */
+  private async probeCarriers(origin: OriginAddress, dest: DestinationAddress, parcel: Parcel, rates: ShippoRate[]) {
+    if (!this.shippo.testMode) return;
+    const statuses = await this.carrierStatuses();
+    const pending = [...new Map(rates.filter((r) => r.carrier_account && !statuses.has(r.carrier_account)).map((r) => [r.carrier_account, r])).values()];
+    if (!pending.length) return;
+    const work = (async () => {
+      let customsDeclarationId: string | undefined;
+      const US_AREA = new Set(['US', 'PR', 'VI', 'GU', 'AS', 'MP']);
+      if (origin.country_code !== dest.country_code && !(US_AREA.has(origin.country_code) && US_AREA.has(dest.country_code)))
+        customsDeclarationId = await this.shippo.customsDeclaration({
+          signer: origin.contact_name || 'Seller',
+          reference: 'NX-PROBE',
+          eelPfc: origin.country_code === 'US' ? 'NOEEI_30_37_a' : null,
+          items: [{ description: 'Cotton t-shirt', quantity: 1, net_weight: Number(parcel.weightKg).toFixed(3), mass_unit: 'kg', value_amount: '10.00', value_currency: 'USD',
+                    origin_country: origin.country_code, sku_code: 'NXPROBE', manufacturer_code: 'NEXOVAX' }],
+        });
+      // Same sender data as a real label (USPS requires the sender's e-mail).
+      const senderEmail = (await this.db.one<{ email: string }>(
+        `select coalesce(ssp.support_email, u.email::text) as email from public.seller_ship_from_addresses sfa
+           join public.sellers s on s.id = sfa.seller_id join public.users u on u.id = s.owner_user_id
+           left join public.seller_store_profiles ssp on ssp.seller_id = s.id where sfa.id = $1`, [origin.id]))?.email;
+      const probe = await this.shippo.shipment(ShippingService.toShippoAddress(origin, senderEmail), ShippingService.toShippoAddress(dest), ShippingService.shippoParcel(parcel), { customsDeclarationId, reference: 'NX-PROBE' });
+      await Promise.all(
+        pending.map(async (p) => {
+          const rate = probe.rates.find((r) => r.carrier_account === p.carrier_account);
+          if (!rate) return;
+          const tx = await this.shippo.buyLabel(rate.object_id, 'NX-PROBE').catch((e) => ({ status: 'ERROR', trackingNumber: null, messages: [String(e?.details?.provider ?? e?.message ?? '')] }) as any);
+          const ok = tx.status === 'SUCCESS' && !!tx.trackingNumber;
+          await this.learnFromLabel(rate, ok, tx.messages ?? []);
+          // inconclusive (route/customs specific): remember it was checked so it isn't probed on every quote
+          if (!ok && !(tx.messages ?? []).some((m: string) => REGISTRATION_ERROR.test(m)))
+            await this.setCarrierStatus(rate.carrier_account, rate.provider.toLowerCase(), rate.provider, 'UNKNOWN', (tx.messages ?? [])[0] ?? tx.status);
+        }),
+      );
+    })();
+    await Promise.race([work.catch((e) => this.logger.warn(`Carrier probe failed: ${e?.message}`)), new Promise((res) => setTimeout(res, 25_000))]);
+  }
+
+  /** Carrier accounts of the Shippo account with what we know about their label capability (admin). */
+  async carrierAccounts() {
+    const accounts = await this.shippo.carrierAccounts();
+    const st = await this.carrierStatuses();
+    return accounts.map((a) => ({ id: a.object_id, carrier: a.carrier, name: a.carrier_name ?? a.carrier, active: a.active, status: st.get(a.object_id)?.status ?? 'UNKNOWN', reason: st.get(a.object_id)?.reason ?? null }));
+  }
+
+  async recheckCarrier(accountId: string) {
+    await this.db.exec(`delete from public.shipping_carrier_status where carrier_account_id = $1 and environment = $2`, [accountId, this.shippo.testMode ? 'TEST' : 'LIVE']);
+    this.statusCache = null;
+    this.cache.clear();
+    return { ok: true };
+  }
+
   get shippoEnabled() {
     return this.shippo.enabled;
   }
@@ -167,6 +261,7 @@ export class ShippingService {
       } else {
         try {
           const s = await this.shippo.shipment(ShippingService.toShippoAddress(origin), ShippingService.toShippoAddress(dest), ShippingService.shippoParcel(parcel));
+          await this.probeCarriers(origin, dest, parcel, s.rates);
           live = s.rates
             .map((r): ShippingOption | null => {
               const amount = r.currency === currency ? r.amount : r.currency_local === currency ? r.amount_local : null;
@@ -188,6 +283,7 @@ export class ShippingService {
                 providerCurrency: r.currency,
                 attributes: r.attributes ?? [],
                 carrierLogo: r.provider_image_75 ?? null,
+                carrierAccountId: r.carrier_account ?? null,
               };
             })
             .filter((x): x is ShippingOption => !!x)
@@ -204,6 +300,9 @@ export class ShippingService {
         }
       }
     }
+    // Never offer a carrier that can't issue the label the customer would pay for.
+    const statuses = live.length ? await this.carrierStatuses() : new Map();
+    live = live.filter((o) => !o.carrierAccountId || statuses.get(o.carrierAccountId)?.status !== 'BLOCKED');
     const out: ShippingOption[] = [...live];
     const flat = (await this.settings.get('shipping.rates')) ?? [];
     for (const r of flat) {
@@ -295,29 +394,51 @@ export class ShippingService {
     const fromAddr = ShippingService.toShippoAddress({ ...from, contact_name: from.recipient_name } as any, sellerEmail);
     const toAddr = ShippingService.toShippoAddress(to as any, to.email);
     let customsId: string | undefined;
-    if (from.country_code !== to.country_code) {
+    // US ↔ its territories ship as domestic mail: no customs declaration.
+    const US_AREA = new Set(['US', 'PR', 'VI', 'GU', 'AS', 'MP']);
+    if (from.country_code !== to.country_code && !(US_AREA.has(from.country_code) && US_AREA.has(to.country_code))) {
       const items = await this.db.many(
         `select coalesce(ois.product_title, 'Merchandise') as title, spi.quantity::int as qty, oifs.unit_price::text as unit_price,
-                oi.currency_code, v.weight_value, v.weight_unit
+                oi.currency_code, v.weight_value, v.weight_unit, coalesce(ois.sku, v.sku) as sku, v.hs_code, v.country_of_origin_code,
+                b.name as brand, s.slug as seller_slug
            from public.shipment_package_items spi join public.order_items oi on oi.id = spi.order_item_id
            left join public.order_item_snapshots ois on ois.order_item_id = oi.id
            left join public.order_item_financial_snapshots oifs on oifs.order_item_id = oi.id
            left join public.product_variants v on v.id = oi.variant_id
+           left join public.products p on p.id = oi.product_id
+           left join public.brands b on b.id = p.brand_id
+           left join public.sellers s on s.id = oi.seller_id
           where spi.shipment_id = $1`,
         [shipmentId],
       );
+      const alnum = (v: unknown, max: number) => String(v ?? '').normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, max);
+      // US exports: exemption code below the USD 2,500 filing threshold (above it an AES ITN is required).
+      const declared = items.reduce((acc, i) => acc + Number(i.unit_price ?? 0) * i.qty, 0);
+      let eelPfc: string | null = null;
+      if (from.country_code === 'US') {
+        if (declared > 2500)
+          throw new AppError('CUSTOMS_ITN_REQUIRED', 'Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.', HttpStatus.CONFLICT);
+        eelPfc = 'NOEEI_30_37_a';
+      }
       customsId = await this.shippo.customsDeclaration({
         signer: from.recipient_name || 'Seller',
         reference: `NX-${s.public_number}`,
-        items: items.map((i) => ({
-          description: String(i.title).slice(0, 100),
-          quantity: i.qty,
-          net_weight: (i.weight_value ? Number(i.weight_value) * (i.weight_unit === 'g' ? 0.001 : i.weight_unit === 'lb' ? 0.4536 : 1) : 0.5).toFixed(3),
-          mass_unit: 'kg' as const,
-          value_amount: Number(i.unit_price ?? 0).toFixed(2),
-          value_currency: i.currency_code,
-          origin_country: from.country_code,
-        })),
+        eelPfc,
+        items: items.map((i) => {
+          const hs = String(i.hs_code ?? '').replace(/\D/g, '');
+          return {
+            description: String(i.title).slice(0, 100),
+            quantity: i.qty,
+            net_weight: (i.weight_value ? Number(i.weight_value) * (i.weight_unit === 'g' ? 0.001 : i.weight_unit === 'lb' ? 0.4536 : 1) : 0.5).toFixed(3),
+            mass_unit: 'kg' as const,
+            value_amount: Number(i.unit_price ?? 0).toFixed(2),
+            value_currency: i.currency_code,
+            origin_country: /^[A-Z]{2}$/.test(i.country_of_origin_code ?? '') ? i.country_of_origin_code : from.country_code,
+            sku_code: alnum(i.sku, 30) || undefined,
+            manufacturer_code: alnum(i.brand, 20) || alnum(i.seller_slug, 20) || undefined,
+            ...(hs.length >= 6 ? { tariff_number: hs.slice(0, 10) } : {}),
+          };
+        }),
       });
     }
     const quote = await this.shippo.shipment(fromAddr, toAddr, ShippingService.shippoParcel(parcel), { customsDeclarationId: customsId, reference: `NX-${s.public_number}` });
@@ -331,6 +452,7 @@ export class ShippingService {
       await this.failLabel(labelId, 'PROVIDER_ERROR', e?.details?.provider ?? e?.message);
       throw e;
     });
+    await this.learnFromLabel(rate, tx.status === 'SUCCESS' && !!tx.trackingNumber, tx.messages).catch(() => undefined);
     if (tx.status !== 'SUCCESS' || !tx.trackingNumber) {
       await this.failLabel(labelId, 'LABEL_REJECTED', tx.messages.join(' | ') || tx.status);
       throw new AppError('SHIPPING_LABEL_FAILED', `Shippo no pudo generar la etiqueta: ${tx.messages[0] ?? tx.status}`, HttpStatus.BAD_GATEWAY);

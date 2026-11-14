@@ -320,5 +320,14 @@
 "¿Es {p}? Usar": "Is it {p}? Use it",
 "Número local": "Local number",
 "Se guardará como +{p} {n}": "Will be saved as +{p} {n}",
-"Datos geográficos: GeoNames": "Geographic data: GeoNames"
+"Datos geográficos: GeoNames": "Geographic data: GeoNames",
+"Se volverá a comprobar {c} en la próxima cotización.": "{c} will be checked again on the next quote.",
+"Cargando transportadoras…": "Loading carriers…",
+"Estas transportadoras no se ofrecen en el checkout porque Shippo rechaza sus etiquetas. Actívalas en Shippo (Settings → Carriers → “Activate Account”) y pulsa “Volver a comprobar”.": "These carriers aren’t offered at checkout because Shippo rejects their labels. Activate them in Shippo (Settings → Carriers → “Activate Account”) and press “Check again”.",
+"Emite etiquetas": "Issues labels",
+"Bloqueada": "Blocked",
+"Sin comprobar": "Not checked",
+"Volver a comprobar": "Check again",
+"Transportadoras de Shippo": "Shippo carriers",
+"Solo se ofrecen al comprador las que pueden emitir la etiqueta.": "Only carriers that can issue the label are offered to buyers."
 }

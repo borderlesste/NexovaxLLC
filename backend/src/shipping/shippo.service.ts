@@ -49,6 +49,11 @@ export interface ShippoCustomsItem {
   value_amount: string;
   value_currency: string;
   origin_country: string;
+  /** Required for EU destinations (ICS2) since 2026-11-01; ASCII letters and digits only (USPS). */
+  sku_code?: string;
+  manufacturer_code?: string;
+  /** HS tariff code. */
+  tariff_number?: string;
 }
 
 /** Normalized Shippo tracking statuses → our tracking_events.normalized_status. */
@@ -117,18 +122,27 @@ export class ShippoService {
     };
   }
 
-  async customsDeclaration(input: { signer: string; items: ShippoCustomsItem[]; reference?: string }) {
+  async customsDeclaration(input: { signer: string; items: ShippoCustomsItem[]; reference?: string; eelPfc?: string | null }) {
     const d = await this.call<any>('POST', '/customs/declarations/', {
       contents_type: 'MERCHANDISE',
       non_delivery_option: 'RETURN',
       certify: true,
       certify_signer: input.signer.slice(0, 35),
-      eel_pfc: 'NOEEI_30_37_a',
+      ...(input.eelPfc ? { eel_pfc: input.eelPfc } : {}),
       incoterm: 'DDU',
       items: input.items,
       metadata: input.reference?.slice(0, 100),
     });
     return d.object_id as string;
+  }
+
+  private accountsCache: { at: number; list: { object_id: string; carrier: string; carrier_name?: string; active: boolean }[] } | null = null;
+  /** Carrier accounts available to the Shippo account (cached 10 min). */
+  async carrierAccounts() {
+    if (this.accountsCache && Date.now() - this.accountsCache.at < 600_000) return this.accountsCache.list;
+    const r = await this.call<any>('GET', '/carrier_accounts/?results=100');
+    this.accountsCache = { at: Date.now(), list: (r.results ?? []).map((a: any) => ({ object_id: a.object_id, carrier: a.carrier, carrier_name: a.carrier_name, active: !!a.active })) };
+    return this.accountsCache.list;
   }
 
   /** Buys a label for a rate. */

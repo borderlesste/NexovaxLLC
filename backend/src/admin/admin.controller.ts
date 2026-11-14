@@ -4,8 +4,10 @@ import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { IsCleanText, IsCountryCode, IsEmailAddress, IsPaymentReference, IsPersonName, ToNumber } from '../common/validators';
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
+import { badRequest } from '../common/errors';
 import { AdminService } from './admin.service';
 import { OrdersService } from '../orders/orders.service';
+import { ShippingService } from '../shipping/shipping.service';
 import { OnboardingDto } from '../seller/seller.controller';
 
 export class AttributeOptionDto {
@@ -86,7 +88,22 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly orders: OrdersService,
+    private readonly shipping: ShippingService,
   ) {}
+
+  /** Shippo carrier accounts and whether they can issue labels (blocked ones aren't offered at checkout). */
+  @Roles('ADMIN')
+  @Get('shipping/carriers')
+  shippingCarriers() {
+    return this.shipping.carrierAccounts();
+  }
+
+  @Roles('ADMIN')
+  @Post('shipping/carriers/:id/recheck')
+  recheckCarrier(@Param('id') id: string) {
+    if (!/^[a-zA-Z0-9_-]{6,64}$/.test(id)) throw badRequest('CARRIER_INVALID', 'Transportadora inválida.');
+    return this.shipping.recheckCarrier(id);
+  }
 
   @Roles('MODERATOR', 'SUPPORT')
   @Get('dashboard')

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users,
@@ -193,6 +194,10 @@ export default function SettingsPage() {
           )}
           {tab === 'shipping' && (
             <>
+              <Card>
+                <CardHeader icon={<Truck />} title={t('Transportadoras de Shippo')} subtitle={t('Solo se ofrecen al comprador las que pueden emitir la etiqueta.')} />
+                <ShippoCarriers />
+              </Card>
               <Card>
                 <CardHeader icon={<Globe2 />} title={t('Tarifas en vivo (Shippo)')} subtitle={t('Cotiza con USPS, UPS, DHL Express, Canada Post y más; compra etiquetas y rastrea envíos automáticamente.')} />
                 <div className="space-y-3 p-5 text-sm">

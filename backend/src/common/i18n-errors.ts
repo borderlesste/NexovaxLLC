@@ -219,6 +219,7 @@ const EN: Record<string, string> = {
   'El teléfono debe tener 10 dígitos (código de área + número).': 'The phone number must have 10 digits (area code + number).',
   'El teléfono tiene demasiados dígitos para el país seleccionado.': 'The phone number has too many digits for the selected country.',
   'Búsqueda inválida.': 'Invalid search.',
+  'Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.': 'International shipments over US$ 2,500 from the US require an export ITN (AES). Record this shipment with a manual tracking number.',
 };
 
 const NOUNS: Record<string, string> = {
