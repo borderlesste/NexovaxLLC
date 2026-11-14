@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { attributeLabel } from '../common/attributes';
 import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { notFound } from '../common/errors';
@@ -130,7 +131,7 @@ export class CatalogService {
         [productId, currency],
       ),
       this.db.many(
-        `select ad.code, ad.name, ad.unit_code, pav.value_text, pav.value_number::text as value_number, pav.value_boolean
+        `select ad.code, ad.name, ad.unit_code, ad.validation_rules, pav.value_text, pav.value_number::text as value_number, pav.value_boolean
            from public.product_attribute_values pav join public.attribute_definitions ad on ad.id = pav.attribute_definition_id
           where pav.product_id = $1 order by ad.name, pav.position`,
         [productId],
@@ -179,13 +180,16 @@ export class CatalogService {
         stock: v.stock,
         optionValues: v.option_values,
       })),
-      specifications: attributes.map((a: any) => ({
-        code: a.code,
-        name: a.name,
-        value:
-          a.value_text ??
-          (a.value_number != null ? `${Number(a.value_number)}${a.unit_code ? ' ' + a.unit_code : ''}` : a.value_boolean != null ? (a.value_boolean ? 'Sí' : 'No') : ''),
-      })),
+      specifications: attributes.map((a: any) => {
+        const num = a.value_number != null ? `${Number(a.value_number)}${a.unit_code ? ' ' + a.unit_code : ''}` : null;
+        return {
+          code: a.code,
+          name: a.name,
+          value: a.value_text != null ? attributeLabel(a.validation_rules, a.value_text, 'es') : num ?? (a.value_boolean != null ? (a.value_boolean ? 'Sí' : 'No') : ''),
+          // English label; the locale interceptor swaps it in for English clients.
+          valueEn: a.value_text != null ? attributeLabel(a.validation_rules, a.value_text, 'en') : num ?? (a.value_boolean != null ? (a.value_boolean ? 'Yes' : 'No') : ''),
+        };
+      }),
       ratingDistribution: [5, 4, 3, 2, 1].map((n) => ({ rating: n, count: ratingDist.find((d: any) => d.rating === n)?.count ?? 0 })),
       breadcrumbs,
       sellerStats,

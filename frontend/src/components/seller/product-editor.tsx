@@ -13,7 +13,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
-import { t } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface Opt { name: string; values: { label: string; swatch?: string | null }[] }
 interface Var { id?: string; key: string; optionValues: Record<string, string>; sku: string; price: string; compareAtPrice: string; stock: string; active: boolean }
@@ -100,7 +100,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
       id: v.id, sku: v.sku, optionValues: v.optionValues, price: Number(v.price), compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null, stock: Number(v.stock || 0),
       weightKg: ship.weightKg ? Number(ship.weightKg) : null, lengthCm: ship.lengthCm ? Number(ship.lengthCm) : null, widthCm: ship.widthCm ? Number(ship.widthCm) : null, heightCm: ship.heightCm ? Number(ship.heightCm) : null,
     })),
-    attributes: Object.entries(attrs).filter(([, v]) => v?.toString().trim()).map(([definitionId, value]) => ({ definitionId, value: String(value) })),
+    attributes: Object.entries(attrs).filter(([id, v]) => v?.toString().trim() && (!attrDefs.data || attrDefs.data.some((d: any) => d.id === id))).map(([definitionId, value]) => ({ definitionId, value: String(value) })),
     seo: { slug: f.slug || undefined, metaTitle: f.metaTitle || undefined, metaDescription: f.metaDescription || undefined },
     action,
   });
@@ -197,22 +197,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
           {attrDefs.data?.length ? (
             <Card>
               <CardHeader icon={<SlidersHorizontal />} title={t('Atributos')} subtitle={t('Atributos asociados a la categoría seleccionada.')} />
-              <div className="grid gap-4 p-5 sm:grid-cols-3">
-                {attrDefs.data.slice(0, 12).map((a: any) => {
-                  const values: string[] | undefined = a.validation?.allowed_values ?? a.validation?.enum;
-                  return (
-                    <Field key={a.id} label={`${a.name}${a.unit ? ` (${a.unit})` : ''}`} required={a.required}>
-                      {values?.length ? (
-                        <Select value={attrs[a.id] ?? ''} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })}><option value="">{t('Selecciona')}</option>{values.map((v) => <option key={v}>{v}</option>)}</Select>
-                      ) : a.dataType === 'BOOLEAN' ? (
-                        <Select value={attrs[a.id] ?? ''} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })}><option value="">—</option><option value="true">{t('Sí')}</option><option value="false">{t('No')}</option></Select>
-                      ) : (
-                        <Input value={attrs[a.id] ?? ''} inputMode={a.dataType === 'NUMBER' ? 'decimal' : undefined} onChange={(e) => setAttrs({ ...attrs, [a.id]: e.target.value })} />
-                      )}
-                    </Field>
-                  );
-                })}
-              </div>
+              <AttributeFields defs={attrDefs.data} values={attrs} onChange={(id, v) => setAttrs((cur) => ({ ...cur, [id]: v }))} />
             </Card>
           ) : null}
 
@@ -347,3 +332,67 @@ export function ProductEditor({ productId }: { productId?: string }) {
 }
 
 export default ProductEditor;
+
+type AttrOption = { value: string; label: string; labelEn?: string };
+type AttrDef = { id: string; name: string; unit?: string | null; required: boolean; dataType: string; input: 'select' | 'combobox' | 'text' | 'number' | 'boolean'; options: AttrOption[]; suggestions: string[] };
+const VISIBLE_ATTRS = 9;
+
+/**
+ * Category attributes: closed lists render as a select, open lists as an input
+ * with the catalog options plus values other sellers already used, and numbers /
+ * yes-no by type. Values the API rejects come back as field errors.
+ */
+function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: Record<string, string>; onChange: (id: string, v: string) => void }) {
+  const [all, setAll] = useState(false);
+  const en = getLocale() === 'en';
+  const label = (o: AttrOption) => (en ? o.labelEn || o.label : o.label);
+  // Keep every attribute that already has a value visible.
+  const shown = all ? defs : defs.filter((d, i) => i < VISIBLE_ATTRS || d.required || values[d.id]);
+  return (
+    <div className="p-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {shown.map((a) => {
+          const v = values[a.id] ?? '';
+          const field = `${a.name}${a.unit ? ` (${a.unit})` : ''}`;
+          let control: React.ReactNode;
+          if (a.input === 'select') {
+            const known = !v || a.options.some((o) => o.value === v);
+            control = (
+              <Select value={v} onChange={(e) => onChange(a.id, e.target.value)} data-attr={a.id}>
+                <option value="">{t('Selecciona')}</option>
+                {!known && <option value={v}>{v}</option>}
+                {a.options.map((o) => <option key={o.value} value={o.value}>{label(o)}</option>)}
+              </Select>
+            );
+          } else if (a.input === 'boolean') {
+            control = (
+              <Select value={v} onChange={(e) => onChange(a.id, e.target.value)} data-attr={a.id}>
+                <option value="">—</option><option value="true">{t('Sí')}</option><option value="false">{t('No')}</option>
+              </Select>
+            );
+          } else if (a.input === 'number') {
+            control = <Input rule="decimal" value={v} onChange={(e) => onChange(a.id, e.target.value)} data-attr={a.id} />;
+          } else {
+            // open list: show the label of a stored option code; typed text is matched to an option by the API
+            const opt = a.options.find((o) => o.value === v);
+            const listId = `attr-${a.id}`;
+            const choices = a.input === 'combobox' ? [...a.options.map(label), ...a.suggestions] : [];
+            control = (
+              <>
+                <Input list={choices.length ? listId : undefined} value={opt ? label(opt) : v} maxLength={200} autoComplete="off" data-attr={a.id}
+                  placeholder={choices.length ? t('Elige o escribe') : undefined} onChange={(e) => onChange(a.id, e.target.value)} />
+                {choices.length > 0 && <datalist id={listId}>{[...new Set(choices)].map((c) => <option key={c} value={c} />)}</datalist>}
+              </>
+            );
+          }
+          return <Field key={a.id} label={field} required={a.required}>{control}</Field>;
+        })}
+      </div>
+      {defs.length > shown.length || all ? (
+        <button type="button" onClick={() => setAll((x) => !x)} className="mt-4 text-sm font-semibold text-brand-700 hover:underline">
+          {all ? t('Mostrar menos atributos') : t('Mostrar todos los atributos ({n})', { n: defs.length })}
+        </button>
+      ) : null}
+    </div>
+  );
+}

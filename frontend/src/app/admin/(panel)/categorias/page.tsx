@@ -1,7 +1,8 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, Check, ChevronDown, ChevronRight, Download, Layers, Pencil, Plus, Search, Star } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronRight, Download, Layers, Pencil, Plus, Search, SlidersHorizontal, Star } from 'lucide-react';
+import { CategoryAttributesDialog } from '@/components/admin/category-attributes';
 import { toast } from 'sonner';
 import { del, errorMessage, get, post, put } from '@/lib/api';
 import { fmtDateTime } from '@/lib/utils';
@@ -24,6 +25,7 @@ export default function CategoriesAdminPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [dlg, setDlg] = useState<any>(null);
+  const [attrsFor, setAttrsFor] = useState<{ id: string; name: string } | null>(null);
   const q = useQuery({ queryKey: ['admin-categories', search, status], queryFn: () => get(`/admin/categories?search=${encodeURIComponent(search)}&status=${status}`) });
   const all = q.data ?? [];
   const roots = useMemo(() => all.filter((c: any) => !c.parentId), [all]);
@@ -86,9 +88,11 @@ export default function CategoriesAdminPage() {
                     <td className="text-muted">{c.slug}</td><td className="font-semibold">{c.products}</td><td>{c.children}</td>
                     <td><StatusBadge status={c.status} label={c.status === 'ACTIVE' ? t('Activa') : t('Inactiva')} /></td>
                     <td className="text-muted">{fmtDateTime(c.updatedAt)}</td>
-                    <td className="pr-5 text-right">{isAdmin && <span className="flex justify-end gap-1">
+                    <td className="pr-5 text-right"><span className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => setAttrsFor({ id: c.id, name: c.name })} aria-label={t('Atributos')} title={t('Atributos')}><SlidersHorizontal /></Button>
+                      {isAdmin && <>
                       <Button size="sm" variant="ghost" onClick={() => setDlg({ id: c.id, name: c.name, parentId: c.parentId ?? '', status: c.status, sortOrder: String(c.sortOrder) })} aria-label={t('Editar')}><Pencil /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => archive(c.id)} aria-label={t('Archivar')}><Archive /></Button></span>}</td>
+                      <Button size="sm" variant="ghost" onClick={() => archive(c.id)} aria-label={t('Archivar')}><Archive /></Button></>}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -109,6 +113,7 @@ export default function CategoriesAdminPage() {
           <div className="p-5"><Donut data={distData} total={totalProducts.toLocaleString(getIntlLocale())} label={t('productos')} /></div>
         </Card>
       </div>
+      {attrsFor && <CategoryAttributesDialog category={attrsFor} canEdit={isAdmin} onClose={() => setAttrsFor(null)} />}
       {dlg && (
         <Dialog open onOpenChange={(o) => !o && setDlg(null)} title={dlg.id ? t('Editar categoría') : t('Crear categoría')} footer={<><Button variant="secondary" onClick={() => setDlg(null)}>{t('Cancelar')}</Button><Button onClick={save} disabled={!dlg.name.trim()}>{t('Guardar')}</Button></>}>
           <div className="grid gap-4">

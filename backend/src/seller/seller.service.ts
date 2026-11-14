@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
 import { normalizeAddress, normalizeCountry, resolveCityId } from '../common/geo';
+import { attributeInput, attributeOptions, AttributeValueError, normalizeAttributeValue } from '../common/attributes';
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
@@ -489,20 +490,36 @@ export class SellerService {
       // ---- attributes
       if (input.attributes) {
         await this.db.exec(`delete from public.product_attribute_values where product_id = $1`, [product.id], c);
+        // Only attributes of the product's category (or its ancestors), each validated by its type/options.
+        const defs = new Map(
+          (await this.attributeDefinitionRows(input.categoryId, c)).map((d: any) => [d.id, d]),
+        );
+        const problems: string[] = [];
+        const rows: Array<[string, (string | number | boolean | null)[]]> = [];
         for (const a of input.attributes.filter((x) => x.value?.toString().trim())) {
-          const def = await this.db.one(`select data_type from public.attribute_definitions where id = $1 and status = 'ACTIVE'`, [a.definitionId], c);
-          if (!def) continue;
-          const val = a.value.toString().trim();
-          const cols =
-            def.data_type === 'NUMBER' && !isNaN(Number(val))
-              ? [null, Number(val), null]
-              : def.data_type === 'BOOLEAN'
-                ? [null, null, ['true', 'sí', 'si', '1'].includes(val.toLowerCase())]
-                : [val, null, null];
+          const def = defs.get(a.definitionId);
+          if (!def) {
+            problems.push('Un atributo no corresponde a la categoría seleccionada.');
+            continue;
+          }
+          try {
+            rows.push([a.definitionId, normalizeAttributeValue(def, a.value)]);
+          } catch (e) {
+            if (e instanceof AttributeValueError) problems.push(e.message);
+            else throw e;
+          }
+        }
+        if (input.action === 'SUBMIT') {
+          const filled = new Set(rows.map(([id]) => id));
+          for (const d of defs.values()) if (d.required && !filled.has(d.id)) problems.push(`${d.name}: es obligatorio.`);
+        }
+        if (problems.length)
+          throw badRequest('ATTRIBUTES_INVALID', 'Revisa los atributos del producto.', [{ field: 'attributes', errors: [...new Set(problems)] }]);
+        for (const [definitionId, cols] of rows) {
           await this.db.exec(
             `insert into public.product_attribute_values (product_id, attribute_definition_id, position, value_text, value_number, value_boolean)
              values ($1,$2,0,$3,$4,$5)`,
-            [product.id, a.definitionId, ...cols],
+            [product.id, definitionId, ...cols],
             c,
           );
         }
@@ -1099,17 +1116,56 @@ export class SellerService {
     return (await this.db.one(`insert into public.brands (name, slug) values ($1,$2) returning id`, [name, slug], c))!.id;
   }
 
-  async attributeDefinitions(categoryId: string) {
+  /** Active attribute definitions of a category and its ancestors (closest link wins), in display order. */
+  private attributeDefinitionRows(categoryId: string, c?: PoolClient) {
     return this.db.many(
-      `with recursive up as (select id, parent_id from public.categories where id = $1
-                              union all select c.id, c.parent_id from public.categories c join up on c.id = up.parent_id)
-       select distinct on (ad.id) ad.id, ad.code, ad.name, ad.data_type as "dataType", ad.unit_code as "unit", cad.is_required as "required",
-              ad.validation_rules as "validation", cad.sort_order
-         from public.category_attribute_definitions cad join public.attribute_definitions ad on ad.id = cad.attribute_definition_id
-        where cad.category_id in (select id from up) and ad.status = 'ACTIVE'
-        order by ad.id, cad.sort_order`,
+      `with recursive up as (select id, parent_id, 0 as depth from public.categories where id = $1
+                              union all select c.id, c.parent_id, up.depth + 1 from public.categories c join up on c.id = up.parent_id where up.depth < 20)
+       select * from (
+         select distinct on (ad.id) ad.id, ad.code, ad.name, ad.data_type, ad.unit_code, ad.validation_rules, cad.is_required as required, cad.sort_order, up.depth
+           from public.category_attribute_definitions cad join up on up.id = cad.category_id
+           join public.attribute_definitions ad on ad.id = cad.attribute_definition_id
+          where ad.status = 'ACTIVE'
+          order by ad.id, up.depth) x
+        order by x.required desc, x.sort_order, x.name`,
       [categoryId],
+      c,
     );
+  }
+
+  /**
+   * Attributes for the product editor: input mode, options (code + label in
+   * both languages) and, for open lists, values other sellers already used.
+   */
+  async attributeDefinitions(categoryId: string) {
+    const defs = await this.attributeDefinitionRows(categoryId);
+    const open = defs.filter((d: any) => d.data_type === 'TEXT' && d.validation_rules?.input === 'combobox').map((d: any) => d.id);
+    const used = open.length
+      ? await this.db.many<{ id: string; value: string }>(
+          `select attribute_definition_id as id, value_text as value from (
+             select pav.attribute_definition_id, pav.value_text, count(*) n,
+                    row_number() over (partition by pav.attribute_definition_id order by count(*) desc, pav.value_text) rn
+               from public.product_attribute_values pav join public.products p on p.id = pav.product_id
+              where pav.attribute_definition_id = any($1::uuid[]) and pav.value_text is not null and p.status = 'ACTIVE'
+              group by pav.attribute_definition_id, pav.value_text) t
+            where rn <= 25`,
+          [open],
+        )
+      : [];
+    return defs.map((d: any) => {
+      const options = attributeOptions(d);
+      return {
+        id: d.id,
+        code: d.code,
+        name: d.name,
+        dataType: d.data_type,
+        unit: d.unit_code,
+        required: d.required,
+        input: attributeInput(d),
+        options,
+        suggestions: used.filter((u) => u.id === d.id && !options.some((o) => o.value === u.value)).map((u) => u.value),
+      };
+    });
   }
 
   async variantTemplates(categoryId: string) {

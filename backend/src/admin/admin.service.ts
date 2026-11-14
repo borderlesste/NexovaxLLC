@@ -17,6 +17,7 @@ import { slugify } from '../common/slug';
 import { invalidateUserCache, RequestUser, RoleCode } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { postSaleAllocation } from '../checkout/sale-ledger';
+import { attributeInput, attributeOptions } from '../common/attributes';
 import { MailService } from '../mail/mail.service';
 
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
@@ -351,6 +352,65 @@ export class AdminService {
   }
 
   // ------------------------------------------------------------------ categories
+  /** Attributes linked to a category (and inherited from its ancestors) with their input mode and options. */
+  async categoryAttributes(categoryId: string) {
+    const rows = await this.db.many(
+      `with recursive up as (select id, parent_id, name, 0 as depth from public.categories where id = $1
+                              union all select c.id, c.parent_id, c.name, up.depth + 1 from public.categories c join up on c.id = up.parent_id where up.depth < 20)
+       select * from (
+         select distinct on (ad.id) ad.id, ad.code, ad.name, ad.data_type, ad.unit_code, ad.validation_rules, cad.is_required, cad.is_filterable, cad.sort_order,
+                up.depth, up.name as from_category,
+                (select count(*)::int from public.product_attribute_values v where v.attribute_definition_id = ad.id) as used_values
+           from public.category_attribute_definitions cad join up on up.id = cad.category_id
+           join public.attribute_definitions ad on ad.id = cad.attribute_definition_id
+          where ad.status = 'ACTIVE'
+          order by ad.id, up.depth) x
+        order by x.depth, x.sort_order, x.name`,
+      [categoryId],
+    );
+    return rows.map((r: any) => ({
+      id: r.id,
+      code: r.code,
+      name: r.name,
+      dataType: r.data_type,
+      unit: r.unit_code,
+      required: r.is_required,
+      filterable: r.is_filterable,
+      inherited: r.depth > 0,
+      fromCategory: r.depth > 0 ? r.from_category : null,
+      input: attributeInput(r),
+      options: attributeOptions(r),
+      usedValues: r.used_values,
+    }));
+  }
+
+  /** Sets the input mode and options of a text attribute (shared by every category that uses it). */
+  async updateAttributeConfig(id: string, input: { input: 'select' | 'combobox' | 'text'; options: { value?: string; label: string; labelEn?: string }[] }) {
+    return this.db.tx(async (c) => {
+      const def = await this.db.one(`select id, data_type, validation_rules from public.attribute_definitions where id = $1 for update`, [id], c);
+      if (!def) throw notFound('Atributo');
+      if (def.data_type !== 'TEXT') throw badRequest('ATTRIBUTE_NOT_TEXT', 'Solo los atributos de texto admiten lista de opciones.');
+      const slug = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+      const options = input.input === 'text' ? [] : input.options.map((o) => ({ value: o.value || slug(o.label), label: o.label.trim(), labelEn: o.labelEn?.trim() || o.label.trim() }));
+      if (options.some((o) => !o.value)) throw badRequest('OPTION_INVALID', 'Cada opción necesita un nombre con letras o números.');
+      const dup = options.find((o, i) => options.findIndex((x) => x.value === o.value || x.label.toLowerCase() === o.label.toLowerCase()) !== i);
+      if (dup) throw badRequest('OPTION_DUPLICATE', 'Hay opciones repetidas.');
+      if (input.input === 'select' && !options.length) throw badRequest('OPTIONS_REQUIRED', 'Una lista cerrada necesita al menos una opción.');
+      // A closed list can't orphan values products already use.
+      if (input.input === 'select') {
+        const stray = await this.db.one<{ n: number }>(
+          `select count(*)::int n from public.product_attribute_values where attribute_definition_id = $1 and value_text is not null and not (value_text = any($2::text[]))`,
+          [id, options.map((o) => o.value)],
+          c,
+        );
+        if (stray?.n) throw conflict('OPTIONS_IN_USE', 'Hay productos con valores que no están en la lista. Agrégalos como opciones o usa una lista abierta.');
+      }
+      const rules = { ...(def.validation_rules ?? {}), input: input.input, options };
+      await this.db.exec(`update public.attribute_definitions set validation_rules = $2::jsonb, version = version + 1 where id = $1`, [id, JSON.stringify(rules)], c);
+      return { id, input: input.input, options };
+    });
+  }
+
   async categoriesAdmin(q: { search?: string; status?: string }) {
     const rows = await this.db.many(
       `select c.id, c.parent_id, c.name, c.slug, c.status, c.sort_order, c.updated_at,

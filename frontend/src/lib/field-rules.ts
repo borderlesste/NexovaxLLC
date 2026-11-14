@@ -7,7 +7,7 @@
 export type FieldRule =
   | 'phone' | 'personName' | 'placeName' | 'postalCode' | 'businessName' | 'email'
   | 'money' | 'integer' | 'measure' | 'percent' | 'sku' | 'slug' | 'trackingNumber'
-  | 'bankAccount' | 'swift' | 'taxId' | 'documentId' | 'countryCode' | 'reference' | 'cardNumber' | 'cvc';
+  | 'decimal' | 'bankAccount' | 'swift' | 'taxId' | 'documentId' | 'countryCode' | 'reference' | 'cardNumber' | 'cvc';
 
 type RuleDef = { filter: (v: string) => string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']; type?: string; maxLength?: number; autoComplete?: string; autoCapitalize?: string };
 
@@ -32,6 +32,7 @@ export const RULES: Record<FieldRule, RuleDef> = {
   integer: { filter: (v) => v.replace(/\D/g, '').slice(0, 7), inputMode: 'numeric' },
   measure: { filter: decimal(3, 4), inputMode: 'decimal' },
   percent: { filter: decimal(2, 3), inputMode: 'decimal' },
+  decimal: { filter: decimal(4, 12), inputMode: 'decimal' },
   sku: { filter: (v) => v.toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 64), maxLength: 64, autoCapitalize: 'characters' },
   slug: { filter: (v) => v.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').slice(0, 80), maxLength: 80 },
   trackingNumber: { filter: (v) => v.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40), maxLength: 40, autoCapitalize: 'characters' },

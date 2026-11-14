@@ -206,6 +206,14 @@ const EN: Record<string, string> = {
   'La longitud del texto no es válida.': 'The text length is not valid.',
   'El formato no es válido.': 'The format is not valid.',
   'Campo no permitido.': 'Field not allowed.',
+  'Revisa los atributos del producto.': 'Check the product attributes.',
+  'Un atributo no corresponde a la categoría seleccionada.': 'An attribute does not belong to the selected category.',
+  'Solo los atributos de texto admiten lista de opciones.': 'Only text attributes support an option list.',
+  'Cada opción necesita un nombre con letras o números.': 'Each option needs a name with letters or numbers.',
+  'Hay opciones repetidas.': 'There are duplicate options.',
+  'Una lista cerrada necesita al menos una opción.': 'A closed list needs at least one option.',
+  'Hay productos con valores que no están en la lista. Agrégalos como opciones o usa una lista abierta.': 'Some products use values that are not in the list. Add them as options or use an open list.',
+  'El código de la opción solo puede contener minúsculas, números y guiones bajos.': 'The option code can only contain lowercase letters, numbers and underscores.',
 };
 
 const NOUNS: Record<string, string> = {
@@ -219,6 +227,8 @@ export function translateMessage(msg: string): string {
   if (EN[msg]) return EN[msg];
   let m = /^(.+) no encontrado\.$/.exec(msg);
   if (m) return `${NOUNS[m[1]] ?? m[1]} not found.`;
+  m = /^(.+): (debe ser un número|elige Sí o No|elige una opción de la lista|el valor no es válido|es obligatorio)\.$/.exec(msg);
+  if (m) return `${m[1]}: ${({ 'debe ser un número': 'must be a number', 'elige Sí o No': 'choose Yes or No', 'elige una opción de la lista': 'choose an option from the list', 'el valor no es válido': 'the value is not valid', 'es obligatorio': 'is required' } as Record<string, string>)[m[2]]}.`;
   m = /^Debe tener al menos (\d+) caracteres\.$/.exec(msg);
   if (m) return `Must be at least ${m[1]} characters.`;
   m = /^Admite máximo (\d+) caracteres\.$/.exec(msg);

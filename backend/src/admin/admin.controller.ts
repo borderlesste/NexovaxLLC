@@ -1,12 +1,23 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { IsCleanText, IsCountryCode, IsEmailAddress, IsPaymentReference, IsPersonName, ToNumber } from '../common/validators';
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
 import { AdminService } from './admin.service';
 import { OrdersService } from '../orders/orders.service';
 import { OnboardingDto } from '../seller/seller.controller';
+
+export class AttributeOptionDto {
+  @IsOptional() @Matches(/^[a-z0-9_]{1,40}$/, { message: 'El código de la opción solo puede contener minúsculas, números y guiones bajos.' }) value?: string;
+  @IsCleanText(1, 60) label: string;
+  @IsOptional() @IsCleanText(0, 60) labelEn?: string;
+}
+
+export class AttributeConfigDto {
+  @IsIn(['select', 'combobox', 'text']) input: 'select' | 'combobox' | 'text';
+  @IsArray() @ArrayMaxSize(200) @ValidateNested({ each: true }) @Type(() => AttributeOptionDto) options: AttributeOptionDto[];
+}
 
 export class ApproveDto {
   @IsBoolean({ message: 'Valor inválido.' }) approve: boolean;
@@ -187,6 +198,18 @@ export class AdminController {
   @Put('categories/:id')
   updateCategory(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CategoryDto) {
     return this.admin.saveCategory({ ...dto, id });
+  }
+
+  @Roles('MODERATOR')
+  @Get('categories/:id/attributes')
+  categoryAttributes(@Param('id', ParseUUIDPipe) id: string) {
+    return this.admin.categoryAttributes(id);
+  }
+
+  @Roles('ADMIN')
+  @Put('attributes/:id')
+  updateAttribute(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AttributeConfigDto) {
+    return this.admin.updateAttributeConfig(id, dto);
   }
 
   @Roles('ADMIN')

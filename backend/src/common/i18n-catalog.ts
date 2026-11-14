@@ -34,6 +34,11 @@ function translate(v: any, depth = 0): any {
   if (typeof v === 'object' && !(v instanceof Date) && !Buffer.isBuffer(v)) {
     const out: any = {};
     for (const [k, val] of Object.entries(v)) {
+      if (k === 'valueEn') continue;
+      if (k === 'value' && typeof (v as any).valueEn === 'string') {
+        out.value = (v as any).valueEn;
+        continue;
+      }
       if (typeof val === 'string' && FIELDS.has(k)) out[k] = EN.get(val) ?? (val.includes(' · ') ? val.split(' · ').map((p) => EN.get(p) ?? p).join(' · ') : val);
       else out[k] = translate(val, depth + 1);
     }
