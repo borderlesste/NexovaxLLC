@@ -258,5 +258,19 @@
 "Viernes": "Friday",
 "Sábado": "Saturday",
 "Domingo": "Sunday",
-"No se pudo abrir el archivo.": "The file could not be opened."
+"No se pudo abrir el archivo.": "The file could not be opened.",
+"Zona": "Zone",
+"Países": "Countries",
+"Agregar país…": "Add country…",
+"Elige al menos un país.": "Choose at least one country.",
+"Solo estos estados o provincias": "Only these states or provinces",
+"(opcional; vacío = todo el país)": "(optional; empty = whole country)",
+"Agregar estado o provincia…": "Add state or province…",
+"Todos los destinos": "All destinations",
+"Nacional (mismo país de la tienda)": "Domestic (same country as the store)",
+"Internacional (otro país)": "International (another country)",
+"Países específicos": "Specific countries",
+"Ver menos": "Show less",
+"Ver todos ({n})": "Show all ({n})",
+"Tarifas fijas de respaldo y retiro en tienda. Cada tarifa se ofrece solo en su zona; si una ruta no tiene tarifa, el comprador no puede pagar ese envío.": "Fallback flat rates and store pickup. Each rate is offered only in its zone; if a route has no rate, the buyer cannot pay for that shipping."
 }

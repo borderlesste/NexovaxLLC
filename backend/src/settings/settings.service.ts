@@ -9,6 +9,30 @@ export interface ShippingRate {
   amount: number;
   estimated_days: number;
   requires_address: boolean;
+  /**
+   * Where the rate applies (default ANY): DOMESTIC = same country as the store,
+   * INTERNATIONAL = another country, COUNTRIES = only the listed destinations
+   * (optionally only some states/provinces when a single country is listed).
+   */
+  zone?: 'ANY' | 'DOMESTIC' | 'INTERNATIONAL' | 'COUNTRIES';
+  countries?: string[];
+  regions?: string[];
+}
+
+/** True when a marketplace flat rate covers the route. */
+export function rateCoversRoute(r: ShippingRate, originCountry: string | null | undefined, dest: { country_code: string; region?: string | null } | null) {
+  const zone = r.zone ?? 'ANY';
+  if (zone === 'ANY') return true;
+  if (!dest) return zone !== 'COUNTRIES' || !!r.countries?.length; // no address yet: show it as an estimate
+  const to = dest.country_code.toUpperCase();
+  if (zone === 'DOMESTIC') return !!originCountry && to === originCountry.toUpperCase();
+  if (zone === 'INTERNATIONAL') return !!originCountry && to !== originCountry.toUpperCase();
+  if (!(r.countries ?? []).map((c) => c.toUpperCase()).includes(to)) return false;
+  if (r.regions?.length && (r.countries ?? []).length === 1) {
+    const reg = (dest.region ?? '').trim().toLowerCase();
+    return r.regions.some((x) => x.trim().toLowerCase() === reg);
+  }
+  return true;
 }
 
 export interface BankTransferSettings {

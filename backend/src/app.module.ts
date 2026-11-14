@@ -46,6 +46,7 @@ import { CardsService } from './payments/cards.service';
 import { CardsController } from './payments/cards.controller';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
 import { PayoutSchedulesController } from './seller/payout-schedules.controller';
+import { ShippingSettlementService } from './shipping/shipping-settlement.service';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { PayoutSchedulesController } from './seller/payout-schedules.controller'
     ReturnsService,
     CardsService,
     PayoutSchedulesService,
+    ShippingSettlementService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

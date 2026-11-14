@@ -4,6 +4,7 @@ import { DbService } from './db/db.service';
 import { OrdersService } from './orders/orders.service';
 import { config } from './config';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
+import { ShippingSettlementService } from './shipping/shipping-settlement.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -16,7 +17,20 @@ export class JobsService {
     private readonly db: DbService,
     private readonly orders: OrdersService,
     private readonly payoutSchedules: PayoutSchedulesService,
+    private readonly shippingSettlement: ShippingSettlementService,
   ) {}
+
+  /** Shipping settlements that failed at dispatch time (retry). */
+  @Cron(CronExpression.EVERY_HOUR)
+  async settleShipping() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const n = await this.shippingSettlement.settlePending();
+      if (n) this.logger.log(`Shipping settlements posted: ${n}`);
+    } catch (e: any) {
+      this.logger.warn(`settleShipping: ${e.message}`);
+    }
+  }
 
   /** Automatic payouts chosen by sellers (weekly / biweekly / monthly). */
   @Cron(CronExpression.EVERY_HOUR)

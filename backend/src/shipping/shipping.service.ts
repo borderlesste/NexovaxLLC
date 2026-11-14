@@ -2,7 +2,7 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
-import { SettingsService } from '../settings/settings.service';
+import { rateCoversRoute, SettingsService } from '../settings/settings.service';
 import { AppError, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
 import { normalizeTrack, NormalizedTrackEvent, ShippoAddress, ShippoParcel, ShippoRate, ShippoService } from './shippo.service';
@@ -308,6 +308,7 @@ export class ShippingService {
     for (const r of flat) {
       if (r.code === 'PICKUP') continue;
       if (live.length) break; // carrier rates available: flat rates are only a fallback
+      if (!rateCoversRoute(r, origin?.country_code, dest)) continue;
       out.push({
         code: `FLAT:${r.code}`,
         provider: 'MARKETPLACE',

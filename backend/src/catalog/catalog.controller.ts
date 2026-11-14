@@ -47,20 +47,14 @@ export class CatalogController {
   }
 
   @Get('products')
-  products(@Query() q: Record<string, string>) {
-    return this.catalog.listProducts({
-      q: q.q,
-      category: q.category,
-      seller: q.seller,
-      brand: q.brand,
-      minPrice: num(q.minPrice),
-      maxPrice: num(q.maxPrice),
-      inStock: bool(q.inStock),
-      onSale: bool(q.onSale),
-      sort: q.sort as any,
-      page: num(q.page),
-      pageSize: num(q.pageSize),
-    });
+  products(@Query() q: Record<string, string | string[]>) {
+    return this.catalog.listProducts(listingQuery(q));
+  }
+
+  @Public()
+  @Get('products/facets')
+  facets(@Query() q: Record<string, string | string[]>) {
+    return this.catalog.facets(listingQuery(q));
   }
 
   @Get('products/:slug')
@@ -87,4 +81,30 @@ export class CatalogController {
   suggest(@Query('q') q: string) {
     return this.catalog.searchSuggestions(q);
   }
+}
+
+/** Listing filters from the query string; attribute filters come as f_<code>=value (repeatable or comma separated). */
+function listingQuery(raw: Record<string, string | string[]>) {
+  const one = (k: string) => (Array.isArray(raw[k]) ? (raw[k] as string[])[0] : (raw[k] as string | undefined));
+  const attrs: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const m = /^f_([a-z0-9_]{1,60})$/.exec(k);
+    if (!m) continue;
+    const vals = (Array.isArray(v) ? v : [v]).flatMap((x) => String(x).split(',')).map((x) => x.trim()).filter((x) => x && x.length <= 120);
+    if (vals.length) attrs[m[1]] = [...new Set(vals)];
+  }
+  return {
+    q: one('q'),
+    category: one('category'),
+    seller: one('seller'),
+    brand: one('brand'),
+    minPrice: num(one('minPrice')),
+    maxPrice: num(one('maxPrice')),
+    inStock: bool(one('inStock')),
+    onSale: bool(one('onSale')),
+    sort: one('sort') as any,
+    page: num(one('page')),
+    pageSize: num(one('pageSize')),
+    attrs,
+  };
 }

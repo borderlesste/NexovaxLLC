@@ -6,7 +6,7 @@ import { SettingsService, PlatformSettings } from '../settings/settings.service'
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { OnboardingInput, SellerService } from '../seller/seller.service';
 import { TaxService } from '../tax/tax.service';
-import { normalizeCountry } from '../common/geo';
+import { normalizeCountry, REAL_COUNTRY } from '../common/geo';
 import { ORDER_PREFIX } from '../common/refs';
 import { config } from '../config';
 
@@ -769,6 +769,29 @@ export class AdminService {
           (r.requires_address != null && typeof r.requires_address !== 'boolean'))
       )
         throw badRequest('SHIPPING_RATES_INVALID', 'Revisa las tarifas de envío: nombre con letras, montos numéricos (máx. 2 decimales) y días enteros (0 a 120).');
+      const codes = rates.map((r) => String(r.code));
+      if (new Set(codes).size !== codes.length) throw badRequest('SHIPPING_RATES_INVALID', 'Cada tarifa debe tener un código distinto.');
+      const known = new Set((await this.db.many(`select alpha2 from public.countries where is_active and ${REAL_COUNTRY}`)).map((c: any) => c.alpha2));
+      for (const r of rates) {
+        const zone = r.zone ?? 'ANY';
+        if (!['ANY', 'DOMESTIC', 'INTERNATIONAL', 'COUNTRIES'].includes(zone)) throw badRequest('SHIPPING_RATES_INVALID', `Zona inválida en la tarifa «${r.name}».`);
+        if (r.code === 'PICKUP' && zone !== 'ANY') throw badRequest('SHIPPING_RATES_INVALID', 'El retiro en tienda no usa zonas.');
+        if (zone === 'COUNTRIES') {
+          if (!Array.isArray(r.countries) || !r.countries.length || r.countries.length > 250 || r.countries.some((c: unknown) => !known.has(String(c).toUpperCase())))
+            throw badRequest('SHIPPING_RATES_INVALID', `Elige al menos un país válido para la tarifa «${r.name}».`);
+          r.countries = [...new Set(r.countries.map((c: string) => c.toUpperCase()))];
+          if (r.regions != null) {
+            if (!Array.isArray(r.regions) || r.regions.length > 100 || r.regions.some((x: unknown) => !text(x, 1, 80, /\p{L}|\d/u)))
+              throw badRequest('SHIPPING_RATES_INVALID', `Revisa los estados o provincias de la tarifa «${r.name}».`);
+            if (r.regions.length && r.countries.length !== 1)
+              throw badRequest('SHIPPING_RATES_INVALID', `Para limitar por estado o provincia, la tarifa «${r.name}» debe tener un solo país.`);
+          }
+        } else {
+          delete r.countries;
+          delete r.regions;
+        }
+        r.zone = zone;
+      }
     }
     const bt = s['payments.bank_transfer'];
     if (bt != null) {

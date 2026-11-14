@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 import { get } from '@/lib/api';
 import { ProductGrid } from './product-card';
 import { CategoryIcon } from './category-icon';
@@ -12,7 +12,7 @@ import { Empty, ErrorBox, Pagination, Skeleton, Checkbox } from '@/components/ui
 import { Input, Select } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn, currencySymbol } from '@/lib/utils';
-import { t, getIntlLocale } from '@/lib/i18n';
+import { t, getIntlLocale, getLocale } from '@/lib/i18n';
 
 const SORTS = [
   ['relevance', 'Más relevantes'],
@@ -51,6 +51,25 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
     router.push(`${pathname}?${p.toString()}`, { scroll: false });
   };
   const q = useQuery({ queryKey: ['products', params.toString()], queryFn: () => get(`/products?${params.toString()}`) });
+  // Attribute filters (size, color, material…) available for the current category/search/price.
+  const facetParams = useMemo(() => {
+    const p = new URLSearchParams(params.toString());
+    for (const k of [...p.keys()]) if (k.startsWith('f_') || ['page', 'pageSize', 'sort'].includes(k)) p.delete(k);
+    return p.toString();
+  }, [params]);
+  const facets = useQuery({ queryKey: ['facets', facetParams], queryFn: () => get<Facet[]>(`/products/facets?${facetParams}`), staleTime: 60_000 });
+  const selected = (code: string) => sp.getAll(`f_${code}`).flatMap((v) => v.split(','));
+  const toggle = (code: string, value: string) => {
+    const p = new URLSearchParams(sp.toString());
+    const cur = selected(code);
+    const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+    p.delete(`f_${code}`);
+    for (const v of next) p.append(`f_${code}`, v);
+    p.delete('page');
+    router.push(`${pathname}?${p.toString()}`, { scroll: false });
+  };
+  const optLabel = (o: FacetOption) => (getLocale() === 'en' ? o.labelEn : o.label);
+  const active = (facets.data ?? []).flatMap((f) => selected(f.code).map((v) => ({ f, v, label: optLabel(f.options.find((o) => o.code === v) ?? { code: v, label: v, labelEn: v, count: 0 }) })));
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
   const path = categorySlug && cats.data ? findPath(cats.data, categorySlug) ?? [] : [];
   const current = path[path.length - 1];
@@ -114,8 +133,18 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
             <Checkbox checked={sp.get('inStock') === 'true'} onChange={(v) => set('inStock', v ? 'true' : null)} label={t('Solo disponibles')} />
             <Checkbox checked={sp.get('onSale') === 'true'} onChange={(v) => set('onSale', v ? 'true' : null)} label={t('En oferta')} />
           </div>
+          {(facets.data ?? []).map((f) => <FacetGroup key={f.code} facet={f} selected={selected(f.code)} onToggle={(v) => toggle(f.code, v)} label={optLabel} />)}
         </aside>
         <section>
+          {active.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2" data-active-filters>
+              {active.map(({ f, v, label }) => (
+                <button key={`${f.code}:${v}`} onClick={() => toggle(f.code, v)} className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100">
+                  {f.name}: {label} <X className="size-3" />
+                </button>
+              ))}
+            </div>
+          )}
           {q.isError && <ErrorBox message={t("No se pudo cargar el catálogo.")} onRetry={() => q.refetch()} />}
           {q.isLoading && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
@@ -135,6 +164,40 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+interface FacetOption { code: string; label: string; labelEn: string; count: number }
+interface Facet { code: string; name: string; type: 'list' | 'boolean'; options: FacetOption[] }
+
+/** One attribute filter group; long lists collapse to the first 6 values. */
+function FacetGroup({ facet, selected, onToggle, label }: { facet: Facet; selected: string[]; onToggle: (v: string) => void; label: (o: FacetOption) => string }) {
+  const [open, setOpen] = useState(selected.length > 0 || facet.options.length <= 6);
+  const [all, setAll] = useState(false);
+  const shown = all ? facet.options : facet.options.slice(0, 6);
+  return (
+    <div className="border-t border-line pt-4" data-facet={facet.code}>
+      <button className="flex w-full items-center justify-between text-sm font-bold" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span>{t(facet.name)}{selected.length ? <span className="ml-1.5 rounded-full bg-brand-100 px-1.5 text-[11px] text-brand-700">{selected.length}</span> : null}</span>
+        <ChevronDown className={cn('size-4 text-muted transition', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5">
+          {shown.map((o) => (
+            <label key={o.code} className="flex cursor-pointer items-center justify-between gap-2 text-sm" data-facet-option={o.code}>
+              <span className="flex min-w-0 items-center gap-2">
+                <input type="checkbox" className="size-4 shrink-0 accent-brand-600" checked={selected.includes(o.code)} onChange={() => onToggle(o.code)} />
+                <span className="truncate">{label(o)}</span>
+              </span>
+              <span className="text-xs text-muted">{o.count}</span>
+            </label>
+          ))}
+          {facet.options.length > 6 && (
+            <button className="text-xs font-semibold text-brand-700" onClick={() => setAll((v) => !v)}>{all ? t('Ver menos') : t('Ver todos ({n})', { n: facet.options.length })}</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

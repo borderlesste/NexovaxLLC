@@ -16,6 +16,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PageLoader, Switch } from '@/components/ui/misc';
 import { CountrySelect } from '@/components/shop/geo-fields';
+import { RateZone } from '@/components/admin/rate-zone';
 
 const TABS = [
   ['general', 'General', Settings],
@@ -209,7 +210,7 @@ export default function SettingsPage() {
                 </div>
               </Card>
               <Card>
-                <CardHeader icon={<Truck />} title={t('Tarifas del marketplace')} subtitle={t('Tarifas fijas de respaldo y retiro en tienda.')} />
+                <CardHeader icon={<Truck />} title={t('Tarifas del marketplace')} subtitle={t('Tarifas fijas de respaldo y retiro en tienda. Cada tarifa se ofrece solo en su zona; si una ruta no tiene tarifa, el comprador no puede pagar ese envío.')} />
                 <div className="space-y-3 p-5">
                   {rates.map((r, i) => (
                     <div key={i} className="grid gap-3 rounded-xl border border-line p-4 sm:grid-cols-[110px_1fr_1.4fr_110px_90px_auto]">
@@ -219,6 +220,7 @@ export default function SettingsPage() {
                       <Field label={`${t('Tarifa')} (${cur})`}><Input rule="money" value={String(r.amount)} onChange={(e) => setRateRow(i, 'amount', e.target.value)} /></Field>
                       <Field label={t('Días')}><Input rule="integer" inputMode="numeric" value={String(r.estimated_days)} onChange={(e) => setRateRow(i, 'estimated_days', Number(e.target.value.replace(/\D/g, '') || 0))} /></Field>
                       <Button variant="ghost" size="icon" className="self-end" onClick={() => set('shipping.rates', rates.filter((_, j) => j !== i))} aria-label={t('Eliminar')} disabled={rates.length <= 1}><Trash2 /></Button>
+                      {r.code !== 'PICKUP' && <RateZone rate={r} onChange={(patch) => set('shipping.rates', rates.map((x, j) => (j === i ? { ...x, ...patch } : x)))} />}
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={() => set('shipping.rates', [...rates, { code: 'NUEVO', name: t('Nueva tarifa'), description: '', amount: 0, estimated_days: 3, requires_address: true }])}><Plus /> {t('Agregar tarifa')}</Button>

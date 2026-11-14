@@ -17,7 +17,11 @@ export interface ProductQuery {
   sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling';
   page?: number;
   pageSize?: number;
+  /** Attribute filters: attribute code -> accepted values (option codes, free text or true/false). */
+  attrs?: Record<string, string[]>;
 }
+
+const FACET_LIMIT = 12;
 
 @Injectable()
 export class CatalogService {
@@ -26,9 +30,8 @@ export class CatalogService {
     private readonly settings: SettingsService,
   ) {}
 
-  /** Public listing of ACTIVE products from ACTIVE sellers. */
-  async listProducts(query: ProductQuery) {
-    const currency = await this.settings.currency();
+  /** WHERE of the public listing (shared by the product list and its facets). */
+  private listingWhere(query: ProductQuery, currency: string, withAttrs = true) {
     const params: unknown[] = [currency];
     const where: string[] = [`p.status = 'ACTIVE'`, `s.status = 'ACTIVE'`, `pr.min_amount is not null`];
     const add = (v: unknown) => {
@@ -54,6 +57,20 @@ export class CatalogService {
     if (query.maxPrice != null) where.push(`pr.min_amount <= ${add(query.maxPrice)}`);
     if (query.inStock) where.push(`coalesce(st.available, 0) > 0`);
     if (query.onSale) where.push(`pr.compare_at > pr.min_amount`);
+    if (withAttrs)
+      for (const [code, values] of Object.entries(query.attrs ?? {}).slice(0, 10)) {
+        if (!values.length) continue;
+        where.push(`exists (select 1 from public.product_attribute_values pav join public.attribute_definitions ad on ad.id = pav.attribute_definition_id
+                             where pav.product_id = p.id and ad.code = ${add(code)}
+                               and coalesce(pav.value_text, pav.value_boolean::text) = any(${add(values.slice(0, 30))}::text[]))`);
+      }
+    return { where, params };
+  }
+
+  /** Public listing of ACTIVE products from ACTIVE sellers. */
+  async listProducts(query: ProductQuery) {
+    const currency = await this.settings.currency();
+    const { where, params } = this.listingWhere(query, currency);
 
     const order =
       {
@@ -82,6 +99,48 @@ export class CatalogService {
       pageSize,
       currency,
     };
+  }
+
+  /**
+   * Attribute filters for the current listing (category/search/price...): list-type and yes/no
+   * attributes that the matching products actually have, with how many products carry each value.
+   */
+  async facets(query: ProductQuery) {
+    const currency = await this.settings.currency();
+    const { where, params } = this.listingWhere(query, currency, false);
+    const rows = await this.db.many(
+      `with base as (select p.id from public.products p ${PRODUCT_CARD_JOINS('$1')} where ${where.join(' and ')})
+       select ad.code, ad.name, ad.data_type, ad.validation_rules, coalesce(pav.value_text, pav.value_boolean::text) as v, count(distinct pav.product_id)::int as n,
+              bool_or(coalesce(cad.is_filterable, false)) as filterable
+         from base b join public.product_attribute_values pav on pav.product_id = b.id
+         join public.attribute_definitions ad on ad.id = pav.attribute_definition_id and ad.status = 'ACTIVE'
+         left join public.category_attribute_definitions cad on cad.attribute_definition_id = ad.id
+        where ad.data_type = 'BOOLEAN' or ad.validation_rules->>'input' in ('select','combobox')
+        group by 1,2,3,4,5`,
+      params,
+    );
+    type Facet = { code: string; name: string; type: string; total: number; filterable: boolean; options: { code: string; label: string; labelEn: string; count: number }[] };
+    const byCode = new Map<string, Facet>();
+    for (const r of rows) {
+      if (r.v == null) continue;
+      const f: Facet = byCode.get(r.code) ?? { code: r.code, name: r.name, type: r.data_type === 'BOOLEAN' ? 'boolean' : 'list', total: 0, filterable: r.filterable, options: [] };
+      const label = r.data_type === 'BOOLEAN' ? (r.v === 'true' ? 'Sí' : 'No') : attributeLabel(r.validation_rules, r.v, 'es') ?? r.v;
+      const labelEn = r.data_type === 'BOOLEAN' ? (r.v === 'true' ? 'Yes' : 'No') : attributeLabel(r.validation_rules, r.v, 'en') ?? r.v;
+      f.options.push({ code: r.v, label, labelEn, count: r.n });
+      f.total += r.n;
+      byCode.set(r.code, f);
+    }
+    // Option order of the definition first; free values alphabetically after them.
+    const order = new Map<string, string[]>(rows.map((r: any) => [r.code, (r.validation_rules?.options ?? []).map((o: any) => o.value)]));
+    return [...byCode.values()]
+      .sort((a, b) => Number(b.filterable) - Number(a.filterable) || b.total - a.total || a.name.localeCompare(b.name))
+      .slice(0, FACET_LIMIT)
+      .map((f) => {
+        const ord = order.get(f.code) ?? [];
+        const rank = (c: string) => (ord.indexOf(c) === -1 ? 9999 : ord.indexOf(c));
+        f.options.sort((x, y) => rank(x.code) - rank(y.code) || x.label.localeCompare(y.label));
+        return { code: f.code, name: f.name, type: f.type, options: f.options.slice(0, 40) };
+      });
   }
 
   async productDetail(slug: string, viewerUserId?: string) {

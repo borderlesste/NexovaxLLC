@@ -9,6 +9,7 @@ import { CARRIERS, ShippingService } from '../shipping/shipping.service';
 import { orderRef, parseOrderRef, paymentRef } from '../common/refs';
 import { fromMinor, toMinor } from '../common/money';
 import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
+import { ShippingSettlementService } from '../shipping/shipping-settlement.service';
 
 export type OrderScope = { kind: 'customer'; userId: string } | { kind: 'seller'; sellerId: string } | { kind: 'admin' };
 
@@ -32,6 +33,7 @@ export class OrdersService {
     private readonly db: DbService,
     private readonly mail: MailService,
     private readonly shipping: ShippingService,
+    private readonly settlement: ShippingSettlementService,
   ) {}
 
   // ------------------------------------------------------------------ listings
@@ -473,6 +475,7 @@ export class OrdersService {
         await this.db.tx(async (c) => {
           await this.db.exec(`select public.dispatch_shipment($1)`, [p.id], c);
         });
+        await this.settlement.settle(p.id, actorUserId);
         results.push({ shipmentId: p.id, ...label });
       } else {
         const carrier = CARRIERS.find((x) => x.code === input.carrierCode);
@@ -504,6 +507,7 @@ export class OrdersService {
           const tr = await this.db.one(`select id from public.shipment_trackings where shipment_id = $1 order by created_at desc limit 1`, [p.id], c);
           await this.trackingEvent(c, tr!.id, 'IN_TRANSIT', `El vendedor despachó el paquete con ${carrierName}.`, p.from_city);
         });
+        await this.settlement.settle(p.id, actorUserId);
         this.shipping.watchManualTracking(carrier.code, tracking, p.id).catch(() => undefined);
         results.push({ shipmentId: p.id, trackingNumber: tracking, carrier: carrierName });
       }
