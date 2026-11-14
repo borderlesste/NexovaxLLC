@@ -111,9 +111,9 @@ function Inventory() {
         footer={<><Button variant="secondary" onClick={() => setAdj(null)}>{t('Cancelar')}</Button><Button onClick={save} loading={busy}>{t('Guardar ajuste')}</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('Tipo de ajuste')}><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}><option value="ADD">{t('Ingreso de mercancía')}</option><option value="REMOVE">{t('Salida (daño, pérdida…)')}</option><option value="SET">{t('Fijar stock exacto')}</option></Select></Field>
-          <Field label={form.mode === 'SET' ? t('Nuevo stock') : t('Cantidad')}><Input inputMode="numeric" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value.replace(/\D/g, '') })} /></Field>
+          <Field label={form.mode === 'SET' ? t('Nuevo stock') : t('Cantidad')}><Input rule="integer" inputMode="numeric" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value.replace(/\D/g, '') })} /></Field>
           {form.mode === 'REMOVE' && <Field label={t('Motivo')}><Select value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}><option value="DAMAGE">{t('Producto dañado')}</option><option value="LOSS">{t('Pérdida')}</option><option value="MANUAL_ADJUSTMENT">{t('Corrección')}</option></Select></Field>}
-          <Field label={t('Stock mínimo (alerta)')}><Input inputMode="numeric" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: e.target.value.replace(/\D/g, '') })} /></Field>
+          <Field label={t('Stock mínimo (alerta)')}><Input rule="integer" inputMode="numeric" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: e.target.value.replace(/\D/g, '') })} /></Field>
         </div>
       </Dialog>
     </>

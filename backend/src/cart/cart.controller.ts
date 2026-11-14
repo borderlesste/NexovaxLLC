@@ -1,17 +1,18 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { IsInt, IsUUID, Max, Min } from 'class-validator';
+import { ToNumber } from '../common/validators';
 import { Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
 import { CartService } from './cart.service';
 
 export class AddCartItemDto {
   @IsUUID() variantId: string;
-  @Type(() => Number) @IsInt() @Min(1) @Max(999) quantity: number;
+  @ToNumber() @IsInt({ message: 'La cantidad debe ser un número entero.' }) @Min(1) @Max(999) quantity: number;
 }
 
 export class UpdateCartItemDto {
-  @Type(() => Number) @IsInt() @Min(1) @Max(999) quantity: number;
+  @ToNumber() @IsInt({ message: 'La cantidad debe ser un número entero.' }) @Min(1) @Max(999) quantity: number;
 }
 
 @ApiTags('cart')

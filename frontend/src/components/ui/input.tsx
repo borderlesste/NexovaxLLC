@@ -1,26 +1,59 @@
 'use client';
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
+import { CHECKS, RULE_HINT, RULES, type FieldRule } from '@/lib/field-rules';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 
-export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { icon?: React.ReactNode; suffix?: React.ReactNode }>(
-  ({ className, icon, suffix, ...props }, ref) => (
+type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  icon?: React.ReactNode;
+  suffix?: React.ReactNode;
+  /** Restricts what the field accepts (typing and pasting) to data of that kind. */
+  rule?: FieldRule;
+};
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, icon, suffix, rule, onChange, onBlur, ...props }, ref) => {
+  const def = rule ? RULES[rule] : undefined;
+  const [invalid, setInvalid] = useState(false);
+  const check = rule ? CHECKS[rule] : undefined;
+  return (
     <div className="relative flex items-center">
       {icon && <span className="pointer-events-none absolute left-3 text-muted [&_svg]:size-4">{icon}</span>}
       <input
         ref={ref}
+        type={def?.type}
+        inputMode={def?.inputMode}
+        maxLength={def?.maxLength}
+        autoComplete={def?.autoComplete}
+        autoCapitalize={def?.autoCapitalize}
+        data-rule={rule}
+        aria-invalid={invalid || undefined}
+        title={invalid && rule && RULE_HINT[rule] ? t(RULE_HINT[rule]!) : undefined}
         className={cn(
           'h-10 w-full rounded-lg border border-line bg-white px-3 text-sm placeholder:text-muted/70 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-surface disabled:text-muted',
           icon && 'pl-9',
           suffix && 'pr-10',
+          invalid && 'border-red-400 focus:border-red-400 focus:ring-red-100',
           className,
         )}
         {...props}
+        onChange={(e) => {
+          if (def) {
+            const clean = def.filter(e.target.value);
+            if (clean !== e.target.value) e.target.value = clean;
+            if (invalid && (!check || !clean || check(clean))) setInvalid(false);
+          }
+          onChange?.(e);
+        }}
+        onBlur={(e) => {
+          if (check) setInvalid(!!e.target.value.trim() && !check(e.target.value.trim()));
+          onBlur?.(e);
+        }}
       />
       {suffix && <span className="absolute right-3 text-sm text-muted">{suffix}</span>}
+      {invalid && rule && RULE_HINT[rule] && <span role="alert" className="absolute -bottom-4 left-0 text-[11px] leading-none text-red-600">{t(RULE_HINT[rule]!)}</span>}
     </div>
-  ),
-);
+  );
+});
 Input.displayName = 'Input';
 
 export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(({ className, ...props }, ref) => (

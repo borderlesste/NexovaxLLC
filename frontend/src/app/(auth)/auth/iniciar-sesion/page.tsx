@@ -85,7 +85,7 @@ function LoginForm() {
         <p className="mt-1 text-lg text-muted">{t('Accede a tu cuenta')}</p>
         <div className="mt-8 space-y-5">
           <Field label={t('Correo electrónico')} required>
-            <Input type="email" autoComplete="email" required icon={<Mail />} placeholder={t('Ej. usuario@correo.com')} value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
+            <Input rule="email" type="email" autoComplete="email" required icon={<Mail />} placeholder={t('Ej. usuario@correo.com')} value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
           </Field>
           <Field label={t('Contraseña')} required>
             <div className="relative">

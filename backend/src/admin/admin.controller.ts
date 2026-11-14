@@ -2,53 +2,62 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query }
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsCleanText, IsCountryCode, IsEmailAddress, IsPaymentReference, IsPersonName, ToNumber } from '../common/validators';
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
 import { AdminService } from './admin.service';
 import { OrdersService } from '../orders/orders.service';
 import { OnboardingDto } from '../seller/seller.controller';
 
+export class ApproveDto {
+  @IsBoolean({ message: 'Valor inválido.' }) approve: boolean;
+}
+
+export class UserStatusDto {
+  @IsIn(['ACTIVE', 'SUSPENDED']) status: 'ACTIVE' | 'SUSPENDED';
+}
+
 export class ModerateDto {
   @IsIn(['APPROVE', 'REJECT', 'REQUEST_CHANGES']) decision: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES';
-  @IsOptional() @IsString() @MaxLength(300) note?: string;
+  @IsOptional() @IsCleanText(0, 300) note?: string;
 }
 export class ReasonDto {
-  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+  @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class SellerActionDto {
   @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE']) action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE';
-  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+  @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class CreateSellerDto extends OnboardingDto {
-  @IsString() @Length(3, 120) ownerName: string;
-  @IsEmail() ownerEmail: string;
+  @IsPersonName(3, 120) ownerName: string;
+  @IsEmailAddress() ownerEmail: string;
   @IsOptional() @IsString() @Length(8, 72) password?: string;
 }
 export class CategoryDto {
-  @IsString() @Length(2, 80) name: string;
+  @IsCleanText(2, 80) name: string;
   @IsOptional() @IsUUID() parentId?: string | null;
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
-  @IsOptional() @Type(() => Number) @IsInt() @Min(0) sortOrder?: number;
-  @IsOptional() @IsString() @MaxLength(500) description?: string;
+  @IsOptional() @ToNumber() @IsInt({ message: 'El orden debe ser un número entero.' }) @Min(0) @Max(100000) sortOrder?: number;
+  @IsOptional() @IsCleanText(0, 500) description?: string;
 }
 export class PayoutActionDto {
   @IsIn(['APPROVE', 'MARK_PAID', 'FAIL', 'CANCEL']) action: 'APPROVE' | 'MARK_PAID' | 'FAIL' | 'CANCEL';
-  @IsOptional() @IsString() @MaxLength(80) reference?: string;
-  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+  @IsOptional() @IsPaymentReference() reference?: string;
+  @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class TransferDto {
-  @IsOptional() @IsString() @MaxLength(80) reference?: string;
-  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+  @IsOptional() @IsPaymentReference() reference?: string;
+  @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class SettingsDto {
   @IsOptional() @IsObject() settings?: Record<string, any>;
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(0.5) commissionRate?: number;
+  @IsOptional() @ToNumber() @IsNumber({ maxDecimalPlaces: 4 }, { message: 'La comisión debe ser un número.' }) @Min(0) @Max(0.5) commissionRate?: number;
 }
 export class TaxRateDto {
-  @IsString() @Length(2, 2) countryCode: string;
-  @IsString() @Length(1, 40) taxName: string;
-  @Type(() => Number) @IsNumber() @Min(0) @Max(0.99) rate: number;
+  @IsCountryCode() countryCode: string;
+  @IsCleanText(1, 40) taxName: string;
+  @ToNumber() @IsNumber({ maxDecimalPlaces: 4 }, { message: 'La tasa debe ser un número.' }) @Min(0) @Max(0.99) rate: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
-  @IsOptional() @IsString() @MaxLength(300) notes?: string;
+  @IsOptional() @IsCleanText(0, 300) notes?: string;
 }
 export class RoleDto {
   @IsIn(['CUSTOMER', 'SELLER', 'SUPPORT', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN']) role: any;
@@ -57,7 +66,7 @@ export class RoleDto {
 
 export class AdminTrackingDto {
   @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'EXCEPTION']) status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION';
-  @IsOptional() @IsString() @MaxLength(200) detail?: string;
+  @IsOptional() @IsCleanText(0, 200) detail?: string;
 }
 
 @ApiTags('admin')
@@ -157,8 +166,8 @@ export class AdminController {
 
   @Roles('ADMIN')
   @Post('payout-accounts/:id/verify')
-  verifyAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body('approve') approve: boolean) {
-    return this.admin.verifyPayoutAccount(user, id, approve !== false);
+  verifyAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ApproveDto) {
+    return this.admin.verifyPayoutAccount(user, id, dto.approve);
   }
 
   // categories
@@ -282,7 +291,7 @@ export class AdminController {
 
   @Roles('ADMIN')
   @Post('users/:id/status')
-  setStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body('status') status: 'ACTIVE' | 'SUSPENDED') {
-    return this.admin.setUserStatus(user, id, status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE');
+  setStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UserStatusDto) {
+    return this.admin.setUserStatus(user, id, dto.status);
   }
 }

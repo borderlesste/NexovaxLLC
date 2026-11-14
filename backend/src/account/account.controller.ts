@@ -5,14 +5,15 @@ import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
+import { IsAddressLine, IsBusinessName, IsCleanText, IsCountryCode, IsEmailAddress, IsOptionalPersonName, IsPersonName, IsPhone, IsPlaceName, IsPostalCode } from '../common/validators';
 import { AccountService } from './account.service';
 import { SettingsService } from '../settings/settings.service';
 
 const PHONE = /^\+?[0-9][0-9 ().-]{5,47}$/;
 
 export class RegisterDto {
-  @IsString() @Length(3, 120) fullName: string;
-  @IsEmail({}, { message: 'Correo electrónico inválido.' }) email: string;
+  @IsPersonName(3, 120) fullName: string;
+  @IsEmailAddress() email: string;
   @IsString() @MinLength(8) @MaxLength(72) password: string;
   @IsOptional() @IsIn(['es', 'en']) locale?: string;
 }
@@ -22,13 +23,13 @@ export class LocaleDto {
 }
 
 export class RecoveryDto {
-  @IsEmail({}, { message: 'Correo electrónico inválido.' }) email: string;
+  @IsEmailAddress() email: string;
 }
 
 export class ProfileDto {
-  @IsOptional() @IsString() @MaxLength(80) firstName?: string;
-  @IsOptional() @IsString() @MaxLength(80) lastName?: string;
-  @IsOptional() @Matches(PHONE, { message: 'Teléfono inválido.' }) phone?: string;
+  @IsOptional() @IsOptionalPersonName(80) firstName?: string;
+  @IsOptional() @IsOptionalPersonName(80) lastName?: string;
+  @IsOptional() @IsPhone() phone?: string;
 }
 
 export class PasswordDto {
@@ -36,16 +37,16 @@ export class PasswordDto {
 }
 
 export class AddressDto {
-  @IsOptional() @IsString() @MaxLength(60) label?: string;
-  @IsString() @Length(2, 120) recipientName: string;
-  @IsOptional() @IsString() @MaxLength(120) companyName?: string;
-  @IsString() @Length(3, 200) line1: string;
-  @IsOptional() @IsString() @MaxLength(200) line2?: string;
-  @IsString() @Length(2, 2) countryCode: string;
-  @IsString() @Length(2, 100) city: string;
-  @IsOptional() @IsString() @MaxLength(80) region?: string;
-  @IsOptional() @IsString() @MaxLength(20) postalCode?: string;
-  @IsOptional() @Matches(PHONE, { message: 'Teléfono inválido.' }) phone?: string;
+  @IsOptional() @IsCleanText(0, 60) label?: string;
+  @IsPersonName(2, 120) recipientName: string;
+  @IsOptional() @IsBusinessName(2, 120) companyName?: string;
+  @IsAddressLine(3, 200) line1: string;
+  @IsOptional() @IsAddressLine(1, 200) line2?: string;
+  @IsCountryCode() countryCode: string;
+  @IsPlaceName(2, 100) city: string;
+  @IsOptional() @IsPlaceName(2, 80) region?: string;
+  @IsOptional() @IsPostalCode() postalCode?: string;
+  @IsOptional() @IsPhone() phone?: string;
   @IsOptional() @IsBoolean() isDefaultShipping?: boolean;
 }
 

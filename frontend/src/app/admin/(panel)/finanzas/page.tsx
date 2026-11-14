@@ -77,7 +77,7 @@ export default function AdminFinancePage() {
       </Card>
       <Dialog open={!!confirmFor} onOpenChange={(o) => !o && setConfirmFor(null)} title={t('Confirmar transferencia recibida')} description={confirmFor ? `${confirmFor.reference} · ${money(confirmFor.amount)}` : ''}
         footer={<><Button variant="secondary" onClick={() => setConfirmFor(null)}>{t('Cancelar')}</Button><Button onClick={confirm} loading={busy} disabled={!ref.trim()}>{t('Confirmar pago')}</Button></>}>
-        <Field label={t('Referencia del banco')} required><Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder={t('Número de comprobante')} /></Field>
+        <Field label={t('Referencia del banco')} required><Input rule="reference" value={ref} onChange={(e) => setRef(e.target.value)} placeholder={t('Número de comprobante')} /></Field>
       </Dialog>
     </>
   );

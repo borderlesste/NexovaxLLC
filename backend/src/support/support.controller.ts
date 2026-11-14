@@ -1,29 +1,30 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean, IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 import { CurrentUser, Public, RequestUser, Roles } from '../auth/auth';
+import { IsBusinessName, IsCleanMultiline, IsCleanText, IsOrderReference, IsWebUrl } from '../common/validators';
 import { SupportService } from './support.service';
 
 export class ReportDto {
-  @IsString() @Length(2, 40) categoryCode: string;
+  @Matches(/^[A-Z_]{2,40}$/, { message: 'Tipo de reporte inválido.' }) categoryCode: string;
   @IsIn(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']) priority: any;
-  @IsString() @Length(4, 140) subject: string;
-  @IsString() @Length(10, 1000) description: string;
-  @IsOptional() @IsString() @MaxLength(300) url?: string;
-  @IsOptional() @IsString() @MaxLength(30) orderNumber?: string;
-  @IsOptional() @IsString() @MaxLength(120) storeName?: string;
+  @IsCleanText(4, 140) subject: string;
+  @IsCleanMultiline(10, 1000) description: string;
+  @IsOptional() @IsWebUrl(300) url?: string;
+  @IsOptional() @IsOrderReference() orderNumber?: string;
+  @IsOptional() @IsBusinessName(2, 120) storeName?: string;
   @IsOptional() @IsIn(['WEB', 'MOBILE', 'OTHER']) platform?: any;
 }
 
 export class ReplyDto {
-  @IsString() @Length(1, 4000) body: string;
+  @IsCleanMultiline(1, 4000) body: string;
   @IsOptional() @IsBoolean() internal?: boolean;
 }
 
 export class TransitionDto {
   @IsIn(['OPEN', 'IN_PROGRESS', 'PENDING_CUSTOMER', 'PENDING_INTERNAL', 'RESOLVED', 'CLOSED', 'CANCELLED']) status: string;
-  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+  @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 
 export class AssignDto {

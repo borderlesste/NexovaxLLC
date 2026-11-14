@@ -2,15 +2,16 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestj
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsCleanMultiline, IsCleanText, ToNumber } from '../common/validators';
 import { CurrentUser, RequestUser } from '../auth/auth';
 import { OrdersService } from './orders.service';
 import { DbService } from '../db/db.service';
 import { conflict, notFound } from '../common/errors';
 
 export class ReviewDto {
-  @Type(() => Number) @IsInt() @Min(1) @Max(5) rating: number;
-  @IsOptional() @IsString() @MaxLength(120) title?: string;
-  @IsOptional() @IsString() @MaxLength(2000) body?: string;
+  @ToNumber() @IsInt({ message: 'La calificación debe ser de 1 a 5 estrellas.' }) @Min(1) @Max(5) rating: number;
+  @IsOptional() @IsCleanText(0, 120) title?: string;
+  @IsOptional() @IsCleanMultiline(0, 2000) body?: string;
 }
 
 @ApiTags('orders')

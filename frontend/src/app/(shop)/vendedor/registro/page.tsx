@@ -66,25 +66,25 @@ export default function SellerOnboardingPage() {
           {cfg.data && !cfg.data.sellerRegistration && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('El registro de nuevos vendedores está cerrado temporalmente.')}</p>}
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><Store className="size-5 text-brand-600" /> {t('Tu tienda')}</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            <Field label={t('Nombre de la tienda')} required><Input value={f.storeName} onChange={set('storeName')} placeholder={t('Ej. Urban Style Co.')} /></Field>
+            <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} placeholder={t('Ej. Urban Style Co.')} /></Field>
             <Field label={t('Descripción corta')}><Input value={f.shortDescription} onChange={set('shortDescription')} placeholder={t('Qué vendes en una frase')} maxLength={200} /></Field>
-            <Field label={t('Correo de atención')}><Input type="email" value={f.supportEmail} onChange={set('supportEmail')} placeholder={t('ventas@mitienda.com')} /></Field>
-            <Field label={t('Teléfono de atención')}><Input value={f.supportPhone} onChange={set('supportPhone')} placeholder="+1 305 555 0000" /></Field>
+            <Field label={t('Correo de atención')}><Input rule="email" type="email" value={f.supportEmail} onChange={set('supportEmail')} placeholder={t('ventas@mitienda.com')} /></Field>
+            <Field label={t('Teléfono de atención')}><Input rule="phone" value={f.supportPhone} onChange={set('supportPhone')} placeholder="+1 305 555 0000" /></Field>
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')}</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            <Field label={t('Nombre o razón social')} required><Input value={f.legalName} onChange={set('legalName')} placeholder={t('Ej. Urban Style LLC')} /></Field>
+            <Field label={t('Nombre o razón social')} required><Input rule="businessName" value={f.legalName} onChange={set('legalName')} placeholder={t('Ej. Urban Style LLC')} /></Field>
             <Field label={t('Tipo de entidad')} required>
               <Select value={f.entityType} onChange={set('entityType')}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select>
             </Field>
             <CountrySelect label={t('País de registro')} value={f.countryCode} onChange={(v) => setF({ ...f, countryCode: v })} required />
-            <Field label={taxIdHint(f.countryCode)} required hint={t('(se guarda cifrado)')}><Input value={f.taxId} onChange={set('taxId')} /></Field>
+            <Field label={taxIdHint(f.countryCode)} required hint={t('(se guarda cifrado)')}><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><MapPin className="size-5 text-brand-600" /> {t('Dirección de despacho')}</h2>
           <p className="text-sm text-muted">{t('Desde aquí se calculan las tarifas de envío y se generan las etiquetas.')}</p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            <Field label={t('Persona de contacto')} required><Input value={f.contactName} onChange={set('contactName')} placeholder={me?.displayName ?? ''} /></Field>
-            <Field label={t('Teléfono')} required hint={t('(con código de país)')}><Input value={f.phone} onChange={set('phone')} placeholder="+1 305 555 0000" /></Field>
+            <Field label={t('Persona de contacto')} required><Input rule="personName" value={f.contactName} onChange={set('contactName')} placeholder={me?.displayName ?? ''} /></Field>
+            <Field label={t('Teléfono')} required hint={t('(con código de país)')}><Input rule="phone" value={f.phone} onChange={set('phone')} placeholder="+1 305 555 0000" /></Field>
             <Field label={t('Dirección')} required className="sm:col-span-2"><Input value={f.line1} onChange={set('line1')} placeholder={t('Calle y número')} /></Field>
             <Field label={t('Apartamento, suite o referencia')} className="sm:col-span-2"><Input value={f.line2} onChange={set('line2')} /></Field>
             <GeoFields value={geo} onChange={(p) => { if (p.countryCode !== undefined) setShipCountry(p.countryCode); setF((s) => ({ ...s, ...('city' in p ? { city: p.city! } : {}), ...('region' in p ? { region: p.region! } : {}), ...('postalCode' in p ? { postalCode: p.postalCode! } : {}) })); }} />

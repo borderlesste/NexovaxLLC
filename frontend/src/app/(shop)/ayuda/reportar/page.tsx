@@ -109,8 +109,8 @@ function ReportForm() {
                   <p className="mt-1 text-right text-xs text-muted">{f.description.length} / 1,000</p>
                 </Field>
                 <Field label={t('URL o página afectada')}><Input icon={<Link2 />} value={f.url} onChange={(e) => set('url', e.target.value)} placeholder={t('Ej. https://nexovax.com/producto/123')} /></Field>
-                <Field label={t('Número de pedido')} hint={t('(opcional)')}><Input icon={<Package />} value={f.orderNumber} onChange={(e) => set('orderNumber', e.target.value)} placeholder={t('Ej. NX-789456')} /></Field>
-                <Field label={t('Nombre de la tienda o vendedor')} hint={t('(opcional)')}><Input icon={<Store />} value={f.storeName} onChange={(e) => set('storeName', e.target.value)} placeholder={t('Ej. Urban Style Co.')} /></Field>
+                <Field label={t('Número de pedido')} hint={t('(opcional)')}><Input rule="trackingNumber" icon={<Package />} value={f.orderNumber} onChange={(e) => set('orderNumber', e.target.value)} placeholder={t('Ej. NX-789456')} /></Field>
+                <Field label={t('Nombre de la tienda o vendedor')} hint={t('(opcional)')}><Input rule="businessName" icon={<Store />} value={f.storeName} onChange={(e) => set('storeName', e.target.value)} placeholder={t('Ej. Urban Style Co.')} /></Field>
                 <Field label={t('Plataforma desde donde ocurre el problema')} required>
                   <div className="grid grid-cols-3 gap-2">
                     {[['WEB', t('Plataforma web'), Monitor], ['MOBILE', t('App móvil'), Smartphone], ['OTHER', t('Otro'), MoreHorizontal]].map(([v, l, I]: any) => (
@@ -148,7 +148,7 @@ function ReportForm() {
           <div className="card p-5">
             <div className="flex items-start gap-3"><Search className="size-7 text-brand-600" /><div><p className="text-lg font-bold">{t('Seguimiento de reportes')}</p><p className="text-sm text-muted">{t('¿Ya enviaste un reporte? Consulta su estado ingresando tu código.')}</p></div></div>
             {session ? (
-              <div className="mt-3 flex gap-2"><Input value={trackCode} onChange={(e) => setTrackCode(e.target.value)} placeholder={t('Ej. NX-REP-123456')} /><Button onClick={lookup} disabled={!trackCode.trim()}>{t('Consultar estado')}</Button></div>
+              <div className="mt-3 flex gap-2"><Input rule="trackingNumber" value={trackCode} onChange={(e) => setTrackCode(e.target.value)} placeholder={t('Ej. NX-REP-123456')} /><Button onClick={lookup} disabled={!trackCode.trim()}>{t('Consultar estado')}</Button></div>
             ) : (
               <p className="mt-3 text-sm text-muted">{t('Inicia sesión con la cuenta que envió el reporte para consultar su estado.')} <Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold text-brand-700 hover:underline">{t('Iniciar sesión')}</Link></p>
             )}

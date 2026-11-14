@@ -65,11 +65,11 @@ export function AddressDialog({ open, onOpenChange, address, onSaved, defaultCou
             {f.label && ![t('Casa'), t('Trabajo'), t('Otra')].includes(f.label) && <option>{f.label}</option>}
           </Select>
         </Field>
-        <Field label={t('Nombre de quien recibe')} required><Input value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder={t('Nombre y apellido')} /></Field>
+        <Field label={t('Nombre de quien recibe')} required><Input rule="personName" value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder={t('Nombre y apellido')} /></Field>
         <Field label={t('Dirección')} required className="sm:col-span-2"><Input value={f.line1} onChange={(e) => set('line1', e.target.value)} placeholder={t('Calle y número')} /></Field>
         <Field label={t('Apartamento, suite o referencia')} className="sm:col-span-2"><Input value={f.line2} onChange={(e) => set('line2', e.target.value)} placeholder={t('Ej. Apto 2B, edificio 3')} /></Field>
         <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
-        <Field label={t('Teléfono')} hint={t('(con código de país)')}><Input value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+1 305 555 1234" /></Field>
+        <Field label={t('Teléfono')} hint={t('(con código de país)')}><Input rule="phone" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+1 305 555 1234" /></Field>
         <div className="flex items-end"><Checkbox checked={f.isDefaultShipping} onChange={(v) => set('isDefaultShipping', v)} label={t('Usar como predeterminada')} /></div>
       </div>
     </Dialog>

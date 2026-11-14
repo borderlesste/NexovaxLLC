@@ -46,15 +46,15 @@ function NewSellerDialog({ onClose }: { onClose: () => void }) {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('Nombre del propietario')} required><Input value={f.ownerName} onChange={set('ownerName')} /></Field>
-          <Field label={t('Correo del propietario')} required><Input type="email" value={f.ownerEmail} onChange={set('ownerEmail')} /></Field>
-          <Field label={t('Nombre de la tienda')} required><Input value={f.storeName} onChange={set('storeName')} /></Field>
-          <Field label={t('Razón social')} required><Input value={f.legalName} onChange={set('legalName')} /></Field>
+          <Field label={t('Nombre del propietario')} required><Input rule="personName" value={f.ownerName} onChange={set('ownerName')} /></Field>
+          <Field label={t('Correo del propietario')} required><Input rule="email" type="email" value={f.ownerEmail} onChange={set('ownerEmail')} /></Field>
+          <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} /></Field>
+          <Field label={t('Razón social')} required><Input rule="businessName" value={f.legalName} onChange={set('legalName')} /></Field>
           <Field label={t('Tipo de entidad')} required><Select value={f.entityType} onChange={set('entityType')}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select></Field>
-          <Field label={taxIdHint(f.countryCode)} required><Input value={f.taxId} onChange={set('taxId')} /></Field>
+          <Field label={taxIdHint(f.countryCode)} required><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
           <Field label={t('Dirección de despacho')} required className="sm:col-span-2"><Input value={f.line1} onChange={set('line1')} /></Field>
           <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
-          <Field label={t('Teléfono')} required><Input value={f.phone} onChange={set('phone')} placeholder="+1 305 555 0000" /></Field>
+          <Field label={t('Teléfono')} required><Input rule="phone" value={f.phone} onChange={set('phone')} placeholder="+1 305 555 0000" /></Field>
         </div>
       )}
     </Dialog>

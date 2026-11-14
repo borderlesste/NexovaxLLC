@@ -245,7 +245,7 @@ export default function CheckoutPage() {
                 <Field label={t('Número de tarjeta')} required className="sm:col-span-3">
                   <Input inputMode="numeric" autoComplete="cc-number" placeholder="1234 5678 9012 3456" value={card.number} onChange={(e) => setCard({ ...card, number: fmtCard(e.target.value) })} />
                 </Field>
-                <Field label={t('Nombre en la tarjeta')} required><Input autoComplete="cc-name" placeholder={t('Ej. Juan Pérez')} value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} /></Field>
+                <Field label={t('Nombre en la tarjeta')} required><Input rule="personName" autoComplete="cc-name" placeholder={t('Ej. Juan Pérez')} value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} /></Field>
                 <Field label={t('Fecha de vencimiento')} required>
                   <Input inputMode="numeric" autoComplete="cc-exp" placeholder={t('MM / AA')} value={card.exp} onChange={(e) => {
                     const d = e.target.value.replace(/\D/g, '').slice(0, 4);

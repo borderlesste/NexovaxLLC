@@ -56,11 +56,11 @@ export function GeoFields({ value, onChange }: { value: GeoValue; onChange: (pat
   return (
     <>
       <CountrySelect value={value.countryCode} onChange={(v) => onChange({ countryCode: v })} required />
-      <Field label={t('Ciudad')} required><Input value={value.city} onChange={(e) => onChange({ city: e.target.value })} placeholder={t('Ej. Miami, Madrid, Santo Domingo')} /></Field>
+      <Field label={t('Ciudad')} required><Input rule="placeName" value={value.city} onChange={(e) => onChange({ city: e.target.value })} placeholder={t('Ej. Miami, Madrid, Santo Domingo')} /></Field>
       <Field label={l.region} hint={l.regionHint ? `(${l.regionHint})` : undefined} required={['US', 'CA', 'MX'].includes(value.countryCode)}>
-        <Input value={value.region} onChange={(e) => onChange({ region: e.target.value })} />
+        <Input rule="placeName" value={value.region} onChange={(e) => onChange({ region: e.target.value })} />
       </Field>
-      <Field label={l.postal}><Input value={value.postalCode} onChange={(e) => onChange({ postalCode: e.target.value })} placeholder={l.postalPlaceholder} /></Field>
+      <Field label={l.postal}><Input rule="postalCode" value={value.postalCode} onChange={(e) => onChange({ postalCode: e.target.value })} placeholder={l.postalPlaceholder} /></Field>
     </>
   );
 }

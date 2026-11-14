@@ -60,8 +60,8 @@ function RegisterForm() {
         <h2 className="text-4xl font-extrabold">{t('Crear cuenta')}</h2>
         <p className="mt-1 text-lg text-muted">{t('Únete al marketplace y comienza a comprar o vender hoy mismo.')}</p>
         <div className="mt-6 space-y-4">
-          <Field label={t('Nombre completo')} required><Input required icon={<User />} placeholder={t('Ej. Juan Pérez')} value={f.fullName} onChange={set('fullName')} className="h-11" autoComplete="name" /></Field>
-          <Field label={t('Correo electrónico')} required><Input required type="email" icon={<Mail />} placeholder={t('Ej. juan@ejemplo.com')} value={f.email} onChange={set('email')} className="h-11" autoComplete="email" /></Field>
+          <Field label={t('Nombre completo')} required><Input rule="personName" required icon={<User />} placeholder={t('Ej. Juan Pérez')} value={f.fullName} onChange={set('fullName')} className="h-11" autoComplete="name" /></Field>
+          <Field label={t('Correo electrónico')} required><Input rule="email" required type="email" icon={<Mail />} placeholder={t('Ej. juan@ejemplo.com')} value={f.email} onChange={set('email')} className="h-11" autoComplete="email" /></Field>
           <Field label={t('Contraseña')} required>
             <div className="relative">
               <Input required type={show ? 'text' : 'password'} icon={<Lock />} placeholder={t('Crea una contraseña')} value={f.password} onChange={set('password')} className="h-11 pr-11" autoComplete="new-password" />

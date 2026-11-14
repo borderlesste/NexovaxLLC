@@ -18,8 +18,32 @@ const POSTAL: Record<string, RegExp> = {
   CO: /^\d{6}$/,
   BR: /^\d{5}-?\d{3}$/,
   AU: /^\d{4}$/,
+  // Validated when provided (optional in these countries).
+  DO: /^\d{5}$/,
+  CL: /^\d{7}$/,
+  PE: /^\d{5}$/,
+  AR: /^([A-Za-z]\d{4}[A-Za-z]{3}|\d{4})$/,
+  PT: /^\d{4}-\d{3}$/,
+  NL: /^\d{4}\s?[A-Za-z]{2}$/,
+  BE: /^\d{4}$/,
+  CH: /^\d{4}$/,
+  AT: /^\d{4}$/,
+  SE: /^\d{3}\s?\d{2}$/,
+  JP: /^\d{3}-?\d{4}$/,
+  IN: /^\d{6}$/,
+  CR: /^\d{5}$/,
+  GT: /^\d{5}$/,
+  EC: /^\d{6}$/,
+  VE: /^\d{4}$/,
+  UY: /^\d{5}$/,
+  PY: /^\d{4,6}$/,
+  PA: /^\d{4}$/,
+  HN: /^\d{5}$/,
+  SV: /^\d{4}$/,
+  NI: /^\d{5}$/,
+  BO: /^\d{4}$/,
 };
-const POSTAL_REQUIRED = new Set(Object.keys(POSTAL));
+const POSTAL_REQUIRED = new Set(['US', 'CA', 'MX', 'ES', 'DE', 'FR', 'IT', 'GB', 'PR', 'CO', 'BR', 'AU']);
 
 export interface PostalAddressInput {
   countryCode: string;

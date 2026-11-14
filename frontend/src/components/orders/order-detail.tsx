@@ -333,9 +333,9 @@ function ShipDialog({ so, onClose, onDone }: { so: any; onClose: () => void; onD
                 {carriers.map((c) => <option key={c.code} value={c.code}>{t(c.name)}</option>)}
               </Select>
             </Field>
-            {f.carrierCode === 'OTHER' && <Field label={t('Nombre de la transportadora')} required><Input value={f.carrierName} onChange={(e) => setF({ ...f, carrierName: e.target.value })} /></Field>}
+            {f.carrierCode === 'OTHER' && <Field label={t('Nombre de la transportadora')} required><Input rule="businessName" value={f.carrierName} onChange={(e) => setF({ ...f, carrierName: e.target.value })} /></Field>}
             <Field label={t('Número de guía')} required={!internal} hint={internal ? t('(opcional: generamos una referencia interna)') : undefined}>
-              <Input value={f.trackingNumber} onChange={(e) => setF({ ...f, trackingNumber: e.target.value })} placeholder={t('1Z999AA10123456784')} />
+              <Input rule="trackingNumber" value={f.trackingNumber} onChange={(e) => setF({ ...f, trackingNumber: e.target.value })} placeholder={t('1Z999AA10123456784')} />
             </Field>
             {['OTHER', 'SERVIENTREGA', 'VIMENCA'].includes(f.carrierCode) && <Field label={t('Enlace de rastreo')} hint={t('(opcional, solo https)')}><Input value={f.trackingUrl} onChange={(e) => setF({ ...f, trackingUrl: e.target.value })} placeholder={t('https://…')} /></Field>}
           </>
@@ -413,7 +413,7 @@ function TrackingDialog({ shipment, role, onClose, onDone }: { shipment: any; ro
         </Field>
         {role !== 'admin' && <p className="text-xs text-muted">{t('La entrega la confirma el cliente o la transportista. Si el cliente no confirma, se cierra automáticamente tras el plazo de confirmación.')}</p>}
         <Field label={t('Detalle')}><Textarea rows={2} value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} placeholder={t('Ej. El paquete llegó al centro de distribución.')} /></Field>
-        <Field label={t('Ciudad')}><Input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></Field>
+        <Field label={t('Ciudad')}><Input rule="placeName" value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></Field>
       </div>
     </Dialog>
   );

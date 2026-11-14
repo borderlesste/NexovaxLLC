@@ -23,7 +23,22 @@ async function bootstrap() {
       forbidUnknownValues: false,
       exceptionFactory: (errors) => {
         const { AppError } = require('./common/errors');
-        const fields = errors.map((e) => ({ field: e.property, errors: Object.values(e.constraints ?? {}) }));
+        // class-validator's default messages are English and technical ("status must be one of…").
+        const DEFAULTS: Record<string, string> = {
+          isIn: 'Selecciona una opción válida.', isEnum: 'Selecciona una opción válida.', isUuid: 'Identificador inválido.', isBoolean: 'Valor inválido.',
+          isInt: 'Debe ser un número entero.', isNumber: 'Debe ser un número.', min: 'El valor es menor que el mínimo permitido.', max: 'El valor supera el máximo permitido.',
+          isString: 'Debe ser un texto.', isObject: 'Valor inválido.', isArray: 'Valor inválido.', arrayMinSize: 'Agrega al menos un elemento.', arrayMaxSize: 'Hay demasiados elementos.',
+          isEmail: 'Correo electrónico inválido.', minLength: 'El texto es demasiado corto.', maxLength: 'El texto es demasiado largo.', length: 'La longitud del texto no es válida.',
+          matches: 'El formato no es válido.', whitelistValidation: 'Campo no permitido.', nestedValidation: 'Valor inválido.',
+        };
+        const spanish = (key: string, msg: string, prop: string) => (msg.startsWith(`${prop} `) || msg.startsWith('each value') ? DEFAULTS[key] ?? 'Valor inválido.' : msg);
+        // Flatten nested DTO errors (e.g. address.phone, variants.0.price).
+        const flat = (list: any[], prefix = ''): { field: string; errors: string[] }[] =>
+          list.flatMap((e) => [
+            ...(e.constraints ? [{ field: prefix + e.property, errors: Object.entries(e.constraints).map(([k, m]) => spanish(k, m as string, e.property)) }] : []),
+            ...flat(e.children ?? [], `${prefix}${e.property}.`),
+          ]);
+        const fields = flat(errors);
         return new AppError('VALIDATION_FAILED', 'Revisa los datos del formulario.', 400, fields);
       },
     }),

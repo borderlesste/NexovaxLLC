@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Max, Min, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { IsPersonName, ToNumber } from '../common/validators';
+import { Transform, Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
 import { CheckoutService } from './checkout.service';
 import { DbService } from '../db/db.service';
@@ -15,11 +16,11 @@ export class QuoteDto {
 }
 
 export class CardDto {
-  @IsString() @Length(12, 23) number: string;
-  @Type(() => Number) @IsInt() @Min(1) @Max(12) expMonth: number;
-  @Type(() => Number) @IsInt() @Min(0) @Max(2100) expYear: number;
-  @IsString() @Length(3, 4) cvc: string;
-  @IsString() @Length(2, 80) name: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s-]/g, '') : value)) @Matches(/^\d{12,19}$/, { message: 'Número de tarjeta inválido.' }) number: string;
+  @ToNumber() @IsInt() @Min(1) @Max(12) expMonth: number;
+  @ToNumber() @IsInt() @Min(2000) @Max(2100) expYear: number;
+  @Matches(/^\d{3,4}$/, { message: 'CVC inválido.' }) cvc: string;
+  @IsPersonName(2, 80) name: string;
 }
 
 export class PlaceOrderDto {

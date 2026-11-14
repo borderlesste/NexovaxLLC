@@ -185,7 +185,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
                   <option value="">{t('Selecciona una subcategoría')}</option>{parent?.children.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
               </Field>
-              <Field label={t('Marca')}><Input value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} placeholder={t('Ej. Nike, Adidas, Xiaomi')} /></Field>
+              <Field label={t('Marca')}><Input rule="businessName" value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} placeholder={t('Ej. Nike, Adidas, Xiaomi')} /></Field>
               <Field label={t('Descripción corta')} className="sm:col-span-3"><Input value={f.shortDescription} onChange={(e) => setF({ ...f, shortDescription: e.target.value })} placeholder={t('Resumen que aparece bajo el título')} maxLength={300} /></Field>
               <Field label={t('Descripción del producto')} required className="sm:col-span-3">
                 <Textarea rows={6} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={5000} placeholder={t('Describe tu producto de forma clara y detallada. Incluye sus características, beneficios, materiales, uso recomendado, etc.')} />
@@ -262,10 +262,10 @@ export function ProductEditor({ productId }: { productId?: string }) {
                     {variants.map((v, i) => (
                       <tr key={v.key} className={cn(!v.active && 'opacity-50')}>
                         <td className="px-3 py-2 font-semibold">{Object.values(v.optionValues).join(' / ') || t('Única')}</td>
-                        <td className="py-2 pr-2"><Input className="h-9" value={v.sku} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, sku: e.target.value.toUpperCase() } : x))} /></td>
-                        <td className="py-2 pr-2"><Input className="h-9" inputMode="decimal" value={v.price} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="0.00" /></td>
-                        <td className="py-2 pr-2"><Input className="h-9" inputMode="decimal" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder={t('Opcional')} /></td>
-                        <td className="py-2 pr-2"><Input className="h-9 w-24" inputMode="numeric" value={v.stock} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, stock: e.target.value.replace(/\D/g, '') } : x))} /></td>
+                        <td className="py-2 pr-2"><Input rule="sku" className="h-9" value={v.sku} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, sku: e.target.value.toUpperCase() } : x))} /></td>
+                        <td className="py-2 pr-2"><Input rule="money" className="h-9" inputMode="decimal" value={v.price} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="0.00" /></td>
+                        <td className="py-2 pr-2"><Input rule="money" className="h-9" inputMode="decimal" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder={t('Opcional')} /></td>
+                        <td className="py-2 pr-2"><Input rule="integer" className="h-9 w-24" inputMode="numeric" value={v.stock} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, stock: e.target.value.replace(/\D/g, '') } : x))} /></td>
                         <td className="py-2 pr-3"><input type="checkbox" checked={v.active} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, active: e.target.checked } : x))} className="size-4 accent-brand-600" /></td>
                       </tr>
                     ))}
@@ -311,10 +311,10 @@ export function ProductEditor({ productId }: { productId?: string }) {
           <Card>
             <CardHeader icon={<Truck />} title={t('Envío y dimensiones')} subtitle={t('Información para el cálculo y la gestión del envío.')} />
             <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
-              <Field label={t('Peso (kg)')} required><Input inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
-              <Field label={t('Largo (cm)')} required><Input inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label={t('Ancho (cm)')} required><Input inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label={t('Alto (cm)')} required><Input inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label={t('Peso (kg)')} required><Input rule="measure" inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
+              <Field label={t('Largo (cm)')} required><Input rule="measure" inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label={t('Ancho (cm)')} required><Input rule="measure" inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
+              <Field label={t('Alto (cm)')} required><Input rule="measure" inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
             </div>
           </Card>
 
@@ -331,7 +331,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
           <Card>
             <CardHeader icon={<Link2 />} title={t('SEO / Enlace')} subtitle={t('Mejora el posicionamiento y el enlace del producto.')} />
             <div className="grid gap-4 p-5">
-              <Field label={t('Slug / URL amigable')}><Input value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder={t('zapatillas-running')} /><p className="mt-1 text-xs text-muted">{t('/producto/')}{f.slug || '…'}</p></Field>
+              <Field label={t('Slug / URL amigable')}><Input rule="slug" value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder={t('zapatillas-running')} /><p className="mt-1 text-xs text-muted">{t('/producto/')}{f.slug || '…'}</p></Field>
               <Field label={t('Meta título')}><Input value={f.metaTitle} onChange={(e) => setF({ ...f, metaTitle: e.target.value })} maxLength={60} /><p className="mt-1 text-right text-xs text-muted">{f.metaTitle.length} / 60</p></Field>
               <Field label={t('Meta descripción')}><Textarea rows={2} value={f.metaDescription} onChange={(e) => setF({ ...f, metaDescription: e.target.value })} maxLength={160} /><p className="mt-1 text-right text-xs text-muted">{f.metaDescription.length} / 160</p></Field>
             </div>

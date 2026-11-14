@@ -70,8 +70,8 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
               return (
                 <tr key={r.countryCode}>
                   <td className="px-5 py-2 font-semibold">{countryName(r.countryCode)} <span className="text-xs text-muted">{r.countryCode}</span>{r.notes && <span className="block text-xs font-normal text-muted">{r.notes}</span>}</td>
-                  <td className="pr-3"><Input value={r.taxName} onChange={(e) => upd('taxName', e.target.value)} className="h-9" /></td>
-                  <td className="pr-3"><Input inputMode="decimal" value={r.ratePct} onChange={(e) => upd('ratePct', e.target.value.replace(/[^\d.]/g, ''))} suffix="%" className="h-9" /></td>
+                  <td className="pr-3"><Input rule="businessName" value={r.taxName} onChange={(e) => upd('taxName', e.target.value)} className="h-9" /></td>
+                  <td className="pr-3"><Input rule="percent" inputMode="decimal" value={r.ratePct} onChange={(e) => upd('ratePct', e.target.value.replace(/[^\d.]/g, ''))} suffix="%" className="h-9" /></td>
                   <td><Switch checked={!!r.isActive} onCheckedChange={(v) => upd('isActive', v)} /></td>
                   <td className="pr-5 text-right">
                     <Button size="sm" variant="outline" loading={busy === r.countryCode} onClick={() => saveRow(r)}>{t('Guardar')}</Button>
@@ -85,8 +85,8 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
       </div>
       <div className="grid gap-3 border-t border-line p-5 sm:grid-cols-[1.4fr_1fr_120px_auto]">
         <CountrySelect value={draft.countryCode} onChange={(v) => setDraft({ ...draft, countryCode: v })} label={t('Agregar país')} />
-        <Field label={t('Nombre del impuesto')}><Input value={draft.taxName} onChange={(e) => setDraft({ ...draft, taxName: e.target.value })} placeholder={t('IVA, VAT, GST…')} /></Field>
-        <Field label={t('Tasa')}><Input inputMode="decimal" value={draft.ratePct} onChange={(e) => setDraft({ ...draft, ratePct: e.target.value.replace(/[^\d.]/g, '') })} suffix="%" /></Field>
+        <Field label={t('Nombre del impuesto')}><Input rule="businessName" value={draft.taxName} onChange={(e) => setDraft({ ...draft, taxName: e.target.value })} placeholder={t('IVA, VAT, GST…')} /></Field>
+        <Field label={t('Tasa')}><Input rule="percent" inputMode="decimal" value={draft.ratePct} onChange={(e) => setDraft({ ...draft, ratePct: e.target.value.replace(/[^\d.]/g, '') })} suffix="%" /></Field>
         <Button className="self-end" onClick={add}><Plus /> {t('Agregar')}</Button>
       </div>
       <p className="px-5 pb-5 text-xs text-muted">{t('Las tasas iniciales son tasas generales de referencia; confírmalas con tu asesor fiscal. El impuesto aplicado queda guardado como evidencia en cada pedido.')}</p>
@@ -114,6 +114,9 @@ export default function SettingsPage() {
     setBusy(true);
     try {
       const commissionRate = rate !== '' && d.commission && Math.abs(Number(rate) / 100 - d.commission.rate) > 1e-9 ? Number(rate) / 100 : undefined;
+      // Amounts are edited as text (so decimals can be typed) and sent as numbers.
+      if (Array.isArray(changed['shipping.rates']))
+        changed['shipping.rates'] = (changed['shipping.rates'] as any[]).map((x) => ({ ...x, amount: Number(x.amount || 0), estimated_days: Number(x.estimated_days || 0) }));
       const r = await put('/admin/settings', { settings: changed, commissionRate });
       qc.setQueryData(['admin-settings'], r);
       qc.invalidateQueries({ queryKey: ['public-config'] });
@@ -142,7 +145,7 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader icon={<Store />} title={t('Información del marketplace')} subtitle={t('Configura la información básica y la identidad de tu plataforma.')} />
                 <div className="grid gap-4 p-5 sm:grid-cols-2">
-                  <Field label={t('Nombre del marketplace')} required><Input value={s['marketplace.name']} onChange={(e) => set('marketplace.name', e.target.value)} /></Field>
+                  <Field label={t('Nombre del marketplace')} required><Input rule="businessName" value={s['marketplace.name']} onChange={(e) => set('marketplace.name', e.target.value)} /></Field>
                   <Field label={t('URL base')} required><Input value={s['marketplace.base_url']} onChange={(e) => set('marketplace.base_url', e.target.value)} /></Field>
                   <Field label={t('Moneda del marketplace')} required>
                     <Select value={cur} onChange={(e) => set('marketplace.currency', e.target.value)}>
@@ -153,8 +156,8 @@ export default function SettingsPage() {
                     <Select value={s['marketplace.locale']} onChange={(e) => set('marketplace.locale', e.target.value)}><option value="es">{t('Español')}</option><option value="en">{t('English')}</option></Select>
                   </Field>
                   <CountrySelect label={t('País predeterminado')} value={s['marketplace.default_country']} onChange={(v) => set('marketplace.default_country', v)} />
-                  <Field label={t('Correo de soporte')} required><Input icon={<Mail />} value={s['marketplace.support_email']} onChange={(e) => set('marketplace.support_email', e.target.value)} /></Field>
-                  <Field label={t('Comisión por venta')} required><Input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))} suffix="%" /></Field>
+                  <Field label={t('Correo de soporte')} required><Input rule="email" icon={<Mail />} value={s['marketplace.support_email']} onChange={(e) => set('marketplace.support_email', e.target.value)} /></Field>
+                  <Field label={t('Comisión por venta')} required><Input rule="percent" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))} suffix="%" /></Field>
                 </div>
                 <p className="px-5 pb-5 text-xs text-muted">{t('El marketplace opera en una sola moneda. Los pedidos anteriores conservan su moneda original. Los impuestos se configuran por país en la pestaña Impuestos.')}</p>
               </Card>
@@ -173,7 +176,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader icon={<Coins />} title={t('Comisiones y política de pagos')} subtitle={t('Reglas comerciales versionadas aplicadas en el checkout.')} />
               <div className="grid gap-4 p-5 sm:grid-cols-2">
-                <Field label={t('Comisión global por venta')}><Input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))} suffix="%" /></Field>
+                <Field label={t('Comisión global por venta')}><Input rule="percent" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))} suffix="%" /></Field>
                 <div className="rounded-xl bg-surface p-4 text-sm"><p className="text-muted">{t('Versión vigente desde')}</p><b>{d.commission ? fmtDate(d.commission.effectiveFrom) : '—'}</b><p className="mt-1 text-xs text-muted">{t('Base: precio del producto después de descuentos (sin envío ni impuestos).')}</p></div>
                 {d.payoutPolicy && (
                   <div className="rounded-xl border border-line p-4 text-sm sm:col-span-2">
@@ -206,10 +209,10 @@ export default function SettingsPage() {
                   {rates.map((r, i) => (
                     <div key={i} className="grid gap-3 rounded-xl border border-line p-4 sm:grid-cols-[110px_1fr_1.4fr_110px_90px_auto]">
                       <Field label={t('Código')}><Input value={r.code} onChange={(e) => setRateRow(i, 'code', e.target.value.toUpperCase().replace(/[^A-Z_]/g, ''))} /></Field>
-                      <Field label={t('Nombre')}><Input value={r.name} onChange={(e) => setRateRow(i, 'name', e.target.value)} /></Field>
+                      <Field label={t('Nombre')}><Input rule="businessName" value={r.name} onChange={(e) => setRateRow(i, 'name', e.target.value)} /></Field>
                       <Field label={t('Descripción')}><Input value={r.description} onChange={(e) => setRateRow(i, 'description', e.target.value)} /></Field>
-                      <Field label={`${t('Tarifa')} (${cur})`}><Input inputMode="decimal" value={String(r.amount)} onChange={(e) => setRateRow(i, 'amount', Number(e.target.value.replace(/[^\d.]/g, '') || 0))} /></Field>
-                      <Field label={t('Días')}><Input inputMode="numeric" value={String(r.estimated_days)} onChange={(e) => setRateRow(i, 'estimated_days', Number(e.target.value.replace(/\D/g, '') || 0))} /></Field>
+                      <Field label={`${t('Tarifa')} (${cur})`}><Input rule="money" inputMode="decimal" value={String(r.amount)} onChange={(e) => setRateRow(i, 'amount', e.target.value)} /></Field>
+                      <Field label={t('Días')}><Input rule="integer" inputMode="numeric" value={String(r.estimated_days)} onChange={(e) => setRateRow(i, 'estimated_days', Number(e.target.value.replace(/\D/g, '') || 0))} /></Field>
                       <Button variant="ghost" size="icon" className="self-end" onClick={() => set('shipping.rates', rates.filter((_, j) => j !== i))} aria-label={t('Eliminar')} disabled={rates.length <= 1}><Trash2 /></Button>
                     </div>
                   ))}
@@ -226,11 +229,11 @@ export default function SettingsPage() {
                   <span><b className="block text-sm">{t('Aceptar pagos por transferencia')}</b><span className="text-xs text-muted">{t('El inventario se reserva 72 h hasta que finanzas confirme el pago.')}</span></span>
                   <Switch checked={!!bt.enabled} onCheckedChange={(v) => setBt('enabled', v)} />
                 </div>
-                <Field label={t('Banco')} required><Input value={bt.bank_name ?? ''} onChange={(e) => setBt('bank_name', e.target.value)} /></Field>
-                <Field label={t('Titular de la cuenta')} required><Input value={bt.account_holder ?? ''} onChange={(e) => setBt('account_holder', e.target.value)} /></Field>
-                <Field label={t('Número de cuenta')} required><Input value={bt.account_number ?? ''} onChange={(e) => setBt('account_number', e.target.value)} /></Field>
-                <Field label={t('Routing / SWIFT / BIC')}><Input value={bt.routing_or_swift ?? ''} onChange={(e) => setBt('routing_or_swift', e.target.value || null)} /></Field>
-                <Field label={t('IBAN')} className="sm:col-span-2"><Input value={bt.iban ?? ''} onChange={(e) => setBt('iban', e.target.value || null)} /></Field>
+                <Field label={t('Banco')} required><Input rule="businessName" value={bt.bank_name ?? ''} onChange={(e) => setBt('bank_name', e.target.value)} /></Field>
+                <Field label={t('Titular de la cuenta')} required><Input rule="businessName" value={bt.account_holder ?? ''} onChange={(e) => setBt('account_holder', e.target.value)} /></Field>
+                <Field label={t('Número de cuenta')} required><Input rule="bankAccount" value={bt.account_number ?? ''} onChange={(e) => setBt('account_number', e.target.value)} /></Field>
+                <Field label={t('Routing / SWIFT / BIC')}><Input rule="swift" value={bt.routing_or_swift ?? ''} onChange={(e) => setBt('routing_or_swift', e.target.value || null)} /></Field>
+                <Field label={t('IBAN')} className="sm:col-span-2"><Input rule="bankAccount" value={bt.iban ?? ''} onChange={(e) => setBt('iban', e.target.value || null)} /></Field>
                 <Field label={t('Instrucciones para el comprador')} className="sm:col-span-2"><Textarea rows={3} value={bt.instructions ?? ''} onChange={(e) => setBt('instructions', e.target.value)} /></Field>
               </div>
             </Card>

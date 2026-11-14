@@ -680,14 +680,48 @@ export class AdminService {
     const loc = s['marketplace.locale'];
     if (loc != null && !['es', 'en'].includes(loc)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
+    const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
+      'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications']);
+    for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
+    for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications'] as const)
+      if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
+    const text = (v: unknown, min: number, max: number, re?: RegExp) =>
+      typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
+    if (s['marketplace.name'] != null && !text(s['marketplace.name'], 2, 60, /\p{L}/u)) throw badRequest('NAME_INVALID', 'El nombre del marketplace no es válido.');
+    if (s['marketplace.support_email'] != null && !text(s['marketplace.support_email'], 6, 254, /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/))
+      throw badRequest('EMAIL_INVALID', 'Correo electrónico inválido.');
+    if (s['marketplace.base_url'] != null) {
+      let ok = false;
+      try {
+        const u = new URL(String(s['marketplace.base_url']));
+        ok = ['http:', 'https:'].includes(u.protocol) && !!u.hostname;
+      } catch {}
+      if (!ok) throw badRequest('URL_INVALID', 'Ingresa un enlace válido que empiece por https://');
+    }
     const rates = s['shipping.rates'];
     if (rates != null) {
-      if (!Array.isArray(rates) || rates.some((r) => !r?.code || !r?.name || !(Number(r.amount) >= 0)))
-        throw badRequest('SHIPPING_RATES_INVALID', 'Revisa las tarifas de envío.');
+      const money = (v: unknown) => /^\d{1,7}(\.\d{1,2})?$/.test(String(v ?? '').trim());
+      if (
+        !Array.isArray(rates) || rates.length > 50 ||
+        rates.some((r) => !r || !/^[A-Z0-9_:\-]{2,40}$/.test(String(r.code ?? '')) || !text(r.name, 2, 60, /\p{L}/u) || !money(r.amount) ||
+          (r.description != null && r.description !== '' && !text(r.description, 0, 200)) ||
+          (r.estimated_days != null && !(Number.isInteger(Number(r.estimated_days)) && Number(r.estimated_days) >= 0 && Number(r.estimated_days) <= 120)) ||
+          (r.requires_address != null && typeof r.requires_address !== 'boolean'))
+      )
+        throw badRequest('SHIPPING_RATES_INVALID', 'Revisa las tarifas de envío: nombre con letras, montos numéricos (máx. 2 decimales) y días enteros (0 a 120).');
     }
     const bt = s['payments.bank_transfer'];
-    if (bt != null && bt.enabled && (!bt.bank_name?.trim() || !bt.account_holder?.trim() || !bt.account_number?.trim()))
-      throw badRequest('BANK_TRANSFER_INVALID', 'Completa banco, titular y número de cuenta para habilitar transferencias.');
+    if (bt != null) {
+      if (typeof bt !== 'object' || typeof bt.enabled !== 'boolean') throw badRequest('BANK_TRANSFER_INVALID', 'Revisa los datos de transferencia bancaria.');
+      if (bt.enabled && (!bt.bank_name?.trim() || !bt.account_holder?.trim() || !bt.account_number?.trim()))
+        throw badRequest('BANK_TRANSFER_INVALID', 'Completa banco, titular y número de cuenta para habilitar transferencias.');
+      if (bt.bank_name && !text(bt.bank_name, 2, 80, /\p{L}/u)) throw badRequest('BANK_TRANSFER_INVALID', 'El nombre del banco no es válido.');
+      if (bt.account_holder && !text(bt.account_holder, 2, 120, /\p{L}/u)) throw badRequest('BANK_TRANSFER_INVALID', 'El titular de la cuenta no es válido.');
+      if (bt.account_number && !/^(?=(?:.*\d){4})[A-Z0-9]{4,34}$/.test(String(bt.account_number).replace(/[\s-]/g, '').toUpperCase()))
+        throw badRequest('BANK_TRANSFER_INVALID', 'Número de cuenta inválido: usa solo números (o el IBAN).');
+      if (bt.instructions != null && (typeof bt.instructions !== 'string' || bt.instructions.length > 1000 || /[<>]/.test(bt.instructions)))
+        throw badRequest('BANK_TRANSFER_INVALID', 'Las instrucciones no son válidas.');
+    }
   }
 
   /** Every marketplace currency needs an active payout policy; clones the current one when missing. */

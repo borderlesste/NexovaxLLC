@@ -253,5 +253,15 @@
 "Subir foto": "Upload photo",
 "JPG, PNG, WebP o AVIF · máx. 8 MB": "JPG, PNG, WebP or AVIF · max 8 MB",
 "Formato no permitido. Usa JPG, PNG, WebP o AVIF.": "Format not allowed. Use JPG, PNG, WebP or AVIF.",
-"La imagen supera 8 MB.": "The image exceeds 8 MB."
+"La imagen supera 8 MB.": "The image exceeds 8 MB.",
+"Solo números (7 a 15 dígitos) y los signos + ( ) -.": "Numbers only (7 to 15 digits) and the signs + ( ) -.",
+"Solo letras, espacios, apóstrofos y guiones.": "Letters, spaces, apostrophes and hyphens only.",
+"Solo letras.": "Letters only.",
+"Letras y números (ej. 10148, 33131).": "Letters and numbers (e.g. 10148, 33131).",
+"Correo electrónico inválido.": "Invalid e-mail address.",
+"Monto numérico mayor que 0, máximo 2 decimales.": "A number greater than 0, max. 2 decimals.",
+"Número mayor que 0.": "A number greater than 0.",
+"Código SWIFT/BIC (8 u 11 caracteres) o número de ruta (9 dígitos).": "SWIFT/BIC code (8 or 11 characters) or routing number (9 digits).",
+"Solo números (o el IBAN).": "Numbers only (or the IBAN).",
+"Letras, números, puntos y guiones (mínimo 3 dígitos).": "Letters, numbers, dots and hyphens (at least 3 digits)."
 }

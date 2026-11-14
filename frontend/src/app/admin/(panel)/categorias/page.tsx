@@ -112,10 +112,10 @@ export default function CategoriesAdminPage() {
       {dlg && (
         <Dialog open onOpenChange={(o) => !o && setDlg(null)} title={dlg.id ? t('Editar categoría') : t('Crear categoría')} footer={<><Button variant="secondary" onClick={() => setDlg(null)}>{t('Cancelar')}</Button><Button onClick={save} disabled={!dlg.name.trim()}>{t('Guardar')}</Button></>}>
           <div className="grid gap-4">
-            <Field label={t('Nombre')} required><Input value={dlg.name} onChange={(e) => setDlg({ ...dlg, name: e.target.value })} /></Field>
+            <Field label={t('Nombre')} required><Input rule="businessName" value={dlg.name} onChange={(e) => setDlg({ ...dlg, name: e.target.value })} /></Field>
             <Field label={t('Categoría padre')}><Select value={dlg.parentId} onChange={(e) => setDlg({ ...dlg, parentId: e.target.value })}><option value="">{t('— Categoría principal —')}</option>{roots.filter((r: any) => r.id !== dlg.id).map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}</Select></Field>
             <Field label={t('Estado')}><Select value={dlg.status} onChange={(e) => setDlg({ ...dlg, status: e.target.value })}><option value="ACTIVE">{t('Activa')}</option><option value="INACTIVE">{t('Inactiva')}</option></Select></Field>
-            <Field label={t('Orden')}><Input inputMode="numeric" value={dlg.sortOrder} onChange={(e) => setDlg({ ...dlg, sortOrder: e.target.value.replace(/\D/g, '') })} /></Field>
+            <Field label={t('Orden')}><Input rule="integer" inputMode="numeric" value={dlg.sortOrder} onChange={(e) => setDlg({ ...dlg, sortOrder: e.target.value.replace(/\D/g, '') })} /></Field>
           </div>
         </Dialog>
       )}

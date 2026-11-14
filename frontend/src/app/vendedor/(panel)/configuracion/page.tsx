@@ -36,11 +36,11 @@ function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
       <p className="flex items-center gap-2 text-lg font-bold"><MapPin className="size-5 text-brand-600" /> {t('Dirección de despacho')}</p>
       <p className="mt-1 text-muted">{t('Se usa para calcular tarifas de envío en vivo y generar etiquetas.')}</p>
       <div className="mt-4 grid gap-3">
-        <Field label={t('Persona de contacto')} required><Input value={f.contactName} onChange={(e) => setF({ ...f, contactName: e.target.value })} /></Field>
+        <Field label={t('Persona de contacto')} required><Input rule="personName" value={f.contactName} onChange={(e) => setF({ ...f, contactName: e.target.value })} /></Field>
         <Field label={t('Dirección')} required><Input value={f.line1} onChange={(e) => setF({ ...f, line1: e.target.value })} /></Field>
         <Field label={t('Apartamento, suite o referencia')}><Input value={f.line2} onChange={(e) => setF({ ...f, line2: e.target.value })} /></Field>
         <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
-        <Field label={t('Teléfono')} required><Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <Field label={t('Teléfono')} required><Input rule="phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
       </div>
       <Button className="mt-4 w-full" onClick={save} loading={busy}><Check /> {t('Guardar dirección')}</Button>
     </Card>
@@ -91,11 +91,11 @@ export default function StoreSettingsPage() {
         <Card>
           <CardHeader icon={<Store />} title={t('Información de la tienda')} />
           <div className="grid gap-4 p-5 sm:grid-cols-2">
-            <Field label={t('Nombre visible')} required><Input value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} /></Field>
+            <Field label={t('Nombre visible')} required><Input rule="businessName" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} /></Field>
             <Field label={t('Descripción corta')}><Input value={f.shortDescription} onChange={(e) => setF({ ...f, shortDescription: e.target.value })} maxLength={200} /></Field>
             <Field label={t('Acerca de la tienda')} className="sm:col-span-2"><Textarea rows={5} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={3000} /></Field>
-            <Field label={t('Correo de atención')}><Input value={f.supportEmail} onChange={(e) => setF({ ...f, supportEmail: e.target.value })} /></Field>
-            <Field label={t('Teléfono de atención')}><Input value={f.supportPhone} onChange={(e) => setF({ ...f, supportPhone: e.target.value })} /></Field>
+            <Field label={t('Correo de atención')}><Input rule="email" value={f.supportEmail} onChange={(e) => setF({ ...f, supportEmail: e.target.value })} /></Field>
+            <Field label={t('Teléfono de atención')}><Input rule="phone" value={f.supportPhone} onChange={(e) => setF({ ...f, supportPhone: e.target.value })} /></Field>
           </div>
         </Card>
         <div className="space-y-5">

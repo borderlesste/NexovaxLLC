@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
+import { IsCleanMultiline } from '../common/validators';
 import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
 import { MessagingService } from './messaging.service';
 
@@ -8,11 +9,11 @@ export class StartConversationDto {
   @IsOptional() @IsUUID() sellerId?: string;
   @IsOptional() @IsUUID() productId?: string;
   @IsOptional() @IsUUID() orderId?: string;
-  @IsString() @Length(1, 4000) message: string;
+  @IsCleanMultiline(1, 4000) message: string;
 }
 
 export class SendMessageDto {
-  @IsString() @Length(1, 4000) body: string;
+  @IsCleanMultiline(1, 4000) body: string;
   @IsOptional() @IsString() @MaxLength(100) clientKey?: string;
 }
 

@@ -31,7 +31,7 @@ export function PayoutActions({ p, onDone }: { p: any; onDone: () => void }) {
       <Dialog open={open} onOpenChange={setOpen} title={t('Registrar transferencia')} description={`${p.number} · ${p.seller.name} · ${money(p.amount)}`}
         footer={<><Button variant="secondary" onClick={() => setOpen(false)}>{t('Cancelar')}</Button><Button onClick={() => run('MARK_PAID', { reference: ref })} loading={busy === 'MARK_PAID'} disabled={!ref.trim()}>{t('Confirmar pago')}</Button></>}>
         <p className="mb-3 text-sm text-muted">{t('Destino:')}{' '}<b className="text-ink">{p.account.label} **** {p.account.last4}</b>{t('. Realiza la transferencia desde la banca de la empresa y registra la referencia.')}</p>
-        <Field label={t('Referencia bancaria')} required><Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder={t('Ej. TRF-2026-000123')} /></Field>
+        <Field label={t('Referencia bancaria')} required><Input rule="reference" value={ref} onChange={(e) => setRef(e.target.value)} placeholder={t('Ej. TRF-2026-000123')} /></Field>
       </Dialog>
     </span>
   );

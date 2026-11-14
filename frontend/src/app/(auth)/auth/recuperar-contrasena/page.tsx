@@ -38,7 +38,7 @@ export default function RecoverPage() {
         <>
           <h1 className="text-3xl font-extrabold">{t('Recuperar contraseña')}</h1>
           <p className="mt-1 text-muted">{t('Te enviaremos un enlace para crear una nueva contraseña.')}</p>
-          <Field label={t('Correo electrónico')} required className="mt-6"><Input type="email" required icon={<Mail />} value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('usuario@correo.com')} className="h-11" /></Field>
+          <Field label={t('Correo electrónico')} required className="mt-6"><Input rule="email" type="email" required icon={<Mail />} value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('usuario@correo.com')} className="h-11" /></Field>
           {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <Button type="submit" size="lg" className="mt-6 w-full" loading={busy}>{t('Enviar enlace')}</Button>
           <p className="mt-4 text-center text-sm"><Link href="/auth/iniciar-sesion" className="font-semibold text-brand-700">{t('Volver a iniciar sesión')}</Link></p>

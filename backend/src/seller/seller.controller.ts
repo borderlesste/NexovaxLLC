@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
+import { IsAddressLine, IsBankAccountNumber, IsBusinessName, IsCleanMultiline, IsCleanText, IsCountryCode, IsCurrencyCode, IsDocumentId, IsEmailAddress, IsHexColor, IsMeasure, IsMoney, IsPersonName, IsPersonNameOrBusiness, IsPhone, IsPlaceName, IsPostalCode, IsSku, IsSlug, IsSwiftOrRouting, IsTaxId, IsTimeZone, IsTrackingNumber, IsWebUrl, ToNumber } from '../common/validators';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
+  ArrayMaxSize,
+  ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
   ValidateNested,
 } from 'class-validator';
 import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
@@ -16,76 +18,84 @@ import { badRequest } from '../common/errors';
 const PHONE = /^\+?[0-9][0-9 ().-]{5,47}$/;
 const upload = { limits: { fileSize: 8 * 1024 * 1024, files: 8, fields: 10, parts: 20 } };
 
+export class ProductStatusDto {
+  @IsIn(['PAUSE', 'RESUME', 'ARCHIVE']) action: 'PAUSE' | 'RESUME' | 'ARCHIVE';
+}
+
+export class PayoutAccountActionDto {
+  @IsIn(['PRIMARY', 'DISABLE']) action: 'PRIMARY' | 'DISABLE';
+}
+
 export class ShipFromDto {
-  @IsString() @Length(2, 120) contactName: string;
-  @IsString() @Length(3, 200) line1: string;
-  @IsOptional() @IsString() @MaxLength(200) line2?: string;
-  @IsString() @Length(2, 2) countryCode: string;
-  @IsString() @Length(2, 100) city: string;
-  @IsOptional() @IsString() @MaxLength(80) region?: string;
-  @IsOptional() @IsString() @MaxLength(20) postalCode?: string;
-  @Matches(PHONE, { message: 'Teléfono inválido.' }) phone: string;
+  @IsPersonName(2, 120) contactName: string;
+  @IsAddressLine(3, 200) line1: string;
+  @IsOptional() @IsAddressLine(1, 200) line2?: string;
+  @IsCountryCode() countryCode: string;
+  @IsPlaceName(2, 100) city: string;
+  @IsOptional() @IsPlaceName(2, 80) region?: string;
+  @IsOptional() @IsPostalCode() postalCode?: string;
+  @IsPhone() phone: string;
 }
 
 export class OnboardingDto {
-  @IsString() @Length(3, 80) storeName: string;
-  @IsOptional() @IsString() @MaxLength(200) shortDescription?: string;
-  @IsOptional() @IsEmail() supportEmail?: string;
-  @IsOptional() @Matches(PHONE) supportPhone?: string;
-  @IsString() @Length(3, 160) legalName: string;
+  @IsBusinessName(3, 80) storeName: string;
+  @IsOptional() @IsCleanText(0, 200) shortDescription?: string;
+  @IsOptional() @IsEmailAddress() supportEmail?: string;
+  @IsOptional() @IsPhone() supportPhone?: string;
+  @IsBusinessName(3, 160) legalName: string;
   @IsIn(['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER']) entityType: any;
-  @IsString() @Length(2, 2) countryCode: string;
-  @IsString() @Length(3, 30) taxId: string;
-  @IsOptional() @IsString() @MaxLength(60) timezone?: string;
+  @IsCountryCode() countryCode: string;
+  @IsTaxId() taxId: string;
+  @IsOptional() @IsTimeZone() timezone?: string;
   @ValidateNested() @Type(() => ShipFromDto) address: ShipFromDto;
 }
 
 export class StoreDto {
-  @IsOptional() @IsString() @Length(3, 80) displayName?: string;
-  @IsOptional() @IsString() @MaxLength(200) shortDescription?: string;
-  @IsOptional() @IsString() @MaxLength(3000) description?: string;
-  @IsOptional() @IsString() @MaxLength(120) supportEmail?: string;
-  @IsOptional() @IsString() @MaxLength(40) supportPhone?: string;
+  @IsOptional() @IsBusinessName(3, 80) displayName?: string;
+  @IsOptional() @IsCleanText(0, 200) shortDescription?: string;
+  @IsOptional() @IsCleanMultiline(0, 3000) description?: string;
+  @IsOptional() @IsEmailAddress() supportEmail?: string;
+  @IsOptional() @IsPhone() supportPhone?: string;
 }
 
 class OptionValueDto {
-  @IsString() @Length(1, 40) label: string;
-  @IsOptional() @IsString() @MaxLength(20) swatch?: string | null;
+  @IsCleanText(1, 40) label: string;
+  @IsOptional() @IsHexColor() swatch?: string | null;
 }
 class OptionDto {
-  @IsString() @Length(1, 40) name: string;
-  @IsArray() @ArrayMaxSize(30) @ValidateNested({ each: true }) @Type(() => OptionValueDto) values: OptionValueDto[];
+  @IsCleanText(1, 40) name: string;
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(30) @ValidateNested({ each: true }) @Type(() => OptionValueDto) values: OptionValueDto[];
 }
 class VariantDto {
   @IsOptional() @IsUUID() id?: string;
-  @IsString() @Length(1, 64) sku: string;
+  @IsSku() sku: string;
   @IsOptional() @IsObject() optionValues?: Record<string, string>;
-  @Type(() => Number) @IsNumber() @Min(0.01) price: number;
-  @IsOptional() @Type(() => Number) @IsNumber() compareAtPrice?: number | null;
-  @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000) stock: number;
-  @IsOptional() @Type(() => Number) @IsNumber() weightKg?: number | null;
-  @IsOptional() @Type(() => Number) @IsNumber() lengthCm?: number | null;
-  @IsOptional() @Type(() => Number) @IsNumber() widthCm?: number | null;
-  @IsOptional() @Type(() => Number) @IsNumber() heightCm?: number | null;
+  @ToNumber() @IsMoney(0.01) price: number;
+  @IsOptional() @ToNumber() @IsMoney(0.01) compareAtPrice?: number | null;
+  @ToNumber() @IsInt({ message: 'El stock debe ser un número entero.' }) @Min(0, { message: 'El stock no puede ser negativo.' }) @Max(1_000_000) stock: number;
+  @IsOptional() @ToNumber() @IsMeasure(1000, 'El peso') weightKg?: number | null;
+  @IsOptional() @ToNumber() @IsMeasure(300, 'El largo') lengthCm?: number | null;
+  @IsOptional() @ToNumber() @IsMeasure(300, 'El ancho') widthCm?: number | null;
+  @IsOptional() @ToNumber() @IsMeasure(300, 'El alto') heightCm?: number | null;
 }
 class AttributeDto {
   @IsUUID() definitionId: string;
-  @IsString() @MaxLength(200) value: string;
+  @IsCleanText(0, 200) value: string;
 }
 class SeoDto {
-  @IsOptional() @IsString() @MaxLength(80) slug?: string;
-  @IsOptional() @IsString() @MaxLength(60) metaTitle?: string;
-  @IsOptional() @IsString() @MaxLength(160) metaDescription?: string;
+  @IsOptional() @IsSlug() slug?: string;
+  @IsOptional() @IsCleanText(0, 60) metaTitle?: string;
+  @IsOptional() @IsCleanText(0, 160) metaDescription?: string;
 }
 export class ProductDto {
-  @IsString() @Length(3, 140) title: string;
+  @IsCleanText(3, 140) title: string;
   @IsUUID() categoryId: string;
-  @IsOptional() @IsString() @MaxLength(60) brandName?: string | null;
-  @IsOptional() @IsString() @MaxLength(300) shortDescription?: string | null;
-  @IsString() @Length(10, 5000) description: string;
+  @IsOptional() @IsBusinessName(1, 60) brandName?: string | null;
+  @IsOptional() @IsCleanText(0, 300) shortDescription?: string | null;
+  @IsCleanMultiline(10, 5000) description: string;
   @IsOptional() @IsArray() @ArrayMaxSize(3) @ValidateNested({ each: true }) @Type(() => OptionDto) options?: OptionDto[];
-  @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => VariantDto) variants: VariantDto[];
-  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => AttributeDto) attributes?: AttributeDto[];
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => VariantDto) variants: VariantDto[];
+  @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => AttributeDto) attributes?: AttributeDto[];
   @IsOptional() @ValidateNested() @Type(() => SeoDto) seo?: SeoDto;
   @IsOptional() @IsIn(['SAVE_DRAFT', 'SUBMIT']) action?: 'SAVE_DRAFT' | 'SUBMIT';
 }
@@ -93,45 +103,45 @@ export class ProductDto {
 export class AdjustDto {
   @IsUUID() variantId: string;
   @IsIn(['SET', 'ADD', 'REMOVE']) mode: 'SET' | 'ADD' | 'REMOVE';
-  @Type(() => Number) @IsInt() @Min(0) quantity: number;
-  @IsOptional() @IsString() @MaxLength(40) reason?: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(0) minStock?: number;
+  @ToNumber() @IsInt({ message: 'La cantidad debe ser un número entero.' }) @Min(0) @Max(1_000_000) quantity: number;
+  @IsOptional() @IsCleanText(0, 40) reason?: string;
+  @IsOptional() @ToNumber() @IsInt({ message: 'El stock mínimo debe ser un número entero.' }) @Min(0) @Max(1_000_000) minStock?: number;
 }
 
 export class ShipDto {
   @IsOptional() @IsIn(['LABEL', 'MANUAL']) mode?: 'LABEL' | 'MANUAL';
-  @IsOptional() @IsString() carrierCode?: string;
-  @IsOptional() @IsString() @MaxLength(60) carrierName?: string;
-  @IsOptional() @IsString() @MaxLength(60) trackingNumber?: string;
-  @IsOptional() @IsString() @MaxLength(300) trackingUrl?: string;
+  @IsOptional() @Matches(/^[A-Z_]{2,30}$/, { message: 'Transportadora inválida.' }) carrierCode?: string;
+  @IsOptional() @IsBusinessName(2, 60) carrierName?: string;
+  @IsOptional() @IsTrackingNumber() trackingNumber?: string;
+  @IsOptional() @IsWebUrl(300) trackingUrl?: string;
 }
 
 /** Sellers report progress only; delivery is confirmed by the customer, the carrier or support. */
 export class TrackingDto {
   @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'EXCEPTION']) status: any;
-  @IsOptional() @IsString() @MaxLength(200) detail?: string;
-  @IsOptional() @IsString() @MaxLength(80) city?: string;
+  @IsOptional() @IsCleanText(0, 200) detail?: string;
+  @IsOptional() @IsPlaceName(2, 80) city?: string;
 }
 
 export class PayoutAccountDto {
   @IsIn(['BANK_ACCOUNT', 'PAYPAL', 'DIGITAL_WALLET']) methodCode: any;
-  @IsString() @Length(2, 120) holderName: string;
-  @IsOptional() @IsString() @MaxLength(80) bankName?: string;
-  @IsOptional() @IsString() @MaxLength(34) accountNumber?: string;
+  @IsPersonNameOrBusiness() holderName: string;
+  @IsOptional() @IsBusinessName(2, 80) bankName?: string;
+  @IsOptional() @IsBankAccountNumber() accountNumber?: string;
   @IsOptional() @IsIn(['CHECKING', 'SAVINGS']) accountType?: string;
-  @IsOptional() @IsString() @MaxLength(20) routingOrSwift?: string;
-  @IsOptional() @IsString() @Length(2, 2) countryCode?: string;
-  @IsOptional() @IsEmail() email?: string;
-  @IsOptional() @Matches(/^[A-Z]{3}$/) currency?: string;
-  @IsOptional() @IsString() @MaxLength(40) alias?: string;
+  @IsOptional() @IsSwiftOrRouting() routingOrSwift?: string;
+  @IsOptional() @IsCountryCode() countryCode?: string;
+  @IsOptional() @IsEmailAddress() email?: string;
+  @IsOptional() @IsCurrencyCode() currency?: string;
+  @IsOptional() @IsCleanText(0, 40) alias?: string;
   @IsOptional() @IsBoolean() isPrimary?: boolean;
-  @IsOptional() @IsString() @MaxLength(20) documentId?: string;
+  @IsOptional() @IsDocumentId() documentId?: string;
 }
 
 export class PayoutRequestDto {
   @IsUUID() accountId: string;
-  @IsOptional() @Matches(/^[A-Z]{3}$/) currency?: string;
-  @Type(() => Number) @IsNumber() @Min(1) amount: number;
+  @IsOptional() @IsCurrencyCode() currency?: string;
+  @ToNumber() @IsMoney(1) amount: number;
   @IsString() @Length(8, 100) idempotencyKey: string;
 }
 
@@ -202,9 +212,8 @@ export class SellerController {
   }
 
   @Post('products/:id/status')
-  productStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body('action') action: 'PAUSE' | 'RESUME' | 'ARCHIVE', @Headers('x-seller-id') h?: string) {
-    if (!['PAUSE', 'RESUME', 'ARCHIVE'].includes(action)) throw badRequest('INVALID_ACTION', 'Acción inválida.');
-    return this.seller.setProductStatus(user, this.sid(user, h), id, action);
+  productStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductStatusDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.setProductStatus(user, this.sid(user, h), id, dto.action);
   }
 
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
@@ -304,9 +313,8 @@ export class SellerController {
   }
 
   @Put('payout-accounts/:id')
-  updatePayoutAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body('action') action: 'PRIMARY' | 'DISABLE', @Headers('x-seller-id') h?: string) {
-    if (!['PRIMARY', 'DISABLE'].includes(action)) throw badRequest('INVALID_ACTION', 'Acción inválida.');
-    return this.seller.updatePayoutAccount(this.sid(user, h), id, action);
+  updatePayoutAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PayoutAccountActionDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.updatePayoutAccount(this.sid(user, h), id, dto.action);
   }
 
   @Get('payouts')

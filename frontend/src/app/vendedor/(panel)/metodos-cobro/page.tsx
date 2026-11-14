@@ -83,18 +83,18 @@ export default function PayoutMethodsPage() {
                 ))}
               </div>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <Field label={t('Nombre del titular')} required><Input value={f.holderName} onChange={set('holderName')} placeholder={t('Ej. Juan Pérez García')} /></Field>
+                <Field label={t('Nombre del titular')} required><Input rule="businessName" value={f.holderName} onChange={set('holderName')} placeholder={t('Ej. Juan Pérez García')} /></Field>
                 {type === 'BANK_ACCOUNT' ? (
                   <>
-                    <Field label={t('Banco')} required><Input value={f.bankName} onChange={set('bankName')} placeholder={t('Ej. Chase, BBVA, Banco Popular')} /></Field>
-                    <Field label={t('Número de cuenta o IBAN')} required hint={t('(se guarda cifrado)')}><Input value={f.accountNumber} onChange={(e) => setF({ ...f, accountNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })} placeholder={t('ES91 2100 0418 4502 0005 1332')} /></Field>
+                    <Field label={t('Banco')} required><Input rule="businessName" value={f.bankName} onChange={set('bankName')} placeholder={t('Ej. Chase, BBVA, Banco Popular')} /></Field>
+                    <Field label={t('Número de cuenta o IBAN')} required hint={t('(se guarda cifrado)')}><Input rule="bankAccount" value={f.accountNumber} onChange={(e) => setF({ ...f, accountNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })} placeholder={t('ES91 2100 0418 4502 0005 1332')} /></Field>
                     <Field label={t('Tipo de cuenta')} required><Select value={f.accountType} onChange={set('accountType')}><option value="CHECKING">{t('Corriente')}</option><option value="SAVINGS">{t('Ahorros')}</option></Select></Field>
-                    <Field label={t('Routing / SWIFT / BIC')}><Input value={f.routingOrSwift} onChange={set('routingOrSwift')} placeholder={t('021000021 · BBVAESMM')} /></Field>
+                    <Field label={t('Routing / SWIFT / BIC')}><Input rule="swift" value={f.routingOrSwift} onChange={set('routingOrSwift')} placeholder={t('021000021 · BBVAESMM')} /></Field>
                     <CountrySelect label={t('País del banco')} value={country} onChange={(v) => setF({ ...f, countryCode: v })} />
-                    <Field label={t('Identificación fiscal del titular')}><Input value={f.documentId} onChange={set('documentId')} /></Field>
+                    <Field label={t('Identificación fiscal del titular')}><Input rule="documentId" value={f.documentId} onChange={set('documentId')} /></Field>
                   </>
                 ) : (
-                  <Field label={type === 'PAYPAL' ? t('Correo de PayPal') : t('Correo de la billetera')} required><Input type="email" value={f.email} onChange={set('email')} placeholder={t('tucorreo@ejemplo.com')} /></Field>
+                  <Field label={type === 'PAYPAL' ? t('Correo de PayPal') : t('Correo de la billetera')} required><Input rule="email" type="email" value={f.email} onChange={set('email')} placeholder={t('tucorreo@ejemplo.com')} /></Field>
                 )}
                 <Field label={t('Moneda')} required><Select value={currency} onChange={set('currency')}>{CURRENCIES.map((c) => <option key={c} value={c}>{c} – {currencyName(c)}</option>)}</Select></Field>
                 <Field label={t('Alias')} hint={t('(opcional)')}><Input value={f.alias} onChange={set('alias')} placeholder={t('Ej. Cuenta principal')} /></Field>

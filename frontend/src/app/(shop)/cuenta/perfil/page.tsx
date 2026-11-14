@@ -95,10 +95,10 @@ export default function ProfilePage() {
         <div className="card p-6">
           <h2 className="text-lg font-bold">{t('Información personal')}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label={t('Nombre')} required><Input value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></Field>
-            <Field label={t('Apellido')} required><Input value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></Field>
+            <Field label={t('Nombre')} required><Input rule="personName" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></Field>
+            <Field label={t('Apellido')} required><Input rule="personName" value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></Field>
             <Field label={t('Correo electrónico')} hint={t('(no editable)')}><Input value={me.email} disabled /></Field>
-            <Field label={t('Teléfono')}><Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="+1 (809) 555-1234" /></Field>
+            <Field label={t('Teléfono')}><Input rule="phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="+1 (809) 555-1234" /></Field>
           </div>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setF({ firstName: me.firstName ?? '', lastName: me.lastName ?? '', phone: me.phone ?? '' })}>{t('Cancelar')}</Button>

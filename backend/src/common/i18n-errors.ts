@@ -142,6 +142,70 @@ const EN: Record<string, string> = {
   'El enlace de rastreo debe ser una dirección https válida.': 'The tracking link must be a valid https address.',
   'La imagen es demasiado grande (máximo 8000 px por lado).': 'The image is too large (maximum 8000 px per side).',
   'No se permiten imágenes animadas ni de varias páginas.': 'Animated or multi-page images are not allowed.',
+  'El nombre es demasiado corto.': 'The name is too short.',
+  'El nombre es demasiado largo.': 'The name is too long.',
+  'El nombre solo puede contener letras, espacios, apóstrofos y guiones.': 'The name can only contain letters, spaces, apostrophes and hyphens.',
+  'El nombre del lugar es demasiado corto.': 'The place name is too short.',
+  'El nombre del lugar es demasiado largo.': 'The place name is too long.',
+  'La ciudad o región solo puede contener letras.': 'The city or region can only contain letters.',
+  'La dirección es demasiado corta.': 'The address is too short.',
+  'La dirección es demasiado larga.': 'The address is too long.',
+  'La dirección contiene caracteres no permitidos.': 'The address contains characters that are not allowed.',
+  'El teléfono solo puede contener números (7 a 15 dígitos) y los signos + ( ) -.': 'The phone can only contain numbers (7 to 15 digits) and the signs + ( ) -.',
+  'Código de país inválido.': 'Invalid country code.',
+  'Código de moneda inválido.': 'Invalid currency code.',
+  'Código postal inválido.': 'Invalid postal code.',
+  'El texto contiene caracteres o etiquetas no permitidos.': 'The text contains characters or tags that are not allowed.',
+  "El nombre solo puede contener letras, números y los signos & . , ' - ( ).": "The name can only contain letters, numbers and the signs & . , ' - ( ).",
+  "El titular solo puede contener letras, números y los signos & . , ' - ( ).": "The account holder can only contain letters, numbers and the signs & . , ' - ( ).",
+  'El identificador fiscal solo puede contener letras, números, puntos y guiones (mínimo 3 dígitos).': 'The tax ID can only contain letters, numbers, dots and hyphens (at least 3 digits).',
+  'Número de documento inválido.': 'Invalid document number.',
+  'Número de cuenta inválido: usa solo números (o el IBAN).': 'Invalid account number: use digits only (or the IBAN).',
+  'Código SWIFT/BIC (8 u 11 caracteres) o número de ruta (9 dígitos) inválido.': 'Invalid SWIFT/BIC (8 or 11 characters) or routing number (9 digits).',
+  'El SKU solo puede contener letras, números, puntos, guiones y guiones bajos.': 'The SKU can only contain letters, numbers, dots, hyphens and underscores.',
+  'La URL amigable solo puede contener minúsculas, números y guiones.': 'The URL slug can only contain lowercase letters, numbers and hyphens.',
+  'El número de guía solo puede contener letras, números y guiones.': 'The tracking number can only contain letters, numbers and hyphens.',
+  'Número de pedido inválido (ej. NX-123456).': 'Invalid order number (e.g. NX-123456).',
+  'La referencia solo puede contener letras, números y - / _ . #': 'The reference can only contain letters, numbers and - / _ . #',
+  'El enlace es demasiado largo.': 'The link is too long.',
+  'Ingresa un enlace válido que empiece por https://': 'Enter a valid link starting with https://',
+  'Zona horaria inválida.': 'Invalid time zone.',
+  'El color debe tener el formato #RRGGBB.': 'The color must use the #RRGGBB format.',
+  'El monto debe ser un número con máximo 2 decimales.': 'The amount must be a number with at most 2 decimals.',
+  'El stock debe ser un número entero.': 'Stock must be a whole number.',
+  'El stock no puede ser negativo.': 'Stock can’t be negative.',
+  'La cantidad debe ser un número entero.': 'The quantity must be a whole number.',
+  'El stock mínimo debe ser un número entero.': 'The minimum stock must be a whole number.',
+  'Transportadora inválida.': 'Invalid carrier.',
+  'Tipo de reporte inválido.': 'Invalid report type.',
+  'La calificación debe ser de 1 a 5 estrellas.': 'The rating must be 1 to 5 stars.',
+  'El orden debe ser un número entero.': 'The order must be a whole number.',
+  'La comisión debe ser un número.': 'The commission must be a number.',
+  'La tasa debe ser un número.': 'The rate must be a number.',
+  'Número de tarjeta inválido.': 'Invalid card number.',
+  'CVC inválido.': 'Invalid CVC.',
+  'Valor inválido.': 'Invalid value.',
+  'Ajuste desconocido.': 'Unknown setting.',
+  'El nombre del marketplace no es válido.': 'The marketplace name is not valid.',
+  'Revisa las tarifas de envío: nombre con letras, montos numéricos (máx. 2 decimales) y días enteros (0 a 120).': 'Check the shipping rates: a name with letters, numeric amounts (max. 2 decimals) and whole days (0 to 120).',
+  'Revisa los datos de transferencia bancaria.': 'Check the bank transfer details.',
+  'El nombre del banco no es válido.': 'The bank name is not valid.',
+  'El titular de la cuenta no es válido.': 'The account holder is not valid.',
+  'Las instrucciones no son válidas.': 'The instructions are not valid.',
+  'Selecciona una opción válida.': 'Select a valid option.',
+  'Identificador inválido.': 'Invalid identifier.',
+  'Debe ser un número entero.': 'Must be a whole number.',
+  'Debe ser un número.': 'Must be a number.',
+  'El valor es menor que el mínimo permitido.': 'The value is below the allowed minimum.',
+  'El valor supera el máximo permitido.': 'The value exceeds the allowed maximum.',
+  'Debe ser un texto.': 'Must be text.',
+  'Agrega al menos un elemento.': 'Add at least one item.',
+  'Hay demasiados elementos.': 'Too many items.',
+  'El texto es demasiado corto.': 'The text is too short.',
+  'El texto es demasiado largo.': 'The text is too long.',
+  'La longitud del texto no es válida.': 'The text length is not valid.',
+  'El formato no es válido.': 'The format is not valid.',
+  'Campo no permitido.': 'Field not allowed.',
 };
 
 const NOUNS: Record<string, string> = {
@@ -155,6 +219,19 @@ export function translateMessage(msg: string): string {
   if (EN[msg]) return EN[msg];
   let m = /^(.+) no encontrado\.$/.exec(msg);
   if (m) return `${NOUNS[m[1]] ?? m[1]} not found.`;
+  m = /^Debe tener al menos (\d+) caracteres\.$/.exec(msg);
+  if (m) return `Must be at least ${m[1]} characters.`;
+  m = /^Admite máximo (\d+) caracteres\.$/.exec(msg);
+  if (m) return `Allows up to ${m[1]} characters.`;
+  m = /^El monto mínimo es ([\d.]+)\.$/.exec(msg);
+  if (m) return `The minimum amount is ${m[1]}.`;
+  m = /^El monto máximo es ([\d.]+)\.$/.exec(msg);
+  if (m) return `The maximum amount is ${m[1]}.`;
+  m = /^(El peso|El largo|El ancho|El alto|La medida) (debe ser un número|debe ser mayor que 0|supera el máximo permitido \((\d+)\))\.$/.exec(msg);
+  if (m) {
+    const what = ({ 'El peso': 'The weight', 'El largo': 'The length', 'El ancho': 'The width', 'El alto': 'The height', 'La medida': 'The measure' } as Record<string, string>)[m[1]];
+    return m[2].startsWith('debe ser un') ? `${what} must be a number.` : m[2].startsWith('debe ser mayor') ? `${what} must be greater than 0.` : `${what} exceeds the maximum allowed (${m[3]}).`;
+  }
   m = /^No se pudo subir la imagen: (.*)$/.exec(msg);
   if (m) return `The image could not be uploaded: ${m[1]}`;
   m = /^No se pudo crear la cuenta: (.*)$/.exec(msg);
