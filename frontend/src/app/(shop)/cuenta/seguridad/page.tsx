@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { t } from '@/lib/i18n';
+import { DeleteAccountCard } from '@/components/account/delete-account';
 
 export default function SecurityPage() {
   const { me, signOut } = useAuth();
@@ -45,6 +46,7 @@ export default function SecurityPage() {
           <Button variant="danger" className="mt-4" onClick={signOut}>{t('Cerrar sesión en este dispositivo')}</Button>
         </div>
       </div>
+      <DeleteAccountCard />
     </div>
   );
 }

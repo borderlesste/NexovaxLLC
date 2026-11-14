@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { get, setSellerContext } from './api';
+import { ApiError, get, setSellerContext } from './api';
 
 export type Role = 'CUSTOMER' | 'SELLER' | 'SUPPORT' | 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
 export interface Me {
@@ -61,6 +61,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     staleTime: 30_000,
     retry: 1,
   });
+
+  // Account deleted while signed in: drop the stale session instead of showing broken pages.
+  useEffect(() => {
+    const e = meQ.error;
+    if (e instanceof ApiError && ['ACCOUNT_CLOSED', 'PROFILE_NOT_PROVISIONED'].includes(e.code)) {
+      supabase().auth.signOut().finally(() => {
+        qc.clear();
+        if (!window.location.pathname.startsWith('/auth/')) window.location.assign('/auth/iniciar-sesion?cuenta=eliminada');
+      });
+    }
+  }, [meQ.error, qc]);
 
   const me = session ? meQ.data : undefined;
   const seller = me?.sellers[0];

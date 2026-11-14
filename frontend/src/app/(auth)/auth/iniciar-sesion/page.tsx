@@ -83,6 +83,7 @@ function LoginForm() {
         <div className="grid size-16 place-items-center rounded-2xl bg-brand-50"><LogoMark className="size-10" /></div>
         <h2 className="mt-6 text-4xl font-extrabold">{t('Iniciar sesión')}</h2>
         <p className="mt-1 text-lg text-muted">{t('Accede a tu cuenta')}</p>
+        {sp.get('cuenta') === 'eliminada' && <p className="mt-4 rounded-xl bg-surface p-3 text-sm" data-account-deleted>{t('Tu cuenta fue eliminada. Si quieres volver, puedes crear una cuenta nueva.')}</p>}
         <div className="mt-8 space-y-5">
           <Field label={t('Correo electrónico')} required>
             <Input rule="email" type="email" autoComplete="email" required icon={<Mail />} placeholder={t('Ej. usuario@correo.com')} value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />

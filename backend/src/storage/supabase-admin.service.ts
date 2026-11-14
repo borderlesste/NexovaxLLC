@@ -289,6 +289,14 @@ export class SupabaseAdminService {
     }
   }
 
+  /** Removes stored objects (best effort; missing objects are ignored). */
+  async removeObjects(bucket: string, keys: string[]) {
+    for (let i = 0; i < keys.length; i += 100) {
+      const { error } = await this.admin.storage.from(bucket).remove(keys.slice(i, i + 100));
+      if (error) this.logger.warn(`remove ${bucket}: ${error.message}`);
+    }
+  }
+
   async download(bucket: string, key: string): Promise<Buffer> {
     const { data, error } = await this.admin.storage.from(bucket).download(key);
     if (error || !data) throw new AppError('MEDIA_NOT_FOUND', 'Archivo no encontrado.', HttpStatus.NOT_FOUND);

@@ -756,6 +756,63 @@ export class MailService {
     }
   }
 
+  // ------------------------------------------------------------------ account deletion
+
+  async accountDeletionEvent(requestId: string, event: 'REQUESTED' | 'REJECTED') {
+    const r = await this.db.one(`select user_id, email_snapshot, decision_note from public.nx_account_deletion_requests where id = $1`, [requestId]);
+    if (!r?.user_id) return;
+    const u = await this.userContact(r.user_id);
+    if (!u) return;
+    const t = tr(u.locale);
+    const [title, line] =
+      event === 'REQUESTED'
+        ? [t('Recibimos tu solicitud para eliminar la cuenta', 'We received your account deletion request'),
+           t('Nuestro equipo la revisará en un máximo de 3 días hábiles. Mientras tanto puedes cancelarla desde Seguridad.', 'Our team will review it within 3 business days. Meanwhile you can cancel it from Security.')]
+        : [t('No pudimos eliminar tu cuenta', 'We could not delete your account'),
+           t(`Tu solicitud de eliminación fue rechazada.${r.decision_note ? ` Motivo: ${r.decision_note}` : ''}`, `Your deletion request was rejected.${r.decision_note ? ` Reason: ${r.decision_note}` : ''}`)];
+    await this.send({
+      template: `ACCOUNT_DELETION_${event}`,
+      dedupeKey: `account-deletion:${requestId}:${event}`,
+      to: u.email,
+      userId: r.user_id,
+      entityType: 'ACCOUNT_DELETION',
+      entityId: requestId,
+      message: layout({
+        locale: u.locale,
+        subject: title,
+        preheader: line,
+        title,
+        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Ir a Seguridad', 'Go to Security'), url: `${config.webUrl}/cuenta/seguridad` },
+        text: line,
+      }),
+    });
+  }
+
+  /** Last e-mail to the address the account had (the account itself no longer exists). */
+  async accountDeleted(email: string, name: string | null, locale: Locale, requestId: string) {
+    const t = tr(locale);
+    const line = t('Eliminamos tu cuenta de NEXOVAX y tus datos personales. Los registros de compras que la ley nos obliga a conservar quedaron anónimos.',
+                   'We deleted your NEXOVAX account and your personal data. Purchase records we are legally required to keep are now anonymous.');
+    await this.send({
+      template: 'ACCOUNT_DELETED',
+      dedupeKey: `account-deletion:${requestId}:DELETED`,
+      to: email,
+      userId: null,
+      entityType: 'ACCOUNT_DELETION',
+      entityId: requestId,
+      message: layout({
+        locale,
+        subject: t('Tu cuenta fue eliminada', 'Your account was deleted'),
+        preheader: line,
+        title: t('Cuenta eliminada', 'Account deleted'),
+        body: p(`${t('Hola', 'Hi')}${name ? ` ${esc(name)}` : ''}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
+          p(t('Gracias por haber sido parte de NEXOVAX. Si cambias de opinión, puedes crear una cuenta nueva cuando quieras.', 'Thank you for being part of NEXOVAX. If you change your mind, you can create a new account at any time.')),
+        text: line,
+      }),
+    });
+  }
+
   // ------------------------------------------------------------------ support
 
   private async ticket(ticketId: string) {

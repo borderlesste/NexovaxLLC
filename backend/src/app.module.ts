@@ -47,6 +47,8 @@ import { CardsController } from './payments/cards.controller';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
 import { PayoutSchedulesController } from './seller/payout-schedules.controller';
 import { ShippingSettlementService } from './shipping/shipping-settlement.service';
+import { AccountDeletionService } from './account/account-deletion.service';
+import { AccountDeletionController } from './account/account-deletion.controller';
 
 @Module({
   imports: [
@@ -65,7 +67,7 @@ import { ShippingSettlementService } from './shipping/shipping-settlement.servic
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CardsController, PayoutSchedulesController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CardsController, PayoutSchedulesController, AccountDeletionController],
   providers: [
     DbService,
     SettingsService,
@@ -92,6 +94,7 @@ import { ShippingSettlementService } from './shipping/shipping-settlement.servic
     CardsService,
     PayoutSchedulesService,
     ShippingSettlementService,
+    AccountDeletionService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

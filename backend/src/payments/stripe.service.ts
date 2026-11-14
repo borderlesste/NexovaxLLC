@@ -87,6 +87,15 @@ export class StripeService {
     return this.stripe.paymentMethods.retrieve(id);
   }
 
+  /** Deletes a Stripe customer (its saved cards go with it). Missing customers are ignored. */
+  async deleteCustomer(id: string) {
+    try {
+      await this.stripe.customers.del(id);
+    } catch (e: any) {
+      if (e?.code !== 'resource_missing') throw e;
+    }
+  }
+
   async detachPaymentMethod(id: string) {
     try {
       await this.stripe.paymentMethods.detach(id);

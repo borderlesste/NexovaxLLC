@@ -78,7 +78,8 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
     const user: RequestUser | undefined = req.user;
     if (!user) throw new AppError('UNAUTHENTICATED', 'Debes iniciar sesión.', HttpStatus.UNAUTHORIZED);
-    if (['SUSPENDED', 'BLOCKED', 'CLOSED'].includes(user.status)) {
+    if (user.status === 'CLOSED') throw new AppError('ACCOUNT_CLOSED', 'Esta cuenta fue eliminada.', HttpStatus.UNAUTHORIZED);
+    if (['SUSPENDED', 'BLOCKED'].includes(user.status)) {
       throw new AppError('ACCOUNT_RESTRICTED', 'Tu cuenta está restringida. Contacta a soporte.', HttpStatus.FORBIDDEN);
     }
     if (roles?.length) {

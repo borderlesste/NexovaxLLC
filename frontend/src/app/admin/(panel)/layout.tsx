@@ -17,6 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!loading && !session) router.replace(`/auth/iniciar-sesion?next=${encodeURIComponent(pathname)}`);
   }, [loading, session, router, pathname]);
   const dash = useQuery({ queryKey: ['admin-attention'], queryFn: () => get('/admin/dashboard?days=7'), enabled: isStaff, refetchInterval: 60_000 });
+  const deletions = useQuery({ queryKey: ['account-deletions', 'REQUESTED'], queryFn: () => get<any[]>('/admin/account-deletions?status=REQUESTED'), enabled: isAdmin, refetchInterval: 120_000 });
   const returns = useQuery({ queryKey: ['admin-returns-count'], queryFn: () => get('/admin/returns?status=REFUND_PENDING'), enabled: isStaff, refetchInterval: 60_000 });
   if (loading || !session || !me) return <PageLoader />;
   if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title={t('Acceso restringido')} description={t('Esta sección es solo para el equipo del marketplace.')} /></div>;
@@ -34,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ? [
           { href: '/admin/finanzas', label: t('Finanzas'), icon: DollarSign, badge: a?.transfers_pending || null },
           { href: '/admin/comisiones', label: t('Comisiones y payouts'), icon: Coins, badge: (a?.payouts_pending ?? 0) + (a?.payout_accounts_pending ?? 0) || null },
-          { href: '/admin/usuarios', label: t('Usuarios'), icon: UserCog },
+          { href: '/admin/usuarios', label: t('Usuarios'), icon: UserCog, badge: deletions.data?.length || null },
           { href: '/admin/configuracion', label: t('Configuración'), icon: Settings },
         ]
       : []),

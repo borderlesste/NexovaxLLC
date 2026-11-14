@@ -12,6 +12,7 @@ import { Input, Select } from '@/components/ui/input';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Avatar, Checkbox, Dialog, Empty, Pagination, Spinner } from '@/components/ui/misc';
 import { t } from '@/lib/i18n';
+import { AccountDeletions } from '@/components/admin/account-deletions';
 
 const ROLES: [string, string][] = [['CUSTOMER', 'Comprador'], ['SELLER', 'Vendedor'], ['SUPPORT', 'Soporte'], ['MODERATOR', 'Moderador'], ['ADMIN', 'Administrador'], ['SUPER_ADMIN', 'Super admin']];
 
@@ -35,6 +36,7 @@ export default function UsersPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Usuarios') }]} title={t('Usuarios')} description={t('Consulta las cuentas y gestiona roles y permisos del equipo.')} />
+      <AccountDeletions />
       <Card>
         <div className="flex flex-wrap gap-3 p-4">
           <Input icon={<Search />} placeholder={t('Buscar por nombre o correo...')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" />
