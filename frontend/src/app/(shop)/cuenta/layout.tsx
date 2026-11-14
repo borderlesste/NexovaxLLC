@@ -15,7 +15,7 @@ const LINKS = [
   ['/cuenta/notificaciones', 'Notificaciones', Bell],
   ['/cuenta/favoritos', 'Mis favoritos', Heart],
   ['/cuenta/tiendas', 'Mis tiendas', Users],
-  ['/mensajes', 'Mensajes', MessageSquare],
+  ['/cuenta/mensajes', 'Mensajes', MessageSquare],
   ['/cuenta/direcciones', 'Direcciones', MapPin],
   ['/cuenta/tarjetas', 'Mis tarjetas', CreditCard],
   ['/cuenta/reportes', 'Mis reportes', AlertCircle],

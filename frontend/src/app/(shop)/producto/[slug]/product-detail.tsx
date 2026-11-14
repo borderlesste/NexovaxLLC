@@ -67,7 +67,7 @@ export function ProductDetail({ initial }: { initial: any }) {
     try {
       const r = await post('/conversations', { productId: p.id, message: question });
       toast.success(t('Mensaje enviado al vendedor.'));
-      router.push(`/mensajes?c=${r.id}`);
+      router.push(`/cuenta/mensajes?c=${r.id}`);
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {

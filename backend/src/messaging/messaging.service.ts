@@ -104,7 +104,7 @@ export class MessagingService {
     } else {
       const en = (await this.locale(c.requester_user_id)) === 'en';
       const store = c.store ?? (en ? 'The store' : 'La tienda');
-      await this.notifications.message(c.requester_user_id, conversationId, en ? `${store} replied to you` : `${store} te respondió`, preview, `${config.webUrl}/mensajes?c=${conversationId}`);
+      await this.notifications.message(c.requester_user_id, conversationId, en ? `${store} replied to you` : `${store} te respondió`, preview, `${config.webUrl}/cuenta/mensajes?c=${conversationId}`);
     }
   }
 

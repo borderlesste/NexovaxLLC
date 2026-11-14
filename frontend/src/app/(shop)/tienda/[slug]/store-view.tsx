@@ -59,7 +59,7 @@ export function StoreView({ initial }: { initial: any }) {
     setSending(true);
     try {
       const r = await post('/conversations', { sellerId: store.id, message: msg });
-      router.push(`/mensajes?c=${r.id}`);
+      router.push(`/cuenta/mensajes?c=${r.id}`);
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {

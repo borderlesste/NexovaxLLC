@@ -39,7 +39,7 @@ export default async function HelpPage() {
         <p className="mt-2 text-lg text-muted">{t('Guías, políticas y respuestas para compradores y vendedores.')}</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button asChild><Link href="/ayuda/reportar"><AlertCircle /> {t('Reportar un problema')}</Link></Button>
-          <Button variant="outline" asChild className="bg-white"><Link href="/mensajes"><HelpCircle /> {t('Mis conversaciones')}</Link></Button>
+          <Button variant="outline" asChild className="bg-white"><Link href="/cuenta/mensajes"><HelpCircle /> {t('Mis conversaciones')}</Link></Button>
         </div>
       </div>
       <div id="guias" className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

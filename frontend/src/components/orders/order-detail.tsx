@@ -51,7 +51,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
   const contactSeller = async (so: any) => {
     try {
       const r = await post('/conversations', { orderId: order.id, sellerId: so.seller.id, message: t('Hola, tengo una consulta sobre mi pedido {n}.', { n: order.number }) });
-      router.push(`/mensajes?c=${r.id}`);
+      router.push(`/cuenta/mensajes?c=${r.id}`);
     } catch (e) {
       toast.error(errorMessage(e));
     }

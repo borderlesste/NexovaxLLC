@@ -15,7 +15,7 @@ import { ProductImage } from '@/components/shop/product-card';
 import { LogoMark } from '@/components/layout/logo';
 import { t, getIntlLocale } from '@/lib/i18n';
 
-export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }) {
+export function MessagesView({ as = 'customer', compact = false }: { as?: 'customer' | 'seller'; compact?: boolean }) {
   const sp = useSearchParams();
   const router = useRouter();
   const qc = useQueryClient();
@@ -58,7 +58,7 @@ export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }
   }, [c?.messages]);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_320px]">
+    <div className={cn('grid gap-4', compact ? 'lg:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)_300px]' : 'lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_320px]')}>
       <aside className={cn('card flex h-[calc(100dvh-220px)] min-h-[520px] flex-col', active && 'hidden lg:flex')}>
         <div className="flex items-center justify-between px-5 pt-5">
           <p className="flex items-center gap-2 text-xl font-bold">{t('Conversaciones')}{' '}<span className="rounded-full bg-brand-600 px-2 text-xs font-bold leading-5 text-white">{list.data?.length ?? 0}</span></p>
@@ -146,7 +146,7 @@ export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }
       </section>
 
       {c && (
-        <aside className="hidden space-y-4 xl:block">
+        <aside className={cn('hidden space-y-4', compact ? '2xl:block' : 'xl:block')}>
           {c.product && (
             <div className="card p-5">
               <p className="text-lg font-bold">{t('Producto en conversación')}</p>

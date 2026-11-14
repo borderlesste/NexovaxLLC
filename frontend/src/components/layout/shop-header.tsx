@@ -159,7 +159,7 @@ export function UserMenu() {
           <Dropdown.Separator className="my-1 h-px bg-line" />
           <Dropdown.Item asChild><Link className={item} href="/cuenta/perfil"><User /> {t('Mi perfil')}</Link></Dropdown.Item>
           <Dropdown.Item asChild><Link className={item} href="/cuenta/pedidos"><Package /> {t('Mis pedidos')}</Link></Dropdown.Item>
-          <Dropdown.Item asChild><Link className={item} href="/mensajes"><MessageSquare /> {t('Mensajes')}</Link></Dropdown.Item>
+          <Dropdown.Item asChild><Link className={item} href="/cuenta/mensajes"><MessageSquare /> {t('Mensajes')}</Link></Dropdown.Item>
           <Dropdown.Item asChild><Link className={item} href="/cuenta/favoritos"><Heart /> {t('Favoritos')}</Link></Dropdown.Item>
           <Dropdown.Item asChild><Link className={item} href="/cuenta/devoluciones"><RotateCcw /> {t('Devoluciones')}</Link></Dropdown.Item>
           <Dropdown.Item asChild><Link className={item} href="/cuenta/notificaciones"><Bell /> {t('Notificaciones')}</Link></Dropdown.Item>
@@ -221,7 +221,7 @@ export function ShopHeader() {
             <CountBadge n={me?.counts.cart_items} />
           </Link>
           {me && (
-            <Link href="/mensajes" className="relative hidden rounded-lg p-2 hover:bg-brand-50 sm:block" aria-label={t('Mensajes')}>
+            <Link href="/cuenta/mensajes" className="relative hidden rounded-lg p-2 hover:bg-brand-50 sm:block" aria-label={t('Mensajes')}>
               <MessageSquare className="size-5" />
               <CountBadge n={me.counts.unread_conversations} />
             </Link>
