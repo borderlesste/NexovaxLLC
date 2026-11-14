@@ -135,7 +135,11 @@ export function ReturnDetail({ role, id }: { role: ReturnRole; id: string }) {
   const cur = d.currency;
   const orderHref = role === 'customer' ? `/cuenta/pedidos/${d.orderId}` : role === 'seller' ? `/vendedor/pedidos/${d.orderId}` : `/admin/pedidos/${d.orderId}`;
   const refund = d.refunds?.find((r: any) => r.status === 'COMPLETED');
-  const estimate = d.items.reduce((s: number, i: any) => s + Number(i.unitPrice ?? 0) * (i.accepted ?? i.approved ?? i.requested), 0);
+  const reviewed = !['REQUESTED', 'UNDER_REVIEW'].includes(d.status);
+  const inspected = ['REFUND_PENDING', 'CLOSED'].includes(d.status);
+  // Units that would be refunded at this stage: requested → approved → accepted at inspection.
+  const units = (i: any) => Number(inspected ? i.accepted : reviewed ? i.approved : i.requested) || 0;
+  const estimate = d.items.reduce((s: number, i: any) => s + Number(i.unitPrice ?? 0) * units(i), 0);
   return (
     <div className="space-y-5" data-return={d.status}>
       <Card className="p-5">
@@ -168,9 +172,9 @@ export function ReturnDetail({ role, id }: { role: ReturnRole; id: string }) {
                     {i.comment && <p className="text-muted">“{i.comment}”</p>}
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                       <span>{t('Solicitadas')}: <b className="text-ink">{i.requested}</b></span>
-                      {i.approved != null && <span>{t('Aprobadas')}: <b className="text-ink">{i.approved}</b></span>}
+                      {reviewed && d.status !== 'REJECTED' && d.status !== 'CANCELLED' && <span>{t('Aprobadas')}: <b className="text-ink">{i.approved ?? 0}</b></span>}
                       {Number(i.received) > 0 && <span>{t('Recibidas')}: <b className="text-ink">{i.received}</b></span>}
-                      {i.accepted != null && Number(i.received) > 0 && <span>{t('Aceptadas')}: <b className="text-ink">{i.accepted}</b></span>}
+                      {inspected && <span>{t('Aceptadas')}: <b className="text-ink">{i.accepted}</b></span>}
                       {Number(i.restock) > 0 && <span>{t('Repuestas al inventario')}: <b className="text-ink">{i.restock}</b></span>}
                       {i.condition && <span>{t('Estado')}: <b className="text-ink">{conditionLabel(i.condition)}</b></span>}
                     </div>

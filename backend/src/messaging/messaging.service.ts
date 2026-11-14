@@ -93,10 +93,19 @@ export class MessagingService {
         [c.seller_id, conversationId],
       ).catch(() => this.db.many(`select owner_user_id as user_id from public.sellers where id = $1`, [c.seller_id]));
       for (const t of team)
-        if (t.user_id !== senderId) await this.notifications.message(t.user_id, conversationId, `Nuevo mensaje de ${c.sender}`, preview, `${config.webUrl}/vendedor/mensajes?c=${conversationId}`);
+        if (t.user_id !== senderId) {
+          const en = (await this.locale(t.user_id)) === 'en';
+          await this.notifications.message(t.user_id, conversationId, en ? `New message from ${c.sender}` : `Nuevo mensaje de ${c.sender}`, preview, `${config.webUrl}/vendedor/mensajes?c=${conversationId}`);
+        }
     } else {
-      await this.notifications.message(c.requester_user_id, conversationId, `${c.store ?? 'La tienda'} te respondió`, preview, `${config.webUrl}/cuenta/mensajes?c=${conversationId}`);
+      const en = (await this.locale(c.requester_user_id)) === 'en';
+      const store = c.store ?? (en ? 'The store' : 'La tienda');
+      await this.notifications.message(c.requester_user_id, conversationId, en ? `${store} replied to you` : `${store} te respondió`, preview, `${config.webUrl}/mensajes?c=${conversationId}`);
     }
+  }
+
+  private async locale(userId: string) {
+    return (await this.db.one<{ locale: string }>(`select locale from public.users where id = $1`, [userId]))?.locale ?? 'es';
   }
 
   async list(user: RequestUser, inbox: Inbox, q?: string) {
@@ -289,7 +298,7 @@ export class MessagingService {
       await this.attach(c, convId, msg!.id, assets);
       return convId;
     });
-    void this.notifyMessage(id, user.id, input.message.trim());
+    void this.notifyMessage(id, user.id, input.message.trim()).catch(() => undefined);
     return { id };
   }
 
@@ -303,7 +312,7 @@ export class MessagingService {
       const msg = await this.db.one(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb) as id`, [conversationId, user.id, text, clientKey || randomUUID()], c);
       await this.attach(c, conversationId, msg!.id, assets);
     });
-    void this.notifyMessage(conversationId, user.id, text);
+    void this.notifyMessage(conversationId, user.id, text).catch(() => undefined);
     return this.get(user, conversationId);
   }
 }

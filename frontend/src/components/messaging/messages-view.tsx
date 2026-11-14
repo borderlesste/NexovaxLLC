@@ -137,7 +137,7 @@ export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }
               {files.length > 0 && <FilePicker files={files} onChange={setFiles} className="mb-3 [&>button]:hidden" />}
               <div className="flex items-center gap-2">
                 {c.status === 'OPEN' && <FilePicker files={[]} onChange={(f) => setFiles([...files, ...f].slice(0, 4))} max={4 - files.length} />}
-                <Input placeholder={c.status === 'OPEN' ? t('Escribe un mensaje...') : t('Esta conversación está cerrada')} disabled={c.status !== 'OPEN'} value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} className="h-11" />
+                <div className="min-w-0 flex-1"><Input placeholder={c.status === 'OPEN' ? t('Escribe un mensaje...') : t('Esta conversación está cerrada')} disabled={c.status !== 'OPEN'} value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} className="h-11" /></div>
                 <Button type="submit" size="icon" className="size-11" loading={send.isPending} disabled={!text.trim() && !files.length} aria-label={t('Enviar')}><Send /></Button>
               </div>
             </form>

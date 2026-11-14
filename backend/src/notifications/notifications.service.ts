@@ -151,21 +151,20 @@ export class NotificationsService {
 
   async setPreferences(userId: string, prefs: { code: string; inApp?: boolean; email?: boolean }[]) {
     const cats = new Map((await this.db.many(`select code, user_configurable from public.notification_categories where is_active`)).map((c: any) => [c.code, c.user_configurable]));
-    await this.db.tx(async (c) => {
-      for (const p of prefs) {
-        if (!cats.has(p.code)) throw badRequest('CATEGORY_INVALID', 'Categoría de notificación no válida.');
-        if (!cats.get(p.code)) continue;
-        for (const [channel, value] of [['IN_APP', p.inApp], ['EMAIL', p.email]] as const) {
-          if (typeof value !== 'boolean') continue;
-          await this.db.exec(
-            `insert into public.notification_preferences (user_id, category_code, channel_code, enabled) values ($1,$2,$3,$4)
-             on conflict (user_id, category_code, channel_code) do update set enabled = excluded.enabled`,
-            [userId, p.code, channel, value],
-            c,
-          );
-        }
-      }
-    });
+    const cats_: string[] = [], chans: string[] = [], vals: boolean[] = [];
+    for (const p of prefs) {
+      if (!cats.has(p.code)) throw badRequest('CATEGORY_INVALID', 'Categoría de notificación no válida.');
+      if (!cats.get(p.code)) continue;
+      for (const [channel, value] of [['IN_APP', p.inApp], ['EMAIL', p.email]] as const)
+        if (typeof value === 'boolean') (cats_.push(p.code), chans.push(channel), vals.push(value));
+    }
+    if (cats_.length)
+      await this.db.exec(
+        `insert into public.notification_preferences (user_id, category_code, channel_code, enabled)
+         select $1, x.c, x.ch, x.v from unnest($2::text[], $3::text[], $4::boolean[]) as x(c, ch, v)
+         on conflict (user_id, category_code, channel_code) do update set enabled = excluded.enabled`,
+        [userId, cats_, chans, vals],
+      );
     return this.preferences(userId);
   }
 }
