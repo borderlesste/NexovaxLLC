@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CreditCard, LayoutGrid, Layers, MessageSquare, Package, Settings, ShoppingCart, Wallet, Clock, AlertTriangle } from 'lucide-react';
+import { CreditCard, LayoutGrid, Layers, MessageSquare, Package, RotateCcw, Settings, ShoppingCart, Wallet, Clock, AlertTriangle } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader } from '@/components/ui/misc';
 import { useAuth } from '@/lib/auth';
@@ -19,7 +19,10 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     else if (me && !seller) router.replace('/vendedor/registro');
   }, [loading, session, seller, me, router, pathname]);
   const counts = useQuery({ queryKey: ['seller-order-counts'], queryFn: () => get('/seller/orders/counts'), enabled: !!seller, refetchInterval: 60_000 });
+  const returns = useQuery({ queryKey: ['seller-returns-count'], queryFn: () => get('/seller/returns?status=ACTION'), enabled: !!seller, refetchInterval: 60_000 });
   if (loading || !session || !seller) return <PageLoader />;
+  const rc = returns.data?.counts;
+  const returnsPending = rc ? rc.to_review + rc.in_transit + rc.to_inspect : 0;
   const pending = (counts.data?.to_prepare ?? 0) + (counts.data?.preparing ?? 0);
   return (
     <DashboardShell
@@ -29,6 +32,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         { href: '/vendedor/dashboard', label: t('Dashboard'), icon: LayoutGrid },
         { href: '/vendedor/productos', label: t('Productos'), icon: Package },
         { href: '/vendedor/pedidos', label: t('Pedidos'), icon: ShoppingCart, badge: pending || null },
+        { href: '/vendedor/devoluciones', label: t('Devoluciones'), icon: RotateCcw, badge: returnsPending || null },
         { href: '/vendedor/inventario', label: t('Inventario'), icon: Layers },
         { href: '/vendedor/finanzas', label: t('Finanzas'), icon: Wallet },
         { href: '/vendedor/metodos-cobro', label: t('Métodos de cobro'), icon: CreditCard },

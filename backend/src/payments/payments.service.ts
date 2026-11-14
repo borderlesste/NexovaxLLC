@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import { orderRef } from '../common/refs';
 import { fromStripeAmount, StripeService } from './stripe.service';
 import { PaypalService } from './paypal.service';
+import { CardsService } from './cards.service';
 
 export type ProviderCode = 'STRIPE' | 'PAYPAL' | 'RD_SANDBOX';
 
@@ -41,6 +42,7 @@ export class PaymentsService {
     private readonly stripe: StripeService,
     private readonly paypal: PaypalService,
     private readonly mail: MailService,
+    private readonly cards: CardsService,
   ) {}
 
   providerFor(method: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER'): { code: ProviderCode; environment: 'TEST' | 'LIVE' } | null {
@@ -50,11 +52,15 @@ export class PaymentsService {
   }
 
   /** Inside the checkout transaction: creates the provider intent and leaves the payment REQUIRES_ACTION. */
-  async startProviderPayment(c: PoolClient, input: { paymentId: string; checkoutId: string; provider: ProviderCode; amount: string; currency: string; customerEmail?: string; reference: string; corr: string }) {
+  async startProviderPayment(c: PoolClient, input: { paymentId: string; checkoutId: string; provider: ProviderCode; amount: string; currency: string; customerEmail?: string; reference: string; corr: string; userId?: string; saveCard?: boolean; savedCardId?: string }) {
     if (input.provider === 'STRIPE') {
+      // Saved card: pay with its PaymentMethod. "Save this card": attach the new one to the buyer's Stripe customer.
+      const saved = input.savedCardId && input.userId ? await this.cards.forPayment(input.userId, input.savedCardId) : null;
+      const customerId = saved?.customerId ?? (input.saveCard && input.userId ? await this.cards.customerId(input.userId) : null);
       const pi = await this.stripe.createIntent({
         amount: input.amount, currency: input.currency, paymentId: input.paymentId, checkoutId: input.checkoutId,
         customerEmail: input.customerEmail, description: `NEXOVAX ${input.reference}`,
+        customerId: customerId ?? undefined, saveCard: !saved && !!input.saveCard, paymentMethodId: saved?.paymentMethodId,
       });
       const intentId: string = (await this.db.one(
         `select public.register_payment_provider_intent($1,$2,$3,'REQUIRES_PAYMENT_METHOD',null,null,to_timestamp($4),$5::jsonb) as id`,
@@ -111,6 +117,7 @@ export class PaymentsService {
     if (p.status === 'PAID') return { status: 'PAID', orderId: p.order_id };
     const pi = await this.stripe.retrieveIntent(p.external_intent_id);
     if (pi.status === 'succeeded') {
+      await this.cards.recordFromIntent(p.customer_id, pi);
       const charge: any = pi.latest_charge;
       const orderId = await this.finalize(p.id, {
         externalChargeId: typeof charge === 'string' ? charge : charge?.id ?? pi.id,
@@ -255,11 +262,12 @@ export class PaymentsService {
       if (event.type === 'payment_intent.succeeded') {
         const pi: any = event.data.object;
         const paymentId = pi.metadata?.payment_id;
-        const own = paymentId ? await this.db.one(`select id from public.payments where id = $1 and provider_code = 'STRIPE'`, [paymentId]) : null;
+        const own = paymentId ? await this.db.one(`select id, customer_id from public.payments where id = $1 and provider_code = 'STRIPE'`, [paymentId]) : null;
         if (!own) {
           await this.closeReceipt(rec.id, 'IGNORED');
           return { received: true, ignored: true };
         }
+        await this.cards.recordFromIntent(own.customer_id, pi);
         await this.finalize(paymentId, {
           externalChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id ?? pi.id,
           amount: fromStripeAmount(pi.amount_received, pi.currency),

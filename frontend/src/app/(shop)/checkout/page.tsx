@@ -72,6 +72,11 @@ export default function CheckoutPage() {
   const q = quote.data;
   const items = useMemo(() => q?.groups.flatMap((g: any) => g.items) ?? [], [q]);
   const selectedFor = (g: any) => (g.shippingOptions.some((o: any) => o.code === shipping[g.sellerId]) ? shipping[g.sellerId] : g.selectedShipping);
+  const stripeCards = q?.paymentMethods?.some((m: any) => m.code === 'CARD' && m.provider === 'STRIPE');
+  const savedCards = useQuery({ queryKey: ['cards'], queryFn: () => get<{ enabled: boolean; cards: any[] }>('/me/cards'), enabled: !!session && !!stripeCards });
+  const usableCards = (savedCards.data?.cards ?? []).filter((c: any) => !c.expired);
+  const [cardChoice, setCardChoice] = useState<string | null>(null);
+  const [saveStripe, setSaveStripe] = useState(false);
 
   if (loading || !session || (quote.isLoading && !q)) return <PageLoader />;
   if (quote.isError && !q)
@@ -80,6 +85,7 @@ export default function CheckoutPage() {
     );
 
   const cardMethod = q?.paymentMethods.find((m: any) => m.code === 'CARD');
+  const chosenCard = cardChoice === 'new' ? null : usableCards.find((c: any) => c.id === cardChoice) ?? (cardChoice === null ? usableCards.find((c: any) => c.isDefault) ?? usableCards[0] : null);
   const stripeKey: string | null = cardMethod?.provider === 'STRIPE' ? cardMethod.publishableKey ?? null : null;
   const paypalMethod = q?.paymentMethods.find((m: any) => m.code === 'PAYPAL' && m.available);
   const shippingSelection = () => Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
@@ -89,7 +95,10 @@ export default function CheckoutPage() {
   const placeOnline = async (paymentMethod: 'CARD' | 'PAYPAL'): Promise<PlacedCheckout> => {
     if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
     if (q.groups.some((g: any) => !selectedFor(g))) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
-    return post('/checkout/place', { addressId, shipping: shippingSelection(), paymentMethod, idempotencyKey: uid() });
+    return post('/checkout/place', {
+      addressId, shipping: shippingSelection(), paymentMethod, idempotencyKey: uid(),
+      ...(paymentMethod === 'CARD' ? (chosenCard ? { savedCardId: chosenCard.id } : saveStripe ? { saveCard: true } : {}) : {}),
+    });
   };
   const onPaid = (checkoutId: string) => {
     qc.invalidateQueries({ queryKey: ['cart'] });
@@ -122,7 +131,7 @@ export default function CheckoutPage() {
 
   const fmtCard = (v: string) => v.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
   return (
-    <StripeBoundary publishableKey={stripeKey} amount={q.total} currency={q.currency}>
+    <StripeBoundary publishableKey={stripeKey} amount={q.total} currency={q.currency} saveCard={!chosenCard && saveStripe}>
     <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div className="flex items-center gap-8">
@@ -226,7 +235,24 @@ export default function CheckoutPage() {
             </div>
             {method === 'CARD' && stripeKey && (
               <div className="mt-5 space-y-3">
-                <StripeCardForm billing={(() => { const a = addresses.data?.find((x) => x.id === addressId); return a ? { name: a.recipientName, email: me?.email, country: a.countryCode, postalCode: a.postalCode } : undefined; })()} />
+                {usableCards.length > 0 && (
+                  <div className="space-y-2" data-saved-cards>
+                    {usableCards.map((c: any) => (
+                      <label key={c.id} className={cn('flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm', chosenCard?.id === c.id ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200' : 'border-line')}>
+                        <input type="radio" name="saved-card" className="accent-brand-600" checked={chosenCard?.id === c.id} onChange={() => setCardChoice(c.id)} />
+                        <CreditCard className="size-5 text-brand-600" />
+                        <span className="flex-1 font-semibold capitalize">{c.brand} •••• {c.last4}</span>
+                        <span className="text-xs text-muted">{t('Vence')} {String(c.expMonth).padStart(2, '0')}/{String(c.expYear).slice(-2)}</span>
+                        {c.isDefault && <span className="rounded-full bg-brand-100 px-2 text-[11px] font-bold text-brand-700">{t('Principal')}</span>}
+                      </label>
+                    ))}
+                    <label className={cn('flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-semibold', !chosenCard ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200' : 'border-line')}>
+                      <input type="radio" name="saved-card" className="accent-brand-600" checked={!chosenCard} onChange={() => setCardChoice('new')} /> {t('Usar otra tarjeta')}
+                    </label>
+                  </div>
+                )}
+                {!chosenCard && <StripeCardForm billing={(() => { const a = addresses.data?.find((x) => x.id === addressId); return a ? { name: a.recipientName, email: me?.email, country: a.countryCode, postalCode: a.postalCode } : undefined; })()} />}
+                {!chosenCard && <Checkbox checked={saveStripe} onChange={setSaveStripe} label={t('Guardar esta tarjeta para futuras compras')} />}
                 <p className="flex items-center gap-1.5 text-xs text-muted"><ShieldCheck className="size-4 text-brand-600" /> {t('Pago procesado por Stripe. Los datos de tu tarjeta nunca pasan por nuestros servidores.')}</p>
                 {cardMethod?.testMode && (
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -295,7 +321,7 @@ export default function CheckoutPage() {
           </dl>
           <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 text-xl font-extrabold"><span>{t('Total a pagar')}</span><span className="text-brand-800">{money(q.total, q.currency)}</span></div>
           {method === 'CARD' && stripeKey ? (
-            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!addressId} resetKey={resetKey} />
+            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!addressId} resetKey={`${resetKey}|${chosenCard?.id ?? 'new'}|${saveStripe}`} savedCard={!!chosenCard} />
           ) : method === 'PAYPAL' && paypalMethod ? (
             <PaypalPay clientId={paypalMethod.clientId} currency={q.currency} place={() => placeOnline('PAYPAL')} onPaid={onPaid} disabled={!addressId} />
           ) : (

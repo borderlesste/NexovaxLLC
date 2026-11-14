@@ -12,6 +12,7 @@ export interface PublicConfig {
   liveShippingRates: boolean;
   bankTransfer: boolean;
   sellerRegistration: boolean;
+  stripePublishableKey?: string | null;
 }
 
 export function usePublicConfig() {

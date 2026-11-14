@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowUpRight, Check, CheckCircle2, Clock, FileText, RotateCcw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, post } from '@/lib/api';
+import { errorMessage, get, post, upload } from '@/lib/api';
+import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
 import { cn, fmtDateTime, relative } from '@/lib/utils';
 import { PRIORITY } from '@/lib/status';
 import { PageHeader } from '@/components/layout/dashboard-shell';
@@ -23,6 +24,7 @@ export default function ReportsAdminPage() {
   const [page, setPage] = useState(1);
   const [sel, setSel] = useState<string | null>(null);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
+  const [files, setFiles] = useState<File[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const cats = useQuery({ queryKey: ['support-catalogs'], queryFn: () => get('/support/catalogs'), staleTime: Infinity });
@@ -91,7 +93,7 @@ export default function ReportsAdminPage() {
                 <p className="font-bold">{t('Descripción y conversación')}</p>
                 {d.messages.map((m: any) => (
                   <div key={m.id} className={cn('rounded-xl p-3 text-sm', m.staff ? 'bg-brand-50' : 'border border-line bg-surface/60')}>
-                    <p className="text-xs font-bold">{m.staff ? `${m.author} (soporte)` : m.author} · {fmtDateTime(m.at)}</p><p className="mt-1 whitespace-pre-line">{m.body}</p>
+                    <p className="text-xs font-bold">{m.staff ? `${m.author} (soporte)` : m.author} · {fmtDateTime(m.at)}</p>{!(m.attachments?.length && m.body.startsWith('📎')) && <p className="mt-1 whitespace-pre-line">{m.body}</p>}<AttachmentList base={`/support/conversations/${d.conversationId}/attachments`} items={m.attachments} />
                   </div>
                 ))}
                 {d.notes.map((n: any) => <div key={n.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p className="text-xs font-bold">{t('Nota interna ·')}{' '}{n.author} · {fmtDateTime(n.created_at)}</p><p className="mt-1">{n.body}</p></div>)}
@@ -118,7 +120,10 @@ export default function ReportsAdminPage() {
                   {[['reply', t('Responder al usuario')], ['note', t('Nota interna')]].map(([v, l]) => <button key={v} onClick={() => setMode(v as any)} className={cn('-mb-px border-b-2 pb-2 font-semibold', mode === v ? 'border-brand-600 text-brand-700' : 'border-transparent text-muted')}>{l}</button>)}
                 </div>
                 <Textarea rows={3} className="mt-3" value={text} onChange={(e) => setText(e.target.value)} placeholder={mode === 'reply' ? t('Escribe una respuesta para {a}…', { a: d.requester.name }) : t('Nota visible solo para el equipo…')} />
-                <div className="mt-3 flex justify-end"><Button onClick={() => run('reply', async () => { const r = await post(`/support/admin/tickets/${d.id}/reply`, { body: text, internal: mode === 'note' }); setText(''); return r; }, mode === 'reply' ? 'Respuesta enviada.' : 'Nota guardada.')} loading={busy === 'reply'} disabled={!text.trim()}><Send /> {mode === 'reply' ? t('Enviar respuesta') : t('Guardar nota')}</Button></div>
+                <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+                  {mode === 'reply' ? <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} /> : <span />}
+                  <Button onClick={() => run('reply', async () => { const r = await upload(`/support/admin/tickets/${d.id}/reply`, formWith({ body: text.trim(), internal: mode === 'note' ? 'true' : 'false' }, mode === 'reply' ? files : [])); setText(''); setFiles([]); return r; }, mode === 'reply' ? 'Respuesta enviada.' : 'Nota guardada.')} loading={busy === 'reply'} disabled={!text.trim() && !(mode === 'reply' && files.length)}><Send /> {mode === 'reply' ? t('Enviar respuesta') : t('Guardar nota')}</Button>
+                </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
                   <Button variant="danger" onClick={() => run('esc', () => post(`/support/admin/tickets/${d.id}/assign`, { teamCode: 'MODERATION', assignToMe: false }), t('Escalado a moderación.'))}><ArrowUpRight /> {t('Escalar')}</Button>
                   <Button variant="outline" onClick={() => tk.refetch()}><RotateCcw /> {t('Actualizar')}</Button>

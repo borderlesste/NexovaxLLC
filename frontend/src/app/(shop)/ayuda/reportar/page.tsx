@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, AlertCircle, BookOpen, Check, CheckCircle2, ClipboardList, Clock, CreditCard, ExternalLink, Headphones, Layers, Link2, Mail, Monitor, MoreHorizontal, Package, Pencil, Search, Send, Smartphone, Store, User, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, post } from '@/lib/api';
+import { errorMessage, get, post, upload } from '@/lib/api';
+import { FilePicker, formWith } from '@/components/attachments/attachments';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -23,6 +24,7 @@ function ReportForm() {
   const health = useQuery({ queryKey: ['health'], queryFn: () => get('/health'), refetchInterval: 60_000 });
   const [f, setF] = useState({ categoryCode: sp.get('tipo') ?? '', priority: 'NORMAL', subject: '', description: '', url: '', orderNumber: sp.get('pedido') ?? '', storeName: '', platform: 'WEB' });
   const [accept, setAccept] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [trackCode, setTrackCode] = useState('');
@@ -40,8 +42,9 @@ function ReportForm() {
     if (!accept) return toast.error(t('Debes aceptar la política de privacidad.'));
     setBusy(true);
     try {
-      const r = await post('/support/reports', { ...f, url: f.url || undefined, orderNumber: f.orderNumber || undefined, storeName: f.storeName || undefined });
+      const r = await upload('/support/reports', formWith({ ...f }, files));
       setDone(r.code);
+      setFiles([]);
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
     } catch (e) {
       toast.error(errorMessage(e));
@@ -107,6 +110,9 @@ function ReportForm() {
                 <Field label={t('Descripción del problema')} required className="sm:col-span-2">
                   <Textarea rows={4} value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={1000} placeholder={t('Describe el problema con el mayor detalle posible. Incluye qué pasó, qué estabas haciendo, desde cuándo ocurre y cualquier información relevante.')} />
                   <p className="mt-1 text-right text-xs text-muted">{f.description.length} / 1,000</p>
+                </Field>
+                <Field label={t('Evidencias')} hint={t('(opcional) Capturas de pantalla, fotos o PDF — hasta 4 archivos de 10 MB')} className="sm:col-span-2">
+                  <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} />
                 </Field>
                 <Field label={t('URL o página afectada')}><Input icon={<Link2 />} value={f.url} onChange={(e) => set('url', e.target.value)} placeholder={t('Ej. https://nexovax.com/producto/123')} /></Field>
                 <Field label={t('Número de pedido')} hint={t('(opcional)')}><Input rule="trackingNumber" icon={<Package />} value={f.orderNumber} onChange={(e) => set('orderNumber', e.target.value)} placeholder={t('Ej. NX-789456')} /></Field>

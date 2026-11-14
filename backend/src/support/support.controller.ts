@@ -1,4 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { Transform } from 'class-transformer';
+import type { Response } from 'express';
+import { ATTACHMENT_UPLOAD, sendAttachment } from '../messaging/messaging.controller';
+import { MAX_MESSAGE_FILES, MessagingService } from '../messaging/messaging.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
@@ -18,8 +23,8 @@ export class ReportDto {
 }
 
 export class ReplyDto {
-  @IsCleanMultiline(1, 4000) body: string;
-  @IsOptional() @IsBoolean() internal?: boolean;
+  @IsOptional() @IsCleanMultiline(0, 4000) body?: string;
+  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() internal?: boolean;
 }
 
 export class TransitionDto {
@@ -35,7 +40,10 @@ export class AssignDto {
 @ApiTags('support')
 @Controller('support')
 export class SupportController {
-  constructor(private readonly support: SupportService) {}
+  constructor(
+    private readonly support: SupportService,
+    private readonly messaging: MessagingService,
+  ) {}
 
   @Public()
   @Get('catalogs')
@@ -45,8 +53,15 @@ export class SupportController {
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('reports')
-  create(@CurrentUser() user: RequestUser, @Body() dto: ReportDto) {
-    return this.support.create(user, dto);
+  @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_FILES, ATTACHMENT_UPLOAD))
+  create(@CurrentUser() user: RequestUser, @Body() dto: ReportDto, @UploadedFiles() files?: Express.Multer.File[]) {
+    return this.support.create(user, dto, files ?? []);
+  }
+
+  /** Evidence and attachments of a report (requester or support staff). */
+  @Get('conversations/:id/attachments/:assetId')
+  async attachment(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('assetId', ParseUUIDPipe) assetId: string, @Res() res: Response) {
+    sendAttachment(res, await this.messaging.attachmentFile(user, id, assetId));
   }
 
   /** Status lookup by code — only the requester or support staff (codes are sequential). */
@@ -67,8 +82,9 @@ export class SupportController {
   }
 
   @Post('reports/:id/messages')
-  reply(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReplyDto) {
-    return this.support.customerReply(user, id, dto.body);
+  @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_FILES, ATTACHMENT_UPLOAD))
+  reply(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReplyDto, @UploadedFiles() files?: Express.Multer.File[]) {
+    return this.support.customerReply(user, id, dto.body ?? '', files ?? []);
   }
 
   // ---- staff
@@ -98,7 +114,8 @@ export class SupportController {
 
   @Roles('SUPPORT', 'MODERATOR')
   @Post('admin/tickets/:id/reply')
-  adminReply(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReplyDto) {
-    return this.support.reply(user, id, dto.body, !!dto.internal);
+  @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_FILES, ATTACHMENT_UPLOAD))
+  adminReply(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReplyDto, @UploadedFiles() files?: Express.Multer.File[]) {
+    return this.support.reply(user, id, dto.body ?? '', !!dto.internal, files ?? []);
   }
 }

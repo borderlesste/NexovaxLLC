@@ -25,6 +25,9 @@ export interface PlaceOrderInput {
   shipping: Record<string, string>; // sellerId -> rate code
   paymentMethod: PaymentMethod;
   card?: { number: string; expMonth: number; expYear: number; cvc: string; name: string };
+  /** Stripe: keep the new card for next purchases / pay with a saved one. */
+  saveCard?: boolean;
+  savedCardId?: string;
   idempotencyKey: string;
 }
 
@@ -484,6 +487,7 @@ export class CheckoutService {
         await this.payments.startProviderPayment(c, {
           paymentId, checkoutId: sessionId, provider: online.code, amount: pay!.amount, currency: pay!.currency_code,
           customerEmail: ref?.email, reference: `NX-CHK-${ref?.public_number ?? ''}`, corr,
+          userId, saveCard: input.paymentMethod === 'CARD' && !!input.saveCard, savedCardId: input.paymentMethod === 'CARD' ? input.savedCardId : undefined,
         });
       } else if (input.paymentMethod === 'CARD') {
         if (!config.paymentSandboxEnabled) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');

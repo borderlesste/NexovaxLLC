@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { config } from '../config';
 import { trackingLink } from '../common/tracking-links';
 import { DbService } from '../db/db.service';
-import { orderRef, paymentRef, payoutRef, ticketRef } from '../common/refs';
+import { categoryForTemplate, NotificationsService } from '../notifications/notifications.service';
+import { orderRef, paymentRef, payoutRef, refundRef, returnRef, ticketRef } from '../common/refs';
 import { esc, ItemLine, itemsTable, itemsText, layout, Locale, money, p, Rendered, rows } from './mail.templates';
 
 interface SendInput {
@@ -38,7 +39,10 @@ const tr = (l: Locale) => (es: string, en: string) => (l === 'en' ? en : es);
 export class MailService {
   private readonly logger = new Logger(MailService.name);
 
-  constructor(private readonly db: DbService) {
+  constructor(
+    private readonly db: DbService,
+    private readonly notifications: NotificationsService,
+  ) {
     if (!config.resendApiKey) this.logger.warn('RESEND_API_KEY not configured: transactional e-mails are disabled.');
   }
 
@@ -52,6 +56,10 @@ export class MailService {
   }
 
   async send(i: SendInput): Promise<'SENT' | 'FAILED' | 'SUPPRESSED' | 'SKIPPED' | 'DUPLICATE'> {
+    // Every business e-mail also shows up in the bell; the e-mail itself respects the user's preferences.
+    if (i.userId && i.message.notice)
+      await this.notifications.fromEmail(i.userId, i.template, i.dedupeKey, i.message.notice, { type: i.entityType, id: i.entityId });
+    if (i.userId && !(await this.notifications.enabled(i.userId, categoryForTemplate(i.template), 'EMAIL').catch(() => true))) return 'SKIPPED';
     const to = (config.mailRedirectTo ?? i.to).trim().toLowerCase();
     const domain = to.split('@')[1] ?? '';
     const status = !this.enabled ? 'SKIPPED' : config.mailSuppressDomains.includes(domain) ? 'SUPPRESSED' : 'PENDING';
@@ -581,6 +589,36 @@ export class MailService {
     });
   }
 
+  /** A scheduled (automatic) payout was requested for the seller. */
+  async payoutScheduled(payoutId: string) {
+    const po = await this.db.one(`select seller_id, public_number, requested_amount::text as amount, currency_code, status from public.payouts where id = $1`, [payoutId]);
+    if (!po) return;
+    const s = await this.sellerContact(po.seller_id);
+    if (!s) return;
+    const t = tr(s.locale);
+    const amount = money(po.amount, po.currency_code, s.locale);
+    const line = po.status === 'APPROVAL_REQUIRED'
+      ? t(`Solicitamos tu retiro programado de ${amount}. Finanzas lo revisará y te avisaremos cuando se transfiera.`, `We requested your scheduled payout of ${amount}. Finance will review it and we will let you know when it is sent.`)
+      : t(`Solicitamos tu retiro programado de ${amount}. Te avisaremos cuando se transfiera.`, `We requested your scheduled payout of ${amount}. We will let you know when it is sent.`);
+    await this.send({
+      template: 'PAYOUT_SCHEDULED',
+      dedupeKey: `payout:${payoutId}:SCHEDULED`,
+      to: s.email,
+      userId: s.ownerUserId,
+      entityType: 'PAYOUT',
+      entityId: payoutId,
+      message: layout({
+        locale: s.locale,
+        subject: `${t('Retiro programado solicitado', 'Scheduled payout requested')} (${payoutRef(po.public_number)})`,
+        preheader: line,
+        title: t('Retiro programado solicitado', 'Scheduled payout requested'),
+        body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Ver mis finanzas', 'View my finances'), url: `${config.webUrl}/vendedor/finanzas` },
+        text: line,
+      }),
+    });
+  }
+
   async payoutUpdated(payoutId: string, action: 'MARK_PAID' | 'FAIL' | 'CANCEL', detail?: string) {
     const po = await this.db.one(`select seller_id, public_number, requested_amount::text as amount, currency_code from public.payouts where id = $1`, [payoutId]);
     if (!po) return;
@@ -611,6 +649,111 @@ export class MailService {
         text: `${copy[1]}${detail?.trim() ? `\n${label}: ${detail.trim()}` : ''}`,
       }),
     });
+  }
+
+  // ------------------------------------------------------------------ returns & refunds
+
+  /** Return lifecycle e-mails: the store hears about requests and shipments, the buyer about every decision. */
+  async returnEvent(returnId: string, event: 'REQUESTED' | 'IN_TRANSIT' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'INSPECTED' | 'REFUNDED' | 'CLOSED_NO_REFUND') {
+    const r = await this.db.one(
+      `select rr.id, rr.public_number, rr.customer_id, rr.seller_id, rr.order_id, rr.currency_code, rr.rejection_detail, rr.seller_comment,
+              o.public_number as order_number, coalesce(ssp.display_name, s.slug) as store,
+              (select coalesce(sum(f.refund_amount),0)::text from public.refunds f where f.return_request_id = rr.id and f.status = 'COMPLETED') as refunded,
+              (select f.public_number from public.refunds f where f.return_request_id = rr.id and f.status = 'COMPLETED' order by f.completed_at desc limit 1) as refund_number,
+              (select string_agg(coalesce(ois.product_title,'Producto') || ' ×' || ri.requested_quantity, ', ') from public.return_items ri
+                 left join public.order_item_snapshots ois on ois.order_item_id = ri.order_item_id where ri.return_request_id = rr.id) as products,
+              sh.carrier, sh.tracking_number
+         from public.return_requests rr join public.orders o on o.id = rr.order_id
+         join public.sellers s on s.id = rr.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+         left join public.nx_return_request_shipping sh on sh.return_request_id = rr.id
+        where rr.id = $1`,
+      [returnId],
+    );
+    if (!r) return;
+    const ref = returnRef(r.public_number);
+    const oref = orderRef(r.order_number);
+    if (event === 'REQUESTED' || event === 'IN_TRANSIT') {
+      const s = await this.sellerContact(r.seller_id);
+      if (!s) return;
+      const t = tr(s.locale);
+      const [title, line] =
+        event === 'REQUESTED'
+          ? [t('Nueva solicitud de devolución', 'New return request'), t(`Un cliente pidió devolver productos del pedido ${oref}: ${r.products}. Revísala y apruébala o recházala.`, `A customer asked to return items from order ${oref}: ${r.products}. Review it and approve or reject it.`)]
+          : [t('El cliente envió la devolución', 'The customer shipped the return'), t(`El cliente despachó la devolución ${ref} con ${r.carrier}${r.tracking_number ? ` (guía ${r.tracking_number})` : ''}. Márcala como recibida cuando llegue.`, `The customer shipped return ${ref} with ${r.carrier}${r.tracking_number ? ` (tracking ${r.tracking_number})` : ''}. Mark it as received when it arrives.`)];
+      await this.send({
+        template: `RETURN_${event}_SELLER`,
+        dedupeKey: `return:${returnId}:${event}:seller`,
+        to: s.email,
+        userId: s.ownerUserId,
+        entityType: 'RETURN_REQUEST',
+        entityId: returnId,
+        message: layout({
+          locale: s.locale,
+          subject: `${title} (${ref})`,
+          preheader: line,
+          title,
+          body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+          cta: { label: t('Ver devolución', 'View return'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
+          text: line,
+        }),
+      });
+      return;
+    }
+    const u = await this.userContact(r.customer_id);
+    if (!u) return;
+    const t = tr(u.locale);
+    const amount = money(r.refunded, r.currency_code, u.locale);
+    const copy: Record<string, [string, string]> = {
+      APPROVED: [t('Devolución aprobada', 'Return approved'), t(`${r.store} aprobó tu devolución ${ref}. Envía el paquete a la dirección que verás en la solicitud y registra la guía.`, `${r.store} approved your return ${ref}. Ship the package to the address shown in the request and add the tracking number.`)],
+      REJECTED: [t('Devolución rechazada', 'Return rejected'), t(`${r.store} rechazó tu devolución ${ref}.${r.rejection_detail ? ` Motivo: ${r.rejection_detail}` : ''} Si no estás de acuerdo, abre un reporte en el centro de ayuda.`, `${r.store} rejected your return ${ref}.${r.rejection_detail ? ` Reason: ${r.rejection_detail}` : ''} If you disagree, open a report in the help center.`)],
+      RECEIVED: [t('La tienda recibió tu devolución', 'The store received your return'), t(`${r.store} recibió el paquete de la devolución ${ref} y lo está revisando.`, `${r.store} received the package for return ${ref} and is checking it.`)],
+      INSPECTED: [t('Devolución revisada', 'Return checked'), t(`${r.store} revisó los productos de la devolución ${ref}. Procesaremos tu reembolso en breve.`, `${r.store} checked the items of return ${ref}. We will process your refund shortly.`)],
+      REFUNDED: [t('Reembolso realizado', 'Refund issued'), t(`Te devolvimos ${amount} por la devolución ${ref} al mismo medio de pago. Según tu banco puede tardar de 5 a 10 días hábiles en verse.`, `We refunded ${amount} for return ${ref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`)],
+      CLOSED_NO_REFUND: [t('Devolución cerrada', 'Return closed'), t(`La revisión de la devolución ${ref} no aceptó unidades para reembolso. Si tienes dudas, abre un reporte en el centro de ayuda.`, `The inspection of return ${ref} accepted no units for a refund. If you have questions, open a report in the help center.`)],
+    };
+    const [title, line] = copy[event];
+    await this.send({
+      template: event === 'REFUNDED' ? 'REFUND_COMPLETED' : `RETURN_${event}`,
+      dedupeKey: `return:${returnId}:${event}`,
+      to: u.email,
+      userId: r.customer_id,
+      entityType: 'RETURN_REQUEST',
+      entityId: returnId,
+      message: layout({
+        locale: u.locale,
+        subject: `${title} (${ref})`,
+        preheader: line,
+        title,
+        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
+          (event === 'REFUNDED' && r.refund_number ? rows([[t('Reembolso', 'Refund'), esc(refundRef(r.refund_number))], [t('Monto', 'Amount'), esc(amount)], [t('Pedido', 'Order'), esc(oref)]]) : ''),
+        cta: { label: t('Ver mi devolución', 'View my return'), url: `${config.webUrl}/cuenta/devoluciones/${returnId}` },
+        text: line,
+      }),
+    });
+    if (event === 'REFUNDED') {
+      const s = await this.sellerContact(r.seller_id);
+      if (s) {
+        const ts = tr(s.locale);
+        const line2 = ts(`Se reembolsaron ${money(r.refunded, r.currency_code, s.locale)} al cliente por la devolución ${ref}; el monto correspondiente se descontó de tu balance.`, `${money(r.refunded, r.currency_code, s.locale)} was refunded to the customer for return ${ref}; your share was deducted from your balance.`);
+        await this.send({
+          template: 'REFUND_COMPLETED_SELLER',
+          dedupeKey: `return:${returnId}:REFUNDED:seller`,
+          to: s.email,
+          userId: s.ownerUserId,
+          entityType: 'RETURN_REQUEST',
+          entityId: returnId,
+          message: layout({
+            locale: s.locale,
+            subject: `${ts('Reembolso de devolución', 'Return refund')} (${ref})`,
+            preheader: line2,
+            title: ts('Reembolso de devolución', 'Return refund'),
+            body: p(`${ts('Hola', 'Hi')} ${esc(s.name)}, ${esc(line2.charAt(0).toLowerCase() + line2.slice(1))}`),
+            cta: { label: ts('Ver devolución', 'View return'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
+            text: line2,
+          }),
+        });
+      }
+    }
   }
 
   // ------------------------------------------------------------------ support

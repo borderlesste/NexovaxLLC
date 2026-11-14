@@ -40,6 +40,7 @@ export const config = {
   mediaBucket: 'rd-product-images',
   documentsBucket: 'rd-seller-documents',
   avatarBucket: 'nx-user-avatars',
+  attachmentBucket: 'nx-message-attachments',
   publicApiUrl: process.env.PUBLIC_API_URL ?? 'http://localhost:4000/api',
   /** Public storefront URL used to build links inside e-mails. */
   webUrl: (process.env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, ''),

@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DbService } from './db/db.service';
 import { OrdersService } from './orders/orders.service';
 import { config } from './config';
+import { PayoutSchedulesService } from './seller/payout-schedules.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -14,7 +15,20 @@ export class JobsService {
   constructor(
     private readonly db: DbService,
     private readonly orders: OrdersService,
+    private readonly payoutSchedules: PayoutSchedulesService,
   ) {}
+
+  /** Automatic payouts chosen by sellers (weekly / biweekly / monthly). */
+  @Cron(CronExpression.EVERY_HOUR)
+  async scheduledPayouts() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const n = await this.payoutSchedules.runDue();
+      if (n) this.logger.log(`Scheduled payouts requested: ${n}`);
+    } catch (e: any) {
+      this.logger.warn(`scheduledPayouts: ${e.message}`);
+    }
+  }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async expireCheckouts() {

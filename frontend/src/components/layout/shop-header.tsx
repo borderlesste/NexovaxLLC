@@ -5,10 +5,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as Dropdown from '@radix-ui/react-dropdown-menu';
 import {
-  Bell, ChevronDown, Heart, LayoutDashboard, LogOut, Menu, MessageSquare, Package, Search, Settings, Shield, ShoppingCart, Store, User, X,
+  Bell, ChevronDown, Heart, LayoutDashboard, LogOut, Menu, MessageSquare, Package, RotateCcw, Search, Settings, Shield, ShoppingCart, Store, User, X,
 } from 'lucide-react';
 import { Logo } from './logo';
 import { LanguageSwitcher } from './language-switcher';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/misc';
 import { CategoryIcon } from '@/components/shop/category-icon';
@@ -160,6 +161,8 @@ export function UserMenu() {
           <Dropdown.Item asChild><Link className={item} href="/cuenta/pedidos"><Package /> {t('Mis pedidos')}</Link></Dropdown.Item>
           <Dropdown.Item asChild><Link className={item} href="/mensajes"><MessageSquare /> {t('Mensajes')}</Link></Dropdown.Item>
           <Dropdown.Item asChild><Link className={item} href="/cuenta/favoritos"><Heart /> {t('Favoritos')}</Link></Dropdown.Item>
+          <Dropdown.Item asChild><Link className={item} href="/cuenta/devoluciones"><RotateCcw /> {t('Devoluciones')}</Link></Dropdown.Item>
+          <Dropdown.Item asChild><Link className={item} href="/cuenta/notificaciones"><Bell /> {t('Notificaciones')}</Link></Dropdown.Item>
           <Dropdown.Separator className="my-1 h-px bg-line" />
           {seller ? (
             <Dropdown.Item asChild><Link className={item} href="/vendedor/dashboard"><Store /> {t('Panel de vendedor')}</Link></Dropdown.Item>
@@ -219,10 +222,11 @@ export function ShopHeader() {
           </Link>
           {me && (
             <Link href="/mensajes" className="relative hidden rounded-lg p-2 hover:bg-brand-50 sm:block" aria-label={t('Mensajes')}>
-              <Bell className="size-5" />
+              <MessageSquare className="size-5" />
               <CountBadge n={me.counts.unread_conversations} />
             </Link>
           )}
+          {me && <NotificationBell />}
           {!loading && !me && (
             <div className="ml-2 hidden items-center gap-2 sm:flex">
               <Button variant="outline" asChild size="sm" className="h-9">

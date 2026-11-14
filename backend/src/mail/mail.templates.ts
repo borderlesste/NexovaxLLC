@@ -28,6 +28,8 @@ export interface Rendered {
   subject: string;
   html: string;
   text: string;
+  /** Short version for the in-app notification center. */
+  notice?: { title: string; preheader: string; url?: string };
 }
 
 interface LayoutInput {
@@ -65,7 +67,7 @@ ${cta}
 <tr><td style="padding:16px 28px 24px;border-top:1px solid #eef1f6;font-size:12px;color:#64748b;line-height:1.5">${footer}</td></tr>
 </table></td></tr></table></body></html>`;
   const text = `${i.title}\n\n${i.text}${i.cta ? `\n\n${i.cta.label}: ${i.cta.url}` : ''}\n\n— NEXOVAX`;
-  return { subject: i.subject, html, text };
+  return { subject: i.subject, html, text, notice: { title: i.title, preheader: i.preheader, url: i.cta?.url } };
 }
 
 export const p = (s: string) => `<p style="margin:0 0 14px">${s}</p>`;

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 import { IsPersonName, ToNumber } from '../common/validators';
 import { Transform, Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
@@ -28,6 +28,8 @@ export class PlaceOrderDto {
   @IsObject() shipping: Record<string, string>;
   @IsIn(['CARD', 'PAYPAL', 'BANK_TRANSFER']) paymentMethod: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
   @IsOptional() @ValidateNested() @Type(() => CardDto) card?: CardDto;
+  @IsOptional() @IsBoolean() saveCard?: boolean;
+  @IsOptional() @IsUUID() savedCardId?: string;
   @IsString() @Length(8, 100) idempotencyKey: string;
 }
 

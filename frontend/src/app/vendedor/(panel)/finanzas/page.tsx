@@ -14,6 +14,7 @@ import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { Dialog, Empty, PageLoader, Pills } from '@/components/ui/misc';
 import { AreaTrend } from '@/components/charts/charts';
+import { AutoPayoutCard } from '@/components/seller/auto-payout';
 
 export default function SellerFinancePage() {
   const qc = useQueryClient();
@@ -87,6 +88,7 @@ export default function SellerFinancePage() {
           ) : <Empty title={t('Sin movimientos aún')} />}
         </Card>
       </div>
+      <AutoPayoutCard accounts={accounts.data ?? []} />
       <Card className="mt-5">
         <CardHeader title={t('Mis retiros')} subtitle={d.payoutPolicy ? t('Mínimo por retiro: {a} · Aprobación {b}', { a: money(d.payoutPolicy.minimum, d.currency), b: d.payoutPolicy.approvalMode === 'MANUAL' ? t('manual por finanzas') : t('automática') }) : undefined} action={<Link href="/vendedor/metodos-cobro" className="text-sm font-semibold text-brand-700">{t('Métodos de cobro →')}</Link>} />
         {payouts.data?.length ? (

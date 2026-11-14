@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle, Check, CheckCircle2, Clock, Copy, CreditCard, Download, Headphones, MapPin, MessageSquare, Package, PackageCheck, Phone, RefreshCw, Star, Store, Tag, Truck, User, Zap,
+  AlertCircle, Check, CheckCircle2, Clock, Copy, CreditCard, Download, Headphones, MapPin, MessageSquare, Package, PackageCheck, Phone, RefreshCw, RotateCcw, Star, Store, Tag, Truck, User, Zap,
 } from 'lucide-react';
 import { countryName, t } from '@/lib/i18n';
 import { cityLine } from '@/components/shop/geo-fields';
@@ -122,6 +122,9 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
                   <Button size="sm" onClick={() => setShipFor(so)}><Truck /> {t('Registrar envío')}</Button>
                 )}
                 {role === 'customer' && <Button size="sm" variant="outline" onClick={() => contactSeller(so)}><MessageSquare /> {t('Contactar vendedor')}</Button>}
+                {role === 'customer' && so.items.some((i: any) => i.delivered > 0) && (
+                  <Button size="sm" variant="outline" asChild><Link href={`/cuenta/devoluciones/nueva?pedido=${order.id}&tienda=${so.id}`} data-request-return><RotateCcw /> {t('Solicitar devolución')}</Link></Button>
+                )}
               </div>
             </div>
             <ul className="divide-y divide-line">

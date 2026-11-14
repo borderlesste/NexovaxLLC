@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, BadgeCheck, ChevronRight, MessageSquare, Package, RotateCcw, Search, Send, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, post } from '@/lib/api';
+import { errorMessage, get, upload } from '@/lib/api';
+import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
 import { cn, fmtTime, money, relative } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,11 +24,13 @@ export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }
   const list = useQuery({ queryKey: ['conversations', as, search], queryFn: () => get(`/conversations?as=${as}&q=${encodeURIComponent(search)}`), refetchInterval: 15_000 });
   const conv = useQuery({ queryKey: ['conversation', active], queryFn: () => get(`/conversations/${active}`), enabled: !!active, refetchInterval: 5_000 });
   const [text, setText] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const send = useMutation({
-    mutationFn: () => post(`/conversations/${active}/messages`, { body: text }),
+    mutationFn: () => upload(`/conversations/${active}/messages`, formWith({ body: text.trim() }, files)),
     onSuccess: (c) => {
       setText('');
+      setFiles([]);
       qc.setQueryData(['conversation', active], c);
       qc.invalidateQueries({ queryKey: ['conversations'] });
     },
@@ -120,7 +123,8 @@ export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }
                     <div key={m.id} className={cn('flex gap-2', m.mine ? 'justify-end' : 'justify-start')}>
                       <div className={cn('max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-sm', m.mine ? 'rounded-br-md bg-brand-100/80 text-ink' : 'rounded-bl-md border border-line bg-white')}>
                         {['SUPPORT_AGENT', 'MODERATOR'].includes(m.role) && <p className="mb-1 text-[11px] font-bold text-brand-700">{t('Equipo NEXOVAX')}</p>}
-                        <p className="whitespace-pre-line">{m.body}</p>
+                        {!(m.attachments?.length && m.body.startsWith('📎')) && <p className="whitespace-pre-line">{m.body}</p>}
+                        <AttachmentList base={`/conversations/${c.id}/attachments`} items={m.attachments} />
                         <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-muted">{fmtTime(m.sentAt)} {m.mine && <CheckCheck className="size-3.5 text-brand-500" />}</p>
                       </div>
                     </div>
@@ -129,9 +133,13 @@ export function MessagesView({ as = 'customer' }: { as?: 'customer' | 'seller' }
               ))}
               <div ref={endRef} />
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); if (text.trim()) send.mutate(); }} className="flex items-center gap-2 border-t border-line p-4">
-              <Input placeholder={c.status === 'OPEN' ? t('Escribe un mensaje...') : t('Esta conversación está cerrada')} disabled={c.status !== 'OPEN'} value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} className="h-11" />
-              <Button type="submit" size="icon" className="size-11" loading={send.isPending} disabled={!text.trim()} aria-label={t('Enviar')}><Send /></Button>
+            <form onSubmit={(e) => { e.preventDefault(); if (text.trim() || files.length) send.mutate(); }} className="border-t border-line p-4">
+              {files.length > 0 && <FilePicker files={files} onChange={setFiles} className="mb-3 [&>button]:hidden" />}
+              <div className="flex items-center gap-2">
+                {c.status === 'OPEN' && <FilePicker files={[]} onChange={(f) => setFiles([...files, ...f].slice(0, 4))} max={4 - files.length} />}
+                <Input placeholder={c.status === 'OPEN' ? t('Escribe un mensaje...') : t('Esta conversación está cerrada')} disabled={c.status !== 'OPEN'} value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} className="h-11" />
+                <Button type="submit" size="icon" className="size-11" loading={send.isPending} disabled={!text.trim() && !files.length} aria-label={t('Enviar')}><Send /></Button>
+              </div>
             </form>
           </>
         )}

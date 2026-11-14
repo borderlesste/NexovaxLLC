@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Coins, CreditCard, Layers, LayoutGrid, Package, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign } from 'lucide-react';
+import { AlertTriangle, Coins, CreditCard, Layers, LayoutGrid, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader, Empty } from '@/components/ui/misc';
 import { useAuth } from '@/lib/auth';
@@ -17,6 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!loading && !session) router.replace(`/auth/iniciar-sesion?next=${encodeURIComponent(pathname)}`);
   }, [loading, session, router, pathname]);
   const dash = useQuery({ queryKey: ['admin-attention'], queryFn: () => get('/admin/dashboard?days=7'), enabled: isStaff, refetchInterval: 60_000 });
+  const returns = useQuery({ queryKey: ['admin-returns-count'], queryFn: () => get('/admin/returns?status=REFUND_PENDING'), enabled: isStaff, refetchInterval: 60_000 });
   if (loading || !session || !me) return <PageLoader />;
   if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title={t('Acceso restringido')} description={t('Esta sección es solo para el equipo del marketplace.')} /></div>;
   const a = dash.data?.attention;
@@ -28,6 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/vendedores', label: t('Vendedores'), icon: Users, badge: a?.sellers_pending || null },
     { href: '/admin/moderacion', label: t('Moderación'), icon: Shield, badge: a?.products_pending || null },
     { href: '/admin/reportes', label: t('Reportes y soporte'), icon: AlertTriangle, badge: a?.open_tickets || null },
+    { href: '/admin/devoluciones', label: t('Devoluciones'), icon: RotateCcw, badge: returns.data?.counts?.refund_pending || null },
     ...(isAdmin
       ? [
           { href: '/admin/finanzas', label: t('Finanzas'), icon: DollarSign, badge: a?.transfers_pending || null },

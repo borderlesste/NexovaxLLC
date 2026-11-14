@@ -19,7 +19,7 @@ export interface PlacedCheckout {
 }
 
 /** Stripe Elements in deferred-intent mode: the card form renders before the order is created. */
-export function StripeBoundary({ publishableKey, amount, currency, children }: { publishableKey?: string | null; amount: string; currency: string; children: React.ReactNode }) {
+export function StripeBoundary({ publishableKey, amount, currency, saveCard, children }: { publishableKey?: string | null; amount: string; currency: string; saveCard?: boolean; children: React.ReactNode }) {
   const stripePromise = useMemo(() => (publishableKey ? loadStripe(publishableKey, { locale: getLocale() === 'en' ? 'en' : 'es-419' }) : null), [publishableKey]);
   if (!stripePromise) return <>{children}</>;
   return (
@@ -30,20 +30,22 @@ export function StripeBoundary({ publishableKey, amount, currency, children }: {
         amount: Math.max(minorUnits(amount, currency), 50),
         currency: currency.toLowerCase(),
         paymentMethodTypes: ['card'],
+        ...(saveCard ? { setupFutureUsage: 'on_session' as const } : {}),
         appearance: { theme: 'stripe', variables: { colorPrimary: '#0a6cf5', borderRadius: '10px', fontFamily: 'Inter, system-ui, sans-serif', colorText: '#0f172a' } },
       }}
     >
-      <AmountSync amount={amount} currency={currency} />
+      <AmountSync amount={amount} currency={currency} saveCard={!!saveCard} />
       {children}
     </Elements>
   );
 }
 
-function AmountSync({ amount, currency }: { amount: string; currency: string }) {
+function AmountSync({ amount, currency, saveCard }: { amount: string; currency: string; saveCard: boolean }) {
   const elements = useElements();
   useEffect(() => {
-    elements?.update({ amount: Math.max(minorUnits(amount, currency), 50), currency: currency.toLowerCase() });
-  }, [elements, amount, currency]);
+    // "Save this card" must match the PaymentIntent's setup_future_usage.
+    elements?.update({ amount: Math.max(minorUnits(amount, currency), 50), currency: currency.toLowerCase(), setupFutureUsage: saveCard ? 'on_session' : null } as any);
+  }, [elements, amount, currency, saveCard]);
   return null;
 }
 
@@ -67,7 +69,7 @@ export function StripeCardForm({ billing }: { billing?: { name?: string; email?:
  * validate → create the order's payment (PaymentIntent) → confirm with Stripe (3-D Secure in place)
  * → server verifies with Stripe and creates the order. A declined card can be retried on the same intent.
  */
-export function StripePayButton({ place, onPaid, disabled, resetKey }: { place: () => Promise<PlacedCheckout>; onPaid: (checkoutId: string) => void; disabled?: boolean; resetKey: string }) {
+export function StripePayButton({ place, onPaid, disabled, resetKey, savedCard }: { place: () => Promise<PlacedCheckout>; onPaid: (checkoutId: string) => void; disabled?: boolean; resetKey: string; savedCard?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -80,14 +82,16 @@ export function StripePayButton({ place, onPaid, disabled, resetKey }: { place: 
       pending.current = null;
       post(`/checkout/${p.checkoutId}/cancel`).catch(() => undefined);
     }
-  }, [resetKey]);
+  }, [resetKey, savedCard]);
 
   const pay = async () => {
     if (!stripe || !elements) return;
     setBusy(true);
     try {
-      const { error: submitError } = await elements.submit();
-      if (submitError) return toast.error(submitError.message ?? t('Revisa los datos de la tarjeta.'));
+      if (!savedCard) {
+        const { error: submitError } = await elements.submit();
+        if (submitError) return toast.error(submitError.message ?? t('Revisa los datos de la tarjeta.'));
+      }
       if (!pending.current) {
         const r = await place();
         if (r.orderId) return onPaid(r.checkoutId);
@@ -96,12 +100,15 @@ export function StripePayButton({ place, onPaid, disabled, resetKey }: { place: 
         pending.current = { checkoutId: r.checkoutId, clientSecret: action.clientSecret };
       }
       const { checkoutId, clientSecret } = pending.current;
-      const { error } = await stripe.confirmPayment({
-        elements,
-        clientSecret,
-        confirmParams: { return_url: `${window.location.origin}/checkout/confirmacion/${checkoutId}` },
-        redirect: 'if_required',
-      });
+      // Saved card: the PaymentIntent already carries it; Stripe.js only handles 3-D Secure.
+      const { error } = savedCard
+        ? await stripe.confirmCardPayment(clientSecret)
+        : await stripe.confirmPayment({
+            elements,
+            clientSecret,
+            confirmParams: { return_url: `${window.location.origin}/checkout/confirmacion/${checkoutId}` },
+            redirect: 'if_required',
+          });
       if (error) return toast.error(error.message ?? t('El pago fue rechazado.'));
       await post(`/checkout/${checkoutId}/payments/stripe/confirm`);
       pending.current = null;

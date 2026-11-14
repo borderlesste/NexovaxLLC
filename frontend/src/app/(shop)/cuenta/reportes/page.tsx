@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, post } from '@/lib/api';
+import { errorMessage, get, upload } from '@/lib/api';
+import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
 import { fmtDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
@@ -17,13 +18,19 @@ export default function MyReportsPage() {
   const [open, setOpen] = useState<string | null>(null);
   const d = useQuery({ queryKey: ['my-report', open], queryFn: () => get(`/support/reports/${open}`), enabled: !!open });
   const [reply, setReply] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [sending, setSending] = useState(false);
   const send = async () => {
+    setSending(true);
     try {
-      await post(`/support/reports/${open}/messages`, { body: reply });
+      await upload(`/support/reports/${open}/messages`, formWith({ body: reply.trim() }, files));
       setReply('');
+      setFiles([]);
       d.refetch();
     } catch (e) {
       toast.error(errorMessage(e));
+    } finally {
+      setSending(false);
     }
   };
   if (q.isLoading) return <PageLoader />;
@@ -52,11 +59,15 @@ export default function MyReportsPage() {
           {d.data?.messages.map((m: any) => (
             <div key={m.id} className={`rounded-xl p-3 text-sm ${m.staff ? 'bg-brand-50' : 'bg-surface'}`}>
               <p className="text-xs font-bold">{m.staff ? 'Equipo NEXOVAX' : t('Tú')} · {fmtDateTime(m.at)}</p>
-              <p className="mt-1 whitespace-pre-line">{m.body}</p>
+              {!(m.attachments?.length && m.body.startsWith('📎')) && <p className="mt-1 whitespace-pre-line">{m.body}</p>}
+              <AttachmentList base={`/support/conversations/${d.data.conversationId}/attachments`} items={m.attachments} />
             </div>
           ))}
           {d.data && !['CLOSED', 'CANCELLED'].includes(d.data.status) && (
-            <div className="flex gap-2"><Textarea rows={2} value={reply} onChange={(e) => setReply(e.target.value)} placeholder={t('Agregar información…')} /><Button onClick={send} disabled={!reply.trim()} size="icon" aria-label={t('Enviar')}><Send /></Button></div>
+            <div>
+              <div className="flex gap-2"><Textarea rows={2} value={reply} onChange={(e) => setReply(e.target.value)} placeholder={t('Agregar información…')} /><Button onClick={send} loading={sending} disabled={!reply.trim() && !files.length} size="icon" aria-label={t('Enviar')}><Send /></Button></div>
+              <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} className="mt-2" />
+            </div>
           )}
         </div>
       </Dialog>

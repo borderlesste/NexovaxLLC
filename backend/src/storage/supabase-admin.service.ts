@@ -10,6 +10,7 @@ import { DbService, Queryable } from '../db/db.service';
 
 const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 /** Decoding limits: reject decompression bombs before any pixel is decoded. */
 const MAX_IMAGE_SIDE = 8000;
 const MAX_IMAGE_PIXELS = 40_000_000;
@@ -242,6 +243,50 @@ export class SupabaseAdminService {
       return a;
     });
     if (old?.storage_bucket === config.avatarBucket) await this.admin.storage.from(config.avatarBucket).remove([old.storage_key]).catch(() => undefined);
+  }
+
+  /**
+   * Message / report / return evidence: photos (re-encoded to WebP, metadata stripped)
+   * or PDF documents (real header checked, active content refused). Private bucket,
+   * served only through the conversation or return it belongs to.
+   */
+  async uploadAttachment(userId: string, file: UploadFile, client?: Queryable): Promise<{ id: string; kind: 'IMAGE' | 'DOCUMENT'; name: string; size: number; mime: string }> {
+    const name = (file.originalname ?? 'archivo').normalize('NFC').replace(/[^\p{L}\p{N} ._()-]/gu, '_').slice(0, 120) || 'archivo';
+    let body: Buffer;
+    let mime: string;
+    let kind: 'IMAGE' | 'DOCUMENT';
+    let meta: { width?: number; height?: number } = {};
+    if (file.mimetype === 'application/pdf') {
+      if (file.size > MAX_ATTACHMENT_BYTES || file.buffer.length > MAX_ATTACHMENT_BYTES) throw new AppError('ATTACHMENT_TOO_LARGE', 'El documento supera 10 MB.');
+      if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') throw new AppError('INVALID_ATTACHMENT', 'El archivo no es un PDF válido.');
+      if (/\/(JavaScript|JS|Launch|EmbeddedFile|OpenAction)\b/.test(file.buffer.toString('latin1')))
+        throw new AppError('INVALID_ATTACHMENT', 'El PDF contiene contenido activo (scripts o archivos incrustados) y no se puede adjuntar.');
+      body = file.buffer;
+      mime = 'application/pdf';
+      kind = 'DOCUMENT';
+    } else if (ALLOWED_IMAGE.includes(file.mimetype)) {
+      const r = await this.processImage(file, (img) => img.resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }));
+      body = r.out;
+      meta = { width: r.meta.width, height: r.meta.height };
+      mime = 'image/webp';
+      kind = 'IMAGE';
+    } else throw new AppError('UNSUPPORTED_ATTACHMENT', 'Formato no permitido. Adjunta fotos (JPG, PNG, WebP) o documentos PDF.');
+    const key = `${userId}/attachments/${randomUUID()}.${kind === 'IMAGE' ? 'webp' : 'pdf'}`;
+    const { error } = await this.admin.storage.from(config.attachmentBucket).upload(key, body, { contentType: mime, upsert: false });
+    if (error) throw new AppError('UPLOAD_FAILED', `No se pudo subir el archivo: ${error.message}`, HttpStatus.BAD_GATEWAY);
+    try {
+      const row = await this.db.one<{ id: string }>(
+        `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,
+                                    original_filename, mime_type, size_bytes, width_pixels, height_pixels, visibility, status, uploaded_at, ready_at)
+         values ($1,null,'SUPABASE',$2,$3,$4,$5,$6,$7,$8,'PRIVATE','READY',now(),now()) returning id`,
+        [userId, config.attachmentBucket, key, name, mime, body.length, meta.width ?? null, meta.height ?? null],
+        client,
+      );
+      return { id: row!.id, kind, name, size: body.length, mime };
+    } catch (e) {
+      await this.admin.storage.from(config.attachmentBucket).remove([key]).catch(() => undefined);
+      throw e;
+    }
   }
 
   async download(bucket: string, key: string): Promise<Buffer> {

@@ -2,10 +2,11 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Bell, ChevronRight, HelpCircle, Home, Menu, Search, X } from 'lucide-react';
+import { ChevronRight, HelpCircle, Home, Menu, Search, X } from 'lucide-react';
 import { LogoMark } from './logo';
 import { UserMenu } from './shop-header';
 import { LanguageSwitcher } from './language-switcher';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -69,7 +70,7 @@ export function DashboardShell({ title, subtitle, nav, children, footer }: { tit
           </form>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/" className="hidden items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold hover:bg-surface sm:flex"><Home className="size-4" /> {t('Ir a la tienda')}</Link>
-            <Link href={pathname.startsWith('/admin') ? '/admin/reportes' : '/vendedor/mensajes'} className="relative rounded-lg p-2 hover:bg-surface" aria-label={t('Notificaciones')}><Bell className="size-5" /></Link>
+            <NotificationBell className="hover:bg-surface" />
             <LanguageSwitcher />
             <span className="mx-1 h-8 w-px bg-line" />
             <UserMenu />

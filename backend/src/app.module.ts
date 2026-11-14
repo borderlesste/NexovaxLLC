@@ -38,6 +38,14 @@ import { StripeService } from './payments/stripe.service';
 import { PaypalService } from './payments/paypal.service';
 import { PaymentsService } from './payments/payments.service';
 import { PaymentsWebhooksController } from './payments/payments.controller';
+import { NotificationsService } from './notifications/notifications.service';
+import { NotificationsController } from './notifications/notifications.controller';
+import { ReturnsService } from './returns/returns.service';
+import { ReturnsController } from './returns/returns.controller';
+import { CardsService } from './payments/cards.service';
+import { CardsController } from './payments/cards.controller';
+import { PayoutSchedulesService } from './seller/payout-schedules.service';
+import { PayoutSchedulesController } from './seller/payout-schedules.controller';
 
 @Module({
   imports: [
@@ -56,7 +64,7 @@ import { PaymentsWebhooksController } from './payments/payments.controller';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CardsController, PayoutSchedulesController],
   providers: [
     DbService,
     SettingsService,
@@ -78,6 +86,10 @@ import { PaymentsWebhooksController } from './payments/payments.controller';
     StripeService,
     PaypalService,
     PaymentsService,
+    NotificationsService,
+    ReturnsService,
+    CardsService,
+    PayoutSchedulesService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

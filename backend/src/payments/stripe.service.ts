@@ -32,7 +32,7 @@ export class StripeService {
     return this.client;
   }
 
-  async createIntent(input: { amount: string; currency: string; paymentId: string; checkoutId: string; customerEmail?: string; description: string }) {
+  async createIntent(input: { amount: string; currency: string; paymentId: string; checkoutId: string; customerEmail?: string; description: string; customerId?: string; saveCard?: boolean; paymentMethodId?: string }) {
     return this.stripe.paymentIntents.create(
       {
         amount: toStripeAmount(input.amount, input.currency),
@@ -40,7 +40,10 @@ export class StripeService {
         payment_method_types: ['card'],
         description: input.description,
         receipt_email: input.customerEmail,
-        metadata: { payment_id: input.paymentId, checkout_id: input.checkoutId, platform: 'nexovax' },
+        ...(input.customerId ? { customer: input.customerId } : {}),
+        ...(input.saveCard && input.customerId ? { setup_future_usage: 'on_session' as const } : {}),
+        ...(input.paymentMethodId ? { payment_method: input.paymentMethodId } : {}),
+        metadata: { payment_id: input.paymentId, checkout_id: input.checkoutId, platform: 'nexovax', ...(input.saveCard ? { save_card: '1' } : {}) },
       },
       { idempotencyKey: `nx-pi-${input.paymentId}` },
     );
@@ -62,6 +65,44 @@ export class StripeService {
       this.logger.warn(`Stripe cancel ${id}: ${e?.message}`);
       return this.retrieveIntent(id);
     }
+  }
+
+  // ---- saved cards (Stripe customers + payment methods; card data stays in Stripe)
+  createCustomer(input: { email: string; name?: string; userId: string; environment: string }) {
+    return this.stripe.customers.create(
+      { email: input.email, name: input.name, metadata: { user_id: input.userId, platform: 'nexovax' } },
+      { idempotencyKey: `nx-cus-${input.userId}-${input.environment}` },
+    );
+  }
+
+  createSetupIntent(customerId: string) {
+    return this.stripe.setupIntents.create({ customer: customerId, usage: 'on_session', payment_method_types: ['card'], metadata: { platform: 'nexovax' } });
+  }
+
+  retrieveSetupIntent(id: string) {
+    return this.stripe.setupIntents.retrieve(id);
+  }
+
+  retrievePaymentMethod(id: string) {
+    return this.stripe.paymentMethods.retrieve(id);
+  }
+
+  async detachPaymentMethod(id: string) {
+    try {
+      await this.stripe.paymentMethods.detach(id);
+    } catch (e: any) {
+      // Already detached / deleted in Stripe: the local reference is removed anyway.
+      if (e?.code !== 'resource_missing' && !/not attached/i.test(e?.message ?? '')) throw e;
+    }
+  }
+
+  /** Refunds (part of) a captured card payment. Idempotent per refund id. */
+  refund(input: { chargeOrIntent: string; amount: string; currency: string; refundId: string; reason?: 'requested_by_customer' | 'duplicate' | 'fraudulent' }) {
+    const target = input.chargeOrIntent.startsWith('pi_') ? { payment_intent: input.chargeOrIntent } : { charge: input.chargeOrIntent };
+    return this.stripe.refunds.create(
+      { ...target, amount: toStripeAmount(input.amount, input.currency), reason: input.reason ?? 'requested_by_customer', metadata: { refund_id: input.refundId, platform: 'nexovax' } },
+      { idempotencyKey: `nx-refund-${input.refundId}` },
+    );
   }
 
   /** Verifies a webhook signature against any configured endpoint secret. */

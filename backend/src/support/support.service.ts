@@ -6,6 +6,7 @@ import { MailService } from '../mail/mail.service';
 import { orderRef, parseOrderRef, parseTicketRef, ticketRef } from '../common/refs';
 import { badRequest, notFound } from '../common/errors';
 import { isStaff, RequestUser } from '../auth/auth';
+import { MessagingService, UploadedFile } from '../messaging/messaging.service';
 
 export interface ReportInput {
   categoryCode: string;
@@ -33,6 +34,7 @@ export class SupportService {
   constructor(
     private readonly db: DbService,
     private readonly mail: MailService,
+    private readonly messaging: MessagingService,
   ) {}
 
   catalogs() {
@@ -43,7 +45,7 @@ export class SupportService {
     ]).then(([categories, priorities, teams]) => ({ categories, priorities, teams }));
   }
 
-  async create(user: RequestUser, input: ReportInput) {
+  async create(user: RequestUser, input: ReportInput, files: UploadedFile[] = []) {
     const cat = await this.db.one(`select id from public.support_ticket_categories where code = $1 and is_active`, [input.categoryCode]);
     if (!cat) throw badRequest('CATEGORY_INVALID', 'Selecciona un tipo de problema.');
     let orderId: string | null = null;
@@ -61,6 +63,7 @@ export class SupportService {
       input.platform ? `Plataforma: ${{ WEB: 'Plataforma web', MOBILE: 'App móvil', OTHER: 'Otro' }[input.platform]}` : null,
     ].filter(Boolean);
     const message = `${input.description.trim()}${context.length ? '\n\n— ' + context.join('\n— ') : ''}`;
+    const evidence = await this.messaging.uploadFiles(user.id, files);
     const id = await this.db.tx(async (c) => {
       const r = await this.db.one(
         `select public.create_support_ticket($1, null, $2, $3, $4, $5, $6, null, null, $7) as id`,
@@ -69,6 +72,15 @@ export class SupportService {
       );
       const team = await this.db.one(`select id from public.support_teams where code = 'SUPPORT'`, [], c);
       if (team) await this.db.exec(`update public.support_tickets set current_team_id = $2 where id = $1 and current_team_id is null`, [r!.id, team.id], c);
+      if (evidence.length) {
+        const first = await this.db.one(
+          `select m.id, m.conversation_id from public.support_tickets t join public.conversation_messages m on m.conversation_id = t.conversation_id
+            where t.id = $1 and m.sender_user_id = $2 order by m.sequence_number limit 1`,
+          [r!.id, user.id],
+          c,
+        );
+        if (first) await this.messaging.attach(c, first.conversation_id, first.id, evidence);
+      }
       return r!.id;
     });
     this.mail.fire(() => this.mail.supportTicketCreated(id));
@@ -205,8 +217,10 @@ export class SupportService {
         [id],
       ),
     ]);
+    const files = await this.messaging.attachmentsByMessage(messages.map((m: any) => m.id));
     return {
       id: t.id,
+      conversationId: t.conversation_id,
       code: `REP-${t.public_number}`,
       trackingCode: ticketRef(t.public_number),
       status: t.status,
@@ -221,7 +235,7 @@ export class SupportService {
       assignee: t.assignee,
       orderNumber: t.order_number ? orderRef(t.order_number) : null,
       sla: { firstResponseDueAt: t.first_response_due_at, resolutionDueAt: t.resolution_due_at, firstResponseAt: t.first_response_at },
-      messages: messages.map((m: any) => ({ id: m.id, body: m.body, at: m.sent_at, author: m.author, staff: ['SUPPORT_AGENT', 'MODERATOR'].includes(m.role) })),
+      messages: messages.map((m: any) => ({ id: m.id, body: m.body, at: m.sent_at, author: m.author, staff: ['SUPPORT_AGENT', 'MODERATOR'].includes(m.role), attachments: files.get(m.id) ?? [] })),
       history: history.map((h: any) => ({ from: h.from_status, to: h.to_status, toLabel: STATUS_LABEL[h.to_status], at: h.created_at, actor: h.actor, reason: h.reason })),
       notes,
     };
@@ -252,8 +266,11 @@ export class SupportService {
     return this.adminDetail(ticketId);
   }
 
-  async reply(staff: RequestUser, ticketId: string, body: string, internal: boolean) {
-    if (!body?.trim()) throw badRequest('MESSAGE_REQUIRED', 'Escribe una respuesta.');
+  async reply(staff: RequestUser, ticketId: string, body: string, internal: boolean, files: UploadedFile[] = []) {
+    if (!body?.trim() && !(files.length && !internal)) throw badRequest('MESSAGE_REQUIRED', 'Escribe una respuesta.');
+    if (internal && files.length) throw badRequest('INTERNAL_NOTE_FILES', 'Las notas internas no admiten adjuntos.');
+    body = body?.trim() || `📎 ${files.map((f) => f.originalname ?? 'archivo').join(', ')}`;
+    const assets = await this.messaging.uploadFiles(staff.id, files);
     await this.db.tx(async (c) => {
       const t = await this.db.one(`select id, conversation_id, status from public.support_tickets where id = $1`, [ticketId], c);
       if (!t) throw notFound('Reporte');
@@ -266,18 +283,23 @@ export class SupportService {
         const teamId = await this.ensureAgent(c, ticketId, staff);
         await this.db.exec(`select public.assign_support_ticket($1,$2,$3,$4,$5)`, [ticketId, teamId, staff.id, staff.id, 'Respuesta al usuario'], c);
       }
-      await this.db.exec(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb)`, [t.conversation_id, staff.id, body.trim(), randomUUID()], c);
+      const msg = await this.db.one(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb) as id`, [t.conversation_id, staff.id, body.trim(), randomUUID()], c);
+      await this.messaging.attach(c, t.conversation_id, msg!.id, assets);
       if (t.status === 'OPEN') await this.db.exec(`select public.transition_support_ticket($1,'IN_PROGRESS',$2,'Primera respuesta')`, [ticketId, staff.id], c);
     });
     if (!internal) this.mail.fire(() => this.mail.supportReply(ticketId, body));
     return this.adminDetail(ticketId);
   }
 
-  async customerReply(user: RequestUser, ticketId: string, body: string) {
+  async customerReply(user: RequestUser, ticketId: string, body: string, files: UploadedFile[] = []) {
     const t = await this.db.one(`select conversation_id, status from public.support_tickets where id = $1 and requester_user_id = $2`, [ticketId, user.id]);
     if (!t) throw notFound('Reporte');
+    const text = body?.trim() || (files.length ? `📎 ${files.map((f) => f.originalname ?? 'archivo').join(', ')}` : '');
+    if (!text) throw badRequest('MESSAGE_REQUIRED', 'Escribe un mensaje o adjunta un archivo.');
+    const assets = await this.messaging.uploadFiles(user.id, files);
     await this.db.tx(async (c) => {
-      await this.db.exec(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb)`, [t.conversation_id, user.id, body.trim(), randomUUID()], c);
+      const msg = await this.db.one(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb) as id`, [t.conversation_id, user.id, text, randomUUID()], c);
+      await this.messaging.attach(c, t.conversation_id, msg!.id, assets);
       if (t.status === 'PENDING_CUSTOMER') await this.db.exec(`select public.transition_support_ticket($1,'IN_PROGRESS',$2,'Respuesta del usuario')`, [ticketId, user.id], c);
     });
     return this.customerDetail(user, ticketId);

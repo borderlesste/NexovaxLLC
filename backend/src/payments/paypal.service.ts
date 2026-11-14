@@ -74,6 +74,16 @@ export class PaypalService {
     return this.call<any>('POST', `/v2/checkout/orders/${encodeURIComponent(id)}/capture`, {}, { 'PayPal-Request-Id': `nx-capture-${paymentId}` });
   }
 
+  /** Refunds (part of) a captured payment. Idempotent per refund id. */
+  refundCapture(captureId: string, amount: string, currency: string, refundId: string, note: string) {
+    return this.call<any>(
+      'POST',
+      `/v2/payments/captures/${encodeURIComponent(captureId)}/refund`,
+      { amount: { value: Number(amount).toFixed(2), currency_code: currency }, invoice_id: `nx-refund-${refundId}`, note_to_payer: note.slice(0, 255) },
+      { 'PayPal-Request-Id': `nx-refund-${refundId}` },
+    );
+  }
+
   async verifyWebhook(headers: Record<string, any>, event: unknown) {
     if (!config.paypalWebhookId) return false;
     // Reject obviously forged/incomplete deliveries before any outbound call to PayPal.
