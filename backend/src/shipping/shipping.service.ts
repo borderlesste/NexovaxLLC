@@ -232,6 +232,72 @@ export class ShippingService {
     return { length: p.length, width: p.width, height: p.height, distance_unit: 'cm', weight: p.weightKg, mass_unit: 'kg' };
   }
 
+  /** US and its territories ship as domestic mail: no customs declaration. */
+  static needsCustoms(fromCountry: string, toCountry: string) {
+    const US_AREA = new Set(['US', 'PR', 'VI', 'GU', 'AS', 'MP']);
+    return fromCountry !== toCountry && !(US_AREA.has(fromCountry) && US_AREA.has(toCountry));
+  }
+
+  /** Shippo customs declaration for the items of a parcel (SKU, brand/manufacturer, HS code, origin, EEI exemption). */
+  private async customsFor(fromCountry: string, signer: string, reference: string, items: any[]) {
+    const alnum = (v: unknown, max: number) => String(v ?? '').normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, max);
+    // US exports: exemption code below the USD 2,500 filing threshold (above it an AES ITN is required).
+    const declared = items.reduce((acc, i) => acc + Number(i.unit_price ?? 0) * i.qty, 0);
+    let eelPfc: string | null = null;
+    if (fromCountry === 'US') {
+      if (declared > 2500)
+        throw new AppError('CUSTOMS_ITN_REQUIRED', 'Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.', HttpStatus.CONFLICT);
+      eelPfc = 'NOEEI_30_37_a';
+    }
+    return this.shippo.customsDeclaration({
+      signer,
+      reference,
+      eelPfc,
+      items: items.map((i) => {
+        const hs = String(i.hs_code ?? '').replace(/\D/g, '');
+        return {
+          description: String(i.title).slice(0, 100),
+          quantity: i.qty,
+          net_weight: (i.weight_value ? Number(i.weight_value) * (i.weight_unit === 'g' ? 0.001 : i.weight_unit === 'lb' ? 0.4536 : 1) : 0.5).toFixed(3),
+          mass_unit: 'kg' as const,
+          value_amount: Number(i.unit_price ?? 0).toFixed(2),
+          value_currency: i.currency_code,
+          origin_country: /^[A-Z]{2}$/.test(i.country_of_origin_code ?? '') ? i.country_of_origin_code : fromCountry,
+          sku_code: alnum(i.sku, 30) || undefined,
+          manufacturer_code: alnum(i.brand, 20) || alnum(i.seller_slug, 20) || undefined,
+          ...(hs.length >= 6 ? { tariff_number: hs.slice(0, 10) } : {}),
+        };
+      }),
+    });
+  }
+
+  /**
+   * Prepaid return label: from the customer (original destination) back to the store (original origin),
+   * cheapest carrier that can issue labels. Returns the purchased transaction.
+   */
+  async buyReturnLabel(input: { reference: string; from: any; to: any; parcel: Parcel; items: any[]; customerEmail?: string | null; storeEmail?: string | null }) {
+    if (!this.shippo.enabled) throw new AppError('SHIPPING_PROVIDER_UNAVAILABLE', 'Las etiquetas de devolución no están disponibles (Shippo no está configurado).', HttpStatus.SERVICE_UNAVAILABLE);
+    const fromAddr = ShippingService.toShippoAddress(input.from, input.customerEmail);
+    const toAddr = ShippingService.toShippoAddress({ ...input.to, contact_name: input.to.recipient_name ?? input.to.contact_name } as any, input.storeEmail);
+    const customsId = ShippingService.needsCustoms(input.from.country_code, input.to.country_code)
+      ? await this.customsFor(input.from.country_code, input.from.recipient_name || 'Customer', input.reference, input.items)
+      : undefined;
+    const quote = await this.shippo.shipment(fromAddr, toAddr, ShippingService.shippoParcel(input.parcel), { customsDeclarationId: customsId, reference: input.reference });
+    const statuses = await this.carrierStatuses();
+    const rates = quote.rates.filter((r: any) => !r.carrier_account || statuses.get(r.carrier_account)?.status !== 'BLOCKED').sort((a: any, b: any) => Number(a.amount) - Number(b.amount));
+    if (!rates.length) throw new AppError('SHIPPING_NO_RATES', 'Ninguna transportadora ofrece etiqueta de devolución para esta ruta.', HttpStatus.CONFLICT, { messages: quote.messages.slice(0, 3) });
+    let lastError = '';
+    for (const rate of rates.slice(0, 3)) {
+      const tx = await this.shippo.buyLabel(rate.object_id, input.reference).catch((e: any) => ({ status: 'ERROR', messages: [e?.message ?? 'error'] }) as any);
+      await this.learnFromLabel(rate, tx.status === 'SUCCESS' && !!tx.trackingNumber, tx.messages ?? []).catch(() => undefined);
+      if (tx.status === 'SUCCESS' && tx.trackingNumber && tx.labelUrl)
+        return { transactionId: tx.transactionId as string, trackingNumber: tx.trackingNumber as string, trackingUrl: tx.trackingUrl as string | null, labelUrl: tx.labelUrl as string,
+                 carrier: rate.provider as string, service: `${rate.provider} ${rate.servicelevel.name}`, amount: String(rate.amount), currency: String(rate.currency).toUpperCase(), test: this.shippo.testMode };
+      lastError = (tx.messages ?? []).join(' | ') || tx.status;
+    }
+    throw new AppError('SHIPPING_LABEL_FAILED', `Shippo no pudo generar la etiqueta de devolución: ${lastError}`, HttpStatus.BAD_GATEWAY);
+  }
+
   async originFor(sellerId: string, c?: PoolClient): Promise<OriginAddress | null> {
     return this.db.one<OriginAddress>(
       `select id, contact_name, company_name, line1, line2, city, region, postal_code, country_code, phone
@@ -395,9 +461,7 @@ export class ShippingService {
     const fromAddr = ShippingService.toShippoAddress({ ...from, contact_name: from.recipient_name } as any, sellerEmail);
     const toAddr = ShippingService.toShippoAddress(to as any, to.email);
     let customsId: string | undefined;
-    // US ↔ its territories ship as domestic mail: no customs declaration.
-    const US_AREA = new Set(['US', 'PR', 'VI', 'GU', 'AS', 'MP']);
-    if (from.country_code !== to.country_code && !(US_AREA.has(from.country_code) && US_AREA.has(to.country_code))) {
+    if (ShippingService.needsCustoms(from.country_code, to.country_code)) {
       const items = await this.db.many(
         `select coalesce(ois.product_title, 'Merchandise') as title, spi.quantity::int as qty, oifs.unit_price::text as unit_price,
                 oi.currency_code, v.weight_value, v.weight_unit, coalesce(ois.sku, v.sku) as sku, v.hs_code, v.country_of_origin_code,
@@ -412,35 +476,7 @@ export class ShippingService {
           where spi.shipment_id = $1`,
         [shipmentId],
       );
-      const alnum = (v: unknown, max: number) => String(v ?? '').normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, max);
-      // US exports: exemption code below the USD 2,500 filing threshold (above it an AES ITN is required).
-      const declared = items.reduce((acc, i) => acc + Number(i.unit_price ?? 0) * i.qty, 0);
-      let eelPfc: string | null = null;
-      if (from.country_code === 'US') {
-        if (declared > 2500)
-          throw new AppError('CUSTOMS_ITN_REQUIRED', 'Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.', HttpStatus.CONFLICT);
-        eelPfc = 'NOEEI_30_37_a';
-      }
-      customsId = await this.shippo.customsDeclaration({
-        signer: from.recipient_name || 'Seller',
-        reference: `NX-${s.public_number}`,
-        eelPfc,
-        items: items.map((i) => {
-          const hs = String(i.hs_code ?? '').replace(/\D/g, '');
-          return {
-            description: String(i.title).slice(0, 100),
-            quantity: i.qty,
-            net_weight: (i.weight_value ? Number(i.weight_value) * (i.weight_unit === 'g' ? 0.001 : i.weight_unit === 'lb' ? 0.4536 : 1) : 0.5).toFixed(3),
-            mass_unit: 'kg' as const,
-            value_amount: Number(i.unit_price ?? 0).toFixed(2),
-            value_currency: i.currency_code,
-            origin_country: /^[A-Z]{2}$/.test(i.country_of_origin_code ?? '') ? i.country_of_origin_code : from.country_code,
-            sku_code: alnum(i.sku, 30) || undefined,
-            manufacturer_code: alnum(i.brand, 20) || alnum(i.seller_slug, 20) || undefined,
-            ...(hs.length >= 6 ? { tariff_number: hs.slice(0, 10) } : {}),
-          };
-        }),
-      });
+      customsId = await this.customsFor(from.country_code, from.recipient_name || 'Seller', `NX-${s.public_number}`, items);
     }
     const quote = await this.shippo.shipment(fromAddr, toAddr, ShippingService.shippoParcel(parcel), { customsDeclarationId: customsId, reference: `NX-${s.public_number}` });
     if (!quote.rates.length)

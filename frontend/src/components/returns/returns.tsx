@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, ChevronRight, ClipboardCheck, CreditCard, Info, MapPin, PackageCheck, PackageOpen, RotateCcw, Truck, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, ClipboardCheck, CreditCard, Download, Info, MapPin, PackageCheck, PackageOpen, RotateCcw, Tag, Truck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { countryName, getLocale, t } from '@/lib/i18n';
@@ -14,6 +14,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Dialog, Empty, ErrorBox, PageLoader, Pagination, Segmented } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { AttachmentList } from '@/components/attachments/attachments';
+import { policySummary } from './return-policy';
 import type { Tone } from '@/lib/status';
 
 export type ReturnRole = 'customer' | 'seller' | 'staff';
@@ -149,9 +150,13 @@ export function ReturnDetail({ role, id }: { role: ReturnRole; id: string }) {
             <h2 className="text-2xl font-extrabold">{d.number}</h2>
             <p className="text-sm text-muted">{t('Pedido')} <Link href={orderHref} className="font-semibold text-brand-700 hover:underline">{d.orderNumber}</Link> · {d.store.name} · {t('Solicitada el {d}', { d: fmtDateTime(d.requestedAt) })}</p>
           </div>
-          <ReturnStatus status={d.status} label={d.statusLabel} />
+          <div className="flex flex-col items-end gap-1">
+            <ReturnStatus status={d.status} label={d.statusLabel} />
+            {d.noReturn && <Badge tone="violet">{t('Reembolso sin devolución')}</Badge>}
+          </div>
         </div>
-        <div className="mt-6"><Progress status={d.status} /></div>
+        {!d.noReturn && <div className="mt-6"><Progress status={d.status} /></div>}
+        {d.policy && !d.noReturn && <p className="mt-4 text-xs text-muted" data-return-policy>{d.policy.storePolicy ? t('Política de la tienda') : t('Política del marketplace')}: {policySummary(d.policy)}</p>}
         {d.status === 'REJECTED' && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"><b>{t('Motivo del rechazo')}:</b> {d.rejection}</p>}
         {d.status === 'CANCELLED' && <p className="mt-4 rounded-lg bg-surface p-3 text-sm text-muted">{t('La solicitud fue cancelada.')}</p>}
         <Actions role={role} d={d} busy={busy} setDialog={setDialog} run={run} />
@@ -195,6 +200,15 @@ export function ReturnDetail({ role, id }: { role: ReturnRole; id: string }) {
         </div>
 
         <div className="space-y-5">
+          {d.returnLabel && (
+            <Card className="border-brand-200 p-5 text-sm" data-return-label>
+              <h3 className="flex items-center gap-2 font-bold"><Tag className="size-4 text-brand-600" /> {t('Etiqueta de devolución prepagada')}</h3>
+              <p className="mt-2">{d.returnLabel.service} · {t('Guía')} {d.returnLabel.trackingNumber}</p>
+              <p className="text-xs text-muted">{d.returnLabel.payer === 'STORE' ? t('La paga la tienda') : t('La paga el marketplace')}{d.returnLabel.cost ? ` · ${money(d.returnLabel.cost, d.currency)}` : ''}{d.returnLabel.test ? ` · ${t('modo prueba')}` : ''}</p>
+              <Button asChild size="sm" className="mt-3 w-full"><a href={d.returnLabel.url} target="_blank" rel="noopener noreferrer"><Download /> {t('Descargar etiqueta')}</a></Button>
+              {role === 'customer' && <p className="mt-2 text-xs text-muted">{t('Imprímela, pégala en el paquete y entrégalo a la transportadora. No pagas el envío.')}</p>}
+            </Card>
+          )}
           {d.returnAddress && (
             <Card className="p-5 text-sm" data-return-address>
               <h3 className="flex items-center gap-2 font-bold"><MapPin className="size-4 text-brand-600" /> {t('Dirección para devolver')}</h3>
@@ -270,6 +284,7 @@ function Actions({ role, d, busy, setDialog, run }: { role: ReturnRole; d: any; 
     buttons.push(<Button key="approve" onClick={() => setDialog('approve')}><Check /> {t('Aprobar devolución')}</Button>);
     buttons.push(<Button key="reject" variant="outline" onClick={() => setDialog('reject')}><X /> {t('Rechazar')}</Button>);
   }
+  if (can.buyLabel) buttons.push(<Button key="label" variant="outline" loading={busy === 'label'} onClick={() => run('label', 'label', {}, 'Etiqueta de devolución generada.')}><Tag /> {t('Generar etiqueta de devolución')}</Button>);
   if (can.receive) buttons.push(<Button key="receive" loading={busy === 'receive'} onClick={() => run('receive', 'receive', {}, 'Devolución marcada como recibida.')}><PackageOpen /> {t('Marcar como recibida')}</Button>);
   if (can.inspect) buttons.push(<Button key="inspect" onClick={() => setDialog('inspect')}><ClipboardCheck /> {t('Registrar inspección')}</Button>);
   if (can.refund) buttons.push(<Button key="refund" onClick={() => setDialog('refund')}><CreditCard /> {t('Reembolsar al cliente')}</Button>);

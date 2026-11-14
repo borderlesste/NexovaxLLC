@@ -211,7 +211,10 @@ export class SupportService {
         [id],
       ).catch(() => []),
       this.db.many(
-        `select n.id, n.body_text as body, n.created_at, coalesce(up.display_name, u.email::text) as author
+        `select n.id, n.body_text as body, n.created_at, coalesce(up.display_name, u.email::text) as author,
+                coalesce((select json_agg(json_build_object('id', a.id, 'name', coalesce(a.original_filename, 'archivo'), 'mime', a.mime_type, 'size', a.size_bytes,
+                                                            'kind', case when a.mime_type like 'image/%' then 'IMAGE' else 'DOCUMENT' end) order by na.created_at)
+                            from public.support_internal_note_attachments na join public.assets a on a.id = na.asset_id where na.note_id = n.id and a.status = 'READY'), '[]') as attachments
            from public.support_internal_notes n join public.users u on u.id = n.author_user_id left join public.user_profiles up on up.user_id = u.id
           where n.ticket_id = $1 order by n.created_at`,
         [id],
@@ -267,15 +270,15 @@ export class SupportService {
   }
 
   async reply(staff: RequestUser, ticketId: string, body: string, internal: boolean, files: UploadedFile[] = []) {
-    if (!body?.trim() && !(files.length && !internal)) throw badRequest('MESSAGE_REQUIRED', 'Escribe una respuesta.');
-    if (internal && files.length) throw badRequest('INTERNAL_NOTE_FILES', 'Las notas internas no admiten adjuntos.');
+    if (!body?.trim() && !files.length) throw badRequest('MESSAGE_REQUIRED', 'Escribe una respuesta.');
     body = body?.trim() || `📎 ${files.map((f) => f.originalname ?? 'archivo').join(', ')}`;
     const assets = await this.messaging.uploadFiles(staff.id, files);
     await this.db.tx(async (c) => {
       const t = await this.db.one(`select id, conversation_id, status from public.support_tickets where id = $1`, [ticketId], c);
       if (!t) throw notFound('Reporte');
       if (internal) {
-        await this.db.exec(`insert into public.support_internal_notes (ticket_id, author_user_id, body_text) values ($1,$2,$3)`, [ticketId, staff.id, body.trim()], c);
+        const note = await this.db.one(`insert into public.support_internal_notes (ticket_id, author_user_id, body_text) values ($1,$2,$3) returning id`, [ticketId, staff.id, body.trim()], c);
+        for (const a of assets) await this.db.exec(`insert into public.support_internal_note_attachments (note_id, asset_id) values ($1,$2)`, [note!.id, a.id], c);
         return;
       }
       const part = await this.db.one(`select 1 from public.conversation_participants where conversation_id = $1 and user_id = $2 and status = 'ACTIVE'`, [t.conversation_id, staff.id], c);
@@ -310,5 +313,17 @@ export class SupportService {
     if (!t || t.requester_user_id !== user.id) throw notFound('Reporte');
     const d = await this.adminDetail(ticketId);
     return { ...d, notes: undefined, history: d.history };
+  }
+
+  /** File attached to an internal note (staff only). */
+  async noteAttachment(noteId: string, assetId: string) {
+    const a = await this.db.one(
+      `select a.storage_bucket, a.storage_key, a.mime_type, coalesce(a.original_filename, 'archivo') as name
+         from public.support_internal_note_attachments na join public.assets a on a.id = na.asset_id
+        where na.note_id = $1 and na.asset_id = $2 and a.status = 'READY'`,
+      [noteId, assetId],
+    );
+    if (!a) throw notFound('Archivo');
+    return { buffer: await this.messaging.downloadAsset(a.storage_bucket, a.storage_key), mime: a.mime_type as string, name: a.name as string };
   }
 }

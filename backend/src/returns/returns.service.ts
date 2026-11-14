@@ -12,6 +12,9 @@ import { MailService } from '../mail/mail.service';
 import { StripeService } from '../payments/stripe.service';
 import { PaypalService } from '../payments/paypal.service';
 import { MAX_MESSAGE_FILES, UploadedFile } from '../messaging/messaging.service';
+import { ResolvedPolicy, ReturnPolicyService, STORE_FAULT_REASONS } from './return-policy.service';
+import { ShippingService, Parcel } from '../shipping/shipping.service';
+import { fromMinor, toMinor } from '../common/money';
 
 export const RETURN_STATUS_LABEL: Record<string, string> = {
   REQUESTED: 'Solicitada',
@@ -53,24 +56,11 @@ export class ReturnsService {
     private readonly mail: MailService,
     private readonly stripe: StripeService,
     private readonly paypal: PaypalService,
+    private readonly policies: ReturnPolicyService,
+    private readonly shipping: ShippingService,
   ) {}
 
   // ------------------------------------------------------------------ policy & eligibility
-  private async policy(c?: PoolClient) {
-    const p = await this.db.one(
-      `select v.id as version_id, d.return_window_seconds::bigint as window_seconds, d.return_window_anchor as anchor, d.allow_partial_return,
-              d.require_reason, d.require_evidence, d.inspection_required, d.original_shipping_refund_mode, d.tax_refund_mode, d.metadata
-         from public.business_rule_groups g join public.business_rule_versions v on v.rule_group_id = g.id and v.status = 'ACTIVE'
-         join public.return_policy_rule_definitions d on d.rule_version_id = v.id
-        where g.rule_type_code = 'RETURN_POLICY' and g.scope_type_code = 'GLOBAL'
-        order by v.activated_at desc limit 1`,
-      [],
-      c,
-    );
-    if (!p) throw new AppError('RETURN_POLICY_MISSING', 'Las devoluciones no están disponibles en este momento.', HttpStatus.SERVICE_UNAVAILABLE);
-    return { ...p, windowDays: Math.round(Number(p.window_seconds) / 86400) };
-  }
-
   async reasons() {
     const rows = await this.db.many(
       `select code, label, description, requires_comment, requires_evidence, metadata->>'labelEn' as label_en
@@ -83,9 +73,8 @@ export class ReturnsService {
   async eligibility(user: RequestUser, orderId: string) {
     const o = await this.db.one(`select id, public_number, currency_code from public.orders where id = $1 and customer_id = $2`, [orderId, user.id]);
     if (!o) throw notFound('Pedido');
-    const pol = await this.policy();
     const groups = await this.db.many(
-      `select so.id, so.public_number, coalesce(ssp.display_name, s.slug) as store,
+      `select so.id, so.public_number, so.seller_id, coalesce(ssp.display_name, s.slug) as store,
               (select max(sh.delivered_at) from public.shipments sh where sh.seller_order_id = so.id and sh.status <> 'CANCELLED') as delivered_at
          from public.seller_orders so join public.sellers s on s.id = so.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
         where so.order_id = $1 order by so.created_at`,
@@ -103,14 +92,20 @@ export class ReturnsService {
       [o.id, OPEN_STATES],
     );
     const now = Date.now();
+    const pols = new Map<string, ResolvedPolicy>();
+    for (const g of groups) if (!pols.has(g.seller_id)) pols.set(g.seller_id, await this.policies.resolve(g.seller_id));
+    const pol = pols.get(groups[0]?.seller_id) ?? (await this.policies.global());
+    const view = (p: ResolvedPolicy) => ({ windowDays: p.windowDays, requireEvidence: p.requireEvidence, inspection: p.inspectionRequired, shippingRefund: p.shippingRefund,
+      restockingFeePercent: p.restockingFeePercent, labelPayer: p.labelPayer, storePolicy: p.scope === 'SELLER' });
     return {
       orderId: o.id,
       orderNumber: orderRef(o.public_number),
       currency: o.currency_code,
-      policy: { windowDays: pol.windowDays, requireReason: pol.require_reason, inspection: pol.inspection_required, shippingRefunded: pol.original_shipping_refund_mode !== 'NONE' },
+      policy: view(pol),
       reasons: await this.reasons(),
       sellerOrders: groups.map((g: any) => {
-        const deadline = g.delivered_at ? new Date(new Date(g.delivered_at).getTime() + Number(pol.window_seconds) * 1000) : null;
+        const gp = pols.get(g.seller_id)!;
+        const deadline = g.delivered_at ? new Date(new Date(g.delivered_at).getTime() + gp.windowSeconds * 1000) : null;
         const open = !!deadline && deadline.getTime() > now;
         const its = items
           .filter((i: any) => i.seller_order_id === g.id)
@@ -119,7 +114,7 @@ export class ReturnsService {
             quantity: i.quantity, delivered: i.delivered, returnable: Math.max(i.delivered - i.returned - i.open_qty, 0), inProgress: i.open_qty,
           }));
         return {
-          sellerOrderId: g.id, number: `V-${g.public_number}`, store: g.store, deliveredAt: g.delivered_at, deadline,
+          sellerOrderId: g.id, number: `V-${g.public_number}`, store: g.store, deliveredAt: g.delivered_at, deadline, policy: view(gp),
           eligible: open && its.some((i) => i.returnable > 0),
           reason: !g.delivered_at ? 'NOT_DELIVERED' : !open ? 'WINDOW_EXPIRED' : its.some((i) => i.returnable > 0) ? null : 'NOTHING_LEFT',
           items: its,
@@ -132,14 +127,14 @@ export class ReturnsService {
   async create(user: RequestUser, input: CreateReturnInput, files: UploadedFile[] = [], idempotencyKey?: string) {
     if (files.length > MAX_MESSAGE_FILES) throw badRequest('TOO_MANY_FILES', `Puedes adjuntar hasta ${MAX_MESSAGE_FILES} fotos.`);
     const so = await this.db.one(
-      `select so.id, so.order_id, o.customer_id from public.seller_orders so join public.orders o on o.id = so.order_id where so.id = $1`,
+      `select so.id, so.order_id, so.seller_id, o.customer_id from public.seller_orders so join public.orders o on o.id = so.order_id where so.id = $1`,
       [input.sellerOrderId],
     );
     if (!so || so.customer_id !== user.id) throw notFound('Pedido');
     const elig = await this.eligibility(user, so.order_id);
     const group = elig.sellerOrders.find((g) => g.sellerOrderId === so.id)!;
     if (group.reason === 'NOT_DELIVERED') throw conflict('RETURN_NOT_DELIVERED', 'Solo puedes devolver productos que ya recibiste.');
-    if (group.reason === 'WINDOW_EXPIRED') throw conflict('RETURN_WINDOW_EXPIRED', `El plazo de devolución (${elig.policy.windowDays} días desde la entrega) ya venció.`);
+    if (group.reason === 'WINDOW_EXPIRED') throw conflict('RETURN_WINDOW_EXPIRED', `El plazo de devolución (${group.policy.windowDays} días desde la entrega) ya venció.`);
     const reasons = new Map(elig.reasons.map((r) => [r.code, r]));
     const wanted = input.items.filter((i) => i.quantity > 0);
     if (!wanted.length) throw badRequest('RETURN_ITEMS_REQUIRED', 'Selecciona al menos un producto y la cantidad a devolver.');
@@ -156,7 +151,8 @@ export class ReturnsService {
         throw badRequest('RETURN_COMMENT_REQUIRED', `Explica el motivo «${r.label}» en el comentario.`);
       if (r.requiresEvidence && !files.length) throw badRequest('RETURN_EVIDENCE_REQUIRED', `Adjunta al menos una foto para el motivo «${r.label}».`);
     }
-    const pol = await this.policy();
+    const pol = await this.policies.resolve(so.seller_id);
+    if (pol.requireEvidence && !files.length) throw badRequest('RETURN_EVIDENCE_REQUIRED', 'La política de devoluciones de esta tienda pide al menos una foto del producto.');
     // Photos are stored first; they only become visible once linked to the request.
     const evidence: { id: string }[] = [];
     for (const f of files) {
@@ -167,7 +163,7 @@ export class ReturnsService {
     const id = await this.db.tx(async (c) => {
       const rid = (await this.db.one(
         `select public.create_return_request($1,$2,$3,$4,$5::jsonb,$6,'CUSTOMER',$7,$8) as id`,
-        [so.order_id, so.id, user.id, pol.version_id, JSON.stringify({ windowDays: pol.windowDays, anchor: pol.anchor, inspection: pol.inspection_required, version: pol.version_id }),
+        [so.order_id, so.id, user.id, pol.versionId, JSON.stringify({ windowDays: pol.windowDays, anchor: pol.anchor, inspection: pol.inspectionRequired, labelPayer: pol.labelPayer, shippingRefund: pol.shippingRefund, restockingFeePercent: pol.restockingFeePercent, scope: pol.scope, version: pol.versionId }),
          idempotencyKey || `return:${user.id}:${randomUUID()}`, input.comment?.trim() || null, corr],
         c,
       ))!.id;
@@ -241,6 +237,7 @@ export class ReturnsService {
       await this.summary(c, rr);
     });
     this.mail.fire(() => this.mail.returnEvent(id, 'APPROVED'));
+    if (await this.labelPayer(id)) await this.ensureLabel(user, id).catch((e) => this.logger.warn(`return label ${id}: ${e?.message}`));
     return this.detail(user, id, scope);
   }
 
@@ -265,6 +262,11 @@ export class ReturnsService {
       await this.summary(c, rr);
     });
     this.mail.fire(() => this.mail.returnEvent(id, 'RECEIVED'));
+    const pinned = await this.pinnedPolicy(id);
+    if (pinned && !pinned.inspectionRequired) {
+      const recv = await this.db.many(`select id, received_quantity::int as q from public.return_items where return_request_id = $1 and received_quantity > 0`, [id]);
+      return this.inspect(user, id, scope, { items: recv.map((r: any) => ({ returnItemId: r.id, accepted: r.q, restock: r.q, condition: 'OPENED' })), notes: 'Aceptada al recibir (la política no exige inspección).' });
+    }
     return this.detail(user, id, scope);
   }
 
@@ -516,7 +518,9 @@ export class ReturnsService {
         [id],
       ),
     ]);
-    const pol = await this.policy().catch(() => null);
+    const pol = await this.pinnedPolicy(id);
+    const label = await this.db.one(`select * from public.nx_return_labels where return_request_id = $1`, [id]);
+    const payer = label ? label.payer : await this.labelPayer(id);
     const can = {
       cancel: scope.as === 'customer' && ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'AWAITING_SHIPMENT'].includes(rr.status),
       ship: scope.as === 'customer' && ['APPROVED', 'AWAITING_SHIPMENT'].includes(rr.status),
@@ -524,6 +528,7 @@ export class ReturnsService {
       receive: scope.as !== 'customer' && ['APPROVED', 'AWAITING_SHIPMENT', 'IN_TRANSIT'].includes(rr.status),
       inspect: scope.as !== 'customer' && ['RECEIVED', 'INSPECTING'].includes(rr.status),
       refund: scope.as === 'staff' && rr.status === 'REFUND_PENDING',
+      buyLabel: scope.as !== 'customer' && !label && !!payer && ['APPROVED', 'AWAITING_SHIPMENT'].includes(rr.status) && this.shipping.shippoEnabled,
     };
     return {
       id: rr.id,
@@ -545,6 +550,13 @@ export class ReturnsService {
       inspectedAt: rr.inspection_completed_at,
       closedAt: rr.closed_at,
       windowDays: pol?.windowDays ?? null,
+      policy: pol ? { windowDays: pol.windowDays, labelPayer: pol.labelPayer, shippingRefund: pol.shippingRefund, restockingFeePercent: pol.restockingFeePercent, inspection: pol.inspectionRequired, storePolicy: pol.scope === 'SELLER' } : null,
+      noReturn: rr.internal_note === 'NO_RETURN_REFUND',
+      labelPayer: payer,
+      returnLabel: label
+        ? { carrier: label.carrier, service: label.service, trackingNumber: label.tracking_number, trackingUrl: label.tracking_url, url: label.label_url, payer: label.payer, test: label.test_mode,
+            cost: scope.as === 'customer' ? undefined : String(label.cost_amount), createdAt: label.created_at }
+        : null,
       returnShipment: rr.return_carrier ? { carrier: rr.return_carrier, trackingNumber: rr.return_tracking, shippedAt: rr.return_shipped_at } : null,
       returnAddress:
         ['APPROVED', 'AWAITING_SHIPMENT', 'IN_TRANSIT'].includes(rr.status) && rr.ret_line1
@@ -579,6 +591,177 @@ export class ReturnsService {
     );
     if (!a) throw notFound('Archivo');
     return { buffer: await this.storage.download(a.storage_bucket, a.storage_key), mime: a.mime_type as string, name: a.name as string };
+  }
+
+  // ------------------------------------------------------------------ prepaid return label
+  private async pinnedPolicy(id: string) {
+    const r = await this.db.one(`select policy_rule_version_id as v from public.return_requests where id = $1`, [id]);
+    return r?.v ? this.policies.forVersion(r.v) : null;
+  }
+
+  /** Who pays a prepaid label for this return (null = the customer arranges the shipment). */
+  private async labelPayer(id: string): Promise<'STORE' | 'MARKETPLACE' | null> {
+    const rr = await this.db.one(`select internal_note from public.return_requests where id = $1`, [id]);
+    if (rr?.internal_note === 'NO_RETURN_REFUND') return null;
+    const pol = await this.pinnedPolicy(id);
+    if (!pol) return null;
+    if (pol.labelPayer === 'STORE' || pol.labelPayer === 'MARKETPLACE') return pol.labelPayer;
+    if (pol.labelPayer === 'BY_REASON') {
+      const fault = await this.db.one(
+        `select 1 from public.return_items ri join public.return_reason_definitions rd on rd.id = ri.reason_definition_id
+          where ri.return_request_id = $1 and rd.code = any($2::text[]) limit 1`,
+        [id, STORE_FAULT_REASONS],
+      );
+      return fault ? 'STORE' : null;
+    }
+    return null;
+  }
+
+  async buyLabel(user: RequestUser, id: string, scope: Scope) {
+    await this.db.tx((c) => this.authorize(c, user, id, scope));
+    await this.ensureLabel(user, id);
+    return this.detail(user, id, scope);
+  }
+
+  /**
+   * Buys the prepaid label (customer → store) and books its cost: the platform pays the carrier
+   * (RETURN_SHIPPING_EXPENSE / SHIPPING_PAYABLE) and, when the store pays, recovers it from the
+   * store's available balance (or as a receivable when the balance is not enough).
+   */
+  private async ensureLabel(user: RequestUser, id: string) {
+    const existing = await this.db.one(`select 1 from public.nx_return_labels where return_request_id = $1`, [id]);
+    if (existing) return;
+    const payer = await this.labelPayer(id);
+    if (!payer) throw conflict('RETURN_LABEL_NOT_APPLICABLE', 'Según la política, el cliente envía esta devolución por su cuenta.');
+    const rr = await this.db.one(`select * from public.return_requests where id = $1`, [id]);
+    if (!['APPROVED', 'AWAITING_SHIPMENT'].includes(rr!.status)) throw conflict('RETURN_NOT_SHIPPABLE', 'La devolución no está esperando el envío del cliente.');
+    const sh = await this.db.one(
+      `select sh.id from public.shipments sh where sh.seller_order_id = $1 and sh.status <> 'CANCELLED' order by sh.created_at desc limit 1`,
+      [rr!.seller_order_id],
+    );
+    if (!sh) throw conflict('RETURN_ORIGINAL_SHIPMENT_MISSING', 'No se encontró el envío original del pedido.');
+    const [customerAddr, storeAddr, pkg, items, emails] = await Promise.all([
+      this.db.one(`select * from public.shipment_address_snapshots where shipment_id = $1 and address_type = 'TO'`, [sh.id]),
+      this.db.one(
+        `select a.*, a.contact_name as recipient_name from public.seller_ship_from_addresses a where a.seller_id = $1 and a.status = 'ACTIVE' order by a.is_default desc, a.created_at limit 1`,
+        [rr!.seller_id],
+      ),
+      this.db.one(`select * from public.shipment_packages where shipment_id = $1 order by package_sequence limit 1`, [sh.id]),
+      this.db.many(
+        `select coalesce(ois.product_title, 'Merchandise') as title, ri.approved_quantity::int as qty, oifs.unit_price::text as unit_price, oi.currency_code,
+                v.weight_value, v.weight_unit, v.length_value, v.width_value, v.height_value, v.dimension_unit,
+                coalesce(ois.sku, v.sku) as sku, v.hs_code, v.country_of_origin_code, b.name as brand, s.slug as seller_slug
+           from public.return_items ri join public.order_items oi on oi.id = ri.order_item_id
+           left join public.order_item_snapshots ois on ois.order_item_id = oi.id
+           left join public.order_item_financial_snapshots oifs on oifs.order_item_id = oi.id
+           left join public.product_variants v on v.id = oi.variant_id left join public.products p on p.id = oi.product_id
+           left join public.brands b on b.id = p.brand_id left join public.sellers s on s.id = oi.seller_id
+          where ri.return_request_id = $1 and ri.approved_quantity > 0`,
+        [id],
+      ),
+      this.db.one(
+        `select u.email::text as customer, coalesce(ssp.support_email, su.email::text) as store from public.users u, public.sellers s
+           join public.users su on su.id = s.owner_user_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+          where u.id = $1 and s.id = $2`,
+        [rr!.customer_id, rr!.seller_id],
+      ),
+    ]);
+    if (!customerAddr || !storeAddr || !items.length) throw conflict('RETURN_LABEL_DATA_MISSING', 'Faltan direcciones o productos para generar la etiqueta.');
+    const parcel: Parcel = pkg && items.length
+      ? ShippingService.parcelFor(items)
+      : { weightKg: '1.000', length: '30.0', width: '20.0', height: '10.0' };
+    const tx = await this.shipping.buyReturnLabel({ reference: returnRef(rr!.public_number), from: customerAddr, to: storeAddr, parcel, items, customerEmail: emails?.customer, storeEmail: emails?.store });
+    if (tx.currency !== rr!.currency_code)
+      this.logger.warn(`return label ${id}: label currency ${tx.currency} differs from order ${rr!.currency_code}; cost booked in label currency`);
+    const cost = toMinor(tx.amount);
+    await this.db.tx(async (c) => {
+      const batch = await this.db.one(
+        `insert into public.ledger_batches (batch_type, status, currency_code, source_type, source_id, idempotency_key, order_id, seller_order_id, actor_user_id, correlation_id, description, metadata)
+         values ('RETURN_SHIPPING_LABEL','DRAFT',$1,'RETURN_REQUEST',$2,$3,$4,$5,$6,$7,$8,$9::jsonb) returning id`,
+        [tx.currency, id, `return-label:${id}`, rr!.order_id, rr!.seller_order_id, user.id, randomUUID(),
+         `Etiqueta de devolución ${returnRef(rr!.public_number)} (${payer === 'STORE' ? 'paga la tienda' : 'paga el marketplace'})`,
+         JSON.stringify({ payer, transactionId: tx.transactionId })],
+        c,
+      );
+      const line = async (code: string, side: 'DEBIT' | 'CREDIT', amount: bigint, key: string, owner: { seller?: string; external?: string } = {}) => {
+        if (amount <= 0n) return;
+        const acc = await this.db.one<{ id: string }>(`select public.get_or_create_ledger_account($1,$2,$3,null,$4) as id`, [code, tx.currency, owner.seller ?? null, owner.external ?? null], c);
+        await this.db.exec(`select public.add_ledger_entry($1,$2,$3,$4,$5,null,null,$6,'{}'::jsonb)`, [batch!.id, acc!.id, side, fromMinor(amount), `return-label:${id}:${key}`, key], c);
+      };
+      await line('RETURN_SHIPPING_EXPENSE', 'DEBIT', cost, 'expense');
+      await line('SHIPPING_PAYABLE', 'CREDIT', cost, 'carrier', { external: 'SHIPPO' });
+      if (payer === 'STORE') {
+        const bal = await this.db.one(`select available_amount from public.seller_balance_projections where seller_id = $1 and currency_code = $2 for update`, [rr!.seller_id, tx.currency], c);
+        const available = toMinor(bal?.available_amount ?? 0);
+        const fromAvailable = available >= cost ? cost : available > 0n ? available : 0n;
+        await line('SELLER_AVAILABLE', 'DEBIT', fromAvailable, 'store-available', { seller: rr!.seller_id });
+        await line('SELLER_RECEIVABLE', 'DEBIT', cost - fromAvailable, 'store-receivable', { seller: rr!.seller_id });
+        await line('RETURN_SHIPPING_RECOVERY', 'CREDIT', cost, 'recovery');
+      }
+      await this.db.exec(`select public.post_ledger_batch($1)`, [batch!.id], c);
+      await this.db.exec(
+        `insert into public.nx_return_labels (return_request_id, provider_code, provider_transaction_id, carrier, service, tracking_number, tracking_url, label_url,
+                 cost_amount, currency_code, payer, ledger_batch_id, test_mode, created_by) values ($1,'SHIPPO',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [id, tx.transactionId, tx.carrier, tx.service, tx.trackingNumber, tx.trackingUrl, tx.labelUrl, tx.amount, tx.currency, payer, batch!.id, tx.test, user.id],
+        c,
+      );
+      const st = await this.db.one(`select status from public.return_requests where id = $1`, [id], c);
+      if (st!.status === 'APPROVED') await this.setStatus(c, id, 'AWAITING_SHIPMENT');
+    });
+    this.mail.fire(() => this.mail.returnEvent(id, 'LABEL_READY'));
+  }
+
+  // ------------------------------------------------------------------ refund without return (staff)
+  /**
+   * Refunds delivered units the customer keeps (damaged beyond return, wrong item not worth
+   * shipping back, lost after delivery…). Recorded as a return request closed without shipment:
+   * same refund calculation, ledger and e-mails; nothing goes back to inventory.
+   */
+  async refundWithoutReturn(staff: RequestUser, input: { orderId: string; sellerOrderId: string; items: { orderItemId: string; quantity: number }[]; reasonCode: string; note: string; manualReference?: string }) {
+    if (!isStaff(staff)) throw forbidden();
+    const so = await this.db.one(
+      `select so.id, so.order_id, so.seller_id, o.customer_id from public.seller_orders so join public.orders o on o.id = so.order_id where so.id = $1 and so.order_id = $2`,
+      [input.sellerOrderId, input.orderId],
+    );
+    if (!so) throw notFound('Pedido');
+    const wanted = input.items.filter((i) => i.quantity > 0);
+    if (!wanted.length) throw badRequest('RETURN_ITEMS_REQUIRED', 'Selecciona al menos una unidad a reembolsar.');
+    const reason = await this.db.one(`select id from public.return_reason_definitions where seller_id is null and code = $1 and status = 'ACTIVE'`, [input.reasonCode]);
+    if (!reason) throw badRequest('RETURN_REASON_REQUIRED', 'Selecciona el motivo del reembolso.');
+    for (const w of wanted) {
+      const it = await this.db.one(
+        `select oi.delivered_quantity::int - oi.returned_quantity::int - coalesce((select sum(ri.requested_quantity) from public.return_items ri join public.return_requests r on r.id = ri.return_request_id
+                 where ri.order_item_id = oi.id and r.status = any($3::text[]))::int, 0) as left
+           from public.order_items oi where oi.id = $1 and oi.seller_order_id = $2`,
+        [w.orderItemId, so.id, OPEN_STATES],
+      );
+      if (!it) throw badRequest('RETURN_ITEM_INVALID', 'Uno de los productos no pertenece a esta venta.');
+      if (!Number.isInteger(w.quantity) || w.quantity > it.left) throw badRequest('RETURN_QUANTITY_INVALID', `Solo hay ${Math.max(it.left, 0)} unidad(es) entregadas sin reembolsar de ese producto.`);
+    }
+    const pol = await this.policies.resolve(so.seller_id);
+    const id = await this.db.tx(async (c) => {
+      const rid = (await this.db.one(
+        `select public.create_return_request($1,$2,$3,$4,$5::jsonb,$6,'ADMIN',$7,$8) as id`,
+        [so.order_id, so.id, so.customer_id, pol.versionId, JSON.stringify({ windowDays: pol.windowDays, version: pol.versionId, noReturn: true }), `no-return:${randomUUID()}`, input.note.trim(), randomUUID()],
+        c,
+      ))!.id;
+      await this.db.exec(`update public.return_requests set internal_note = 'NO_RETURN_REFUND' where id = $1`, [rid], c);
+      for (const w of wanted) await this.db.exec(`select public.add_return_item($1,$2,$3,$4,$5,null,'{}'::jsonb)`, [rid, w.orderItemId, w.quantity, reason.id, input.note.trim()], c);
+      const ris = await this.db.many(`select id, requested_quantity::int as q from public.return_items where return_request_id = $1`, [rid], c);
+      await this.db.exec(`select public.approve_return_request($1,$2,$3::jsonb,$4)`, [rid, staff.id, JSON.stringify(ris.map((r: any) => ({ return_item_id: r.id, approved_quantity: r.q }))), 'Reembolso sin devolución del producto'], c);
+      for (const r of ris) await this.db.exec(`select public.record_return_item_receipt($1,$2)`, [r.id, r.q], c);
+      const insp = await this.db.one(`insert into public.return_inspections (return_request_id, status, inspected_by, started_at, notes) values ($1,'OPEN',$2,now(),$3) returning id`, [rid, staff.id, 'Sin devolución física: el cliente conserva el producto.'], c);
+      for (const r of ris)
+        await this.db.exec(
+          `insert into public.return_inspection_items (inspection_id, return_item_id, inspected_quantity, accepted_quantity, rejected_quantity, restock_quantity, condition_code, disposition_code)
+           values ($1,$2,$3,$3,0,0,'NOT_RETURNED','KEPT_BY_CUSTOMER')`,
+          [insp!.id, r.id, r.q],
+          c,
+        );
+      await this.db.exec(`select public.complete_return_inspection($1,$2)`, [insp!.id, staff.id], c);
+      return rid;
+    });
+    return this.refund(staff, id, { manualReference: input.manualReference });
   }
 
   // ------------------------------------------------------------------ helpers

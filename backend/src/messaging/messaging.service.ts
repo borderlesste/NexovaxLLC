@@ -75,6 +75,10 @@ export class MessagingService {
     return { buffer: await this.storage.download(a.storage_bucket, a.storage_key), mime: a.mime_type as string, name: a.name as string };
   }
 
+  downloadAsset(bucket: string, key: string) {
+    return this.storage.download(bucket, key);
+  }
+
   /** Bell notice for the other side of the conversation. */
   async notifyMessage(conversationId: string, senderId: string, body: string) {
     const c = await this.db.one(

@@ -96,7 +96,7 @@ export default function ReportsAdminPage() {
                     <p className="text-xs font-bold">{m.staff ? `${m.author} (soporte)` : m.author} · {fmtDateTime(m.at)}</p>{!(m.attachments?.length && m.body.startsWith('📎')) && <p className="mt-1 whitespace-pre-line">{m.body}</p>}<AttachmentList base={`/support/conversations/${d.conversationId}/attachments`} items={m.attachments} />
                   </div>
                 ))}
-                {d.notes.map((n: any) => <div key={n.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p className="text-xs font-bold">{t('Nota interna ·')}{' '}{n.author} · {fmtDateTime(n.created_at)}</p><p className="mt-1">{n.body}</p></div>)}
+                {d.notes.map((n: any) => <div key={n.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p className="text-xs font-bold">{t('Nota interna ·')}{' '}{n.author} · {fmtDateTime(n.created_at)}</p>{!(n.attachments?.length && n.body.startsWith('📎')) && <p className="mt-1">{n.body}</p>}<AttachmentList base={`/support/admin/notes/${n.id}/attachments`} items={n.attachments} /></div>)}
               </div>
               <div className="grid gap-3 border-b border-line p-5 sm:grid-cols-2">
                 <Field label={t('Asignar a')}>
@@ -121,8 +121,8 @@ export default function ReportsAdminPage() {
                 </div>
                 <Textarea rows={3} className="mt-3" value={text} onChange={(e) => setText(e.target.value)} placeholder={mode === 'reply' ? t('Escribe una respuesta para {a}…', { a: d.requester.name }) : t('Nota visible solo para el equipo…')} />
                 <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-                  {mode === 'reply' ? <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} /> : <span />}
-                  <Button onClick={() => run('reply', async () => { const r = await upload(`/support/admin/tickets/${d.id}/reply`, formWith({ body: text.trim(), internal: mode === 'note' ? 'true' : 'false' }, mode === 'reply' ? files : [])); setText(''); setFiles([]); return r; }, mode === 'reply' ? 'Respuesta enviada.' : 'Nota guardada.')} loading={busy === 'reply'} disabled={!text.trim() && !(mode === 'reply' && files.length)}><Send /> {mode === 'reply' ? t('Enviar respuesta') : t('Guardar nota')}</Button>
+                  <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} />
+                  <Button onClick={() => run('reply', async () => { const r = await upload(`/support/admin/tickets/${d.id}/reply`, formWith({ body: text.trim(), internal: mode === 'note' ? 'true' : 'false' }, files)); setText(''); setFiles([]); return r; }, mode === 'reply' ? 'Respuesta enviada.' : 'Nota guardada.')} loading={busy === 'reply'} disabled={!text.trim() && !files.length}><Send /> {mode === 'reply' ? t('Enviar respuesta') : t('Guardar nota')}</Button>
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
                   <Button variant="danger" onClick={() => run('esc', () => post(`/support/admin/tickets/${d.id}/assign`, { teamCode: 'MODERATION', assignToMe: false }), t('Escalado a moderación.'))}><ArrowUpRight /> {t('Escalar')}</Button>

@@ -101,6 +101,12 @@ export class SupportController {
   }
 
   @Roles('SUPPORT', 'MODERATOR')
+  @Get('admin/notes/:noteId/attachments/:assetId')
+  async noteAttachment(@Param('noteId', ParseUUIDPipe) noteId: string, @Param('assetId', ParseUUIDPipe) assetId: string, @Res() res: Response) {
+    sendAttachment(res, await this.support.noteAttachment(noteId, assetId));
+  }
+
+  @Roles('SUPPORT', 'MODERATOR')
   @Post('admin/tickets/:id/assign')
   assign(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignDto) {
     return this.support.assign(user, id, dto);

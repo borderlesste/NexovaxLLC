@@ -14,6 +14,7 @@ import { Field, Select, Textarea } from '@/components/ui/input';
 import { Empty, ErrorBox, PageLoader } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { FilePicker, formWith } from '@/components/attachments/attachments';
+import { policySummary } from '@/components/returns/return-policy';
 
 const WHY: Record<string, string> = {
   NOT_DELIVERED: 'Podrás solicitar la devolución cuando el pedido se marque como entregado.',
@@ -52,7 +53,7 @@ function NewReturn() {
       if (!r) return toast.error(t('Indica el motivo de la devolución de «{p}».', { p: it.title }));
       if (r.requiresComment && !v.comment.trim() && !comment.trim()) return toast.error(t('Explica el motivo «{r}» en el comentario.', { r: label(r) }));
     }
-    if (needsPhoto && !files.length) return toast.error(t('Adjunta al menos una foto del problema.'));
+    if ((needsPhoto || group.policy?.requireEvidence) && !files.length) return toast.error(t('Adjunta al menos una foto del problema.'));
     setBusy(true);
     try {
       const r = await upload('/me/returns', formWith({
@@ -121,7 +122,7 @@ function NewReturn() {
               })}
             </Card>
             <Card className="p-5">
-              <Field label={t('Fotos del producto')} required={needsPhoto} hint={needsPhoto ? t('Obligatorias para este motivo') : t('(recomendado) hasta 4 fotos')}>
+              <Field label={t('Fotos del producto')} required={needsPhoto || !!group.policy?.requireEvidence} hint={needsPhoto ? t('Obligatorias para este motivo') : t('(recomendado) hasta 4 fotos')}>
                 <FilePicker files={files} onChange={setFiles} imagesOnly label={t('Agregar fotos')} />
               </Field>
               <Field label={t('Comentario para la tienda')} hint={t('(opcional)')} className="mt-4">
@@ -133,6 +134,7 @@ function NewReturn() {
             <h3 className="font-bold">{t('Resumen')}</h3>
             <p className="mt-2 text-muted">{group.store} · {t('Entregado el {d}', { d: fmtDate(group.deliveredAt) })}</p>
             <p className="text-muted">{t('Puedes devolver hasta el {d}', { d: fmtDate(group.deadline) })}</p>
+            {group.policy && <p className="mt-2 rounded-lg bg-surface p-2 text-xs" data-new-return-policy>{group.policy.storePolicy ? t('Política de la tienda') : t('Política del marketplace')}: {policySummary(group.policy)}</p>}
             <div className="mt-4 flex justify-between border-t border-line pt-3 text-base font-extrabold"><span>{t('Reembolso estimado')}</span><span>{money(total, data.currency)}</span></div>
             <p className="mt-1 text-xs text-muted">{t('Más los impuestos de esos productos. El envío original no se reembolsa.')}</p>
             <ul className="mt-4 space-y-2 text-xs text-muted">

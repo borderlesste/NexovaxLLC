@@ -42,6 +42,7 @@ import { NotificationsService } from './notifications/notifications.service';
 import { NotificationsController } from './notifications/notifications.controller';
 import { ReturnsService } from './returns/returns.service';
 import { ReturnsController } from './returns/returns.controller';
+import { ReturnPolicyService } from './returns/return-policy.service';
 import { CardsService } from './payments/cards.service';
 import { CardsController } from './payments/cards.controller';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
@@ -91,6 +92,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     PaymentsService,
     NotificationsService,
     ReturnsService,
+    ReturnPolicyService,
     CardsService,
     PayoutSchedulesService,
     ShippingSettlementService,

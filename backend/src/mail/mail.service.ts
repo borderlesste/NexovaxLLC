@@ -654,7 +654,7 @@ export class MailService {
   // ------------------------------------------------------------------ returns & refunds
 
   /** Return lifecycle e-mails: the store hears about requests and shipments, the buyer about every decision. */
-  async returnEvent(returnId: string, event: 'REQUESTED' | 'IN_TRANSIT' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'INSPECTED' | 'REFUNDED' | 'CLOSED_NO_REFUND') {
+  async returnEvent(returnId: string, event: 'REQUESTED' | 'IN_TRANSIT' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'INSPECTED' | 'REFUNDED' | 'CLOSED_NO_REFUND' | 'LABEL_READY') {
     const r = await this.db.one(
       `select rr.id, rr.public_number, rr.customer_id, rr.seller_id, rr.order_id, rr.currency_code, rr.rejection_detail, rr.seller_comment,
               o.public_number as order_number, coalesce(ssp.display_name, s.slug) as store,
@@ -709,6 +709,7 @@ export class MailService {
       RECEIVED: [t('La tienda recibió tu devolución', 'The store received your return'), t(`${r.store} recibió el paquete de la devolución ${ref} y lo está revisando.`, `${r.store} received the package for return ${ref} and is checking it.`)],
       INSPECTED: [t('Devolución revisada', 'Return checked'), t(`${r.store} revisó los productos de la devolución ${ref}. Procesaremos tu reembolso en breve.`, `${r.store} checked the items of return ${ref}. We will process your refund shortly.`)],
       REFUNDED: [t('Reembolso realizado', 'Refund issued'), t(`Te devolvimos ${amount} por la devolución ${ref} al mismo medio de pago. Según tu banco puede tardar de 5 a 10 días hábiles en verse.`, `We refunded ${amount} for return ${ref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`)],
+      LABEL_READY: [t('Tu etiqueta de devolución está lista', 'Your return label is ready'), t(`Descarga la etiqueta prepagada de la devolución ${ref}, pégala en el paquete y entrégalo a la transportadora. No tienes que pagar el envío.`, `Download the prepaid label for return ${ref}, stick it on the package and hand it to the carrier. You don’t pay for shipping.`)],
       CLOSED_NO_REFUND: [t('Devolución cerrada', 'Return closed'), t(`La revisión de la devolución ${ref} no aceptó unidades para reembolso. Si tienes dudas, abre un reporte en el centro de ayuda.`, `The inspection of return ${ref} accepted no units for a refund. If you have questions, open a report in the help center.`)],
     };
     const [title, line] = copy[event];
@@ -726,7 +727,7 @@ export class MailService {
         title,
         body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
           (event === 'REFUNDED' && r.refund_number ? rows([[t('Reembolso', 'Refund'), esc(refundRef(r.refund_number))], [t('Monto', 'Amount'), esc(amount)], [t('Pedido', 'Order'), esc(oref)]]) : ''),
-        cta: { label: t('Ver mi devolución', 'View my return'), url: `${config.webUrl}/cuenta/devoluciones/${returnId}` },
+        cta: { label: event === 'LABEL_READY' ? t('Descargar etiqueta', 'Download label') : t('Ver mi devolución', 'View my return'), url: `${config.webUrl}/cuenta/devoluciones/${returnId}` },
         text: line,
       }),
     });

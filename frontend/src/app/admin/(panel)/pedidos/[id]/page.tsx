@@ -6,6 +6,7 @@ import { get } from '@/lib/api';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { ErrorBox, PageLoader } from '@/components/ui/misc';
 import { OrderDetailView } from '@/components/orders/order-detail';
+import { RefundWithoutReturn } from '@/components/returns/refund-without-return';
 
 export default function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -14,7 +15,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
   if (q.isError) return <ErrorBox message="No encontramos este pedido." />;
   return (
     <>
-      <PageHeader crumbs={[{ label: t('Pedidos'), href: '/admin/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description={`Cliente: ${q.data.customer.name} · ${q.data.customer.email}`} />
+      <PageHeader crumbs={[{ label: t('Pedidos'), href: '/admin/pedidos' }, { label: q.data.number }]} title={`Pedido ${q.data.number}`} description={`Cliente: ${q.data.customer.name} · ${q.data.customer.email}`} actions={<RefundWithoutReturn order={q.data} />} />
       <OrderDetailView order={q.data} role="admin" onChanged={() => q.refetch()} />
     </>
   );
