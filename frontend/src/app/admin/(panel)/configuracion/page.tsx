@@ -211,7 +211,7 @@ export default function SettingsPage() {
                       <Field label={t('Código')}><Input value={r.code} onChange={(e) => setRateRow(i, 'code', e.target.value.toUpperCase().replace(/[^A-Z_]/g, ''))} /></Field>
                       <Field label={t('Nombre')}><Input rule="businessName" value={r.name} onChange={(e) => setRateRow(i, 'name', e.target.value)} /></Field>
                       <Field label={t('Descripción')}><Input value={r.description} onChange={(e) => setRateRow(i, 'description', e.target.value)} /></Field>
-                      <Field label={`${t('Tarifa')} (${cur})`}><Input rule="money" inputMode="decimal" value={String(r.amount)} onChange={(e) => setRateRow(i, 'amount', e.target.value)} /></Field>
+                      <Field label={`${t('Tarifa')} (${cur})`}><Input rule="money" value={String(r.amount)} onChange={(e) => setRateRow(i, 'amount', e.target.value)} /></Field>
                       <Field label={t('Días')}><Input rule="integer" inputMode="numeric" value={String(r.estimated_days)} onChange={(e) => setRateRow(i, 'estimated_days', Number(e.target.value.replace(/\D/g, '') || 0))} /></Field>
                       <Button variant="ghost" size="icon" className="self-end" onClick={() => set('shipping.rates', rates.filter((_, j) => j !== i))} aria-label={t('Eliminar')} disabled={rates.length <= 1}><Trash2 /></Button>
                     </div>

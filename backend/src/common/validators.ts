@@ -177,11 +177,11 @@ export const IsMoney = (min = 0.01, max = 10_000_000) =>
     Max(max, { message: `El monto máximo es ${max}.` }),
   );
 
-/** Physical measure (kg / cm): positive, bounded, max 3 decimals. */
+/** Physical measure (kg / cm): positive, bounded, max 4 decimals (exact g/oz/in conversions). */
 export const IsMeasure = (max: number, label = 'La medida') =>
   applyDecorators(
-    IsNumber({ maxDecimalPlaces: 3, allowNaN: false, allowInfinity: false }, { message: `${label} debe ser un número.` }),
-    Min(0.001, { message: `${label} debe ser mayor que 0.` }),
+    IsNumber({ maxDecimalPlaces: 4, allowNaN: false, allowInfinity: false }, { message: `${label} debe ser un número.` }),
+    Min(0.0001, { message: `${label} debe ser mayor que 0.` }),
     Max(max, { message: `${label} supera el máximo permitido (${max}).` }),
   );
 

@@ -121,7 +121,7 @@ export default function SellerFinancePage() {
         {verified.length ? (
           <div className="grid gap-4">
             <Field label={t('Cuenta de destino')} required><Select value={f.accountId} onChange={(e) => setF({ ...f, accountId: e.target.value })}>{verified.map((a: any) => <option key={a.id} value={a.id}>{a.label} ****{a.last4} · {a.metadata?.currency}</option>)}</Select></Field>
-            <Field label={`${t('Monto')} (${cur})`} required><Input rule="money" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') })} /></Field>
+            <Field label={`${t('Monto')} (${cur})`} required><Input rule="money" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') })} /></Field>
             {d.payoutPolicy && <p className="text-xs text-muted">{t('Monto mínimo:')}{' '}{money(d.payoutPolicy.minimum, d.currency)}{t('. El equipo de finanzas aprobará y ejecutará la transferencia.')}</p>}
           </div>
         ) : (

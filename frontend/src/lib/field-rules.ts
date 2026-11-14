@@ -9,7 +9,12 @@ export type FieldRule =
   | 'money' | 'integer' | 'measure' | 'percent' | 'sku' | 'slug' | 'trackingNumber'
   | 'decimal' | 'bankAccount' | 'swift' | 'taxId' | 'documentId' | 'countryCode' | 'reference' | 'cardNumber' | 'cvc';
 
-type RuleDef = { filter: (v: string) => string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']; type?: string; maxLength?: number; autoComplete?: string; autoCapitalize?: string };
+type RuleDef = {
+  filter: (v: string) => string;
+  /** Cash-register entry: digits fill from the right with a fixed 2-decimal point (1 → 0.01, 1999 → 19.99). */
+  shift?: boolean;
+  /** Normalizes the value when leaving the field. */
+  format?: (v: string) => string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']; type?: string; maxLength?: number; autoComplete?: string; autoCapitalize?: string };
 
 /** Keep at most `decimals` decimals and a single separator; comma is accepted as decimal separator. */
 const decimal = (decimals: number, maxInt = 9) => (v: string) => {
@@ -20,6 +25,15 @@ const decimal = (decimals: number, maxInt = 9) => (v: string) => {
   return (int ?? '').slice(0, maxInt) + (dec !== undefined && decimals > 0 ? '.' + dec : '');
 };
 
+/** "1.50" → "1.5", "30." → "30", "007" → "7"; empty stays empty. */
+const trimNumber = (v: string) => (v === '' || isNaN(Number(v)) ? v : String(Number(v)));
+
+/** Cash-register value from whatever is in the field: only digits count, the last two are cents. */
+export const shiftMoney = (v: string) => {
+  const digits = v.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10);
+  return digits ? (Number(digits) / 100).toFixed(2) : '';
+};
+
 export const RULES: Record<FieldRule, RuleDef> = {
   // digits, + only at the start, spaces, ( ) - .
   phone: { filter: (v) => v.replace(/[^\d+\s().-]/g, '').replace(/(?!^)\+/g, '').slice(0, 22), inputMode: 'tel', type: 'tel', maxLength: 22, autoComplete: 'tel' },
@@ -28,11 +42,11 @@ export const RULES: Record<FieldRule, RuleDef> = {
   businessName: { filter: (v) => v.replace(/[^\p{L}\p{M}\p{N} &.,'()+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 160), maxLength: 160 },
   postalCode: { filter: (v) => v.toUpperCase().replace(/[^A-Z0-9 -]/g, '').slice(0, 10), maxLength: 10, autoComplete: 'postal-code', autoCapitalize: 'characters' },
   email: { filter: (v) => v.replace(/\s/g, '').slice(0, 254), type: 'email', inputMode: 'email', maxLength: 254, autoComplete: 'email' },
-  money: { filter: decimal(2, 8), inputMode: 'decimal' },
+  money: { filter: decimal(2, 8), inputMode: 'numeric', shift: true, format: (v) => (v && Number(v) > 0 ? Number(v).toFixed(2) : v ? '0.00' : '') },
   integer: { filter: (v) => v.replace(/\D/g, '').slice(0, 7), inputMode: 'numeric' },
-  measure: { filter: decimal(3, 4), inputMode: 'decimal' },
-  percent: { filter: decimal(2, 3), inputMode: 'decimal' },
-  decimal: { filter: decimal(4, 12), inputMode: 'decimal' },
+  measure: { filter: decimal(3, 4), inputMode: 'decimal', format: trimNumber },
+  percent: { filter: decimal(2, 3), inputMode: 'decimal', format: trimNumber },
+  decimal: { filter: decimal(4, 12), inputMode: 'decimal', format: trimNumber },
   sku: { filter: (v) => v.toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 64), maxLength: 64, autoCapitalize: 'characters' },
   slug: { filter: (v) => v.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').slice(0, 80), maxLength: 80 },
   trackingNumber: { filter: (v) => v.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40), maxLength: 40, autoCapitalize: 'characters' },

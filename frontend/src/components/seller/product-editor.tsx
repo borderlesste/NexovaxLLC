@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { getLocale, t } from '@/lib/i18n';
+import { ShippingDimensions } from '@/components/seller/shipping-dimensions';
 
 interface Opt { name: string; values: { label: string; swatch?: string | null }[] }
 interface Var { id?: string; key: string; optionValues: Record<string, string>; sku: string; price: string; compareAtPrice: string; stock: string; active: boolean }
@@ -248,8 +249,8 @@ export function ProductEditor({ productId }: { productId?: string }) {
                       <tr key={v.key} className={cn(!v.active && 'opacity-50')}>
                         <td className="px-3 py-2 font-semibold">{Object.values(v.optionValues).join(' / ') || t('Única')}</td>
                         <td className="py-2 pr-2"><Input rule="sku" className="h-9" value={v.sku} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, sku: e.target.value.toUpperCase() } : x))} /></td>
-                        <td className="py-2 pr-2"><Input rule="money" className="h-9" inputMode="decimal" value={v.price} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="0.00" /></td>
-                        <td className="py-2 pr-2"><Input rule="money" className="h-9" inputMode="decimal" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder={t('Opcional')} /></td>
+                        <td className="py-2 pr-2"><Input rule="money" className="h-9" value={v.price} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="0.00" /></td>
+                        <td className="py-2 pr-2"><Input rule="money" className="h-9" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder={t('Opcional')} /></td>
                         <td className="py-2 pr-2"><Input rule="integer" className="h-9 w-24" inputMode="numeric" value={v.stock} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, stock: e.target.value.replace(/\D/g, '') } : x))} /></td>
                         <td className="py-2 pr-3"><input type="checkbox" checked={v.active} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, active: e.target.checked } : x))} className="size-4 accent-brand-600" /></td>
                       </tr>
@@ -295,12 +296,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
 
           <Card>
             <CardHeader icon={<Truck />} title={t('Envío y dimensiones')} subtitle={t('Información para el cálculo y la gestión del envío.')} />
-            <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
-              <Field label={t('Peso (kg)')} required><Input rule="measure" inputMode="decimal" value={ship.weightKg} onChange={(e) => setShip({ ...ship, weightKg: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" /></Field>
-              <Field label={t('Largo (cm)')} required><Input rule="measure" inputMode="decimal" value={ship.lengthCm} onChange={(e) => setShip({ ...ship, lengthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label={t('Ancho (cm)')} required><Input rule="measure" inputMode="decimal" value={ship.widthCm} onChange={(e) => setShip({ ...ship, widthCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-              <Field label={t('Alto (cm)')} required><Input rule="measure" inputMode="decimal" value={ship.heightCm} onChange={(e) => setShip({ ...ship, heightCm: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.0" /></Field>
-            </div>
+            <ShippingDimensions value={ship} onChange={setShip} />
           </Card>
 
           <Card>

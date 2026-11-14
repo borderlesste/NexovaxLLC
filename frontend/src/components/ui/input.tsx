@@ -1,6 +1,6 @@
 'use client';
-import { forwardRef, useState } from 'react';
-import { CHECKS, RULE_HINT, RULES, type FieldRule } from '@/lib/field-rules';
+import { forwardRef, useRef, useState } from 'react';
+import { CHECKS, RULE_HINT, RULES, shiftMoney, type FieldRule } from '@/lib/field-rules';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 
@@ -11,15 +11,29 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   rule?: FieldRule;
 };
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, icon, suffix, rule, onChange, onBlur, ...props }, ref) => {
+/** Sets a controlled input's value as if the user typed it (React's onChange fires). */
+function setNativeValue(el: HTMLInputElement, value: string) {
+  if (el.value === value) return;
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, icon, suffix, rule, onChange, onBlur, onFocus, onPaste, ...props }, ref) => {
   const def = rule ? RULES[rule] : undefined;
   const [invalid, setInvalid] = useState(false);
   const check = rule ? CHECKS[rule] : undefined;
+  const local = useRef<HTMLInputElement | null>(null);
+  const setRef = (el: HTMLInputElement | null) => {
+    local.current = el;
+    if (typeof ref === 'function') ref(el);
+    else if (ref) ref.current = el;
+  };
+  const caretToEnd = (el: HTMLInputElement) => requestAnimationFrame(() => el.setSelectionRange?.(el.value.length, el.value.length));
   return (
     <div className="relative flex items-center">
       {icon && <span className="pointer-events-none absolute left-3 text-muted [&_svg]:size-4">{icon}</span>}
       <input
-        ref={ref}
+        ref={setRef}
         type={def?.type}
         inputMode={def?.inputMode}
         maxLength={def?.maxLength}
@@ -36,15 +50,32 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, icon
           className,
         )}
         {...props}
+        onFocus={(e) => {
+          // a stored amount like "20" becomes "20.00" so new digits shift in from the right
+          if (def?.shift && e.target.value && !e.target.value.includes('.')) setNativeValue(e.target, Number(e.target.value).toFixed(2));
+          if (def?.shift) caretToEnd(e.target);
+          onFocus?.(e);
+        }}
+        onPaste={(e) => {
+          if (def?.shift) {
+            // pasted amounts are read literally: "20" → 20.00, "19,99" → 19.99
+            const n = parseFloat(e.clipboardData.getData('text').replace(',', '.').replace(/[^\d.]/g, ''));
+            e.preventDefault();
+            if (!isNaN(n)) setNativeValue(e.currentTarget, n.toFixed(2));
+          }
+          onPaste?.(e);
+        }}
         onChange={(e) => {
           if (def) {
-            const clean = def.filter(e.target.value);
+            const clean = def.shift ? shiftMoney(e.target.value) : def.filter(e.target.value);
+            if (def.shift) caretToEnd(e.target);
             if (clean !== e.target.value) e.target.value = clean;
             if (invalid && (!check || !clean || check(clean))) setInvalid(false);
           }
           onChange?.(e);
         }}
         onBlur={(e) => {
+          if (def?.format) setNativeValue(e.target, def.format(e.target.value));
           if (check) setInvalid(!!e.target.value.trim() && !check(e.target.value.trim()));
           onBlur?.(e);
         }}
