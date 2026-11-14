@@ -248,6 +248,12 @@ export function translateMessage(msg: string): string {
     const what = ({ 'El peso': 'The weight', 'El largo': 'The length', 'El ancho': 'The width', 'El alto': 'The height', 'La medida': 'The measure' } as Record<string, string>)[m[1]];
     return m[2].startsWith('debe ser un') ? `${what} must be a number.` : m[2].startsWith('debe ser mayor') ? `${what} must be greater than 0.` : `${what} exceeds the maximum allowed (${m[3]}).`;
   }
+  m = /^Tu rol \((.+)\) no permite esta acción\. Requiere: (.+)\.$/.exec(msg);
+  if (m) {
+    const R: Record<string, string> = { Cliente: 'Customer', Vendedor: 'Seller', Soporte: 'Support', Moderador: 'Moderator', Administrador: 'Administrator', 'Super administrador': 'Super administrator' };
+    const tr = (x: string) => x.split(/(, | o )/).map((p) => (p === ' o ' ? ' or ' : R[p] ?? p)).join('');
+    return `Your role (${tr(m[1])}) doesn’t allow this action. Requires: ${tr(m[2])}.`;
+  }
   m = /^No se pudo subir la imagen: (.*)$/.exec(msg);
   if (m) return `The image could not be uploaded: ${m[1]}`;
   m = /^No se pudo crear la cuenta: (.*)$/.exec(msg);

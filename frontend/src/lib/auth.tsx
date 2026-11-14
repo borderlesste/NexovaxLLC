@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { ApiError, get, setSellerContext } from './api';
+import { can as canRole, type Permission } from './permissions';
 
 export type Role = 'CUSTOMER' | 'SELLER' | 'SUPPORT' | 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
 export interface Me {
@@ -28,6 +29,8 @@ interface AuthCtx {
   loading: boolean;
   isStaff: boolean;
   isAdmin: boolean;
+  /** Whether the user's staff roles allow an admin-panel permission (see lib/permissions). */
+  can: (perm: Permission) => boolean;
   seller: Me['sellers'][number] | undefined;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -104,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading: !ready || (!!session && meQ.isLoading),
       isAdmin: roles.includes('ADMIN') || roles.includes('SUPER_ADMIN'),
       isStaff: roles.some((r) => ['ADMIN', 'SUPER_ADMIN', 'MODERATOR', 'SUPPORT'].includes(r)),
+      can: (perm: Permission) => canRole(roles, perm),
       seller,
       signIn,
       signOut,

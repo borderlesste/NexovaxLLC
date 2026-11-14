@@ -527,7 +527,8 @@ export class ReturnsService {
       review: scope.as !== 'customer' && ['REQUESTED', 'UNDER_REVIEW'].includes(rr.status),
       receive: scope.as !== 'customer' && ['APPROVED', 'AWAITING_SHIPMENT', 'IN_TRANSIT'].includes(rr.status),
       inspect: scope.as !== 'customer' && ['RECEIVED', 'INSPECTING'].includes(rr.status),
-      refund: scope.as === 'staff' && rr.status === 'REFUND_PENDING',
+      // Refunds move money: admins only (support approves, receives and inspects).
+      refund: scope.as === 'staff' && isStaff(user) && rr.status === 'REFUND_PENDING',
       buyLabel: scope.as !== 'customer' && !label && !!payer && ['APPROVED', 'AWAITING_SHIPMENT'].includes(rr.status) && this.shipping.shippoEnabled,
     };
     return {

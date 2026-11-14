@@ -18,6 +18,7 @@ import { PageLoader, Switch } from '@/components/ui/misc';
 import { CountrySelect } from '@/components/shop/geo-fields';
 import { RateZone } from '@/components/admin/rate-zone';
 import { HelpEditor } from '@/components/admin/help-editor';
+import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
 
 const TABS = [
   ['general', 'General', Settings],
@@ -264,6 +265,17 @@ export default function SettingsPage() {
               <table className="w-full text-sm"><thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('Rol')}</th><th>{t('Descripción')}</th><th>{t('Usuarios')}</th><th>{t('Permisos')}</th></tr></thead>
                 <tbody className="divide-y divide-line">{d.roles.map((r: any) => <tr key={r.code}><td className="px-5 py-3 font-bold">{t(r.name)}<span className="block text-xs font-normal text-muted">{r.code}</span></td><td className="text-muted">{t(r.description ?? '')}</td><td>{r.users}</td><td>{r.permissions}</td></tr>)}</tbody></table>
               <p className="p-5 text-xs text-muted">{t('Asigna o revoca roles a cada persona desde la sección Usuarios.')}</p>
+              <div className="grid gap-4 border-t border-line p-5 lg:grid-cols-2" data-role-scope>
+                {(['SUPPORT', 'MODERATOR'] as const).map((r) => (
+                  <div key={r} className="rounded-xl border border-line p-4">
+                    <p className="font-bold">{t(ROLE_NAMES[r])}</p>
+                    <p className="mt-3 text-xs font-bold uppercase text-emerald-700">{t('Puede')}</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{ROLE_SCOPE[r]!.can.map((x) => <li key={x}>{t(x)}</li>)}</ul>
+                    <p className="mt-3 text-xs font-bold uppercase text-red-700">{t('No puede')}</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted">{ROLE_SCOPE[r]!.cannot.map((x) => <li key={x}>{t(x)}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
         </div>

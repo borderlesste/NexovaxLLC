@@ -1,4 +1,5 @@
 'use client';
+import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,6 +25,7 @@ const STEP_ICONS = [Check, Package, Truck, Truck, PackageCheck];
 export function OrderDetailView({ order, role, onChanged }: { order: any; role: Role; onChanged: () => void }) {
   const router = useRouter();
   const qc = useQueryClient();
+  const { can } = useAuth();
   const [shipFor, setShipFor] = useState<any>(null);
   const [trackFor, setTrackFor] = useState<any>(null);
   const [reviewFor, setReviewFor] = useState<any>(null);
@@ -166,13 +168,13 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
                   {s.label?.cost && role !== 'customer' && <span className="text-xs text-muted">{t('Costo de etiqueta')}: {money(s.label.cost, s.label.currency)}</span>}
                 </span>
                 <span className="flex gap-2">
-                  {s.automaticTracking && s.trackingStatus !== 'DELIVERED' && (
+                  {s.automaticTracking && s.trackingStatus !== 'DELIVERED' && (role !== 'admin' || can('orders.tracking')) && (
                     <Button size="sm" variant="outline" loading={busy === `sync-${s.id}`}
                       onClick={() => act(`sync-${s.id}`, () => post(`${role === 'customer' ? '/orders' : role === 'admin' ? '/admin' : '/seller'}/shipments/${s.id}/refresh-tracking`), t('Seguimiento actualizado.'))}>
                       <RefreshCw /> {t('Actualizar rastreo')}
                     </Button>
                   )}
-                  {(role === 'seller' || role === 'admin') && !s.automaticTracking && s.trackingStatus !== 'DELIVERED' && <Button size="sm" variant="outline" onClick={() => setTrackFor(s)}>{t('Actualizar seguimiento')}</Button>}
+                  {(role === 'seller' || (role === 'admin' && can('orders.tracking'))) && !s.automaticTracking && s.trackingStatus !== 'DELIVERED' && <Button size="sm" variant="outline" onClick={() => setTrackFor(s)}>{t('Actualizar seguimiento')}</Button>}
                   {role === 'customer' && s.trackingStatus !== 'DELIVERED' && (
                     <Button size="sm" loading={busy === `rcv-${s.id}`} onClick={() => act(`rcv-${s.id}`, () => post(`/orders/shipments/${s.id}/confirm-delivery`), t('¡Gracias! Confirmaste la recepción.'))}><CheckCircle2 /> {t('Confirmar recepción')}</Button>
                   )}

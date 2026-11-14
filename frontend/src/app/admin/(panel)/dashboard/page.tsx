@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Box, ChevronRight, CreditCard, Download, Landmark, MessageSquare, Package, ShoppingCart, TrendingUp, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, Box, RotateCcw, ChevronRight, CreditCard, Download, Landmark, MessageSquare, Package, ShoppingCart, TrendingUp, Users, Wallet } from 'lucide-react';
 import { get } from '@/lib/api';
 import { fmtDate, money } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const mix = new Map<string, number>();
   for (const m of d.statusMix) mix.set(MIX[m.status] ?? t('Otros'), (mix.get(MIX[m.status] ?? t('Otros')) ?? 0) + m.count);
   const totalMix = [...mix.values()].reduce((a, b) => a + b, 0);
+  const full = d.scope !== 'operational';
   const a = d.attention;
   const attention = [
     a.products_pending && { icon: Box, title: t('Productos por revisar'), detail: t('{a} publicaciones esperan moderación.', { a: a.products_pending }), href: '/admin/moderacion' },
@@ -39,24 +40,25 @@ export default function AdminDashboard() {
     a.transfers_pending && { icon: Landmark, title: t('Transferencias por confirmar'), detail: t('{a} pagos por transferencia esperan validación.', { a: a.transfers_pending }), href: '/admin/finanzas' },
     a.payouts_pending && { icon: Wallet, title: t('Retiros pendientes'), detail: t('{a} solicitudes de retiro por aprobar.', { a: a.payouts_pending }), href: '/admin/comisiones' },
     a.payout_accounts_pending && { icon: CreditCard, title: t('Métodos de cobro'), detail: t('{a} cuentas bancarias por verificar.', { a: a.payout_accounts_pending }), href: '/admin/comisiones' },
+    a.returns_pending && { icon: RotateCcw, title: t('Devoluciones por atender'), detail: t('{a} devoluciones esperan revisión, recepción o inspección.', { a: a.returns_pending }), href: '/admin/devoluciones' },
     a.low_stock && { icon: AlertTriangle, title: t('Alerta de inventario'), detail: t('{a} productos llegaron al mínimo.', { a: a.low_stock }), href: '/admin/productos' },
-    a.open_tickets && { icon: MessageSquare, title: t('Reportes abiertos'), detail: `${a.open_tickets} incidencias requieren seguimiento.`, href: '/admin/reportes' },
+    a.open_tickets && { icon: MessageSquare, title: t('Reportes abiertos'), detail: t('{a} incidencias requieren seguimiento.', { a: a.open_tickets }), href: '/admin/reportes' },
   ].filter(Boolean) as any[];
   return (
     <>
-      <PageHeader crumbs={[{ label: t('Inicio') }, { label: t('Dashboard') }]} title={t('Dashboard')} description={t('Visión general del rendimiento de tu marketplace.')}
+      <PageHeader crumbs={[{ label: t('Inicio') }, { label: t('Dashboard') }]} title={t('Dashboard')} description={full ? t('Visión general del rendimiento de tu marketplace.') : t('Pedidos y colas de trabajo de tu rol. Las cifras de ventas son solo para administradores.')}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option></Select>
-          <Button onClick={() => download(`informe-${days}d.csv`, [[t('Día'), t('Ventas'), t('Pedidos')], ...d.series.map((s: any) => [s.day, s.sales, s.orders])])}><Download /> {t('Exportar informe')}</Button></>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t('Ventas totales')} value={money(d.kpis.sales)} icon={<CreditCard />} change={d.kpis.salesChange} hint={t('vs. período anterior')} />
+          <Button onClick={() => download(`informe-${days}d.csv`, full ? [[t('Día'), t('Ventas'), t('Pedidos')], ...d.series.map((s: any) => [s.day, s.sales, s.orders])] : [[t('Día'), t('Pedidos')], ...d.series.map((s: any) => [s.day, s.orders])])}><Download /> {t('Exportar informe')}</Button></>} />
+      <div className={`grid gap-4 sm:grid-cols-2 ${full ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+        {full && <StatCard label={t('Ventas totales')} value={money(d.kpis.sales)} icon={<CreditCard />} change={d.kpis.salesChange} hint={t('vs. período anterior')} />}
         <StatCard label={t('Pedidos realizados')} value={d.kpis.orders.toLocaleString(getIntlLocale())} icon={<ShoppingCart />} change={d.kpis.ordersChange} hint={t('vs. período anterior')} />
         <StatCard label={t('Vendedores activos')} value={d.kpis.activeSellers} icon={<Users />} hint={t('de {a} registrados', { a: d.kpis.totalSellers })} />
         <StatCard label={t('Productos publicados')} value={d.kpis.activeProducts.toLocaleString(getIntlLocale())} icon={<Package />} hint={t('de {a} en catálogo', { a: d.kpis.totalProducts })} />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
-          <CardHeader title={t('Resumen de ventas')} subtitle={t('Ingresos registrados durante el período')} action={<Pills value={String(days)} onChange={(v) => setDays(Number(v))} options={[{ value: '7', label: t('7 días') }, { value: '30', label: t('30 días') }, { value: '90', label: t('90 días') }]} />} />
-          <div className="p-4"><AreaTrend data={d.series} /></div>
+          <CardHeader title={full ? t('Resumen de ventas') : t('Pedidos por día')} subtitle={full ? t('Ingresos registrados durante el período') : t('Pedidos realizados durante el período')} action={<Pills value={String(days)} onChange={(v) => setDays(Number(v))} options={[{ value: '7', label: t('7 días') }, { value: '30', label: t('30 días') }, { value: '90', label: t('90 días') }]} />} />
+          <div className="p-4">{full ? <AreaTrend data={d.series} /> : <AreaTrend data={d.series} yKey="orders" currency={false} />}</div>
         </Card>
         <Card>
           <CardHeader title={t('Estado de los pedidos')} subtitle={t('Distribución de los pedidos')} />

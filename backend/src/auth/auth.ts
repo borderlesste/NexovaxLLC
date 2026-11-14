@@ -52,6 +52,29 @@ export function isStaff(u: RequestUser | undefined, ...roles: RoleCode[]) {
   return roles.some((r) => u.roles.includes(r));
 }
 
+export const ROLE_NAMES: Record<RoleCode, string> = {
+  CUSTOMER: 'Cliente', SELLER: 'Vendedor', SUPPORT: 'Soporte', MODERATOR: 'Moderador', ADMIN: 'Administrador', SUPER_ADMIN: 'Super administrador',
+};
+const STAFF: RoleCode[] = ['SUPPORT', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'];
+
+/**
+ * 403 that tells staff which of their roles falls short and which role the action needs
+ * (e.g. «Tu rol (Soporte) no permite esta acción. Requiere: Moderador o Administrador.»).
+ * Non-staff users get the generic message: the admin area's role map is not theirs to see.
+ */
+export function forbiddenFor(user: RequestUser, required: RoleCode[]) {
+  const mine = user.roles.filter((r) => STAFF.includes(r));
+  if (!mine.length) return new AppError('FORBIDDEN', 'No tienes permiso para acceder a esta sección.', HttpStatus.FORBIDDEN);
+  const need = [...new Set<RoleCode>(required.includes('SUPER_ADMIN') ? ['SUPER_ADMIN'] : [...required.filter((r) => r !== 'SUPER_ADMIN'), 'ADMIN'])];
+  const or = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} o ${xs[xs.length - 1]}` : xs[0]);
+  return new AppError(
+    'FORBIDDEN',
+    `Tu rol (${mine.map((r) => ROLE_NAMES[r]).join(', ')}) no permite esta acción. Requiere: ${or(need.map((r) => ROLE_NAMES[r]))}.`,
+    HttpStatus.FORBIDDEN,
+    { yourRoles: mine, requiredRoles: need },
+  );
+}
+
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -87,7 +110,7 @@ export class AuthGuard implements CanActivate {
         roles.some((r) => user.roles.includes(r)) ||
         (user.roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) ||
         user.roles.includes('SUPER_ADMIN');
-      if (!ok) throw new AppError('FORBIDDEN', 'No tienes permiso para acceder a esta sección.', HttpStatus.FORBIDDEN);
+      if (!ok) throw forbiddenFor(user, roles);
     }
     return true;
   }

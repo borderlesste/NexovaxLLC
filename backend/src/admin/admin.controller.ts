@@ -107,8 +107,8 @@ export class AdminController {
 
   @Roles('MODERATOR', 'SUPPORT')
   @Get('dashboard')
-  dashboard(@Query('days') days?: string) {
-    return this.admin.dashboard(Math.min(Math.max(Number(days) || 30, 7), 365));
+  dashboard(@CurrentUser() u: RequestUser, @Query('days') days?: string) {
+    return this.admin.dashboard(u, Math.min(Math.max(Number(days) || 30, 7), 365));
   }
 
   // products / moderation
@@ -176,8 +176,8 @@ export class AdminController {
 
   @Roles('MODERATOR')
   @Get('sellers/:id')
-  seller(@Param('id', ParseUUIDPipe) id: string) {
-    return this.admin.sellerDetail(id);
+  seller(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.admin.sellerDetail(u, id);
   }
 
   @Roles('MODERATOR')

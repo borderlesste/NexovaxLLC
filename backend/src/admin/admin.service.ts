@@ -34,7 +34,14 @@ export class AdminService {
   ) {}
 
   // ------------------------------------------------------------------ dashboard
-  async dashboard(days = 30) {
+  /**
+   * Admins see the full picture. Support and moderators get operational data only: order
+   * volume and the queues their role works (no sales totals, payouts or transfers).
+   */
+  async dashboard(user: RequestUser, days = 30) {
+    const admin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
+    const mod = admin || user.roles.includes('MODERATOR');
+    const sup = admin || user.roles.includes('SUPPORT');
     const period = `${days} days`;
     const currency = await this.settings.currency();
     const [cur, prev, sellers, products, series, mix, attention] = await Promise.all([
@@ -68,7 +75,8 @@ export class AdminService {
                 (select count(*) from public.support_tickets where status in ('OPEN','IN_PROGRESS'))::int as open_tickets,
                 (select count(*) from public.payouts where status = 'APPROVAL_REQUIRED')::int as payouts_pending,
                 (select count(*) from public.payments where status = 'REQUIRES_ACTION')::int as transfers_pending,
-                (select count(*) from public.seller_payout_accounts where verification_status = 'PENDING' and status <> 'DISABLED')::int as payout_accounts_pending`,
+                (select count(*) from public.seller_payout_accounts where verification_status = 'PENDING' and status <> 'DISABLED')::int as payout_accounts_pending,
+                (select count(*) from public.return_requests where status in ('REQUESTED','UNDER_REVIEW','RECEIVED','INSPECTING'))::int as returns_pending`,
       ),
     ]);
     const recent = await this.db.many(
@@ -77,11 +85,14 @@ export class AdminService {
          from public.orders o join public.users u on u.id = o.customer_id left join public.user_profiles up on up.user_id = u.id
          left join public.order_financial_snapshots ofs on ofs.order_id = o.id order by o.placed_at desc limit 6`,
     );
+    const att: Record<string, number> = attention as any;
+    const keep = (k: string, ok: boolean) => (ok ? att[k] : 0);
     return {
       currency,
+      scope: admin ? 'full' : 'operational',
       kpis: {
-        sales: cur!.sales,
-        salesChange: pct(cur!.sales, prev!.sales),
+        sales: admin ? cur!.sales : null,
+        salesChange: admin ? pct(cur!.sales, prev!.sales) : null,
         orders: cur!.orders,
         ordersChange: pct(cur!.orders, prev!.orders),
         activeSellers: sellers!.active,
@@ -89,10 +100,19 @@ export class AdminService {
         activeProducts: products!.active,
         totalProducts: products!.total,
       },
-      series,
+      series: admin ? series : series.map((s: any) => ({ ...s, sales: null })),
       statusMix: mix,
       recentOrders: recent,
-      attention,
+      attention: {
+        products_pending: keep('products_pending', mod),
+        sellers_pending: keep('sellers_pending', mod),
+        low_stock: keep('low_stock', mod),
+        open_tickets: att.open_tickets,
+        returns_pending: keep('returns_pending', sup),
+        payouts_pending: keep('payouts_pending', admin),
+        transfers_pending: keep('transfers_pending', admin),
+        payout_accounts_pending: keep('payout_accounts_pending', admin),
+      },
     };
   }
 
@@ -251,7 +271,9 @@ export class AdminService {
     };
   }
 
-  async sellerDetail(sellerId: string) {
+  /** Moderators review the store and its owner; its money (sales, balance, payout accounts) is for admins only. */
+  async sellerDetail(user: RequestUser, sellerId: string) {
+    const admin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
     const store = await this.sellers.store(sellerId);
     const [owner, stats, accounts] = await Promise.all([
       this.db.one(
@@ -259,8 +281,8 @@ export class AdminService {
            from public.sellers s join public.users u on u.id = s.owner_user_id left join public.user_profiles up on up.user_id = u.id where s.id = $1`,
         [sellerId],
       ),
-      this.sellers.finance(sellerId, 365),
-      this.sellers.payoutAccounts(sellerId),
+      admin ? this.sellers.finance(sellerId, 365) : null,
+      admin ? this.sellers.payoutAccounts(sellerId) : null,
     ]);
     const history = await this.db.many(
       `select h.from_status, h.to_status, h.reason, h.created_at from public.seller_status_history h where h.seller_id = $1 order by h.created_at desc limit 20`,
@@ -320,7 +342,7 @@ export class AdminService {
       invalidateUserCache(s.owner_user_id);
     });
     this.mail.fire(() => this.mail.sellerStatusChanged(sellerId, action, reason));
-    return this.sellerDetail(sellerId);
+    return this.sellerDetail(admin, sellerId);
   }
 
   /** "Nuevo vendedor": creates the owner account (if needed) and the store, already approved. */

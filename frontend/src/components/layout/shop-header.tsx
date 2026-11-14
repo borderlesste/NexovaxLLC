@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/misc';
 import { CategoryIcon } from '@/components/shop/category-icon';
 import { useAuth } from '@/lib/auth';
+import { roleList } from '@/lib/permissions';
 import { get } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
@@ -146,7 +147,7 @@ export function UserMenu() {
         <Avatar name={me.displayName} src={me.avatarUrl} size={34} />
         <span className="hidden max-w-[140px] text-left leading-tight lg:block">
           <span className="block truncate text-sm font-semibold">{me.displayName}</span>
-          <span className="block text-[11px] text-muted">{isAdmin ? t('Administrador') : seller ? t('Vendedor') : t('Comprador')}</span>
+          <span className="block text-[11px] text-muted">{isAdmin ? t('Administrador') : isStaff ? roleList(me.roles) : seller ? t('Vendedor') : t('Comprador')}</span>
         </span>
         <ChevronDown className="size-4 text-muted" />
       </Dropdown.Trigger>

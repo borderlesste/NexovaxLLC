@@ -52,11 +52,13 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
         </>} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Estado')} value={<StatusBadge status={store.status} className="text-sm" />} />
-        <StatCard label={t('Ventas (12 meses)')} value={money(finance.period.gross)} />
-        <StatCard label={t('Saldo disponible')} value={money(finance.balances.available)} hint={t('Pendiente: {a}', { a: money(finance.balances.pending) })} />
-        <StatCard label={t('Comisión generada')} value={money(finance.period.commission)} />
+        {finance && <>
+          <StatCard label={t('Ventas (12 meses)')} value={money(finance.period.gross)} />
+          <StatCard label={t('Saldo disponible')} value={money(finance.balances.available)} hint={t('Pendiente: {a}', { a: money(finance.balances.pending) })} />
+          <StatCard label={t('Comisión generada')} value={money(finance.period.commission)} />
+        </>}
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className={`mt-5 grid gap-5 ${payoutAccounts ? 'xl:grid-cols-2' : ''}`}>
         <Card>
           <CardHeader title={t('Propietario y tienda')} />
           <dl className="grid gap-3 p-5 text-sm sm:grid-cols-2">
@@ -69,7 +71,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
             {store.shortDescription && <div className="sm:col-span-2"><dt className="text-muted">{t('Descripción')}</dt><dd>{store.shortDescription}</dd></div>}
           </dl>
         </Card>
-        <Card>
+        {payoutAccounts && <Card>
           <CardHeader icon={<Landmark />} title={t('Métodos de cobro')} subtitle={t('Verifica las cuentas antes de habilitar retiros.')} />
           {payoutAccounts.length ? (
             <ul className="divide-y divide-line">
@@ -83,7 +85,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
               ))}
             </ul>
           ) : <Empty title={t('Sin métodos de cobro registrados')} />}
-        </Card>
+        </Card>}
       </div>
       <Card className="mt-5">
         <CardHeader title={t('Historial de estado')} />
