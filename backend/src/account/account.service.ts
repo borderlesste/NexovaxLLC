@@ -169,7 +169,11 @@ export class AccountService {
 
   // ---------------------------------------------------------------- addresses
   countries() {
-    return this.db.many(`select alpha2 as code, alpha3, name from public.countries where is_active and ${REAL_COUNTRY} order by name`);
+    return this.db.many(
+      `select alpha2 as code, alpha3, name, phone_prefix as "phonePrefix",
+              exists (select 1 from public.geo_regions r where r.country_code = alpha2) as "hasRegions"
+         from public.countries where is_active and ${REAL_COUNTRY} order by name`,
+    );
   }
 
   async addresses(userId: string) {
@@ -196,7 +200,7 @@ export class AccountService {
                                        postal_code, country_code, phone, is_default_shipping)
          values ($1,$2,$3,$4,$5,$6,$7,$13,$8,$9,$10,$11,$12) returning *`,
         [userId, clean(a.label), a.recipientName.trim(), clean(a.companyName), a.line1.trim(), clean(a.line2), geo.city,
-         geo.region, geo.postalCode, geo.countryCode, clean(a.phone), makeDefault, cityId],
+         geo.region, geo.postalCode, geo.countryCode, geo.phone, makeDefault, cityId],
         c,
       );
       return mapAddress(row);
@@ -216,7 +220,7 @@ export class AccountService {
                 region=$9, postal_code=$10, country_code=$11, phone=$12, is_default_shipping = coalesce($13, is_default_shipping)
           where id = $1 and user_id = $2 returning *`,
         [id, userId, clean(a.label), a.recipientName.trim(), clean(a.companyName), a.line1.trim(), clean(a.line2), geo.city,
-         geo.region, geo.postalCode, geo.countryCode, clean(a.phone), a.isDefaultShipping ?? null, cityId],
+         geo.region, geo.postalCode, geo.countryCode, geo.phone, a.isDefaultShipping ?? null, cityId],
         c,
       );
       return mapAddress(row);

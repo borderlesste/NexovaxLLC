@@ -3,7 +3,7 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
-import { normalizeAddress, normalizeCountry, resolveCityId } from '../common/geo';
+import { countryGeo, normalizeAddress, normalizeCountry, normalizePhone, resolveCityId } from '../common/geo';
 import { attributeInput, attributeOptions, AttributeValueError, normalizeAttributeValue } from '../common/attributes';
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
@@ -110,7 +110,7 @@ export class SellerService {
       await this.db.exec(
         `insert into public.seller_store_profiles (seller_id, display_name, short_description, support_email, support_phone, locale, timezone)
          values ($1,$2,$3,$4,$5,$6,$7)`,
-        [id, input.storeName.trim(), input.shortDescription?.trim() || null, input.supportEmail?.trim() || null, input.supportPhone?.trim() || null,
+        [id, input.storeName.trim(), input.shortDescription?.trim() || null, input.supportEmail?.trim() || null, normalizePhone(await countryGeo(this.db, registration.countryCode), input.supportPhone),
          me?.locale === 'en' ? 'en' : 'es', validTimezone(input.timezone)],
         c,
       );
@@ -126,7 +126,7 @@ export class SellerService {
                  region, postal_code, country_code, phone, is_default)
          values ($1,'Almacén principal','MAIN',$2,$3,$4,$5,$6,$11,$7,$8,$9,$10,true) returning id`,
         [id, input.address.contactName.trim(), input.storeName.trim(), input.address.line1.trim(), input.address.line2?.trim() || null,
-         geo.city, geo.region, geo.postalCode, geo.countryCode, input.address.phone.trim(), cityId],
+         geo.city, geo.region, geo.postalCode, geo.countryCode, geo.phone, cityId],
         c,
       );
       await this.db.exec(
@@ -207,13 +207,19 @@ export class SellerService {
       `update public.seller_ship_from_addresses set contact_name = $2, line1 = $3, line2 = $4, city = $5, city_id = $10, region = $6,
               postal_code = $7, country_code = $8, phone = $9, validation_status = 'NOT_VALIDATED', validated_at = null, updated_at = now()
         where id = (select id from public.seller_ship_from_addresses where seller_id = $1 and status = 'ACTIVE' order by is_default desc limit 1)`,
-      [sellerId, input.contactName.trim(), input.line1.trim(), input.line2?.trim() || null, geo.city, geo.region, geo.postalCode, geo.countryCode, input.phone.trim(), cityId],
+      [sellerId, input.contactName.trim(), input.line1.trim(), input.line2?.trim() || null, geo.city, geo.region, geo.postalCode, geo.countryCode, geo.phone, cityId],
     );
     if (!n) throw notFound('Dirección de despacho');
     return this.store(sellerId);
   }
 
   async updateStore(sellerId: string, input: { displayName?: string; shortDescription?: string; description?: string; supportEmail?: string; supportPhone?: string }) {
+    // The support phone takes the calling code of the store's country when typed without "+".
+    if (input.supportPhone?.trim()) {
+      const origin = await this.db.one<{ country_code: string }>(
+        `select country_code from public.seller_ship_from_addresses where seller_id = $1 and status = 'ACTIVE' order by is_default desc limit 1`, [sellerId]);
+      if (origin) input = { ...input, supportPhone: normalizePhone(await countryGeo(this.db, origin.country_code), input.supportPhone) ?? '' };
+    }
     await this.db.exec(
       `update public.seller_store_profiles set display_name = coalesce(nullif(btrim($2),''), display_name), short_description = $3,
               description = $4, support_email = nullif(btrim($5),''), support_phone = nullif(btrim($6),'')

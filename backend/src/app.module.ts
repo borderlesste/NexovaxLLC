@@ -17,6 +17,7 @@ import { CartController } from './cart/cart.controller';
 import { CheckoutService } from './checkout/checkout.service';
 import { CheckoutController } from './checkout/checkout.controller';
 import { HealthController } from './health.controller';
+import { GeoController } from './geo/geo.controller';
 import { OrdersService } from './orders/orders.service';
 import { OrdersController } from './orders/orders.controller';
 import { SellerService } from './seller/seller.service';
@@ -55,7 +56,7 @@ import { PaymentsWebhooksController } from './payments/payments.controller';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController],
   providers: [
     DbService,
     SettingsService,

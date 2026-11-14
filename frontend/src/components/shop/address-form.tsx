@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { Dialog, Checkbox } from '@/components/ui/misc';
 import { Field, Input, Select } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { GeoFields } from './geo-fields';
+import { GeoFields, PhoneInput } from './geo-fields';
 
 export interface Address {
   id: string;
@@ -69,7 +69,7 @@ export function AddressDialog({ open, onOpenChange, address, onSaved, defaultCou
         <Field label={t('Dirección')} required className="sm:col-span-2"><Input value={f.line1} onChange={(e) => set('line1', e.target.value)} placeholder={t('Calle y número')} /></Field>
         <Field label={t('Apartamento, suite o referencia')} className="sm:col-span-2"><Input value={f.line2} onChange={(e) => set('line2', e.target.value)} placeholder={t('Ej. Apto 2B, edificio 3')} /></Field>
         <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
-        <Field label={t('Teléfono')} hint={t('(con código de país)')}><Input rule="phone" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+1 305 555 1234" /></Field>
+        <Field label={t('Teléfono')}><PhoneInput countryCode={f.countryCode} value={f.phone} onChange={(v) => set('phone', v)} /></Field>
         <div className="flex items-end"><Checkbox checked={f.isDefaultShipping} onChange={(v) => set('isDefaultShipping', v)} label={t('Usar como predeterminada')} /></div>
       </div>
     </Dialog>

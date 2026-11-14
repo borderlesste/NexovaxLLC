@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { PageLoader } from '@/components/ui/misc';
-import { cityLine, GeoFields } from '@/components/shop/geo-fields';
+import { cityLine, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { t } from '@/lib/i18n';
 
 function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
@@ -40,7 +40,7 @@ function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
         <Field label={t('Dirección')} required><Input value={f.line1} onChange={(e) => setF({ ...f, line1: e.target.value })} /></Field>
         <Field label={t('Apartamento, suite o referencia')}><Input value={f.line2} onChange={(e) => setF({ ...f, line2: e.target.value })} /></Field>
         <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
-        <Field label={t('Teléfono')} required><Input rule="phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <Field label={t('Teléfono')} required><PhoneInput countryCode={f.countryCode} value={f.phone} onChange={(v) => setF((s) => ({ ...s, phone: v }))} required /></Field>
       </div>
       <Button className="mt-4 w-full" onClick={save} loading={busy}><Check /> {t('Guardar dirección')}</Button>
     </Card>
@@ -95,7 +95,7 @@ export default function StoreSettingsPage() {
             <Field label={t('Descripción corta')}><Input value={f.shortDescription} onChange={(e) => setF({ ...f, shortDescription: e.target.value })} maxLength={200} /></Field>
             <Field label={t('Acerca de la tienda')} className="sm:col-span-2"><Textarea rows={5} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={3000} /></Field>
             <Field label={t('Correo de atención')}><Input rule="email" value={f.supportEmail} onChange={(e) => setF({ ...f, supportEmail: e.target.value })} /></Field>
-            <Field label={t('Teléfono de atención')}><Input rule="phone" value={f.supportPhone} onChange={(e) => setF({ ...f, supportPhone: e.target.value })} /></Field>
+            <Field label={t('Teléfono de atención')}><PhoneInput countryCode={q.data?.shipFrom?.countryCode ?? q.data?.address?.countryCode} value={f.supportPhone} onChange={(v) => setF((s) => ({ ...s, supportPhone: v }))} /></Field>
           </div>
         </Card>
         <div className="space-y-5">

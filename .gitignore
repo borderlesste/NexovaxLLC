@@ -17,3 +17,6 @@ next-env.d.ts
 interfaces/
 .claude/settings.local.json
 ui-shots/
+
+# GeoNames raw downloads (CC BY 4.0) — re-download with scripts/geo-import.mjs
+scripts/data/geonames/

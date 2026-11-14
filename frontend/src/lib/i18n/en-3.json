@@ -313,5 +313,12 @@
 "Alto": "Height",
 "Ej. {v}": "e.g. {v}",
 "Medidas del paquete listo para enviar. Escribe números enteros; el punto decimal solo si lo necesitas.": "Size of the package ready to ship. Type whole numbers; use a decimal point only if you need it.",
-"Se guarda como {kg} kg.": "Saved as {kg} kg."
+"Se guarda como {kg} kg.": "Saved as {kg} kg.",
+"Escribe y elige de la lista": "Type and pick from the list",
+"Primero elige el país": "Choose the country first",
+"Formato del país: {f}": "Country format: {f}",
+"¿Es {p}? Usar": "Is it {p}? Use it",
+"Número local": "Local number",
+"Se guardará como +{p} {n}": "Will be saved as +{p} {n}",
+"Datos geográficos: GeoNames": "Geographic data: GeoNames"
 }

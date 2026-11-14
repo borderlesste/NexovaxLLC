@@ -96,6 +96,14 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
   - Variables: `MAIL_FROM` (por defecto `NEXOVAX <no-reply@nexovax.com>`), `MAIL_REPLY_TO`, `WEB_URL` (base de los enlaces; en producción la URL pública), `MAIL_SUPPRESS_DOMAINS` (por defecto los dominios demo `demo.nexovax.com`, `rdmarketplace.do`, `example.com`… nunca reciben correo) y `MAIL_REDIRECT_TO` (QA: desvía todos los correos a una dirección, p. ej. `delivered@resend.dev`).
   - **Verificación de correo:** quien se registra recibe un enlace (token de un solo uso, `generateLink`) a `/auth/confirmar`; hasta confirmarlo no puede iniciar sesión y la API responde `EMAIL_NOT_VERIFIED`. Reenvío: `POST /api/auth/resend-verification`. Las tiendas creadas por el equipo y las cuentas demo del seed se crean ya confirmadas. `AUTH_AUTO_CONFIRM=true` solo se acepta fuera de producción.
 
+## Datos geográficos
+
+País, estado, ciudad, código postal y teléfono se validan juntos según el país: el estado debe ser de la lista del país (se guarda el código que esperan las transportistas, p. ej. `FL`, `ON`), la ciudad se normaliza y debe pertenecer a ese estado cuando está en el catálogo, el código postal sigue el formato del país y el teléfono escrito sin `+` recibe el prefijo del país (`+1 809 555 0101`).
+
+- Fuente: [GeoNames](https://www.geonames.org) (CC BY 4.0, atribución en el pie de página): prefijos y formatos postales de 250 países, 3.865 estados/provincias, ~70.000 ciudades de más de 5.000 habitantes y códigos postales de AR, BR, CA, CL, CO, DE, DO, ES, FR, IT, MX, PE, PR y US.
+- Endpoints públicos: `GET /api/geo/countries/:code`, `GET /api/geo/cities?country=&region=&q=`, `GET /api/geo/postal?country=&code=` (sugerencias).
+- Reimportar: descargar los archivos en `scripts/data/geonames/` (ver cabecera de `scripts/geo-import.mjs`), conceder temporalmente los permisos de la migración `20261114140000_nexovax_geo_reference.sql` y ejecutar `node ../scripts/geo-import.mjs` desde `backend/`.
+
 ## Seguridad operativa
 
 - **Base de datos:** TLS con verificación de certificado contra la CA raíz de Supabase incluida en `backend/certs/supabase-root-2021.crt` (`DATABASE_CA_FILE` para otra CA). `DATABASE_SSL_INSECURE=true` solo en desarrollo local; en producción la API no arranca sin verificación.

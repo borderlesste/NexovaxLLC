@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { Avatar, Dialog, Empty, Pagination, Segmented, Spinner } from '@/components/ui/misc';
-import { GeoFields } from '@/components/shop/geo-fields';
+import { GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { ENTITY_TYPES, entityLabel, taxIdHint } from '@/lib/entities';
 import { t } from '@/lib/i18n';
 
@@ -54,7 +54,7 @@ function NewSellerDialog({ onClose }: { onClose: () => void }) {
           <Field label={taxIdHint(f.countryCode)} required><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
           <Field label={t('Dirección de despacho')} required className="sm:col-span-2"><Input value={f.line1} onChange={set('line1')} /></Field>
           <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
-          <Field label={t('Teléfono')} required><Input rule="phone" value={f.phone} onChange={set('phone')} placeholder="+1 305 555 0000" /></Field>
+          <Field label={t('Teléfono')} required><PhoneInput countryCode={f.countryCode} value={f.phone} onChange={(v) => setF((s) => ({ ...s, phone: v }))} required /></Field>
         </div>
       )}
     </Dialog>

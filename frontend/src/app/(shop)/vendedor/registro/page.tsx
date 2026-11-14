@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/input';
 import { PageLoader } from '@/components/ui/misc';
-import { CountrySelect, GeoFields } from '@/components/shop/geo-fields';
+import { CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { ENTITY_TYPES, entityLabel, taxIdHint } from '@/lib/entities';
 import { t } from '@/lib/i18n';
 
@@ -69,7 +69,7 @@ export default function SellerOnboardingPage() {
             <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} placeholder={t('Ej. Urban Style Co.')} /></Field>
             <Field label={t('Descripción corta')}><Input value={f.shortDescription} onChange={set('shortDescription')} placeholder={t('Qué vendes en una frase')} maxLength={200} /></Field>
             <Field label={t('Correo de atención')}><Input rule="email" type="email" value={f.supportEmail} onChange={set('supportEmail')} placeholder={t('ventas@mitienda.com')} /></Field>
-            <Field label={t('Teléfono de atención')}><Input rule="phone" value={f.supportPhone} onChange={set('supportPhone')} placeholder="+1 305 555 0000" /></Field>
+            <Field label={t('Teléfono de atención')}><PhoneInput countryCode={f.countryCode || geo.countryCode} value={f.supportPhone} onChange={(v) => setF((s) => ({ ...s, supportPhone: v }))} /></Field>
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')}</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -84,7 +84,7 @@ export default function SellerOnboardingPage() {
           <p className="text-sm text-muted">{t('Desde aquí se calculan las tarifas de envío y se generan las etiquetas.')}</p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <Field label={t('Persona de contacto')} required><Input rule="personName" value={f.contactName} onChange={set('contactName')} placeholder={me?.displayName ?? ''} /></Field>
-            <Field label={t('Teléfono')} required hint={t('(con código de país)')}><Input rule="phone" value={f.phone} onChange={set('phone')} placeholder="+1 305 555 0000" /></Field>
+            <Field label={t('Teléfono')} required><PhoneInput countryCode={geo.countryCode} value={f.phone} onChange={(v) => setF((s) => ({ ...s, phone: v }))} required /></Field>
             <Field label={t('Dirección')} required className="sm:col-span-2"><Input value={f.line1} onChange={set('line1')} placeholder={t('Calle y número')} /></Field>
             <Field label={t('Apartamento, suite o referencia')} className="sm:col-span-2"><Input value={f.line2} onChange={set('line2')} /></Field>
             <GeoFields value={geo} onChange={(p) => { if (p.countryCode !== undefined) setShipCountry(p.countryCode); setF((s) => ({ ...s, ...('city' in p ? { city: p.city! } : {}), ...('region' in p ? { region: p.region! } : {}), ...('postalCode' in p ? { postalCode: p.postalCode! } : {}) })); }} />

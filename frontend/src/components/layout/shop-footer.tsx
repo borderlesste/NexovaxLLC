@@ -50,6 +50,7 @@ export function ShopFooter() {
             <Link href="/ayuda#terminos">{t('Términos y condiciones')}</Link>
             <Link href="/ayuda#privacidad">{t('Privacidad')}</Link>
             <Link href="/ayuda#cookies">{t('Cookies')}</Link>
+            <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" title="CC BY 4.0">{t('Datos geográficos: GeoNames')}</a>
           </span>
         </div>
       </div>

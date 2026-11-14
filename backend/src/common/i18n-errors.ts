@@ -214,6 +214,11 @@ const EN: Record<string, string> = {
   'Una lista cerrada necesita al menos una opción.': 'A closed list needs at least one option.',
   'Hay productos con valores que no están en la lista. Agrégalos como opciones o usa una lista abierta.': 'Some products use values that are not in the list. Add them as options or use an open list.',
   'El código de la opción solo puede contener minúsculas, números y guiones bajos.': 'The option code can only contain lowercase letters, numbers and underscores.',
+  'Selecciona un estado o provincia de la lista del país.': 'Select a state or province from the country’s list.',
+  'La ciudad no pertenece al estado o provincia seleccionado.': 'The city doesn’t belong to the selected state or province.',
+  'El teléfono debe tener 10 dígitos (código de área + número).': 'The phone number must have 10 digits (area code + number).',
+  'El teléfono tiene demasiados dígitos para el país seleccionado.': 'The phone number has too many digits for the selected country.',
+  'Búsqueda inválida.': 'Invalid search.',
 };
 
 const NOUNS: Record<string, string> = {
