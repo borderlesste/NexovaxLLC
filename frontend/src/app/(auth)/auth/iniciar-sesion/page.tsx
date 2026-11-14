@@ -2,9 +2,12 @@
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { safeNextPath } from '@/lib/safe-redirect';
 import { Eye, EyeOff, Lock, Mail, ShieldCheck, ShoppingCart, Store } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
+import { errorMessage, post } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
@@ -16,12 +19,26 @@ function LoginForm() {
   const { signIn, session } = useAuth();
   const router = useRouter();
   const sp = useSearchParams();
-  const next = sp.get('next') || '/';
+  const next = safeNextPath(sp.get('next'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [unverified, setUnverified] = useState(sp.get('registered') === '1');
+  const [resending, setResending] = useState(false);
+  const resend = async () => {
+    if (!email.trim()) return setError(t('Escribe tu correo para reenviar el enlace.'));
+    setResending(true);
+    try {
+      await post('/auth/resend-verification', { email: email.trim() });
+      toast.success(t('Si la cuenta existe y no está confirmada, te enviamos un nuevo enlace.'));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setResending(false);
+    }
+  };
   const providers = useQuery({
     queryKey: ['auth-settings'],
     queryFn: async () => {
@@ -42,6 +59,7 @@ function LoginForm() {
       router.replace(next);
     } catch (err: any) {
       setError(err.message);
+      if (err?.code === 'EMAIL_NOT_CONFIRMED') setUnverified(true);
     } finally {
       setBusy(false);
     }
@@ -76,6 +94,12 @@ function LoginForm() {
             </div>
           </Field>
           <div className="text-right"><Link href="/auth/recuperar-contrasena" className="text-sm font-semibold text-brand-700 hover:underline">{t('¿Olvidaste tu contraseña?')}</Link></div>
+          {unverified && (
+            <div className="rounded-lg bg-brand-50 px-3 py-2 text-sm">
+              <p>{t('Te enviamos un enlace para confirmar tu correo. Confírmalo y luego inicia sesión.')}</p>
+              <button type="button" onClick={resend} disabled={resending} className="mt-1 font-semibold text-brand-700 hover:underline disabled:opacity-60">{t('Reenviar enlace de confirmación')}</button>
+            </div>
+          )}
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Iniciar sesión')}</Button>
           {social.length > 0 && (

@@ -48,9 +48,10 @@ export class SupportController {
     return this.support.create(user, dto);
   }
 
-  @Public()
+  /** Status lookup by code — only the requester or support staff (codes are sequential). */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get('track/:code')
-  track(@Param('code') code: string, @CurrentUser() user?: RequestUser) {
+  track(@Param('code') code: string, @CurrentUser() user: RequestUser) {
     return this.support.track(code, user);
   }
 

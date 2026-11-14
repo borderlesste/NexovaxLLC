@@ -76,6 +76,18 @@ export class PaypalService {
 
   async verifyWebhook(headers: Record<string, any>, event: unknown) {
     if (!config.paypalWebhookId) return false;
+    // Reject obviously forged/incomplete deliveries before any outbound call to PayPal.
+    const required = ['paypal-auth-algo', 'paypal-cert-url', 'paypal-transmission-id', 'paypal-transmission-sig', 'paypal-transmission-time'];
+    if (required.some((h) => typeof headers[h] !== 'string' || !headers[h] || headers[h].length > 2048)) return false;
+    try {
+      const cert = new URL(headers['paypal-cert-url']);
+      if (cert.protocol !== 'https:' || !(cert.hostname === 'paypal.com' || cert.hostname.endsWith('.paypal.com'))) return false;
+    } catch {
+      return false;
+    }
+    const sent = Date.parse(headers['paypal-transmission-time']);
+    if (!Number.isFinite(sent) || Math.abs(Date.now() - sent) > 24 * 3600_000) return false;
+    if (!event || typeof event !== 'object' || typeof (event as any).id !== 'string') return false;
     const r = await this.call<any>('POST', '/v1/notifications/verify-webhook-signature', {
       auth_algo: headers['paypal-auth-algo'],
       cert_url: headers['paypal-cert-url'],

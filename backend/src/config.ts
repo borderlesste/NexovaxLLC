@@ -26,12 +26,17 @@ export const config = {
   /** AES-256-GCM key (base64, 32 bytes) for payout destination details. */
   dataEncryptionKey: secret('DATA_ENCRYPTION_KEY', 'data_encryption_key'),
   /**
-   * When true, accounts created through the API are confirmed immediately.
-   * Required while the project has no transactional SMTP provider configured
-   * (Supabase's default SMTP only delivers to project team members).
+   * When true, self-registered accounts skip e-mail verification. Off by default:
+   * new customers confirm ownership of their address through a link we e-mail (Resend).
    */
-  authAutoConfirm: (process.env.AUTH_AUTO_CONFIRM ?? 'true') === 'true',
+  authAutoConfirm: process.env.AUTH_AUTO_CONFIRM === 'true' && process.env.NODE_ENV !== 'production',
   paymentEnvironment: (process.env.PAYMENT_ENVIRONMENT ?? 'TEST') as 'TEST' | 'LIVE',
+  /**
+   * Simulated card captures (no processor) for local development without Stripe.
+   * Opt-in only, and never honoured in production or with LIVE payments.
+   */
+  paymentSandboxEnabled:
+    process.env.PAYMENT_SANDBOX_ENABLED === 'true' && process.env.NODE_ENV !== 'production' && (process.env.PAYMENT_ENVIRONMENT ?? 'TEST') !== 'LIVE',
   mediaBucket: 'rd-product-images',
   documentsBucket: 'rd-seller-documents',
   publicApiUrl: process.env.PUBLIC_API_URL ?? 'http://localhost:4000/api',

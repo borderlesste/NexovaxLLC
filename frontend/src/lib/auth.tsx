@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) {
       if (/invalid login/i.test(error.message)) throw new Error(t('Correo o contraseña incorrectos.'));
-      if (/email not confirmed/i.test(error.message)) throw new Error(t('Debes confirmar tu correo antes de iniciar sesión.'));
+      if (/email not confirmed/i.test(error.message)) throw Object.assign(new Error(t('Debes confirmar tu correo antes de iniciar sesión.')), { code: 'EMAIL_NOT_CONFIRMED' });
       throw new Error(error.message);
     }
   }, []);

@@ -196,7 +196,11 @@ export class PaymentsService {
       const pi = await this.stripe.retrieveIntent(p.external_intent_id);
       if (pi.status === 'succeeded') return this.confirmStripe(checkoutId, p.customer_id);
       if (pi.status === 'processing') throw conflict('PAYMENT_PROCESSING', 'El pago con tarjeta se está procesando. Espera unos segundos.');
-      await this.stripe.cancelIntent(p.external_intent_id);
+      const after = pi.status === 'canceled' ? pi : await this.stripe.cancelIntent(p.external_intent_id);
+      if (after.status === 'succeeded') return this.confirmStripe(checkoutId, p.customer_id);
+      if (after.status === 'processing') throw conflict('PAYMENT_PROCESSING', 'El pago con tarjeta se está procesando. Espera unos segundos.');
+      // Only mirror the cancellation locally once Stripe itself reports it.
+      if (after.status !== 'canceled') throw conflict('PAYMENT_CANCEL_FAILED', 'No se pudo cancelar el pago con el procesador. Inténtalo de nuevo.');
     }
     if (p.provider_code === 'PAYPAL' && p.external_intent_id) {
       const order = await this.paypal.getOrder(p.external_intent_id).catch(() => null);

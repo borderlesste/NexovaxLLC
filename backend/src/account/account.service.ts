@@ -48,8 +48,27 @@ export class AccountService {
     );
     if (input.locale && (LOCALES as readonly string[]).includes(input.locale))
       await this.db.exec(`update public.users set locale = $2 where id = $1`, [user.id, input.locale]);
-    this.mail.fire(() => this.mail.welcome(user.id));
-    return { id: user.id, email: user.email, confirmed: !!user.email_confirmed_at };
+    const confirmed = !!user.email_confirmed_at;
+    if (confirmed) this.mail.fire(() => this.mail.welcome(user.id));
+    else this.mail.fire(() => this.sendVerification(user.id, user.email!));
+    return { id: user.id, email: user.email, confirmed, verificationSent: !confirmed };
+  }
+
+  private async sendVerification(userId: string, email: string) {
+    const tokenHash = await this.supa.emailVerificationTokenHash(email);
+    if (!tokenHash) return;
+    await this.mail.emailVerification(userId, email, `${config.webUrl}/auth/confirmar?token_hash=${encodeURIComponent(tokenHash)}&type=email`);
+  }
+
+  /** Re-sends the verification link. Always answers OK (no account discovery). */
+  async resendVerification(email: string) {
+    const normalized = email.trim().toLowerCase();
+    const u = await this.db.one<{ id: string }>(
+      `select id from public.users where lower(email::text) = $1 and email_verified_at is null and status = 'ACTIVE'`,
+      [normalized],
+    );
+    if (u) this.mail.fire(() => this.sendVerification(u.id, normalized));
+    return { ok: true };
   }
 
   /**

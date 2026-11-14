@@ -292,7 +292,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
                   onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onFiles(e.dataTransfer.files); }}>
                   <UploadCloud className="size-9 text-brand-600" />
                   <b className="mt-2">{uploading ? 'Subiendo…' : t('Sube las imágenes')}</b>
-                  <span className="text-xs text-muted">{t('Arrastra y suelta o selecciona. JPG, PNG o WebP. Máx. 10 MB.')}</span>
+                  <span className="text-xs text-muted">{t('Arrastra y suelta o selecciona. JPG, PNG o WebP. Máx. 8 MB.')}</span>
                   {!productId && <span className="mt-1 text-xs font-semibold text-amber-700">{t('Guarda el borrador para habilitar.')}</span>}
                 </button>
                 {media.map((m: any) => (

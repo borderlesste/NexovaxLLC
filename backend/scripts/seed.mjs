@@ -31,7 +31,7 @@ const DATABASE_URL = secret('database_url', 'DATABASE_URL');
 const PASSWORD = secret('seed_password', 'SEED_PASSWORD');
 if (!PASSWORD) throw new Error('Define la contraseña de las cuentas demo en .secrets/seed_password o SEED_PASSWORD.');
 
-const db = new pg.Pool({ connectionString: DATABASE_URL.replace(/([?&])sslmode=[^&]*&?/, '$1').replace(/[?&]$/, ''), ssl: { rejectUnauthorized: false }, max: 2 });
+const db = new pg.Pool({ connectionString: DATABASE_URL.replace(/([?&])sslmode=[^&]*&?/, '$1').replace(/[?&]$/, ''), ssl: { ca: readFileSync(new URL('../certs/supabase-root-2021.crt', import.meta.url), 'utf8'), rejectUnauthorized: true }, max: 2 });
 
 let step = 0;
 const log = (...a) => console.log(`\x1b[35m[${String(++step).padStart(2, '0')}]\x1b[0m`, ...a);
@@ -81,7 +81,12 @@ async function login(email) {
 async function ensureUser(fullName, email) {
   let t = await login(email);
   if (!t) {
-    await api.post(null, '/auth/register', { fullName, email, password: PASSWORD });
+    const r = await api.post(null, '/auth/register', { fullName, email, password: PASSWORD });
+    // Demo accounts: confirm the address through the admin API (real users confirm via the e-mailed link).
+    if (r && !r.confirmed) {
+      const { error } = await supa.auth.admin.updateUserById(r.id, { email_confirm: true });
+      if (error) throw new Error(`No se pudo confirmar ${email}: ${error.message}`);
+    }
     t = await login(email);
     ok(`cuenta creada: ${email}`);
   }
@@ -544,8 +549,17 @@ async function main() {
           ok(`${name}: ${o.orderNumber} rastreo Shippo → ${a.status} → ${b.status}`);
         } else {
           await api.post(t, `/seller/shipments/${sh.id}/tracking`, { status: 'OUT_FOR_DELIVERY', city: sh.toCity ?? undefined });
-          await api.post(t, `/seller/shipments/${sh.id}/tracking`, { status: 'DELIVERED', detail: 'Entregado al cliente.' });
-          ok(`${name}: ${o.orderNumber} entregado (actualización manual)`);
+          // Sellers can't self-declare delivery: the buyer confirms receipt.
+          let confirmed = false;
+          for (const buyer of [juan, maria]) {
+            try {
+              await api.post(buyer, `/orders/shipments/${sh.id}/confirm-delivery`);
+              confirmed = true;
+              break;
+            } catch {}
+          }
+          if (confirmed) ok(`${name}: ${o.orderNumber} entregado (confirmado por el comprador)`);
+          else warn(`${name}: ${o.orderNumber} en ruta; pendiente de confirmación del comprador`);
         }
       }
     }

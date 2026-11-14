@@ -100,11 +100,13 @@ export class AuthGuard implements CanActivate {
     const cached = userCache.get(sub);
     if (cached && Date.now() - cached.at < USER_CACHE_MS) return { ...cached.user, sessionId: String(payload.session_id ?? '') };
 
-    const row = await this.db.one<{ id: string; email: string; status: string }>(
-      `select id, email::text as email, status from public.users where id = $1`,
+    const row = await this.db.one<{ id: string; email: string; status: string; email_verified_at: string | null }>(
+      `select id, email::text as email, status, email_verified_at from public.users where id = $1`,
       [sub],
     );
     if (!row) throw new AppError('PROFILE_NOT_PROVISIONED', 'Tu cuenta aún no está activa en el marketplace.', HttpStatus.UNAUTHORIZED);
+    if (!row.email_verified_at && !config.authAutoConfirm)
+      throw new AppError('EMAIL_NOT_VERIFIED', 'Confirma tu correo electrónico para continuar.', HttpStatus.FORBIDDEN);
     const roles = await this.db.many<{ code: RoleCode }>(
       `select r.code from public.user_roles ur join public.roles r on r.id = ur.role_id
         where ur.user_id = $1 and ur.revoked_at is null and (ur.expires_at is null or ur.expires_at > now()) and r.is_active`,

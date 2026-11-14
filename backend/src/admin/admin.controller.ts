@@ -55,6 +55,11 @@ export class RoleDto {
   @IsBoolean() grant: boolean;
 }
 
+export class AdminTrackingDto {
+  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'EXCEPTION']) status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION';
+  @IsOptional() @IsString() @MaxLength(200) detail?: string;
+}
+
 @ApiTags('admin')
 @Controller('admin')
 export class AdminController {
@@ -115,7 +120,7 @@ export class AdminController {
 
   @Roles('SUPPORT')
   @Post('shipments/:id/tracking')
-  tracking(@Param('id', ParseUUIDPipe) id: string, @Body() dto: { status: any; detail?: string }) {
+  tracking(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AdminTrackingDto) {
     return this.orders.updateTracking({ kind: 'admin' }, id, dto.status, dto.detail);
   }
 

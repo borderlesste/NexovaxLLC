@@ -2,7 +2,7 @@ import { Body, Controller, Headers, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
-import { SkipThrottle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/auth';
 import { badRequest } from '../common/errors';
 import { PaymentsService } from './payments.service';
@@ -13,12 +13,12 @@ import { PaymentsService } from './payments.service';
  *   PayPal  → POST /api/paypal/webhook   events: PAYMENT.CAPTURE.COMPLETED
  */
 @ApiExcludeController()
-@SkipThrottle()
 @Controller()
 export class PaymentsWebhooksController {
   constructor(private readonly payments: PaymentsService) {}
 
   @Public()
+  @SkipThrottle() // verified locally (HMAC) before any work; Stripe retries bursts
   @Post('stripe/webhook')
   @HttpCode(200)
   stripe(@Req() req: RawBodyRequest<Request>, @Headers('stripe-signature') signature?: string) {
@@ -27,6 +27,7 @@ export class PaymentsWebhooksController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } }) // each delivery costs an outbound verification call
   @Post('paypal/webhook')
   @HttpCode(200)
   paypal(@Headers() headers: Record<string, string>, @Body() body: any) {

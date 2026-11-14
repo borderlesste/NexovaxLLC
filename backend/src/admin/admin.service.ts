@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import type { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
 import { SettingsService, PlatformSettings } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
@@ -10,7 +11,7 @@ import { ORDER_PREFIX } from '../common/refs';
 import { config } from '../config';
 
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'MXN', 'DOP', 'COP', 'CLP', 'PEN', 'ARS', 'BRL'];
-import { badRequest, conflict, notFound } from '../common/errors';
+import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
 import { slugify } from '../common/slug';
 import { invalidateUserCache, RequestUser, RoleCode } from '../auth/auth';
@@ -327,7 +328,8 @@ export class AdminService {
     let tempPassword: string | undefined;
     if (!ownerId) {
       tempPassword = input.password || `Nx${randomUUID().replace(/-/g, '').slice(0, 10)}9`;
-      const u = await this.supa.createUser(input.ownerEmail.trim().toLowerCase(), tempPassword, input.ownerName);
+      // Created by staff on the owner's behalf: the address is verified out of band.
+      const u = await this.supa.createUser(input.ownerEmail.trim().toLowerCase(), tempPassword, input.ownerName, { confirmed: true });
       ownerId = u.id;
       await this.db.exec(`insert into public.user_profiles (user_id, display_name) values ($1,$2) on conflict (user_id) do nothing`, [ownerId, input.ownerName]);
     }
@@ -525,7 +527,9 @@ export class AdminService {
               coalesce(up.display_name, u.email::text) as customer, u.email::text as email, cs.expires_at as "expiresAt"
          from public.payments p join public.checkout_sessions cs on cs.id = p.checkout_session_id
          join public.users u on u.id = p.customer_id left join public.user_profiles up on up.user_id = u.id
-        where p.status = 'REQUIRES_ACTION' order by p.created_at`,
+        where p.status = 'REQUIRES_ACTION' and p.provider_code = 'RD_SANDBOX'
+          and exists (select 1 from public.payment_provider_intents i where i.payment_id = p.id and i.sanitized_metadata->>'method' = 'BANK_TRANSFER')
+        order by p.created_at`,
     );
   }
 
@@ -533,13 +537,16 @@ export class AdminService {
     if (!bankReference?.trim()) throw badRequest('REFERENCE_REQUIRED', 'Indica la referencia bancaria recibida.');
     const orderId = await this.db.tx(async (c) => {
       const p = await this.db.one(
-        `select p.id, p.status, p.expected_amount::text as amount, p.currency_code, i.id as intent_id from public.payments p
-           join lateral (select id from public.payment_provider_intents where payment_id = p.id order by created_at desc limit 1) i on true
+        `select p.id, p.status, p.provider_code, p.expected_amount::text as amount, p.currency_code, i.id as intent_id, i.sanitized_metadata->>'method' as method
+           from public.payments p
+           join lateral (select id, sanitized_metadata from public.payment_provider_intents where payment_id = p.id order by sequence_number desc limit 1) i on true
           where p.id = $1 for update of p`,
         [paymentId],
         c,
       );
       if (!p) throw notFound('Pago');
+      // Card/PayPal payments are confirmed only by their processor, never by hand.
+      if (p.provider_code !== 'RD_SANDBOX' || p.method !== 'BANK_TRANSFER') throw conflict('NOT_A_BANK_TRANSFER', 'Este pago no es una transferencia bancaria.');
       if (p.status !== 'REQUIRES_ACTION') throw conflict('PAYMENT_NOT_PENDING', 'El pago ya fue procesado.');
       const corr = randomUUID();
       const r = await this.db.one(
@@ -557,8 +564,16 @@ export class AdminService {
 
   async rejectTransfer(admin: RequestUser, paymentId: string, reason: string) {
     await this.db.tx(async (c) => {
-      const p = await this.db.one(`select checkout_session_id, customer_id, status from public.payments where id = $1 for update`, [paymentId], c);
-      if (!p || p.status !== 'REQUIRES_ACTION') throw conflict('PAYMENT_NOT_PENDING', 'El pago ya fue procesado.');
+      const p = await this.db.one(
+        `select p.checkout_session_id, p.customer_id, p.status, p.provider_code,
+                (select i.sanitized_metadata->>'method' from public.payment_provider_intents i where i.payment_id = p.id order by i.sequence_number desc limit 1) as method
+           from public.payments p where p.id = $1 for update of p`,
+        [paymentId],
+        c,
+      );
+      if (!p) throw notFound('Pago');
+      if (p.provider_code !== 'RD_SANDBOX' || p.method !== 'BANK_TRANSFER') throw conflict('NOT_A_BANK_TRANSFER', 'Este pago no es una transferencia bancaria.');
+      if (p.status !== 'REQUIRES_ACTION') throw conflict('PAYMENT_NOT_PENDING', 'El pago ya fue procesado.');
       await this.db.exec(`select public.cancel_unpaid_payment($1,'TRANSFER_NOT_RECEIVED',$2,$3)`, [paymentId, admin.id, randomUUID()], c);
       const cs = await this.db.one(`select status from public.checkout_sessions where id = $1`, [p.checkout_session_id], c);
       if (cs && !['CANCELLED', 'COMPLETED', 'EXPIRED', 'FAILED'].includes(cs.status))
@@ -769,29 +784,72 @@ export class AdminService {
     return { items: rows.map((r: any) => ({ id: r.id, email: r.email, name: r.name, status: r.status, roles: r.roles, orders: r.orders, createdAt: r.created_at, lastLoginAt: r.last_login_at })), total: rows[0] ? Number(rows[0].total) : 0, page };
   }
 
+  /**
+   * Locks the target user and enforces the staff hierarchy: only a SUPER_ADMIN may
+   * act on administrators or hand out administrator roles, and the last active
+   * SUPER_ADMIN can never be demoted or suspended.
+   */
+  private async guardStaffChange(c: PoolClient, admin: RequestUser, userId: string, opts: { role?: RoleCode; grant?: boolean; status?: string }) {
+    await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:staff-hierarchy'))`, [], c);
+    const target = await this.db.one(
+      `select u.id, u.status, coalesce(array_agg(r.code) filter (where r.code is not null), '{}') as roles
+         from public.users u
+         left join public.user_roles ur on ur.user_id = u.id and ur.revoked_at is null
+         left join public.roles r on r.id = ur.role_id
+        where u.id = $1 group by u.id`,
+      [userId],
+      c,
+    );
+    if (!target) throw notFound('Usuario');
+    const isSuper = admin.roles.includes('SUPER_ADMIN');
+    const targetRoles: string[] = target.roles ?? [];
+    const targetIsAdmin = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
+    if (!isSuper && (targetIsAdmin || (opts.role && ['ADMIN', 'SUPER_ADMIN'].includes(opts.role))))
+      throw forbidden('Solo un super administrador puede modificar cuentas o roles de administrador.');
+    const removesSuper = (opts.role === 'SUPER_ADMIN' && opts.grant === false) || (opts.status === 'SUSPENDED' && targetRoles.includes('SUPER_ADMIN'));
+    if (removesSuper) {
+      const others = await this.db.one(
+        `select count(*)::int as n from public.user_roles ur join public.roles r on r.id = ur.role_id join public.users u on u.id = ur.user_id
+          where r.code = 'SUPER_ADMIN' and ur.revoked_at is null and u.status = 'ACTIVE' and u.id <> $1`,
+        [userId],
+        c,
+      );
+      if (!others?.n) throw conflict('LAST_SUPER_ADMIN', 'Debe quedar al menos un super administrador activo.');
+    }
+    return target;
+  }
+
   async setRole(admin: RequestUser, userId: string, role: RoleCode, grant: boolean) {
-    if (['SUPER_ADMIN'].includes(role) && !admin.roles.includes('SUPER_ADMIN')) throw badRequest('FORBIDDEN_ROLE', 'Solo un super administrador puede asignar este rol.');
+    if (role === 'SUPER_ADMIN' && !admin.roles.includes('SUPER_ADMIN')) throw badRequest('FORBIDDEN_ROLE', 'Solo un super administrador puede asignar este rol.');
     if (userId === admin.id && !grant && ['ADMIN', 'SUPER_ADMIN'].includes(role)) throw badRequest('SELF_REVOKE', 'No puedes quitarte tu propio rol de administrador.');
-    if (grant)
-      await this.db.exec(
-        `insert into public.user_roles (user_id, role_id, assigned_by, reason)
-         select $1, r.id, $2, 'Asignado desde el panel' from public.roles r
-          where r.code = $3 and not exists (select 1 from public.user_roles ur where ur.user_id = $1 and ur.role_id = r.id and ur.revoked_at is null)`,
-        [userId, admin.id, role],
-      );
-    else
-      await this.db.exec(
-        `update public.user_roles ur set revoked_at = now(), revoked_by = $2 from public.roles r
-          where r.id = ur.role_id and ur.user_id = $1 and r.code = $3 and ur.revoked_at is null`,
-        [userId, admin.id, role],
-      );
+    await this.db.tx(async (c) => {
+      await this.guardStaffChange(c, admin, userId, { role, grant });
+      if (grant)
+        await this.db.exec(
+          `insert into public.user_roles (user_id, role_id, assigned_by, reason)
+           select $1, r.id, $2, 'Asignado desde el panel' from public.roles r
+            where r.code = $3 and not exists (select 1 from public.user_roles ur where ur.user_id = $1 and ur.role_id = r.id and ur.revoked_at is null)`,
+          [userId, admin.id, role],
+          c,
+        );
+      else
+        await this.db.exec(
+          `update public.user_roles ur set revoked_at = now(), revoked_by = $2 from public.roles r
+            where r.id = ur.role_id and ur.user_id = $1 and r.code = $3 and ur.revoked_at is null`,
+          [userId, admin.id, role],
+          c,
+        );
+    });
     invalidateUserCache(userId);
     return { ok: true };
   }
 
   async setUserStatus(admin: RequestUser, userId: string, status: 'ACTIVE' | 'SUSPENDED') {
     if (userId === admin.id) throw badRequest('SELF_STATUS', 'No puedes cambiar el estado de tu propia cuenta.');
-    await this.db.exec(`update public.users set status = $2 where id = $1 and status in ('ACTIVE','SUSPENDED')`, [userId, status]);
+    await this.db.tx(async (c) => {
+      await this.guardStaffChange(c, admin, userId, { status });
+      await this.db.exec(`update public.users set status = $2 where id = $1 and status in ('ACTIVE','SUSPENDED')`, [userId, status], c);
+    });
     invalidateUserCache(userId);
     return { ok: true };
   }

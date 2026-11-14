@@ -147,7 +147,11 @@ function ReportForm() {
           </div>
           <div className="card p-5">
             <div className="flex items-start gap-3"><Search className="size-7 text-brand-600" /><div><p className="text-lg font-bold">{t('Seguimiento de reportes')}</p><p className="text-sm text-muted">{t('¿Ya enviaste un reporte? Consulta su estado ingresando tu código.')}</p></div></div>
-            <div className="mt-3 flex gap-2"><Input value={trackCode} onChange={(e) => setTrackCode(e.target.value)} placeholder={t('Ej. NX-REP-123456')} /><Button onClick={lookup} disabled={!trackCode.trim()}>{t('Consultar estado')}</Button></div>
+            {session ? (
+              <div className="mt-3 flex gap-2"><Input value={trackCode} onChange={(e) => setTrackCode(e.target.value)} placeholder={t('Ej. NX-REP-123456')} /><Button onClick={lookup} disabled={!trackCode.trim()}>{t('Consultar estado')}</Button></div>
+            ) : (
+              <p className="mt-3 text-sm text-muted">{t('Inicia sesión con la cuenta que envió el reporte para consultar su estado.')} <Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold text-brand-700 hover:underline">{t('Iniciar sesión')}</Link></p>
+            )}
             {track && <div className="mt-3 flex items-center justify-between rounded-lg bg-surface px-3 py-2 text-sm"><span><b>{track.code}</b> · {track.category}</span><StatusBadge status={track.status} label={track.statusLabel} /></div>}
           </div>
           <div className="rounded-[14px] bg-brand-50 p-5">

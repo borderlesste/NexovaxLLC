@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { safeNextPath } from '@/lib/safe-redirect';
 import { BarChart3, Check, Eye, EyeOff, Lock, Mail, Store, User, Users } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { errorMessage, post } from '@/lib/api';
@@ -14,7 +15,7 @@ function RegisterForm() {
   const { signIn } = useAuth();
   const router = useRouter();
   const sp = useSearchParams();
-  const next = sp.get('next') || '/';
+  const next = safeNextPath(sp.get('next'));
   const [f, setF] = useState({ fullName: '', email: '', password: '', confirm: '' });
   const [terms, setTerms] = useState(false);
   const [show, setShow] = useState(false);

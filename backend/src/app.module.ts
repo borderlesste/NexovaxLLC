@@ -45,6 +45,10 @@ import { PaymentsWebhooksController } from './payments/payments.controller';
         level: process.env.LOG_LEVEL ?? 'info',
         transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty', options: { singleLine: true } },
         redact: ['req.headers.authorization', 'req.headers.cookie'],
+        // Query strings can carry secrets (e.g. the Shippo webhook token) and personal data: never log them.
+        serializers: {
+          req: (req: any) => ({ id: req.id, method: req.method, url: String(req.url ?? '').split('?')[0], remoteAddress: req.remoteAddress }),
+        },
         autoLogging: { ignore: (req) => (req.url ?? '').startsWith('/api/media/') },
       },
     }),

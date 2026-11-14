@@ -216,7 +216,9 @@ export class CheckoutService {
       paymentMethods: [
         stripe
           ? { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, provider: 'STRIPE', testMode: stripe.environment === 'TEST', publishableKey: config.stripePublishableKey }
-          : { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, provider: SANDBOX_PROVIDER, sandbox: true },
+          : config.paymentSandboxEnabled
+            ? { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, provider: SANDBOX_PROVIDER, sandbox: true }
+            : { code: 'CARD', name: 'Tarjeta de crédito / débito', available: false, reason: 'Disponible cuando se configure el procesador de tarjetas del marketplace.' },
         paypal
           ? { code: 'PAYPAL', name: 'PayPal', available: true, provider: 'PAYPAL', testMode: paypal.environment === 'TEST', clientId: config.paypalClientId }
           : { code: 'PAYPAL', name: 'PayPal', available: false, reason: 'Disponible cuando se configure la cuenta PayPal del marketplace.' },
@@ -240,7 +242,11 @@ export class CheckoutService {
     if (prior) return this.resultFor(prior.id, userId);
 
     const online = input.paymentMethod === 'BANK_TRANSFER' ? null : this.payments.providerFor(input.paymentMethod);
-    if (input.paymentMethod === 'CARD' && !online) this.validateSandboxCard(input.card); // local development without Stripe keys
+    if (input.paymentMethod === 'CARD' && !online) {
+      // Simulated capture: explicit local-development opt-in only (PAYMENT_SANDBOX_ENABLED).
+      if (!config.paymentSandboxEnabled) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
+      this.validateSandboxCard(input.card);
+    }
     else if (input.paymentMethod === 'PAYPAL' && !online) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
     else if (input.paymentMethod === 'BANK_TRANSFER' && !(await this.settings.get('payments.bank_transfer'))?.enabled)
       throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
@@ -258,6 +264,9 @@ export class CheckoutService {
       if (!code || !optionsBySeller.get(g.sellerId)!.options.some((o) => o.code === code))
         throw conflict('SHIPPING_OPTION_UNAVAILABLE', 'Una opción de envío ya no está disponible. Revisa los métodos de envío.');
     }
+
+    // Shipping was quoted for exactly these lines; the transaction must bill the same cart.
+    const quotedCart = cartSignature(preCart.groups.flatMap((g: any) => g.items.map((i: any) => ({ sellerId: g.sellerId, variantId: i.variantId, quantity: i.quantity }))));
 
     const checkoutId = await this.db.tx(async (c) => {
       const corr = randomUUID();
@@ -299,6 +308,8 @@ export class CheckoutService {
         [sessionId],
         c,
       );
+      if (cartSignature(items.map((i: any) => ({ sellerId: i.seller_id, variantId: i.variant_id, quantity: i.quantity }))) !== quotedCart)
+        throw conflict('CART_CHANGED', 'Tu carrito cambió mientras confirmabas el pedido. Revisa el resumen e inténtalo de nuevo.');
 
       // ---- inventory allocation per location (highest fulfillment priority first)
       type Alloc = { item: any; inventoryItemId: string; locationId: string; shipFrom: string; qty: number };
@@ -475,6 +486,7 @@ export class CheckoutService {
           customerEmail: ref?.email, reference: `NX-CHK-${ref?.public_number ?? ''}`, corr,
         });
       } else if (input.paymentMethod === 'CARD') {
+        if (!config.paymentSandboxEnabled) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
         const last4 = input.card!.number.replace(/\D/g, '').slice(-4);
         const intentId: string = (await this.db.one(
           `select public.register_payment_provider_intent($1,$2,'succeeded','SUCCEEDED',null,$3,now(),$4::jsonb) as id`,
@@ -721,3 +733,10 @@ function decimalString(v: bigint, scale: number) {
 }
 
 export { allocate };
+
+/** Order-independent fingerprint of the purchasable lines (seller, variant, quantity). */
+function cartSignature(lines: Array<{ sellerId: string; variantId: string; quantity: number }>) {
+  const agg = new Map<string, number>();
+  for (const l of lines) agg.set(`${l.sellerId}|${l.variantId}`, (agg.get(`${l.sellerId}|${l.variantId}`) ?? 0) + Number(l.quantity));
+  return [...agg.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, q]) => `${k}:${q}`).join(',');
+}

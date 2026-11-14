@@ -65,6 +65,13 @@ export class AccountController {
 
   @Public()
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('auth/resend-verification')
+  resendVerification(@Body() dto: RecoveryDto) {
+    return this.account.resendVerification(dto.email);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('auth/password-recovery')
   passwordRecovery(@Body() dto: RecoveryDto) {
     return this.account.requestPasswordRecovery(dto.email);

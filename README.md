@@ -94,6 +94,18 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
   - Vendedor: solicitud recibida, tienda aprobada/rechazada/suspendida/reactivada, nueva venta, pedido entregado, moderación de productos, retiro pagado/fallido/cancelado.
   - La recuperación de contraseña no usa el SMTP de Supabase: la API genera un token de un solo uso (`auth.admin.generateLink`) y envía el enlace a `/auth/restablecer`, que lo canjea con `verifyOtp`.
   - Variables: `MAIL_FROM` (por defecto `NEXOVAX <no-reply@nexovax.com>`), `MAIL_REPLY_TO`, `WEB_URL` (base de los enlaces; en producción la URL pública), `MAIL_SUPPRESS_DOMAINS` (por defecto los dominios demo `demo.nexovax.com`, `rdmarketplace.do`, `example.com`… nunca reciben correo) y `MAIL_REDIRECT_TO` (QA: desvía todos los correos a una dirección, p. ej. `delivered@resend.dev`).
-  - Las cuentas creadas por la API se confirman al instante (`AUTH_AUTO_CONFIRM=true`).
+  - **Verificación de correo:** quien se registra recibe un enlace (token de un solo uso, `generateLink`) a `/auth/confirmar`; hasta confirmarlo no puede iniciar sesión y la API responde `EMAIL_NOT_VERIFIED`. Reenvío: `POST /api/auth/resend-verification`. Las tiendas creadas por el equipo y las cuentas demo del seed se crean ya confirmadas. `AUTH_AUTO_CONFIRM=true` solo se acepta fuera de producción.
+
+## Seguridad operativa
+
+- **Base de datos:** TLS con verificación de certificado contra la CA raíz de Supabase incluida en `backend/certs/supabase-root-2021.crt` (`DATABASE_CA_FILE` para otra CA). `DATABASE_SSL_INSECURE=true` solo en desarrollo local; en producción la API no arranca sin verificación.
+- **Tarjeta simulada:** sin Stripe configurado la tarjeta aparece como no disponible. `PAYMENT_SANDBOX_ENABLED=true` habilita capturas simuladas solo en desarrollo (nunca con `NODE_ENV=production` ni `PAYMENT_ENVIRONMENT=LIVE`).
+- **Entregas:** el vendedor solo informa tránsito/en ruta/incidencia. «Entregado» (que libera fondos) lo confirma el comprador, la transportista (Shippo) o soporte; los envíos con guía manual sin confirmación se cierran solos tras `AUTO_CONFIRM_DELIVERY_DAYS` (14 por defecto). Los envíos con rastreo automático no se pueden editar a mano.
+- **Enlaces de rastreo:** para transportadoras conocidas el enlace se genera desde el número de guía; para otras solo se acepta `https` y se muestra el dominio como «sitio externo».
+- **Webhooks:** con claves live de Shippo el estado se vuelve a consultar en la API de Shippo (el payload no es fuente de verdad). Los logs HTTP nunca incluyen la query string. El webhook de PayPal descarta peticiones sin cabeceras de firma válidas antes de llamar a PayPal y tiene límite de frecuencia.
+- **Imágenes:** máx. 8 MB, 8000 px por lado y 40 MP, se valida el formato real (no el declarado), sin animaciones, procesamiento con concurrencia limitada y límite de subidas por minuto.
+- **Moderación:** con moderación obligatoria, cualquier cambio de contenido visible (textos, marca, atributos, opciones, variantes o imágenes) de un producto activo lo devuelve a revisión; precio y stock no.
+- **Administración:** solo un super administrador puede modificar cuentas o roles de administradores; siempre queda al menos un super administrador activo.
+- **Web:** CSP y cabeceras de seguridad (`frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`); el parámetro `next` del login solo admite rutas internas.
 - **Mensajería:** actualización por sondeo (5 s); Supabase Realtime requeriría políticas RLS de lectura para el navegador.
 - **Ciudades:** texto libre por país; cada ciudad nueva se registra en `city_references` (las 49 de RD importadas de countries.dev se mantienen).

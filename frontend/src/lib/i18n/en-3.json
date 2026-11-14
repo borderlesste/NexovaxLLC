@@ -228,5 +228,22 @@
 "con cualquier fecha futura y CVC.": "with any future date and CVC.",
 "Pagarás con tu cuenta PayPal en una ventana segura. Tu pedido se confirma al aprobar el pago.": "You’ll pay with your PayPal account in a secure window. Your order is confirmed once you approve the payment.",
 "El pago aún no se ha completado.": "The payment hasn’t been completed yet.",
-"Estamos confirmando tu pago con el procesador. Esta página se actualizará automáticamente.": "We’re confirming your payment with the processor. This page will update automatically."
+"Estamos confirmando tu pago con el procesador. Esta página se actualizará automáticamente.": "We’re confirming your payment with the processor. This page will update automatically.",
+"La entrega la confirma el cliente o la transportista. Si el cliente no confirma, se cierra automáticamente tras el plazo de confirmación.": "Delivery is confirmed by the customer or the carrier. If the customer doesn’t confirm, it closes automatically after the confirmation period.",
+"Disponible cuando se configure el procesador de tarjetas del marketplace.": "Available once the marketplace card processor is configured.",
+"Inicia sesión con la cuenta que envió el reporte para consultar su estado.": "Sign in with the account that sent the report to check its status.",
+"Escribe tu correo para reenviar el enlace.": "Enter your e-mail to resend the link.",
+"Si la cuenta existe y no está confirmada, te enviamos un nuevo enlace.": "If the account exists and isn’t confirmed, we sent you a new link.",
+"Te enviamos un enlace para confirmar tu correo. Confírmalo y luego inicia sesión.": "We sent you a link to confirm your e-mail. Confirm it and then sign in.",
+"Reenviar enlace de confirmación": "Resend confirmation link",
+"Confirmando tu correo…": "Confirming your e-mail…",
+"¡Correo confirmado!": "E-mail confirmed!",
+"No pudimos confirmar tu correo": "We couldn’t confirm your e-mail",
+"Tu cuenta está activa. Te llevamos a la tienda…": "Your account is active. Taking you to the store…",
+"El enlace expiró o ya fue usado. Inicia sesión para solicitar uno nuevo.": "The link expired or was already used. Sign in to request a new one.",
+"Un momento, por favor.": "One moment, please.",
+"Ir a iniciar sesión": "Go to sign in",
+"Enlace externo proporcionado por la tienda": "External link provided by the store",
+"sitio externo": "external site",
+"(opcional, solo https)": "(optional, https only)"
 }

@@ -50,11 +50,17 @@ export class StripeService {
     return this.stripe.paymentIntents.retrieve(id, { expand: ['latest_charge.balance_transaction'] });
   }
 
-  async cancelIntent(id: string) {
+  /**
+   * Cancels a PaymentIntent and returns its authoritative state. When Stripe
+   * refuses (e.g. it was captured in the meantime) the intent is re-read so the
+   * caller decides from the real status instead of assuming it was cancelled.
+   */
+  async cancelIntent(id: string): Promise<Stripe.PaymentIntent> {
     try {
-      await this.stripe.paymentIntents.cancel(id);
+      return await this.stripe.paymentIntents.cancel(id, undefined, { idempotencyKey: `nx-pi-cancel-${id}` });
     } catch (e: any) {
       this.logger.warn(`Stripe cancel ${id}: ${e?.message}`);
+      return this.retrieveIntent(id);
     }
   }
 

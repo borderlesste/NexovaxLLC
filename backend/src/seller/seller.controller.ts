@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -13,7 +14,7 @@ import { CARRIERS } from '../shipping/shipping.service';
 import { badRequest } from '../common/errors';
 
 const PHONE = /^\+?[0-9][0-9 ().-]{5,47}$/;
-const upload = { limits: { fileSize: 10 * 1024 * 1024, files: 8 } };
+const upload = { limits: { fileSize: 8 * 1024 * 1024, files: 8, fields: 10, parts: 20 } };
 
 export class ShipFromDto {
   @IsString() @Length(2, 120) contactName: string;
@@ -105,8 +106,9 @@ export class ShipDto {
   @IsOptional() @IsString() @MaxLength(300) trackingUrl?: string;
 }
 
+/** Sellers report progress only; delivery is confirmed by the customer, the carrier or support. */
 export class TrackingDto {
-  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'EXCEPTION']) status: any;
+  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'EXCEPTION']) status: any;
   @IsOptional() @IsString() @MaxLength(200) detail?: string;
   @IsOptional() @IsString() @MaxLength(80) city?: string;
 }
@@ -166,6 +168,7 @@ export class SellerController {
   }
 
   @Post('store/:kind')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseInterceptors(FileInterceptor('file', upload))
   storeImage(@CurrentUser() user: RequestUser, @Param('kind') kind: string, @UploadedFile() file: Express.Multer.File, @Headers('x-seller-id') h?: string) {
     if (!['logo', 'banner'].includes(kind) || !file) throw badRequest('INVALID_UPLOAD', 'Archivo inválido.');
@@ -204,6 +207,7 @@ export class SellerController {
     return this.seller.setProductStatus(user, this.sid(user, h), id, action);
   }
 
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('products/:id/media')
   @UseInterceptors(FilesInterceptor('files', 8, upload))
   addMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @UploadedFiles() files: Express.Multer.File[], @Headers('x-seller-id') h?: string) {
@@ -213,12 +217,12 @@ export class SellerController {
 
   @Delete('products/:id/media/:mediaId')
   removeMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('mediaId', ParseUUIDPipe) mediaId: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.removeMedia(this.sid(user, h), id, mediaId);
+    return this.seller.removeMedia(this.sid(user, h), id, mediaId, user.id);
   }
 
   @Post('products/:id/media/:mediaId/primary')
   primaryMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('mediaId', ParseUUIDPipe) mediaId: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.setPrimaryMedia(this.sid(user, h), id, mediaId);
+    return this.seller.setPrimaryMedia(this.sid(user, h), id, mediaId, user.id);
   }
 
   @Get('categories/:id/attributes')

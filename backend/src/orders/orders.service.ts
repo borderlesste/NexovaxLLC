@@ -7,6 +7,8 @@ import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { CARRIERS, ShippingService } from '../shipping/shipping.service';
 import { orderRef, parseOrderRef, paymentRef } from '../common/refs';
+import { fromMinor, toMinor } from '../common/money';
+import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
 
 export type OrderScope = { kind: 'customer'; userId: string } | { kind: 'seller'; sellerId: string } | { kind: 'admin' };
 
@@ -215,6 +217,18 @@ export class OrdersService {
     ]);
 
     const timeline = this.buildTimeline(o, shipments);
+    // A seller only sees its own part of a multi-store order: its seller-order totals,
+    // never the whole basket, and no payment instrument details.
+    const sum = (k: string) => fromMinor(sellerOrders.reduce((acc: bigint, so: any) => acc + BigInt(toMinor(so[k] ?? 0)), 0n));
+    const totals =
+      scope.kind === 'seller'
+        ? { subtotal: sum('subtotal'), shipping: sum('shipping'), tax: sum('tax'), total: sum('total'), commission: sum('commission') }
+        : { subtotal: o.subtotal, shipping: o.shipping_total, tax: o.tax_total, total: o.grand_total, commission: scope.kind === 'customer' ? undefined : o.commission_total };
+    const paymentView = !payment
+      ? null
+      : scope.kind === 'seller'
+        ? { status: payment.status, paidAt: payment.paid_at }
+        : { number: paymentRef(payment.public_number), status: payment.status, method: payment.meta?.method ?? 'CARD', brand: payment.meta?.brand, last4: payment.meta?.last4, paidAt: payment.paid_at };
     return {
       id: o.id,
       number: orderRef(o.number),
@@ -226,14 +240,12 @@ export class OrdersService {
       fulfillmentStatus: o.fulfillment_status,
       currency: o.currency_code,
       tax: o.tax_info ? { name: o.tax_info.code ?? 'Tax', rate: o.tax_info.rate != null ? Number(o.tax_info.rate) : null, country: o.tax_info.country ?? null } : null,
-      totals: { subtotal: o.subtotal, shipping: o.shipping_total, tax: o.tax_total, total: o.grand_total, commission: scope.kind === 'customer' ? undefined : o.commission_total },
+      totals,
       customer: { id: o.customer_id, name: o.customer_name, email: scope.kind === 'customer' ? o.customer_email : maskEmail(o.customer_email, scope.kind), phone: o.customer_phone },
       shippingAddress: address
         ? { recipientName: address.recipient_name, line1: address.line1, line2: address.line2, city: address.city, region: address.region, postalCode: address.postal_code, countryCode: address.country_code, phone: address.phone }
         : null,
-      payment: payment
-        ? { number: paymentRef(payment.public_number), status: payment.status, method: payment.meta?.method ?? 'CARD', brand: payment.meta?.brand, last4: payment.meta?.last4, paidAt: payment.paid_at }
-        : null,
+      payment: paymentView,
       sellerOrders: sellerOrders.map((so: any) => ({
         id: so.id,
         number: `V-${so.public_number}`,
@@ -277,7 +289,10 @@ export class OrdersService {
             automaticTracking: !!s.provider_tracking_id,
             label: scope.kind === 'customer' || !s.label_url ? null : { url: s.label_url, invoiceUrl: s.invoice_url, cost: s.label_cost, currency: s.label_currency, test: !!s.label_test },
             trackingNumber: s.tracking_number,
-            trackingUrl: s.tracking_url,
+            ...(() => {
+              const l = trackingLink(s);
+              return { trackingUrl: l.url, trackingUrlExternal: l.external, trackingHost: l.host };
+            })(),
             trackingStatus: s.current_status,
             shippedAt: s.shipped_at,
             deliveredAt: s.delivered_at,
@@ -467,6 +482,13 @@ export class OrdersService {
         const internal = ['OWN_DELIVERY', 'PICKUP'].includes(carrier.code);
         const tracking = input.trackingNumber?.trim() || (internal ? `NX-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1e4)}` : '');
         if (!tracking) throw badRequest('TRACKING_REQUIRED', 'Indica el número de guía de la transportadora.');
+        // Known carriers: the link is derived from the tracking number. Others: https only.
+        let trackingUrl: string | null = null;
+        if (isKnownCarrier(carrier.code)) trackingUrl = carrierTrackingUrl(carrier.code, tracking);
+        else if (input.trackingUrl?.trim()) {
+          trackingUrl = safeExternalUrl(input.trackingUrl);
+          if (!trackingUrl) throw badRequest('TRACKING_URL_INVALID', 'El enlace de rastreo debe ser una dirección https válida.');
+        }
         await this.db.tx(async (c) => {
           await this.db.exec(
             `update public.shipments set actual_carrier_code = $2, actual_carrier_name = $3 where id = $1`,
@@ -475,7 +497,7 @@ export class OrdersService {
           );
           await this.db.exec(
             `select public.register_external_tracking($1,$2,$3,$4,$5,'EXTERNAL_MANUAL')`,
-            [p.id, p.shipping_provider_code ?? 'MARKETPLACE', carrier.code, tracking, input.trackingUrl?.trim() || null],
+            [p.id, p.shipping_provider_code ?? 'MARKETPLACE', carrier.code, tracking, trackingUrl],
             c,
           );
           await this.db.exec(`select public.dispatch_shipment($1)`, [p.id], c);
@@ -525,9 +547,7 @@ export class OrdersService {
       [number, carrier],
     );
     if (!t) return { ignored: true };
-    const { normalizeTrack } = await import('../shipping/shippo.service');
-    const track = normalizeTrack(data);
-    const r = await this.shipping.applyTrack(t, track.history.length ? track.history : track.current ? [track.current] : []);
+    const r = await this.shipping.applyTrack(t, await this.shipping.webhookEvents(carrier, number, data));
     if (r.applied) await this.afterTrackingApplied(t.id, r.delivered);
     return { applied: r.applied };
   }
@@ -555,12 +575,24 @@ export class OrdersService {
     return n;
   }
 
-  /** Seller/admin updates the delivery progress of a shipment (manual carrier tracking). */
-  async updateTracking(scope: OrderScope, shipmentId: string, status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION', detail?: string, city?: string) {
-    await this.db.tx(async (c) => {
+  /**
+   * Manual delivery progress. Sellers may only report transit/exception events;
+   * DELIVERED (which releases seller funds) comes from the customer, the carrier
+   * (Shippo) or support staff. Carrier-tracked shipments can't be edited by sellers.
+   */
+  async updateTracking(
+    scope: OrderScope | { kind: 'system' },
+    shipmentId: string,
+    status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION',
+    detail?: string,
+    city?: string,
+  ) {
+    if (scope.kind === 'seller' && status === 'DELIVERED') throw forbidden('La entrega la confirma el cliente, la transportista o el equipo de soporte.');
+    const applied = await this.db.tx(async (c) => {
       const s = await this.db.one(
-        `select sh.id, sh.seller_id, sh.order_id, st.id as tracking_id from public.shipments sh
-           join public.shipment_trackings st on st.shipment_id = sh.id where sh.id = $1 order by st.created_at desc limit 1`,
+        `select sh.id, sh.seller_id, sh.order_id, st.id as tracking_id, st.provider_tracking_id, st.current_status
+           from public.shipments sh join public.shipment_trackings st on st.shipment_id = sh.id
+          where sh.id = $1 order by st.created_at desc limit 1 for update of st`,
         [shipmentId],
         c,
       );
@@ -570,17 +602,56 @@ export class OrdersService {
         const own = await this.db.one(`select 1 from public.orders where id = $1 and customer_id = $2`, [s.order_id, scope.userId], c);
         if (!own || status !== 'DELIVERED') throw forbidden();
       }
+      if (scope.kind === 'seller' && s.provider_tracking_id) throw conflict('TRACKING_AUTOMATIC', 'Este envío se actualiza automáticamente con la transportista.');
+      if (['DELIVERED', 'RETURNED'].includes(s.current_status)) {
+        if (status === 'DELIVERED') return false;
+        throw conflict('SHIPMENT_CLOSED', 'Este envío ya fue entregado.');
+      }
       const labels: Record<string, string> = {
         IN_TRANSIT: 'El paquete está en tránsito.',
         OUT_FOR_DELIVERY: 'El paquete salió a entrega.',
-        DELIVERED: scope.kind === 'customer' ? 'El cliente confirmó la recepción del pedido.' : 'El paquete fue entregado.',
+        DELIVERED:
+          scope.kind === 'customer'
+            ? 'El cliente confirmó la recepción del pedido.'
+            : scope.kind === 'system'
+              ? 'Entrega confirmada automáticamente al vencer el plazo de confirmación.'
+              : 'El equipo de soporte confirmó la entrega.',
         EXCEPTION: 'Se registró una incidencia en el envío.',
       };
       await this.trackingEvent(c, s.tracking_id, status, detail?.trim() || labels[status], city);
       if (status === 'DELIVERED') await this.releaseDeliveredFunds(c, s.order_id);
+      return true;
     });
-    if (status === 'DELIVERED') this.mail.fire(() => this.mail.shipmentDelivered(shipmentId));
+    if (applied && status === 'DELIVERED') this.mail.fire(() => this.mail.shipmentDelivered(shipmentId));
     return { ok: true };
+  }
+
+  /**
+   * Manually tracked shipments the customer never confirmed are closed as
+   * delivered after `AUTO_CONFIRM_DELIVERY_DAYS` (default 14) without an open incident.
+   */
+  async autoConfirmManualDeliveries() {
+    const days = Math.max(Number(process.env.AUTO_CONFIRM_DELIVERY_DAYS ?? 14) || 14, 3);
+    const rows = await this.db.many(
+      `select distinct on (st.shipment_id) st.shipment_id
+         from public.shipment_trackings st
+        where st.provider_tracking_id is null
+          and st.current_status in ('IN_TRANSIT','OUT_FOR_DELIVERY','PRE_TRANSIT','UNKNOWN')
+          and st.created_at < now() - make_interval(days => $1::int)
+        order by st.shipment_id, st.created_at desc
+        limit 50`,
+      [days],
+    );
+    let n = 0;
+    for (const r of rows) {
+      try {
+        await this.updateTracking({ kind: 'system' }, r.shipment_id, 'DELIVERED');
+        n++;
+      } catch (e: any) {
+        this.logger.warn(`Auto-confirm failed for shipment ${r.shipment_id}: ${e?.message}`);
+      }
+    }
+    return n;
   }
 
   private async trackingEvent(c: PoolClient, trackingId: string, status: string, detail: string, city?: string | null) {

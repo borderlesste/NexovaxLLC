@@ -48,7 +48,7 @@ const EN: Record<string, string> = {
   'No tienes permiso para acceder a esta sección.': 'You don’t have permission to access this section.',
   'Solo un super administrador puede asignar este rol.': 'Only a super administrator can assign this role.',
   'Falta la clave de idempotencia.': 'Missing idempotency key.',
-  'La imagen supera 10 MB.': 'The image exceeds 10 MB.',
+  'La imagen supera 8 MB.': 'The image exceeds 8 MB.',
   'No hay suficiente inventario para uno de los productos de tu carrito.': 'There isn’t enough stock for one of the products in your cart.',
   'Acción inválida.': 'Invalid action.',
   'El archivo no es una imagen válida.': 'The file is not a valid image.',
@@ -129,6 +129,18 @@ const EN: Record<string, string> = {
   'Correo electrónico inválido.': 'Invalid e-mail address.',
   'Ocurrió un error inesperado.': 'An unexpected error occurred.',
   'Demasiadas solicitudes. Espera un momento.': 'Too many requests. Please wait a moment.',
+  'La entrega la confirma el cliente, la transportista o el equipo de soporte.': 'Delivery is confirmed by the customer, the carrier or the support team.',
+  'Este envío se actualiza automáticamente con la transportista.': 'This shipment is updated automatically by the carrier.',
+  'Este envío ya fue entregado.': 'This shipment has already been delivered.',
+  'No se pudo cancelar el pago con el procesador. Inténtalo de nuevo.': 'The payment could not be cancelled with the processor. Please try again.',
+  'Este pago no es una transferencia bancaria.': 'This payment is not a bank transfer.',
+  'Solo un super administrador puede modificar cuentas o roles de administrador.': 'Only a super administrator can modify administrator accounts or roles.',
+  'Debe quedar al menos un super administrador activo.': 'At least one active super administrator must remain.',
+  'Confirma tu correo electrónico para continuar.': 'Confirm your e-mail address to continue.',
+  'Tu carrito cambió mientras confirmabas el pedido. Revisa el resumen e inténtalo de nuevo.': 'Your cart changed while you were placing the order. Review the summary and try again.',
+  'El enlace de rastreo debe ser una dirección https válida.': 'The tracking link must be a valid https address.',
+  'La imagen es demasiado grande (máximo 8000 px por lado).': 'The image is too large (maximum 8000 px per side).',
+  'No se permiten imágenes animadas ni de varias páginas.': 'Animated or multi-page images are not allowed.',
 };
 
 const NOUNS: Record<string, string> = {

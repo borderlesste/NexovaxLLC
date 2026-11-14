@@ -5,7 +5,7 @@ import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { AppError, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
-import { NormalizedTrackEvent, ShippoAddress, ShippoParcel, ShippoService } from './shippo.service';
+import { normalizeTrack, NormalizedTrackEvent, ShippoAddress, ShippoParcel, ShippoService } from './shippo.service';
 
 export const SHIPPO = 'SHIPPO';
 export const MARKETPLACE = 'MARKETPLACE';
@@ -418,6 +418,16 @@ export class ShippingService {
       track = await this.shippo.track(t.provider_tracking_id, t.tracking_number);
     }
     return this.applyTrack(t, track.history.length ? track.history : track.current ? [track.current] : []);
+  }
+
+  /**
+   * Events to apply for a Shippo webhook delivery. With live keys the payload is
+   * only a hint: the status is re-read from Shippo's API so a leaked webhook token
+   * can't forge deliveries. Test keys use the payload (test numbers aren't real).
+   */
+  async webhookEvents(carrier: string, trackingNumber: string, payload: any): Promise<NormalizedTrackEvent[]> {
+    const track = this.shippo.testMode ? normalizeTrack(payload) : await this.shippo.track(carrier, trackingNumber);
+    return track.history.length ? track.history : track.current ? [track.current] : [];
   }
 
   /** Applies normalized provider events to a tracking row (idempotent per provider event). */

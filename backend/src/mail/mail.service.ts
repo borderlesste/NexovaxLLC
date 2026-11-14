@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { config } from '../config';
+import { trackingLink } from '../common/tracking-links';
 import { DbService } from '../db/db.service';
 import { orderRef, paymentRef, payoutRef, ticketRef } from '../common/refs';
 import { esc, ItemLine, itemsTable, itemsText, layout, Locale, money, p, Rendered, rows } from './mail.templates';
@@ -160,6 +161,32 @@ export class MailService {
           p(t('¿Tienes un negocio? También puedes abrir tu tienda y vender a clientes de todo el mundo.', 'Own a business? Open your store and sell to customers worldwide.')),
         cta: { label: t('Explorar productos', 'Browse products'), url: `${config.webUrl}/catalogo` },
         text: t('Tu cuenta en NEXOVAX fue creada con éxito.', 'Your NEXOVAX account is ready.'),
+      }),
+    });
+  }
+
+  async emailVerification(userId: string, email: string, link: string) {
+    const u = await this.userContact(userId);
+    const l = u?.locale ?? 'es';
+    const t = tr(l);
+    await this.send({
+      template: 'EMAIL_VERIFICATION',
+      dedupeKey: `verify:${userId}:${randomUUID()}`,
+      to: email,
+      userId,
+      entityType: 'USER',
+      entityId: userId,
+      message: layout({
+        locale: l,
+        subject: t('Confirma tu correo en NEXOVAX', 'Confirm your NEXOVAX e-mail'),
+        preheader: t('Un paso más para activar tu cuenta.', 'One more step to activate your account.'),
+        title: t(`¡Hola${u?.name ? `, ${u.name}` : ''}!`, `Hi${u?.name ? ` ${u.name}` : ''}!`),
+        body:
+          p(t('Gracias por registrarte en <b>NEXOVAX</b>. Confirma que este correo te pertenece para activar tu cuenta.',
+              'Thanks for signing up to <b>NEXOVAX</b>. Confirm this e-mail belongs to you to activate your account.')) +
+          p(`<span style="color:#64748b;font-size:13px">${t('El enlace solo puede usarse una vez y vence pronto. Si no creaste esta cuenta, ignora este correo.', 'The link can be used once and expires soon. If you didn’t create this account, ignore this e-mail.')}</span>`),
+        cta: { label: t('Confirmar correo', 'Confirm e-mail'), url: link },
+        text: t('Confirma tu correo para activar tu cuenta de NEXOVAX.', 'Confirm your e-mail to activate your NEXOVAX account.'),
       }),
     });
   }
@@ -363,7 +390,7 @@ export class MailService {
   async sellerOrderShipped(sellerOrderId: string) {
     const list = await this.db.many(
       `select so.order_id, o.public_number, o.customer_id, o.currency_code, coalesce(ssp.display_name, s.slug) as store,
-              sh.id as shipment_id, sh.actual_carrier_name as carrier, sh.actual_service_name as service, st.tracking_number, st.tracking_url
+              sh.id as shipment_id, sh.actual_carrier_name as carrier, sh.actual_service_name as service, st.tracking_number, st.tracking_url, st.carrier_code, st.provider_tracking_id
          from public.seller_orders so join public.orders o on o.id = so.order_id
          join public.sellers s on s.id = so.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
          join public.shipments sh on sh.seller_order_id = so.id and sh.status not in ('CANCELLED','READY_TO_SHIP','DRAFT')
@@ -378,7 +405,10 @@ export class MailService {
       const t = tr(l);
       const ref = orderRef(r.public_number);
       const items = await this.orderItems(r.order_id, sellerOrderId);
-      const tracking = r.tracking_url ? `<a href="${esc(r.tracking_url)}" style="color:#0a6cf5">${esc(r.tracking_number)}</a>` : `<b>${esc(r.tracking_number ?? '—')}</b>`;
+      const link = trackingLink(r);
+      const tracking = link.url
+        ? `<a href="${esc(link.url)}" style="color:#0a6cf5">${esc(r.tracking_number)}</a>${link.external ? ` <span style="color:#64748b;font-size:12px">(${esc(t('enlace externo', 'external link'))}: ${esc(link.host)})</span>` : ''}`
+        : `<b>${esc(r.tracking_number ?? '—')}</b>`;
       await this.send({
         template: 'ORDER_SHIPPED',
         dedupeKey: `shipped:${r.shipment_id}`,

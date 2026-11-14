@@ -1,13 +1,32 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import sharp, { OutputInfo } from 'sharp';
+import sharp, { Metadata, OutputInfo } from 'sharp';
 import { randomUUID } from 'node:crypto';
 import { config } from '../config';
 import { AppError } from '../common/errors';
 import { DbService, Queryable } from '../db/db.service';
 
 const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+/** Decoding limits: reject decompression bombs before any pixel is decoded. */
+const MAX_IMAGE_SIDE = 8000;
+const MAX_IMAGE_PIXELS = 40_000_000;
+const FORMAT_FOR_MIME: Record<string, string[]> = { 'image/jpeg': ['jpeg'], 'image/png': ['png'], 'image/webp': ['webp'], 'image/avif': ['heif', 'avif'] };
+
+/** Small in-process semaphore so concurrent uploads can't exhaust CPU/memory. */
+const MAX_CONCURRENT_IMAGE_JOBS = 2;
+let activeImageJobs = 0;
+const imageQueue: Array<() => void> = [];
+async function withImageSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeImageJobs >= MAX_CONCURRENT_IMAGE_JOBS) await new Promise<void>((res) => imageQueue.push(res));
+  activeImageJobs++;
+  try {
+    return await fn();
+  } finally {
+    activeImageJobs--;
+    imageQueue.shift()?.();
+  }
+}
 
 /**
  * Server-only Supabase client using the project secret key.
@@ -43,11 +62,11 @@ export class SupabaseAdminService {
   }
 
   /** Creates a Supabase Auth identity; the DB trigger provisions public.users + CUSTOMER role. */
-  async createUser(email: string, password: string, fullName?: string) {
+  async createUser(email: string, password: string, fullName?: string, opts: { confirmed?: boolean } = {}) {
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
       password,
-      email_confirm: config.authAutoConfirm,
+      email_confirm: opts.confirmed ?? config.authAutoConfirm,
       user_metadata: fullName ? { full_name: fullName } : undefined,
     });
     if (error) {
@@ -75,6 +94,19 @@ export class SupabaseAdminService {
     return data.properties?.hashed_token ?? null;
   }
 
+  /**
+   * One-time e-mail token (hashed) used to verify a not-yet-confirmed address.
+   * Verifying it (`verifyOtp({ token_hash, type: 'email' })`) confirms the account.
+   */
+  async emailVerificationTokenHash(email: string): Promise<string | null> {
+    const { data, error } = await this.admin.auth.admin.generateLink({ type: 'magiclink', email });
+    if (error) {
+      this.logger.warn(`generateLink(magiclink) failed: ${error.message}`);
+      return null;
+    }
+    return data.properties?.hashed_token ?? null;
+  }
+
   async findUserIdByEmail(email: string): Promise<string | null> {
     const row = await this.db.one<{ id: string }>(`select id from public.users where lower(email::text) = lower($1)`, [email]);
     return row?.id ?? null;
@@ -95,15 +127,32 @@ export class SupabaseAdminService {
   ): Promise<string> {
     if (!ALLOWED_IMAGE.includes(file.mimetype))
       throw new AppError('UNSUPPORTED_IMAGE', 'Formato no permitido. Usa JPG, PNG, WebP o AVIF.');
-    if (file.size > MAX_IMAGE_BYTES) throw new AppError('IMAGE_TOO_LARGE', 'La imagen supera 10 MB.');
+    if (file.size > MAX_IMAGE_BYTES || file.buffer.length > MAX_IMAGE_BYTES) throw new AppError('IMAGE_TOO_LARGE', 'La imagen supera 8 MB.');
+    // Header-only inspection first (no pixel decoding): real format, dimensions, frames.
+    let head: Metadata;
+    try {
+      head = await sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
+    } catch (e: any) {
+      if (/pixel limit/i.test(e?.message ?? '')) throw new AppError('IMAGE_DIMENSIONS', `La imagen es demasiado grande (máximo ${MAX_IMAGE_SIDE} px por lado).`);
+      throw new AppError('INVALID_IMAGE', 'El archivo no es una imagen válida.');
+    }
+    if (!head.format || !FORMAT_FOR_MIME[file.mimetype]?.includes(head.format))
+      throw new AppError('UNSUPPORTED_IMAGE', 'Formato no permitido. Usa JPG, PNG, WebP o AVIF.');
+    const w = head.width ?? 0;
+    const h = head.height ?? 0;
+    if (!w || !h || w > MAX_IMAGE_SIDE || h > MAX_IMAGE_SIDE || w * h > MAX_IMAGE_PIXELS)
+      throw new AppError('IMAGE_DIMENSIONS', `La imagen es demasiado grande (máximo ${MAX_IMAGE_SIDE} px por lado).`);
+    if ((head.pages ?? 1) > 1) throw new AppError('IMAGE_ANIMATED', 'No se permiten imágenes animadas ni de varias páginas.');
     let out: Buffer;
     let meta: OutputInfo;
     try {
-      const r = await sharp(file.buffer)
-        .rotate()
-        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 86 })
-        .toBuffer({ resolveWithObject: true });
+      const r = await withImageSlot(() =>
+        sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS, failOn: 'error', pages: 1 })
+          .rotate()
+          .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 86 })
+          .toBuffer({ resolveWithObject: true }),
+      );
       out = r.data;
       meta = r.info;
     } catch {

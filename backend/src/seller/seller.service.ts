@@ -365,10 +365,12 @@ export class SellerService {
 
       let product: any;
       let contentChanged = true;
+      let contentBefore: string | null = null;
       if (productId) {
         product = await this.db.one(`select * from public.products where id = $1 and seller_id = $2 for update`, [productId, sellerId], c);
         if (!product) throw notFound('Producto');
         if (product.status === 'ARCHIVED') throw conflict('PRODUCT_ARCHIVED', 'El producto está archivado.');
+        contentBefore = await this.contentFingerprint(c, product.id);
         contentChanged =
           product.title !== input.title.trim() || (product.description ?? '') !== input.description.trim() || product.category_id !== input.categoryId;
         const slug = await this.uniqueSlug(c, input.seo?.slug || input.title, product.id);
@@ -507,6 +509,8 @@ export class SellerService {
       }
 
       // ---- status transitions
+      // Any customer-visible content (brand, texts, attributes, options, variants) counts; price/stock don't.
+      if (contentBefore !== null && !contentChanged) contentChanged = contentBefore !== (await this.contentFingerprint(c, product.id));
       const current = (await this.db.one(`select status from public.products where id = $1`, [product.id], c))!.status;
       if (input.action === 'SUBMIT') {
         if (!['DRAFT', 'REJECTED', 'PAUSED'].includes(current) && !(current === 'ACTIVE' && contentChanged && moderation))
@@ -540,6 +544,42 @@ export class SellerService {
       return product.id;
     });
     return this.getProduct(sellerId, id);
+  }
+
+  /** Hash of the moderated, customer-visible content of a product (excludes price and stock). */
+  private async contentFingerprint(c: PoolClient, productId: string): Promise<string> {
+    const r = await this.db.one<{ h: string }>(
+      `select md5(concat_ws('|', p.title, p.description, p.category_id, p.brand_id, p.short_description,
+                (select string_agg(concat_ws(':', a.attribute_definition_id, a.position, a.value_text, a.value_number, a.value_boolean, a.value_json), ',' order by a.attribute_definition_id, a.position)
+                   from public.product_attribute_values a where a.product_id = p.id),
+                (select string_agg(concat_ws(':', o.code, o.name, ov.code, ov.label, ov.swatch_value), ',' order by o.sort_order, o.code, ov.sort_order, ov.code)
+                   from public.product_options o left join public.product_option_values ov on ov.option_id = o.id where o.product_id = p.id),
+                (select string_agg(concat_ws(':', v.sku, v.title, v.combination_key, v.status), ',' order by v.combination_key, v.sku)
+                   from public.product_variants v where v.product_id = p.id and v.archived_at is null))) as h
+         from public.products p where p.id = $1`,
+      [productId],
+      c,
+    );
+    return r?.h ?? '';
+  }
+
+  /**
+   * Media changes on a live product: with mandatory moderation the product goes
+   * back to review (images are content customers see).
+   */
+  private async mediaChanged(c: PoolClient, productId: string, actor: string | null) {
+    const moderation = await this.settings.get('features.mandatory_moderation');
+    if (!moderation) return;
+    const p = await this.db.one(`select status from public.products where id = $1 for update`, [productId], c);
+    if (p?.status !== 'ACTIVE') return;
+    await this.transition(c, productId, 'ACTIVE', 'PENDING_REVIEW', actor, 'Cambios de imágenes requieren revisión');
+    await this.db.exec(`update public.product_moderation_reviews set status = 'CANCELLED', updated_at = now() where product_id = $1 and status = 'PENDING'`, [productId], c);
+    await this.db.exec(
+      `insert into public.product_moderation_reviews (product_id, submitted_product_version, status, submitted_by, submitted_at)
+       select id, version, 'PENDING', $2, now() from public.products where id = $1`,
+      [productId, actor],
+      c,
+    );
   }
 
   async transition(c: PoolClient, productId: string, from: string, to: string, actor: string | null, reason: string) {
@@ -578,18 +618,22 @@ export class SellerService {
     if (!p) throw notFound('Producto');
     const count = await this.db.one(`select count(*)::int as n from public.product_media where product_id = $1`, [productId]);
     if (count!.n + files.length > 8) throw badRequest('TOO_MANY_IMAGES', 'Máximo 8 imágenes por producto.');
-    for (const [i, f] of files.entries()) {
-      const assetId = await this.supa.uploadSellerImage(sellerId, user.id, f, `products/${productId}`, 'PUBLIC');
-      await this.db.exec(
-        `insert into public.product_media (product_id, seller_id, asset_id, media_role, sort_order, is_primary, alt_text)
-         values ($1,$2,$3,'GALLERY',$4,$5,null)`,
-        [productId, sellerId, assetId, count!.n + i, count!.n + i === 0],
-      );
-    }
+    const assetIds: string[] = [];
+    for (const f of files) assetIds.push(await this.supa.uploadSellerImage(sellerId, user.id, f, `products/${productId}`, 'PUBLIC'));
+    await this.db.tx(async (c) => {
+      for (const [i, assetId] of assetIds.entries())
+        await this.db.exec(
+          `insert into public.product_media (product_id, seller_id, asset_id, media_role, sort_order, is_primary, alt_text)
+           values ($1,$2,$3,'GALLERY',$4,$5,null)`,
+          [productId, sellerId, assetId, count!.n + i, count!.n + i === 0],
+          c,
+        );
+      await this.mediaChanged(c, productId, user.id);
+    });
     return this.getProduct(sellerId, productId);
   }
 
-  async removeMedia(sellerId: string, productId: string, mediaId: string) {
+  async removeMedia(sellerId: string, productId: string, mediaId: string, actor: string | null = null) {
     await this.db.tx(async (c) => {
       const m = await this.db.one(`select is_primary from public.product_media where id = $1 and product_id = $2 and seller_id = $3`, [mediaId, productId, sellerId], c);
       if (!m) throw notFound('Imagen');
@@ -600,15 +644,17 @@ export class SellerService {
           [productId],
           c,
         );
+      await this.mediaChanged(c, productId, actor);
     });
     return this.getProduct(sellerId, productId);
   }
 
-  async setPrimaryMedia(sellerId: string, productId: string, mediaId: string) {
+  async setPrimaryMedia(sellerId: string, productId: string, mediaId: string, actor: string | null = null) {
     await this.db.tx(async (c) => {
       const m = await this.db.one(`select id from public.product_media where id = $1 and product_id = $2 and seller_id = $3`, [mediaId, productId, sellerId], c);
       if (!m) throw notFound('Imagen');
       await this.db.exec(`update public.product_media set is_primary = (id = $2) where product_id = $1`, [productId, mediaId], c);
+      await this.mediaChanged(c, productId, actor);
     });
     return this.getProduct(sellerId, productId);
   }

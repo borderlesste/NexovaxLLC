@@ -5,7 +5,7 @@ import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
 import { orderRef, parseOrderRef, parseTicketRef, ticketRef } from '../common/refs';
 import { badRequest, notFound } from '../common/errors';
-import { RequestUser } from '../auth/auth';
+import { isStaff, RequestUser } from '../auth/auth';
 
 export interface ReportInput {
   categoryCode: string;
@@ -76,7 +76,7 @@ export class SupportService {
     return { id, code: ticketRef(t!.public_number) };
   }
 
-  async track(code: string, user?: RequestUser) {
+  async track(code: string, user: RequestUser) {
     const num = parseTicketRef(code);
     if (!/^\d+$/.test(num)) throw badRequest('CODE_INVALID', 'Código de seguimiento inválido.');
     const t = await this.db.one(
@@ -84,17 +84,19 @@ export class SupportService {
          from public.support_tickets t join public.support_ticket_categories c on c.id = t.category_id where t.public_number = $1`,
       [num],
     );
-    if (!t) throw notFound('Reporte');
-    const mine = user?.id === t.requester_user_id;
+    const mine = !!t && user.id === t.requester_user_id;
+    // Same answer for "doesn't exist" and "not yours" so codes can't be enumerated.
+    if (!t || !(mine || isStaff(user, 'SUPPORT'))) throw notFound('Reporte');
     return {
       code: ticketRef(t.public_number),
       status: t.status,
       statusLabel: STATUS_LABEL[t.status],
       category: t.category,
-      subject: mine ? t.subject : undefined,
+      subject: t.subject,
       createdAt: t.created_at,
       updatedAt: t.updated_at,
       id: mine ? t.id : undefined,
+      mine,
     };
   }
 

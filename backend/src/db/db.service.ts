@@ -1,11 +1,38 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Pool, PoolClient, QueryResultRow, types } from 'pg';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { config } from '../config';
 import { translateDbError } from '../common/errors';
 
 // Keep NUMERIC as string (exact money), BIGINT as string; parse INT8 counts explicitly.
 types.setTypeParser(1700, (v) => v); // numeric
 types.setTypeParser(20, (v) => v); // int8
+
+/**
+ * TLS for the database connection. The server certificate is always verified
+ * against a pinned CA (Supabase Root 2021 CA by default, or `DATABASE_CA_FILE`).
+ * Only local, non-production development may opt out with DATABASE_SSL_INSECURE=true.
+ */
+function databaseSsl(url: string | undefined): PoolConfigSsl {
+  const host = (() => {
+    try {
+      return new URL(url ?? '').hostname;
+    } catch {
+      return '';
+    }
+  })();
+  if (['localhost', '127.0.0.1', '::1'].includes(host) && process.env.DATABASE_SSL !== 'require') return false;
+  const prod = process.env.NODE_ENV === 'production';
+  if (process.env.DATABASE_SSL_INSECURE === 'true') {
+    if (prod) throw new Error('DATABASE_SSL_INSECURE is not allowed in production');
+    return { rejectUnauthorized: false };
+  }
+  const caFile = process.env.DATABASE_CA_FILE?.trim() || resolve(__dirname, '../../certs/supabase-root-2021.crt');
+  if (!existsSync(caFile)) throw new Error(`Database CA certificate not found: ${caFile}`);
+  return { ca: readFileSync(caFile, 'utf8'), rejectUnauthorized: true };
+}
+type PoolConfigSsl = false | { ca?: string; rejectUnauthorized: boolean };
 
 export type Queryable = Pick<PoolClient, 'query'>;
 
@@ -16,12 +43,12 @@ export class DbService implements OnModuleDestroy {
 
   constructor() {
     this.pool = new Pool({
-      // TLS is configured below; a `sslmode` URL parameter would override it in node-pg.
+      // TLS (with certificate verification) is configured below; a `sslmode` URL parameter would override it in node-pg.
       connectionString: config.databaseUrl?.replace(/([?&])sslmode=[^&]*&?/, '$1').replace(/[?&]$/, ''),
       max: Number(process.env.DB_POOL_MAX ?? 8),
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 15_000,
-      ssl: { rejectUnauthorized: false },
+      ssl: databaseSsl(config.databaseUrl),
     });
     this.pool.on('error', (err) => this.logger.error(`pg pool error: ${err.message}`));
   }
