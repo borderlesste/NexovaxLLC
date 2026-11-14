@@ -32,6 +32,7 @@ function Orders() {
         <Segmented className="px-3" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[
           { value: '', label: t('Todos'), count: c?.total }, { value: 'TO_PREPARE', label: t('Por preparar'), count: c?.to_prepare }, { value: 'PREPARING', label: t('En preparación'), count: c?.preparing },
           { value: 'SHIPPED', label: t('Enviados'), count: c?.shipped }, { value: 'DELIVERED', label: t('Entregados'), count: c?.delivered }, { value: 'PENDING_PAYMENT', label: t('Pago pendiente'), count: c?.pending_payment },
+          { value: 'CANCEL_REQUESTED', label: t('Cancelación solicitada'), count: c?.cancel_requested }, { value: 'CANCELLED', label: t('Cancelados'), count: c?.cancelled },
         ]} />
         <div className="p-4"><Input icon={<Search />} placeholder={t('Buscar pedido o cliente...')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" /></div>
         {q.isLoading ? <PageLoader /> : q.data && <OrdersTable data={q.data} base="/vendedor/pedidos" onPage={setPage} />}

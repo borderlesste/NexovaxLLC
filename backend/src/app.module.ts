@@ -42,6 +42,8 @@ import { NotificationsService } from './notifications/notifications.service';
 import { NotificationsController } from './notifications/notifications.controller';
 import { ReturnsService } from './returns/returns.service';
 import { ReturnsController } from './returns/returns.controller';
+import { CancellationsController } from './orders/cancellations.controller';
+import { CancellationsService } from './orders/cancellations.service';
 import { ReturnPolicyService } from './returns/return-policy.service';
 import { CardsService } from './payments/cards.service';
 import { CardsController } from './payments/cards.controller';
@@ -68,7 +70,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CardsController, PayoutSchedulesController, AccountDeletionController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CancellationsController, CardsController, PayoutSchedulesController, AccountDeletionController],
   providers: [
     DbService,
     SettingsService,
@@ -93,6 +95,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     NotificationsService,
     ReturnsService,
     ReturnPolicyService,
+    CancellationsService,
     CardsService,
     PayoutSchedulesService,
     ShippingSettlementService,

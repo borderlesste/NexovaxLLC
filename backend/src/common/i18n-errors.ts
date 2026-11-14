@@ -3,6 +3,17 @@ import { BaseExceptionFilter } from '@nestjs/core';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Elige un motivo de la lista.": "Choose a reason from the list.",
+  "Describe el motivo de la cancelación.": "Describe the reason for the cancellation.",
+  "Esta solicitud ya fue resuelta.": "This request has already been resolved.",
+  "Explica al cliente por qué no se puede cancelar.": "Explain to the customer why it can’t be cancelled.",
+  "Esta solicitud ya no se puede retirar.": "This request can no longer be withdrawn.",
+  "La cancelación aún no está aprobada.": "The cancellation hasn’t been approved yet.",
+  "Ya hay una solicitud de cancelación pendiente para esta compra.": "There is already a pending cancellation request for this purchase.",
+  "Esta compra ya fue cancelada.": "This purchase has already been cancelled.",
+  "Esta compra ya no se puede cancelar: ya salió a envío, tiene etiqueta comprada, un reembolso o una devolución. Si ya la recibiste, pide una devolución.": "This purchase can no longer be cancelled: it has shipped, has a purchased label, a refund or a return. If you already received it, request a return.",
+  "El cliente pidió cancelar esta compra: acepta o rechaza la solicitud antes de prepararla o enviarla.": "The customer asked to cancel this purchase: accept or reject the request before preparing or shipping it.",
+  "Esta compra fue cancelada: no la prepares ni la envíes.": "This purchase was cancelled: don’t prepare or ship it.",
   'El pago aún no se ha completado.': 'The payment hasn’t been completed yet.',
   'PayPal aún no confirma el pago.': 'PayPal hasn’t confirmed the payment yet.',
   'El monto cobrado no coincide con el pedido.': 'The charged amount doesn’t match the order.',

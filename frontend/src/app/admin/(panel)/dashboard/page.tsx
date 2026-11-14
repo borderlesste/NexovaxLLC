@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Box, RotateCcw, ChevronRight, CreditCard, Download, Landmark, MessageSquare, Package, ShoppingCart, TrendingUp, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, Ban, Box, RotateCcw, ChevronRight, CreditCard, Download, Landmark, MessageSquare, Package, ShoppingCart, TrendingUp, Users, Wallet } from 'lucide-react';
 import { get } from '@/lib/api';
 import { fmtDate, money } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
     a.transfers_pending && { icon: Landmark, title: t('Transferencias por confirmar'), detail: t('{a} pagos por transferencia esperan validación.', { a: a.transfers_pending }), href: '/admin/finanzas' },
     a.payouts_pending && { icon: Wallet, title: t('Retiros pendientes'), detail: t('{a} solicitudes de retiro por aprobar.', { a: a.payouts_pending }), href: '/admin/comisiones' },
     a.payout_accounts_pending && { icon: CreditCard, title: t('Métodos de cobro'), detail: t('{a} cuentas bancarias por verificar.', { a: a.payout_accounts_pending }), href: '/admin/comisiones' },
+    a.cancellations_pending && { icon: Ban, title: t('Cancelaciones por reembolsar'), detail: t('{a} compras canceladas esperan el reembolso.', { a: a.cancellations_pending }), href: '/admin/pedidos?status=CANCELLING' },
     a.returns_pending && { icon: RotateCcw, title: t('Devoluciones por atender'), detail: t('{a} devoluciones esperan revisión, recepción o inspección.', { a: a.returns_pending }), href: '/admin/devoluciones' },
     a.low_stock && { icon: AlertTriangle, title: t('Alerta de inventario'), detail: t('{a} productos llegaron al mínimo.', { a: a.low_stock }), href: '/admin/productos' },
     a.open_tickets && { icon: MessageSquare, title: t('Reportes abiertos'), detail: t('{a} incidencias requieren seguimiento.', { a: a.open_tickets }), href: '/admin/reportes' },

@@ -10,6 +10,8 @@ const MAP: Record<string, [string, Tone]> = {
   SHIPPED: ['Enviado', 'blue'],
   DELIVERED: ['Entregado', 'green'],
   CANCELLED: ['Cancelado', 'red'],
+  CANCEL_REQUESTED: ['Cancelación solicitada', 'amber'],
+  CANCELLING: ['Cancelado, reembolso en proceso', 'amber'],
   PROCESSING: ['En proceso', 'violet'],
   COMPLETED: ['Completado', 'green'],
   UNFULFILLED: ['Por preparar', 'amber'],

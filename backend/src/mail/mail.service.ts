@@ -654,6 +654,80 @@ export class MailService {
   // ------------------------------------------------------------------ returns & refunds
 
   /** Return lifecycle e-mails: the store hears about requests and shipments, the buyer about every decision. */
+  /** Order cancellation (before shipping): request, approval, rejection and refund notices. */
+  async orderCancellationEvent(cancellationId: string, event: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'REFUNDED') {
+    const c = await this.db.one(
+      `select c.id, c.public_number, c.customer_id, c.seller_id, c.order_id, c.requested_by_role, c.decision_note, c.note,
+              o.public_number as order_number, o.currency_code, coalesce(ssp.display_name, s.slug) as store,
+              f.refund_amount::text as refunded, f.public_number as refund_number
+         from public.nx_order_cancellations c join public.orders o on o.id = c.order_id
+         join public.sellers s on s.id = c.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+         left join public.refunds f on f.id = c.refund_id and f.status = 'COMPLETED'
+        where c.id = $1`,
+      [cancellationId],
+    );
+    if (!c) return;
+    const oref = orderRef(c.order_number);
+    const sellerUrl = `${config.webUrl}/vendedor/pedidos/${c.order_id}`;
+    const customerUrl = `${config.webUrl}/cuenta/pedidos/${c.order_id}`;
+    const toSeller = async (title: [string, string], line: [string, string], key: string) => {
+      const s = await this.sellerContact(c.seller_id);
+      if (!s) return;
+      const t = tr(s.locale);
+      const l = t(...line);
+      await this.send({
+        template: `ORDER_CANCEL_${key}_SELLER`, dedupeKey: `cancel:${cancellationId}:${key}:seller`, to: s.email, userId: s.ownerUserId,
+        entityType: 'ORDER', entityId: c.order_id,
+        message: layout({ locale: s.locale, subject: `${t(...title)} (${oref})`, preheader: l, title: t(...title),
+          body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(l.charAt(0).toLowerCase() + l.slice(1))}`),
+          cta: { label: t('Ver pedido', 'View order'), url: sellerUrl }, text: l }),
+      });
+    };
+    const toCustomer = async (title: [string, string], line: [string, string], key: string, extra?: (t: (es: string, en: string) => string, l: Locale) => string) => {
+      const u = await this.userContact(c.customer_id);
+      if (!u) return;
+      const t = tr(u.locale);
+      const l = t(...line);
+      await this.send({
+        template: key === 'REFUNDED' ? 'REFUND_COMPLETED' : `ORDER_CANCEL_${key}`, dedupeKey: `cancel:${cancellationId}:${key}`, to: u.email, userId: c.customer_id,
+        entityType: 'ORDER', entityId: c.order_id,
+        message: layout({ locale: u.locale, subject: `${t(...title)} (${oref})`, preheader: l, title: t(...title),
+          body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(l.charAt(0).toLowerCase() + l.slice(1))}`) + (extra ? extra(t, u.locale) : ''),
+          cta: { label: t('Ver mi pedido', 'View my order'), url: customerUrl }, text: l }),
+      });
+    };
+    if (event === 'REQUESTED') {
+      await toSeller(['Solicitud de cancelación', 'Cancellation request'],
+        [`El cliente pidió cancelar su compra del pedido ${oref} antes del envío. No lo prepares ni lo envíes: acéptala o recházala desde el pedido.`,
+         `The customer asked to cancel their purchase in order ${oref} before shipping. Don’t prepare or ship it: accept or reject the request from the order.`], 'REQUESTED');
+      return;
+    }
+    if (event === 'REJECTED') {
+      await toCustomer(['Cancelación rechazada', 'Cancellation rejected'],
+        [`${c.store} no pudo cancelar tu compra del pedido ${oref}${c.decision_note ? `. Motivo: ${c.decision_note}` : ''}. Si ya lo recibes y no lo quieres, puedes pedir una devolución.`,
+         `${c.store} couldn’t cancel your purchase in order ${oref}${c.decision_note ? `. Reason: ${c.decision_note}` : ''}. If you receive it and don’t want it, you can request a return.`], 'REJECTED');
+      return;
+    }
+    if (event === 'APPROVED') {
+      await toCustomer(['Pedido cancelado', 'Order cancelled'],
+        [`Cancelamos tu compra de ${c.store} en el pedido ${oref}. Estamos procesando el reembolso completo al mismo medio de pago; te avisaremos cuando se emita.`,
+         `We cancelled your purchase from ${c.store} in order ${oref}. We’re processing the full refund to your original payment method and will let you know when it’s issued.`], 'APPROVED');
+      if (c.requested_by_role !== 'SELLER')
+        await toSeller(['Pedido cancelado', 'Order cancelled'],
+          [`La compra del pedido ${oref} fue cancelada antes del envío. No la prepares ni la envíes; el stock volvió a tu inventario.`,
+           `The purchase in order ${oref} was cancelled before shipping. Don’t prepare or ship it; the stock is back in your inventory.`], 'APPROVED');
+      return;
+    }
+    const s = await this.sellerContact(c.seller_id);
+    await toCustomer(['Reembolso realizado', 'Refund issued'],
+      [`Te devolvimos ${money(c.refunded ?? '0', c.currency_code, 'es')} por la cancelación de tu compra del pedido ${oref}, al mismo medio de pago. Según tu banco puede tardar de 5 a 10 días hábiles en verse.`,
+       `We refunded ${money(c.refunded ?? '0', c.currency_code, 'en')} for the cancelled purchase in order ${oref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`], 'REFUNDED',
+      (t, l) => (c.refund_number ? rows([[t('Reembolso', 'Refund'), esc(refundRef(c.refund_number))], [t('Monto', 'Amount'), esc(money(c.refunded ?? '0', c.currency_code, l))], [t('Pedido', 'Order'), esc(oref)]]) : ''));
+    if (s) await toSeller(['Cancelación reembolsada', 'Cancellation refunded'],
+      [`Se reembolsó al cliente la compra cancelada del pedido ${oref}; tu ingreso pendiente de ese pedido se anuló.`,
+       `The cancelled purchase in order ${oref} was refunded to the customer; your pending earnings from that order were voided.`], 'REFUNDED');
+  }
+
   async returnEvent(returnId: string, event: 'REQUESTED' | 'IN_TRANSIT' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'INSPECTED' | 'REFUNDED' | 'CLOSED_NO_REFUND' | 'LABEL_READY') {
     const r = await this.db.one(
       `select rr.id, rr.public_number, rr.customer_id, rr.seller_id, rr.order_id, rr.currency_code, rr.rejection_detail, rr.seller_comment,

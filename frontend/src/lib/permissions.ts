@@ -18,6 +18,8 @@ const RULES = {
   orders: ['SUPPORT', 'MODERATOR'],
   'orders.tracking': ['SUPPORT'],
   'orders.refundWithoutReturn': [],
+  'orders.cancel': ['SUPPORT'],
+  'cancellations.refund': [],
   tickets: ['SUPPORT', 'MODERATOR'],
   returns: ['SUPPORT'],
   'returns.refund': [],
@@ -66,6 +68,7 @@ export const ROLE_SCOPE: Partial<Record<Role, { can: string[]; cannot: string[] 
     can: [
       'Ver el dashboard operativo (pedidos y colas de trabajo, sin cifras de ventas).',
       'Consultar pedidos y actualizar el seguimiento de los envíos.',
+      'Cancelar compras antes del envío y resolver solicitudes de cancelación (el reembolso lo emite un administrador).',
       'Atender reportes y tickets de soporte: asignar, responder, cambiar estado y notas internas.',
       'Gestionar devoluciones: aprobar, rechazar, generar etiqueta, recibir e inspeccionar.',
     ],

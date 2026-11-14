@@ -10,6 +10,7 @@ import { orderRef, parseOrderRef, paymentRef } from '../common/refs';
 import { fromMinor, toMinor } from '../common/money';
 import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
 import { ShippingSettlementService } from '../shipping/shipping-settlement.service';
+import { CANCELLABLE_SQL, CancellationsService } from './cancellations.service';
 
 export type OrderScope = { kind: 'customer'; userId: string } | { kind: 'seller'; sellerId: string } | { kind: 'admin' };
 
@@ -34,6 +35,7 @@ export class OrdersService {
     private readonly mail: MailService,
     private readonly shipping: ShippingService,
     private readonly settlement: ShippingSettlementService,
+    private readonly cancellations: CancellationsService,
   ) {}
 
   // ------------------------------------------------------------------ listings
@@ -70,6 +72,7 @@ export class OrdersService {
                  where oi.seller_order_id = so.id order by oi.created_at limit 1) as first_title,
               (select pm.asset_id from public.order_items oi join public.product_media pm on pm.product_id = oi.product_id
                  where oi.seller_order_id = so.id order by pm.is_primary desc, pm.sort_order limit 1) as image_id,
+              (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) as cancel_status,
               count(*) over() as total_count
          from public.seller_orders so
          join public.orders o on o.id = so.order_id
@@ -127,8 +130,10 @@ export class OrdersService {
     const r = await this.db.one(
       `select count(*)::int as total,
               count(*) filter (where o.payment_status = 'PENDING')::int as pending_payment,
-              count(*) filter (where so.fulfillment_status = 'UNFULFILLED' and so.lifecycle_status not in ('CANCELLED','CLOSED'))::int as to_prepare,
-              count(*) filter (where so.fulfillment_status in ('FULFILLED','PARTIALLY_FULFILLED'))::int as preparing,
+              count(*) filter (where so.fulfillment_status = 'UNFULFILLED' and so.lifecycle_status not in ('CANCELLED','CLOSED') and (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) is null)::int as to_prepare,
+              count(*) filter (where so.fulfillment_status in ('FULFILLED','PARTIALLY_FULFILLED') and (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) is null)::int as preparing,
+              count(*) filter (where (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) = 'REQUESTED')::int as cancel_requested,
+              count(*) filter (where (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) = 'APPROVED')::int as cancelling,
               count(*) filter (where so.fulfillment_status in ('SHIPPED','PARTIALLY_SHIPPED','PARTIALLY_DELIVERED'))::int as shipped,
               count(*) filter (where so.fulfillment_status = 'DELIVERED')::int as delivered,
               count(*) filter (where so.lifecycle_status = 'CANCELLED')::int as cancelled
@@ -167,8 +172,9 @@ export class OrdersService {
                 ssp.support_phone, sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
                 sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission, sofs.seller_entitlement_estimate::text as seller_net,
                 osg.id as shipping_group_id, osg.service_name, osg.carrier_name, osg.service_token, osg.customer_shipping_amount::text as shipping_amount,
-                osg.estimated_days, osg.shipping_provider_code, sfa.city as origin_city, sfa.region as origin_region, sfa.country_code as origin_country
-           from public.seller_orders so join public.sellers s on s.id = so.seller_id
+                osg.estimated_days, osg.shipping_provider_code, sfa.city as origin_city, sfa.region as origin_region, sfa.country_code as origin_country,
+                ${CANCELLABLE_SQL('so', 'o')} as cancellable
+           from public.seller_orders so join public.orders o on o.id = so.order_id join public.sellers s on s.id = so.seller_id
            left join public.seller_store_profiles ssp on ssp.seller_id = s.id
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
            left join lateral (select * from public.order_shipping_groups g where g.seller_order_id = so.id order by g.created_at limit 1) osg on true
@@ -218,6 +224,7 @@ export class OrdersService {
       ),
     ]);
 
+    const cancellations = await this.cancellations.forOrder(o.id, scope.kind === 'admin' ? 'staff' : scope.kind);
     const timeline = this.buildTimeline(o, shipments);
     // A seller only sees its own part of a multi-store order: its seller-order totals,
     // never the whole basket, and no payment instrument details.
@@ -254,6 +261,10 @@ export class OrdersService {
         seller: { id: so.seller_id, slug: so.slug, name: so.name, phone: so.support_phone },
         lifecycleStatus: so.lifecycle_status,
         fulfillmentStatus: so.fulfillment_status,
+        cancellation: cancellations[so.id] ?? null,
+        // Cancellable now (nothing shipped, no label/refund/return) and no request open.
+        canCancel: !!so.cancellable && !['REQUESTED', 'APPROVED', 'REFUNDED'].includes(cancellations[so.id]?.status),
+        cancelNeedsApproval: so.fulfillment_status !== 'UNFULFILLED',
         totals: { subtotal: so.subtotal, shipping: so.shipping, tax: so.tax, total: so.total, commission: scope.kind === 'customer' ? undefined : so.commission, sellerNet: scope.kind === 'customer' ? undefined : so.seller_net },
         shippingMethod: { name: so.service_name, carrier: so.carrier_name, code: so.service_token, provider: so.shipping_provider_code ?? 'MARKETPLACE', amount: so.shipping_amount, estimatedDays: so.estimated_days },
         origin: so.origin_country ? { city: so.origin_city, region: so.origin_region, countryCode: so.origin_country } : null,
@@ -333,6 +344,9 @@ export class OrdersService {
     );
     if (!so || so.seller_id !== sellerId) throw notFound('Pedido');
     if (['CANCELLED', 'CLOSED'].includes(so.lifecycle_status)) throw conflict('ORDER_CLOSED', 'El pedido está cerrado o cancelado.');
+    const cancel = await this.db.one(`select status from public.nx_order_cancellations where seller_order_id = $1 and status in ('REQUESTED','APPROVED','REFUNDED')`, [so.id], c);
+    if (cancel?.status === 'REQUESTED') throw conflict('ORDER_CANCELLATION_PENDING', 'El cliente pidió cancelar esta compra: acepta o rechaza la solicitud antes de prepararla o enviarla.');
+    if (cancel) throw conflict('ORDER_CANCELLED', 'Esta compra fue cancelada: no la prepares ni la envíes.');
     return so;
   }
 
@@ -706,9 +720,13 @@ function statusFilter(status: string, add: (v: unknown) => string) {
       return `o.payment_status = 'PENDING'`;
     case 'PAID':
     case 'TO_PREPARE':
-      return `so.fulfillment_status = 'UNFULFILLED' and so.lifecycle_status not in ('CANCELLED','CLOSED')`;
+      return `so.fulfillment_status = 'UNFULFILLED' and so.lifecycle_status not in ('CANCELLED','CLOSED') and (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) is null`;
     case 'PREPARING':
-      return `so.fulfillment_status in ('FULFILLED','PARTIALLY_FULFILLED')`;
+      return `so.fulfillment_status in ('FULFILLED','PARTIALLY_FULFILLED') and (select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) is null`;
+    case 'CANCEL_REQUESTED':
+      return `(select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) = 'REQUESTED'`;
+    case 'CANCELLING':
+      return `(select x.status from public.nx_order_cancellations x where x.seller_order_id = so.id and x.status in ('REQUESTED','APPROVED') limit 1) = 'APPROVED'`;
     case 'SHIPPED':
       return `so.fulfillment_status in ('SHIPPED','PARTIALLY_SHIPPED','PARTIALLY_DELIVERED')`;
     case 'DELIVERED':
@@ -722,6 +740,8 @@ function statusFilter(status: string, add: (v: unknown) => string) {
 
 function displayStatus(r: any) {
   if (r.lifecycle_status === 'CANCELLED') return 'CANCELLED';
+  if (r.cancel_status === 'REQUESTED') return 'CANCEL_REQUESTED';
+  if (r.cancel_status === 'APPROVED') return 'CANCELLING';
   if (r.payment_status === 'PENDING') return 'PENDING_PAYMENT';
   switch (r.fulfillment_status) {
     case 'UNFULFILLED':

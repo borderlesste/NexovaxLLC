@@ -17,10 +17,13 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Dialog, Empty } from '@/components/ui/misc';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { ProductImage } from '@/components/shop/product-card';
+import { CancellationPanel, CancelPurchaseDialog } from './cancellation';
 
 type Role = 'customer' | 'seller' | 'admin';
 
 const STEP_ICONS = [Check, Package, Truck, Truck, PackageCheck];
+/** A store part with an open or approved cancellation must not be prepared or shipped. */
+const blocked = (so: any) => !!so.cancellation && ['REQUESTED', 'APPROVED', 'REFUNDED'].includes(so.cancellation.status);
 
 export function OrderDetailView({ order, role, onChanged }: { order: any; role: Role; onChanged: () => void }) {
   const router = useRouter();
@@ -29,6 +32,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
   const [shipFor, setShipFor] = useState<any>(null);
   const [trackFor, setTrackFor] = useState<any>(null);
   const [reviewFor, setReviewFor] = useState<any>(null);
+  const [cancelFor, setCancelFor] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const first = order.sellerOrders[0]?.items[0];
   const allShipments = order.sellerOrders.flatMap((so: any) => so.shipments.map((s: any) => ({ ...s, seller: so.seller })));
@@ -83,7 +87,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
               <p className="flex items-start gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" /><span>{t('Dirección de entrega:')}<br /><span className="text-muted">{order.shippingAddress.line1}{order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''} · {cityLine(order.shippingAddress)}</span></span></p>
             )}
             <p className="flex items-center gap-2"><CreditCard className="size-4 text-muted" /> {t('Pago:')}{' '}<b>{!order.payment?.method ? (order.payment?.status === 'PAID' ? t('Pagado') : t('Pendiente')) : order.payment.method === 'BANK_TRANSFER' ? t('Transferencia bancaria') : order.payment.method === 'PAYPAL' ? 'PayPal' : order.payment.brand ? `${order.payment.brand} •••• ${order.payment.last4}` : t('Tarjeta')}</b></p>
-            <p className="flex items-center gap-2">{t('Estado:')}{' '}<StatusBadge status={order.status === 'PAID' ? 'PAID' : order.fulfillmentStatus === 'DELIVERED' ? 'DELIVERED' : order.fulfillmentStatus} /></p>
+            <p className="flex items-center gap-2">{t('Estado:')}{' '}<StatusBadge status={order.lifecycleStatus === 'CANCELLED' ? 'CANCELLED' : order.status === 'PAID' ? 'PAID' : order.fulfillmentStatus === 'DELIVERED' ? 'DELIVERED' : order.fulfillmentStatus} /></p>
           </div>
         </div>
 
@@ -117,11 +121,15 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={so.fulfillmentStatus} />
-                {role === 'seller' && so.fulfillmentStatus === 'UNFULFILLED' && order.paymentStatus === 'PAID' && (
+                {so.cancellation && ['REQUESTED', 'APPROVED'].includes(so.cancellation.status) && <StatusBadge status={so.cancellation.status === 'REQUESTED' ? 'CANCEL_REQUESTED' : 'CANCELLING'} />}
+                {role === 'seller' && so.fulfillmentStatus === 'UNFULFILLED' && order.paymentStatus === 'PAID' && !blocked(so) && (
                   <Button size="sm" loading={busy === `prep-${so.id}`} onClick={() => act(`prep-${so.id}`, () => post(`/seller/seller-orders/${so.id}/prepare`), t('Pedido marcado en preparación.'))}><Package /> {t('Marcar en preparación')}</Button>
                 )}
-                {role === 'seller' && ['FULFILLED', 'PARTIALLY_FULFILLED'].includes(so.fulfillmentStatus) && (
+                {role === 'seller' && ['FULFILLED', 'PARTIALLY_FULFILLED'].includes(so.fulfillmentStatus) && !blocked(so) && (
                   <Button size="sm" onClick={() => setShipFor(so)}><Truck /> {t('Registrar envío')}</Button>
+                )}
+                {so.canCancel && (role !== 'admin' || can('orders.cancel')) && (
+                  <Button size="sm" variant="outline" className="text-red-600" onClick={() => setCancelFor(so)} data-cancel-open>{t('Cancelar compra')}</Button>
                 )}
                 {role === 'customer' && <Button size="sm" variant="outline" onClick={() => contactSeller(so)}><MessageSquare /> {t('Contactar vendedor')}</Button>}
                 {role === 'customer' && so.items.some((i: any) => i.delivered > 0) && (
@@ -129,6 +137,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
                 )}
               </div>
             </div>
+            <CancellationPanel role={role} order={order} so={so} onChanged={onChanged} />
             <ul className="divide-y divide-line">
               {so.items.map((i: any) => (
                 <li key={i.id} className="flex items-center gap-4 px-5 py-4">
@@ -261,6 +270,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
       </aside>
 
       {shipFor && <ShipDialog so={shipFor} onClose={() => setShipFor(null)} onDone={() => { setShipFor(null); onChanged(); }} />}
+      {cancelFor && <CancelPurchaseDialog role={role} order={order} so={cancelFor} onClose={() => setCancelFor(null)} onDone={() => { setCancelFor(null); onChanged(); qc.invalidateQueries(); }} />}
       {trackFor && <TrackingDialog shipment={trackFor} role={role} onClose={() => setTrackFor(null)} onDone={() => { setTrackFor(null); onChanged(); }} />}
       {reviewFor && <ReviewDialog item={reviewFor} onClose={() => setReviewFor(null)} onDone={() => { setReviewFor(null); onChanged(); }} />}
     </div>

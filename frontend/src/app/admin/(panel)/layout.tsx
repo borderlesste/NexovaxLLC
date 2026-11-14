@@ -63,6 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title={t('Acceso restringido')} description={t('Esta sección es solo para el equipo del marketplace.')} /></div>;
   const a = dash.data?.attention;
   const badges: Record<string, number | null> = {
+    '/admin/pedidos': a?.cancellations_pending || null,
     '/admin/vendedores': a?.sellers_pending || null,
     '/admin/moderacion': a?.products_pending || null,
     '/admin/reportes': a?.open_tickets || null,

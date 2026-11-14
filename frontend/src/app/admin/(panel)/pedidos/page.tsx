@@ -13,7 +13,7 @@ import { t } from '@/lib/i18n';
 
 function AdminOrders() {
   const sp = useSearchParams();
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(sp.get('status') ?? '');
   const [search, setSearch] = useState(sp.get('search') ?? '');
   const [page, setPage] = useState(1);
   const counts = useQuery({ queryKey: ['admin-order-counts'], queryFn: () => get('/admin/orders/counts') });
@@ -31,7 +31,7 @@ function AdminOrders() {
       <Card className="mt-5">
         <Segmented className="px-3" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[
           { value: '', label: t('Todos'), count: c?.total }, { value: 'PENDING_PAYMENT', label: t('Pendientes de pago'), count: c?.pending_payment }, { value: 'PAID', label: t('Pagados'), count: c?.to_prepare },
-          { value: 'PREPARING', label: t('En preparación'), count: c?.preparing }, { value: 'SHIPPED', label: t('Enviados'), count: c?.shipped }, { value: 'DELIVERED', label: t('Entregados'), count: c?.delivered }, { value: 'CANCELLED', label: t('Cancelados'), count: c?.cancelled },
+          { value: 'PREPARING', label: t('En preparación'), count: c?.preparing }, { value: 'SHIPPED', label: t('Enviados'), count: c?.shipped }, { value: 'DELIVERED', label: t('Entregados'), count: c?.delivered }, { value: 'CANCEL_REQUESTED', label: t('Cancelación solicitada'), count: c?.cancel_requested }, { value: 'CANCELLING', label: t('Cancelados por reembolsar'), count: c?.cancelling }, { value: 'CANCELLED', label: t('Cancelados'), count: c?.cancelled },
         ]} />
         <div className="p-4"><Input icon={<Search />} placeholder={t('Buscar pedido, cliente o tienda...')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" /></div>
         {q.isLoading ? <PageLoader /> : q.data && <OrdersTable data={q.data} base="/admin/pedidos" showSeller onPage={setPage} />}

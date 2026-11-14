@@ -6,6 +6,7 @@ export const ticketRef = (n: unknown) => `${ORDER_PREFIX}-REP-${n}`;
 export const payoutRef = (n: unknown) => `PO-${n}`;
 export const returnRef = (n: unknown) => `${ORDER_PREFIX}-DEV-${n}`;
 export const refundRef = (n: unknown) => `${ORDER_PREFIX}-REE-${n}`;
+export const cancellationRef = (n: unknown) => `${ORDER_PREFIX}-CAN-${n}`;
 /** Accepts NX-123, RD-123 (legacy), #123 or 123 and returns the number part. */
 export const parseOrderRef = (v: string) => v.trim().replace(/^#?\s*(NX|RD)-?/i, '');
 export const parseTicketRef = (v: string) => v.trim().toUpperCase().replace(/^#?\s*(NX|RD)-REP-?/, '').replace(/^REP-?/, '');
