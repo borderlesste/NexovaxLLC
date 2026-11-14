@@ -3,6 +3,42 @@ import { BaseExceptionFilter } from '@nestjs/core';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Ese código ya existe en el marketplace. Elige otro.": "That code already exists in the marketplace. Choose another one.",
+  "El código debe tener de 3 a 24 caracteres: letras, números, guion o guion bajo.": "The code must have 3 to 24 characters: letters, numbers, hyphen or underscore.",
+  "Elige el tipo de descuento.": "Choose the discount type.",
+  "Indica el valor del descuento.": "Enter the discount value.",
+  "El porcentaje debe estar entre 0,01 y 90.": "The percentage must be between 0.01 and 90.",
+  "El monto fijo debe ser mayor que 0 y con máximo 2 decimales.": "The fixed amount must be greater than 0 with at most 2 decimals.",
+  "La compra mínima no es válida.": "The minimum purchase isn’t valid.",
+  "El descuento máximo debe ser mayor que 0.": "The maximum discount must be greater than 0.",
+  "Las fechas no son válidas.": "The dates aren’t valid.",
+  "La fecha de fin debe ser posterior a la de inicio.": "The end date must be after the start date.",
+  "Los límites de uso deben ser números enteros mayores que 0.": "Usage limits must be whole numbers greater than 0.",
+  "Selecciona como máximo 200 productos.": "Select at most 200 products.",
+  "Algunos productos no pertenecen a tu tienda.": "Some products don’t belong to your store.",
+  "La comisión debe estar entre 0,5 % y 50 %.": "The commission must be between 0.5 % and 50 %.",
+  "La vigencia del enlace debe ser de 1 a 90 días.": "The link validity must be 1 to 90 days.",
+  "No puedes ser afiliado de tu propia tienda.": "You can’t be an affiliate of your own store.",
+  "Esta tienda no tiene un programa de afiliados activo.": "This store doesn’t have an active affiliate program.",
+  "No se pudo generar tu enlace. Inténtalo de nuevo.": "Your link couldn’t be generated. Please try again.",
+  "Indica el correo de tu cuenta PayPal.": "Enter your PayPal account email.",
+  "Completa el titular, el banco, el número de cuenta y el país.": "Fill in the account holder, bank, account number and country.",
+  "Elige cómo quieres cobrar.": "Choose how you want to get paid.",
+  "Indica la referencia del pago realizado.": "Enter the reference of the payment made.",
+  "Este afiliado no tiene comisiones disponibles para pagar.": "This affiliate has no commissions available to pay.",
+  "El cupón no existe.": "The coupon doesn’t exist.",
+  "El cupón no está activo.": "The coupon isn’t active.",
+  "El cupón aún no está vigente.": "The coupon isn’t valid yet.",
+  "El cupón venció.": "The coupon has expired.",
+  "El cupón ya alcanzó su límite de usos.": "The coupon has reached its usage limit.",
+  "Ya usaste este cupón el máximo de veces permitido.": "You’ve already used this coupon the maximum number of times.",
+  "El cupón no es válido.": "The coupon isn’t valid.",
+  "Solo puedes usar un cupón por tienda.": "You can only use one coupon per store.",
+  "El cupón no aplica a los productos de tu carrito.": "The coupon doesn’t apply to the products in your cart.",
+  "el cupón ya alcanzó su límite de usos.": "the coupon has reached its usage limit.",
+  "ya usaste este cupón el máximo de veces permitido.": "you’ve already used this coupon the maximum number of times.",
+  "el cupón no está vigente.": "the coupon isn’t valid.",
+  "el cupón no se pudo aplicar.": "the coupon couldn’t be applied.",
   "Elige un motivo de la lista.": "Choose a reason from the list.",
   "Describe el motivo de la cancelación.": "Describe the reason for the cancellation.",
   "Esta solicitud ya fue resuelta.": "This request has already been resolved.",
@@ -265,6 +301,10 @@ export function translateMessage(msg: string): string {
     const tr = (x: string) => x.split(/(, | o )/).map((p) => (p === ' o ' ? ' or ' : R[p] ?? p)).join('');
     return `Your role (${tr(m[1])}) doesn’t allow this action. Requires: ${tr(m[2])}.`;
   }
+  m = /^El cupón requiere una compra mínima de ([\d.]+) en esa tienda\.$/.exec(msg);
+  if (m) return `The coupon requires a minimum purchase of ${m[1]} in that store.`;
+  m = /^([A-Z0-9][A-Z0-9_-]{2,23}): (.+)$/.exec(msg);
+  if (m) return `${m[1]}: ${translateMessage(m[2].charAt(0).toUpperCase() + m[2].slice(1))}`;
   m = /^No se pudo subir la imagen: (.*)$/.exec(msg);
   if (m) return `The image could not be uploaded: ${m[1]}`;
   m = /^No se pudo crear la cuenta: (.*)$/.exec(msg);

@@ -146,7 +146,7 @@ export class OrdersService {
   // ------------------------------------------------------------------ detail
   async detail(scope: OrderScope, orderId: string) {
     const o = await this.db.one(
-      `select o.*, o.public_number::text as number, ofs.grand_total::text as grand_total, ofs.product_net_amount::text as subtotal,
+      `select o.*, o.public_number::text as number, ofs.grand_total::text as grand_total, ofs.product_gross_amount::text as gross_subtotal, ofs.discount_total::text as discount_total, ofs.product_net_amount::text as subtotal,
               ofs.shipping_total::text as shipping_total, ofs.tax_total::text as tax_total,
               ofs.platform_commission_total::text as commission_total, ofs.calculation_breakdown->'tax' as tax_info,
               coalesce(up.display_name, u.email::text) as customer_name, u.email::text as customer_email, up.phone as customer_phone,
@@ -171,6 +171,10 @@ export class OrdersService {
         `select so.id, so.public_number, so.seller_id, so.lifecycle_status, so.fulfillment_status, s.slug, coalesce(ssp.display_name, s.slug) as name,
                 ssp.support_phone, sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
                 sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission, sofs.seller_entitlement_estimate::text as seller_net,
+                sofs.product_gross_amount::text as gross_subtotal, sofs.discount_total::text as discount,
+                (select string_agg(pc.code::text, ', ') from public.order_promotion_snapshots ops join public.promotion_codes pc on pc.id = ops.promotion_code_id
+                  where ops.order_id = so.order_id and ops.application_snapshot->>'sellerId' = so.seller_id::text) as coupon,
+                (select coalesce(sum(rc.final_amount),0)::text from public.referral_commissions rc where rc.seller_order_id = so.id) as affiliate,
                 osg.id as shipping_group_id, osg.service_name, osg.carrier_name, osg.service_token, osg.customer_shipping_amount::text as shipping_amount,
                 osg.estimated_days, osg.shipping_provider_code, sfa.city as origin_city, sfa.region as origin_region, sfa.country_code as origin_country,
                 ${CANCELLABLE_SQL('so', 'o')} as cancellable
@@ -231,8 +235,9 @@ export class OrdersService {
     const sum = (k: string) => fromMinor(sellerOrders.reduce((acc: bigint, so: any) => acc + BigInt(toMinor(so[k] ?? 0)), 0n));
     const totals =
       scope.kind === 'seller'
-        ? { subtotal: sum('subtotal'), shipping: sum('shipping'), tax: sum('tax'), total: sum('total'), commission: sum('commission') }
-        : { subtotal: o.subtotal, shipping: o.shipping_total, tax: o.tax_total, total: o.grand_total, commission: scope.kind === 'customer' ? undefined : o.commission_total };
+        ? { subtotal: sum('gross_subtotal'), discount: sum('discount'), shipping: sum('shipping'), tax: sum('tax'), total: sum('total'), commission: sum('commission'), affiliate: sum('affiliate') }
+        : { subtotal: o.gross_subtotal ?? o.subtotal, discount: o.discount_total ?? '0', shipping: o.shipping_total, tax: o.tax_total, total: o.grand_total, commission: scope.kind === 'customer' ? undefined : o.commission_total,
+            affiliate: scope.kind === 'customer' ? undefined : sum('affiliate') };
     const paymentView = !payment
       ? null
       : scope.kind === 'seller'
@@ -265,7 +270,10 @@ export class OrdersService {
         // Cancellable now (nothing shipped, no label/refund/return) and no request open.
         canCancel: !!so.cancellable && !['REQUESTED', 'APPROVED', 'REFUNDED'].includes(cancellations[so.id]?.status),
         cancelNeedsApproval: so.fulfillment_status !== 'UNFULFILLED',
-        totals: { subtotal: so.subtotal, shipping: so.shipping, tax: so.tax, total: so.total, commission: scope.kind === 'customer' ? undefined : so.commission, sellerNet: scope.kind === 'customer' ? undefined : so.seller_net },
+        coupon: so.coupon ?? null,
+        totals: { subtotal: so.gross_subtotal ?? so.subtotal, discount: so.discount ?? '0', shipping: so.shipping, tax: so.tax, total: so.total, commission: scope.kind === 'customer' ? undefined : so.commission,
+          affiliate: scope.kind === 'customer' ? undefined : so.affiliate,
+          sellerNet: scope.kind === 'customer' ? undefined : fromMinor(toMinor(so.seller_net) - toMinor(so.affiliate ?? 0)) },
         shippingMethod: { name: so.service_name, carrier: so.carrier_name, code: so.service_token, provider: so.shipping_provider_code ?? 'MARKETPLACE', amount: so.shipping_amount, estimatedDays: so.estimated_days },
         origin: so.origin_country ? { city: so.origin_city, region: so.origin_region, countryCode: so.origin_country } : null,
         items: items

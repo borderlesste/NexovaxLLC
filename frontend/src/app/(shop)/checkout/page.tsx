@@ -53,6 +53,8 @@ export default function CheckoutPage() {
   const [save, setSave] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [idem] = useState(() => uid());
+  const [codes, setCodes] = useState<string[]>([]);
+  const [codeInput, setCodeInput] = useState('');
 
   useEffect(() => {
     if (!loading && !session) router.replace('/auth/iniciar-sesion?next=/checkout');
@@ -64,12 +66,26 @@ export default function CheckoutPage() {
   }, [addresses.data, addressId]);
   const cfg = usePublicConfig();
   const quote = useQuery({
-    queryKey: ['checkout-quote', addressId, shipping],
-    queryFn: () => post('/checkout/quote', { shipping, addressId: addressId || undefined }),
+    queryKey: ['checkout-quote', addressId, shipping, codes],
+    queryFn: () => post('/checkout/quote', { shipping, addressId: addressId || undefined, coupons: codes }),
     enabled: !!session && addresses.isFetched,
     placeholderData: (prev) => prev,
   });
   const q = quote.data;
+  // Codes the server did not accept are reported once and dropped.
+  useEffect(() => {
+    const bad = (q?.couponErrors ?? []).filter((e: any) => codes.includes(e.code));
+    if (!bad.length) return;
+    bad.forEach((e: any) => toast.error(`${e.code}: ${t(e.message)}`));
+    setCodes((c) => c.filter((x) => !bad.some((e: any) => e.code === x)));
+  }, [q?.couponErrors]); // eslint-disable-line react-hooks/exhaustive-deps
+  const applied: string[] = (q?.coupons ?? []).map((c: any) => c.code);
+  const applyCode = () => {
+    const code = codeInput.trim().toUpperCase();
+    if (!code) return;
+    if (!codes.includes(code)) setCodes([...codes, code]);
+    setCodeInput('');
+  };
   const items = useMemo(() => q?.groups.flatMap((g: any) => g.items) ?? [], [q]);
   const selectedFor = (g: any) => (g.shippingOptions.some((o: any) => o.code === shipping[g.sellerId]) ? shipping[g.sellerId] : g.selectedShipping);
   const stripeCards = q?.paymentMethods?.some((m: any) => m.code === 'CARD' && m.provider === 'STRIPE');
@@ -89,14 +105,14 @@ export default function CheckoutPage() {
   const stripeKey: string | null = cardMethod?.provider === 'STRIPE' ? cardMethod.publishableKey ?? null : null;
   const paypalMethod = q?.paymentMethods.find((m: any) => m.code === 'PAYPAL' && m.available);
   const shippingSelection = () => Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
-  const resetKey = q ? JSON.stringify([addressId, shippingSelection(), q.total]) : '';
+  const resetKey = q ? JSON.stringify([addressId, shippingSelection(), q.total, applied]) : '';
 
   /** Creates the order's checkout + payment with the provider; the browser then completes the payment. */
   const placeOnline = async (paymentMethod: 'CARD' | 'PAYPAL'): Promise<PlacedCheckout> => {
     if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
     if (q.groups.some((g: any) => !selectedFor(g))) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
     return post('/checkout/place', {
-      addressId, shipping: shippingSelection(), paymentMethod, idempotencyKey: uid(),
+      addressId, shipping: shippingSelection(), paymentMethod, coupons: applied, idempotencyKey: uid(),
       ...(paymentMethod === 'CARD' ? (chosenCard ? { savedCardId: chosenCard.id } : saveStripe ? { saveCard: true } : {}) : {}),
     });
   };
@@ -118,7 +134,7 @@ export default function CheckoutPage() {
     try {
       if (q.groups.some((g: any) => !selectedFor(g))) return toast.error(t('No hay métodos de envío disponibles para esta dirección.'));
       const shippingSel = Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
-      const r = await post('/checkout/place', { addressId, shipping: shippingSel, paymentMethod: method, card: cardPayload, idempotencyKey: idem });
+      const r = await post('/checkout/place', { addressId, shipping: shippingSel, paymentMethod: method, card: cardPayload, coupons: applied, idempotencyKey: idem });
       qc.invalidateQueries({ queryKey: ['cart'] });
       qc.invalidateQueries({ queryKey: ['me'] });
       router.push(`/checkout/confirmacion/${r.checkoutId}`);
@@ -311,8 +327,21 @@ export default function CheckoutPage() {
               </li>
             ))}
           </ul>
+          <div className="mt-4" data-coupon-box>
+            <div className="flex gap-2">
+              <Input value={codeInput} placeholder={t('Código de cupón')} maxLength={24} onChange={(e) => setCodeInput(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === 'Enter' && applyCode()} data-coupon-input />
+              <Button variant="outline" onClick={applyCode} loading={quote.isFetching && !!codeInput} data-coupon-apply>{t('Aplicar')}</Button>
+            </div>
+            {(q.coupons ?? []).map((c: any) => (
+              <p key={c.code} className="mt-2 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800" data-coupon-applied={c.code}>
+                <span><b className="font-mono">{c.code}</b> · -{money(c.discount, q.currency)}</span>
+                <button className="text-xs font-semibold underline" onClick={() => setCodes(codes.filter((x) => x !== c.code))}>{t('Quitar')}</button>
+              </p>
+            ))}
+          </div>
           <dl className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{money(q.subtotal, q.currency)}</dd></div>
+            {Number(q.discount) > 0 && <div className="flex justify-between text-emerald-700" data-checkout-discount><dt>{t('Descuento')}</dt><dd>-{money(q.discount, q.currency)}</dd></div>}
             <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{Number(q.shipping) === 0 ? t('Gratis') : money(q.shipping, q.currency)}</dd></div>
             <div className="flex justify-between">
               <dt>{q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('Impuestos')}{q.tax.country && <span className="text-muted"> · {countryName(q.tax.country)}</span>}</dt>

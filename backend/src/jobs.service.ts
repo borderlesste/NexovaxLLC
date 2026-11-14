@@ -5,6 +5,7 @@ import { OrdersService } from './orders/orders.service';
 import { config } from './config';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
 import { ShippingSettlementService } from './shipping/shipping-settlement.service';
+import { AffiliatesService } from './promotions/affiliates.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -18,6 +19,7 @@ export class JobsService {
     private readonly orders: OrdersService,
     private readonly payoutSchedules: PayoutSchedulesService,
     private readonly shippingSettlement: ShippingSettlementService,
+    private readonly affiliates: AffiliatesService,
   ) {}
 
   /** Shipping settlements that failed at dispatch time (retry). */
@@ -76,6 +78,18 @@ export class JobsService {
       if (n) this.logger.log(`Auto-confirmed deliveries: ${n}`);
     } catch (e: any) {
       this.logger.warn(`autoConfirmManualDeliveries: ${e.message}`);
+    }
+  }
+
+  /** Affiliate earnings: notify new ones, release those past delivery + return window. */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async affiliateEarnings() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const r = await this.affiliates.processDue();
+      if (r.released) this.logger.log(`Affiliate earnings released: ${r.released}`);
+    } catch (e: any) {
+      this.logger.warn(`affiliateEarnings: ${e.message}`);
     }
   }
 

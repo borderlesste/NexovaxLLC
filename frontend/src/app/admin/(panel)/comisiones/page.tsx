@@ -14,6 +14,7 @@ import { Empty, PageLoader, Segmented } from '@/components/ui/misc';
 import { Bars } from '@/components/charts/charts';
 import { PayoutActions } from '@/components/admin/payout-actions';
 import { ScheduledPayouts } from '@/components/admin/scheduled-payouts';
+import { AffiliatePayouts } from '@/components/admin/affiliate-payouts';
 import { t, getIntlLocale } from '@/lib/i18n';
 
 const monthLabel = (m: string) => new Date(m + '-15').toLocaleDateString(getIntlLocale(), { month: 'short', year: 'numeric' });
@@ -83,6 +84,7 @@ export default function CommissionsPage() {
         </Card>
       </div>
       <ScheduledPayouts onRun={refresh} />
+      <AffiliatePayouts />
     </>
   );
 }

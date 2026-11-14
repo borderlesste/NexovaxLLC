@@ -192,9 +192,11 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
             ))}
             <div className="flex flex-wrap justify-end gap-x-6 gap-y-1 border-t border-line px-5 py-3 text-sm">
               <span className="text-muted">{t('Productos')}{' '}<b className="text-ink">{money(so.totals.subtotal, order.currency)}</b></span>
+              {Number(so.totals.discount) > 0 && <span className="text-muted" data-so-discount>{t('Cupón')}{so.coupon ? ` ${so.coupon}` : ''}{' '}<b className="text-emerald-700">-{money(so.totals.discount, order.currency)}</b></span>}
               <span className="text-muted">{t('Envío')}{' '}<b className="text-ink">{money(so.totals.shipping, order.currency)}</b></span>
               <span className="text-muted">{order.tax?.name ?? t('Impuestos')} <b className="text-ink">{money(so.totals.tax, order.currency)}</b></span>
               {so.totals.commission !== undefined && <span className="text-muted">{t('Comisión')}{' '}<b className="text-red-600">-{money(so.totals.commission, order.currency)}</b></span>}
+              {so.totals.affiliate !== undefined && Number(so.totals.affiliate) > 0 && <span className="text-muted" data-so-affiliate>{t('Comisión de afiliado')}{' '}<b className="text-red-600">-{money(so.totals.affiliate, order.currency)}</b></span>}
               {so.totals.sellerNet !== undefined && <span className="text-muted">{t('Neto vendedor')}{' '}<b className="text-emerald-700">{money(so.totals.sellerNet, order.currency)}</b></span>}
               <span className="font-bold">{t('Total')}{' '}{money(so.totals.total, order.currency)}</span>
             </div>
@@ -256,9 +258,11 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
           <p className="text-lg font-bold">{t('Resumen de pago')}</p>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between"><dt>{t('Productos')}</dt><dd>{money(order.totals.subtotal, order.currency)}</dd></div>
+            {Number(order.totals.discount) > 0 && <div className="flex justify-between text-emerald-700" data-order-discount><dt>{t('Descuento por cupón')}</dt><dd>-{money(order.totals.discount, order.currency)}</dd></div>}
             <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{money(order.totals.shipping, order.currency)}</dd></div>
             <div className="flex justify-between"><dt>{order.tax?.name ?? t('Impuestos')}{order.tax?.rate ? ` (${+(order.tax.rate * 100).toFixed(2)} %)` : ''}</dt><dd>{money(order.totals.tax, order.currency)}</dd></div>
             {order.totals.commission !== undefined && <div className="flex justify-between text-muted"><dt>{t('Comisión plataforma')}</dt><dd>{money(order.totals.commission, order.currency)}</dd></div>}
+            {order.totals.affiliate !== undefined && Number(order.totals.affiliate) > 0 && <div className="flex justify-between text-muted"><dt>{t('Comisión de afiliado')}</dt><dd>{money(order.totals.affiliate, order.currency)}</dd></div>}
             <div className="flex justify-between border-t border-line pt-2 text-base font-extrabold"><dt>{t('Total')}</dt><dd>{money(order.totals.total, order.currency)}</dd></div>
           </dl>
         </div>

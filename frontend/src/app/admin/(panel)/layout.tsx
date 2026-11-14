@@ -70,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Admins act on refunds; support on the review / receive / inspect queue.
     '/admin/devoluciones': (isAdmin ? returns.data?.counts?.refund_pending : a?.returns_pending) || null,
     '/admin/finanzas': a?.transfers_pending || null,
-    '/admin/comisiones': (a?.payouts_pending ?? 0) + (a?.payout_accounts_pending ?? 0) || null,
+    '/admin/comisiones': (a?.payouts_pending ?? 0) + (a?.payout_accounts_pending ?? 0) + (a?.affiliates_payable ?? 0) || null,
     '/admin/usuarios': deletions.data?.length || null,
   };
   const nav = SECTIONS.filter((x) => can(x.perm)).map((x) => ({ href: x.href, label: t(x.label), icon: ICONS[x.href], badge: badges[x.href] ?? null }));

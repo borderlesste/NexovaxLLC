@@ -10,6 +10,8 @@ import { AppError, badRequest, conflict, notFound } from '../common/errors';
 import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money';
 import { config } from '../config';
 import { postSaleAllocation } from './sale-ledger';
+import { CouponResult, CouponsService } from '../promotions/coupons.service';
+import { AffiliatesService } from '../promotions/affiliates.service';
 import { orderRef, paymentRef } from '../common/refs';
 import { ONLINE_PAYMENT_TTL_MIN, PaymentsService } from '../payments/payments.service';
 import { MailService } from '../mail/mail.service';
@@ -28,6 +30,8 @@ export interface PlaceOrderInput {
   /** Stripe: keep the new card for next purchases / pay with a saved one. */
   saveCard?: boolean;
   savedCardId?: string;
+  /** Store coupon codes typed by the buyer (one per store). */
+  coupons?: string[];
   idempotencyKey: string;
 }
 
@@ -73,6 +77,8 @@ export class CheckoutService {
     private readonly tax: TaxService,
     private readonly shipping: ShippingService,
     private readonly payments: PaymentsService,
+    private readonly coupons: CouponsService,
+    private readonly affiliates: AffiliatesService,
   ) {}
 
   // ------------------------------------------------------------------ pricing
@@ -164,27 +170,36 @@ export class CheckoutService {
   }
 
   /** Price preview from the current cart (no writes). Used by the checkout screen. */
-  async quote(userId: string, input: { addressId?: string; shipping?: Record<string, string> }) {
+  async quote(userId: string, input: { addressId?: string; shipping?: Record<string, string>; coupons?: string[] }) {
     const cart = await this.carts.getCart(userId);
     if (!cart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
     const address = await this.buyerAddress(userId, input.addressId);
     const tax = await this.tax.forCountry(address?.country_code);
     const optionsBySeller = await this.groupOptions(cart.id, cart.groups, address, cart.currency);
     const groups = [];
-    const totals = { subtotal: 0n, shipping: 0n, tax: 0n };
+    const totals = { subtotal: 0n, discount: 0n, shipping: 0n, tax: 0n };
+    const lines = cart.groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => ({ key: i.variantId, sellerId: g.sellerId, productId: i.productId, gross: toMinor(i.unitPrice) * BigInt(i.quantity) })));
+    const promo = await this.coupons.evaluate(input.coupons ?? [], lines, userId);
+    const discountOf = new Map<string, bigint>();
+    for (const r of promo.results) for (const a of r.allocations) discountOf.set(a.key, (discountOf.get(a.key) ?? 0n) + a.discount);
     for (const g of cart.groups) {
       const items = g.items.filter((i: any) => i.purchasable);
       let subtotal = 0n;
+      let discount = 0n;
       let taxAmount = 0n;
       for (const i of items) {
-        const net = toMinor(i.unitPrice) * BigInt(i.quantity);
-        subtotal += net;
-        taxAmount += applyRate(net, tax.rate);
+        const gross = toMinor(i.unitPrice) * BigInt(i.quantity);
+        const d = discountOf.get(i.variantId) ?? 0n;
+        subtotal += gross;
+        discount += d;
+        taxAmount += applyRate(gross - d, tax.rate);
       }
+      const coupon = promo.results.find((r) => r.sellerId === g.sellerId);
       const opt = optionsBySeller.get(g.sellerId)!;
       const chosen = opt.options.find((o) => o.code === input.shipping?.[g.sellerId]) ?? opt.options[0] ?? null;
       const shipping = chosen ? toMinor(chosen.amount) : 0n;
       totals.subtotal += subtotal;
+      totals.discount += discount;
       totals.shipping += shipping;
       totals.tax += taxAmount;
       groups.push({
@@ -198,9 +213,11 @@ export class CheckoutService {
         liveRates: opt.liveRates,
         selectedShipping: chosen?.code ?? null,
         subtotal: fromMinor(subtotal),
+        discount: fromMinor(discount),
+        coupon: coupon ? { code: coupon.code, discount: fromMinor(coupon.discount) } : null,
         shipping: fromMinor(shipping),
         tax: fromMinor(taxAmount),
-        total: fromMinor(subtotal + shipping + taxAmount),
+        total: fromMinor(subtotal - discount + shipping + taxAmount),
       });
     }
     const bt = await this.settings.get('payments.bank_transfer');
@@ -213,9 +230,12 @@ export class CheckoutService {
       groups,
       tax: { name: tax.taxName, rate: Number(tax.rate), country: tax.countryCode },
       subtotal: fromMinor(totals.subtotal),
+      discount: fromMinor(totals.discount),
+      coupons: promo.results.map((r) => ({ code: r.code, sellerId: r.sellerId, discount: fromMinor(r.discount) })),
+      couponErrors: promo.errors,
       shipping: fromMinor(totals.shipping),
       taxTotal: fromMinor(totals.tax),
-      total: fromMinor(totals.subtotal + totals.shipping + totals.tax),
+      total: fromMinor(totals.subtotal - totals.discount + totals.shipping + totals.tax),
       paymentMethods: [
         stripe
           ? { code: 'CARD', name: 'Tarjeta de crédito / débito', available: true, provider: 'STRIPE', testMode: stripe.environment === 'TEST', publishableKey: config.stripePublishableKey }
@@ -448,7 +468,26 @@ export class CheckoutService {
       }
 
       // ---- authoritative financial calculation
-      await this.calculate(c, sessionId, currency, items, shippingBySeller, corr, address.country_code);
+      // ---- store coupons: validated against the billed lines and reserved for this checkout
+      const promo = await this.coupons.evaluate(
+        input.coupons ?? [],
+        items.map((i: any) => ({ key: i.id, sellerId: i.seller_id, productId: i.product_id, gross: toMinor(i.unit_price) * BigInt(i.quantity) })),
+        userId,
+        c,
+      );
+      if (promo.errors.length) throw badRequest('COUPON_INVALID', `${promo.errors[0].code}: ${promo.errors[0].message}`);
+      const reserved: (CouponResult & { reservationId: string })[] = [];
+      for (const r of promo.results) {
+        try {
+          const res = await this.db.one(`select public.reserve_promotion_code_for_checkout($1,$2,$3,$4,$5,$6) as id`, [sessionId, userId, r.code, expiresAt, `${input.idempotencyKey}:promo:${r.code}`, corr], c);
+          reserved.push({ ...r, reservationId: res!.id });
+        } catch (e: any) {
+          const m = String(e?.message ?? '');
+          throw badRequest('COUPON_INVALID', `${r.code}: ${/LIMIT_REACHED/.test(m) ? 'el cupón ya alcanzó su límite de usos.' : /CUSTOMER_LIMIT/.test(m) ? 'ya usaste este cupón el máximo de veces permitido.' : /NOT_ACTIVE/.test(m) ? 'el cupón no está vigente.' : 'el cupón no se pudo aplicar.'}`);
+        }
+      }
+
+      await this.calculate(c, sessionId, currency, items, shippingBySeller, corr, address.country_code, reserved, userId);
 
       // ---- inventory reservations
       for (const a of allocations) {
@@ -524,7 +563,8 @@ export class CheckoutService {
   }
 
   /** Writes calculation run + immutable snapshots + commission evidence, then finalizes. */
-  private async calculate(c: PoolClient, sessionId: string, currency: string, items: any[], shippingBySeller: Map<string, Minor>, corr: string, destinationCountry: string) {
+  private async calculate(c: PoolClient, sessionId: string, currency: string, items: any[], shippingBySeller: Map<string, Minor>, corr: string, destinationCountry: string,
+    coupons: (CouponResult & { reservationId: string })[] = [], customerId?: string) {
     const taxInfo = await this.tax.forCountry(destinationCountry, c);
     const taxRate = taxInfo.rate;
     const taxEvidence = { code: taxInfo.taxName, rate: taxRate, country: destinationCountry, source: 'marketplace_tax_rates' };
@@ -537,29 +577,47 @@ export class CheckoutService {
       c,
     );
     const runId = run!.id;
-    const lines: (LineCalc & { item: any; rule: CommissionRule | null; base: Minor })[] = [];
+    // Store coupons (funded by the store): discount per checkout item.
+    const discountOf = new Map<string, { amount: Minor; coupon: CouponResult & { reservationId: string } }>();
+    for (const cp of coupons) for (const al of cp.allocations) discountOf.set(al.key, { amount: al.discount, coupon: cp });
+    const lines: (LineCalc & { item: any; rule: CommissionRule | null; base: Minor; referral: Minor })[] = [];
     for (const it of items) {
       const unit = toMinor(it.unit_price);
       const gross = unit * BigInt(it.quantity);
-      const net = gross;
+      const discount = discountOf.get(it.id)?.amount ?? 0n;
+      const net = gross - discount;
       const rule = await this.commissionRule(c, it.seller_id, it.category_id, it.product_id, it.variant_id);
       const com = this.computeCommission(rule, gross, net);
       lines.push({
-        key: it.id, sellerId: it.seller_id, quantity: it.quantity, unit, gross, discount: 0n, net,
+        key: it.id, sellerId: it.seller_id, quantity: it.quantity, unit, gross, discount, net,
         tax: applyRate(net, taxRate), commission: com.amount, commissionRaw: com.raw, entitlement: net - com.amount,
-        item: it, rule, base: com.base,
+        item: it, rule, base: com.base, referral: 0n,
       });
     }
+    // Affiliate commission (funded by the store): per store, when the buyer came through an affiliate link.
+    const referrals: { sellerId: string; r: NonNullable<Awaited<ReturnType<AffiliatesService['forCheckout']>>> }[] = [];
+    if (customerId)
+      for (const sellerId of [...new Set(lines.map((l) => l.sellerId))]) {
+        const r = await this.affiliates.forCheckout(c, customerId, sellerId, lines.filter((l) => l.sellerId === sellerId).map((l) => ({ key: l.key, productId: l.item.product_id, net: l.net })));
+        if (!r) continue;
+        referrals.push({ sellerId, r });
+        for (const x of r.items) lines.find((l) => l.key === x.itemId)!.referral = x.commission;
+      }
     for (const l of lines) {
+      const promo = discountOf.get(l.key);
       await this.db.exec(
         `insert into public.checkout_item_financial_snapshots (calculation_run_id, checkout_session_id, checkout_item_id, seller_id,
                  quantity, unit_price, gross_amount, discount_amount, product_net_amount, taxable_amount, tax_amount,
                  platform_commission_amount, referral_commission_amount, processor_fee_estimate_allocated, seller_product_entitlement,
                  currency_code, calculation_breakdown)
-         values ($1,$2,$3,$4,$5,$6,$7,0,$8,$8,$9,$10,0,0,$11,$12,$13::jsonb)`,
-        [runId, sessionId, l.key, l.sellerId, l.quantity, fromMinor(l.unit), fromMinor(l.gross), fromMinor(l.net), fromMinor(l.tax),
-         fromMinor(l.commission), fromMinor(l.entitlement), currency,
-         JSON.stringify({ engine: ENGINE, tax: { ...taxEvidence, base: fromMinor(l.net) }, commission_rule_version_id: l.rule?.versionId ?? null })],
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,$10,$11,$12,0,$13,$14,$15::jsonb)`,
+        [runId, sessionId, l.key, l.sellerId, l.quantity, fromMinor(l.unit), fromMinor(l.gross), fromMinor(l.discount), fromMinor(l.net), fromMinor(l.tax),
+         fromMinor(l.commission), fromMinor(l.referral), fromMinor(l.entitlement), currency,
+         JSON.stringify({
+           engine: ENGINE, tax: { ...taxEvidence, base: fromMinor(l.net) }, commission_rule_version_id: l.rule?.versionId ?? null,
+           ...(promo ? { promotion: { platformFunded: '0', sellerFunded: fromMinor(promo.amount), applications: [{ code: promo.coupon.code, ruleVersionId: promo.coupon.ruleVersionId, discount: fromMinor(promo.amount) }] } } : {}),
+           ...(l.referral > 0n ? { referral: { commission: fromMinor(l.referral), fundingSource: 'SELLER' } } : {}),
+         })],
         c,
       );
       if (l.rule) {
@@ -598,18 +656,41 @@ export class CheckoutService {
         );
       }
     }
+    for (const cp of coupons) {
+      const allocations = cp.allocations.map((a) => ({ itemId: a.key, discount: fromMinor(a.discount), sellerFunded: fromMinor(a.discount), platformFunded: '0' }));
+      await this.db.exec(
+        `insert into public.checkout_promotion_applications (calculation_run_id, checkout_session_id, promotion_code_reservation_id, promotion_code_id,
+                 business_rule_version_id, discount_amount, platform_funded_amount, seller_funded_amount, other_funded_amount, currency_code, application_snapshot)
+         values ($1,$2,$3,$4,$5,$6,0,$6,0,$7,$8::jsonb)`,
+        [runId, sessionId, cp.reservationId, cp.codeId, cp.ruleVersionId, fromMinor(cp.discount), currency,
+         JSON.stringify({ engine: 'CUSTOMER_PROMOTION_1', component: 'PRODUCT', code: cp.code, sellerId: cp.sellerId,
+           rule: { groupId: cp.ruleGroupId, ruleVersionId: cp.ruleVersionId, fundingSource: 'SELLER' },
+           discount: fromMinor(cp.discount), sellerFunded: fromMinor(cp.discount), platformFunded: '0', allocations })],
+        c,
+      );
+    }
+    for (const { r } of referrals)
+      await this.db.exec(
+        `insert into public.checkout_referral_applications (calculation_run_id, checkout_session_id, referral_attribution_id, program_id, referrer_id,
+                 status, eligible_amount, commission_estimate, currency_code, eligibility_snapshot)
+         values ($1,$2,$3,$4,$5,'ELIGIBLE',$6,$7,$8,$9::jsonb)`,
+        [runId, sessionId, r.attributionId, r.programId, r.referrerId, fromMinor(r.eligible), fromMinor(r.commission), currency, JSON.stringify(r.snapshot)],
+        c,
+      );
     const bySeller = new Map<string, typeof lines>();
     for (const l of lines) {
       if (!bySeller.has(l.sellerId)) bySeller.set(l.sellerId, []);
       bySeller.get(l.sellerId)!.push(l);
     }
-    const G = { gross: 0n, net: 0n, ship: 0n, tax: 0n, com: 0n, ent: 0n, total: 0n };
+    const G = { gross: 0n, disc: 0n, net: 0n, ship: 0n, tax: 0n, com: 0n, ref: 0n, ent: 0n, total: 0n };
     for (const [sellerId, ls] of bySeller) {
-      const sum = (f: (l: LineCalc) => Minor) => ls.reduce((a, l) => a + f(l), 0n);
+      const sum = (f: (l: (typeof lines)[number]) => Minor) => ls.reduce((a, l) => a + f(l), 0n);
       const gross = sum((l) => l.gross);
+      const disc = sum((l) => l.discount);
       const net = sum((l) => l.net);
       const tax = sum((l) => l.tax);
       const com = sum((l) => l.commission);
+      const ref = sum((l) => l.referral);
       const ent = sum((l) => l.entitlement);
       const ship = shippingBySeller.get(sellerId) ?? 0n;
       const total = net + ship + tax;
@@ -618,20 +699,20 @@ export class CheckoutService {
                  product_gross_amount, discount_total, product_net_amount, shipping_amount, tax_amount, customer_fee_amount,
                  platform_commission_total, referral_commission_total, processor_fee_estimate_allocated, seller_entitlement_estimate,
                  customer_total, currency_code, calculation_breakdown)
-         values ($1,$2,$3,$4,0,$5,$6,$7,0,$8,0,0,$9,$10,$11,$12::jsonb)`,
-        [runId, sessionId, sellerId, fromMinor(gross), fromMinor(net), fromMinor(ship), fromMinor(tax), fromMinor(com), fromMinor(ent),
-         fromMinor(total), currency, JSON.stringify({ engine: ENGINE, tax: taxEvidence })],
+         values ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,0,$11,$12,$13,$14::jsonb)`,
+        [runId, sessionId, sellerId, fromMinor(gross), fromMinor(disc), fromMinor(net), fromMinor(ship), fromMinor(tax), fromMinor(com), fromMinor(ref), fromMinor(ent),
+         fromMinor(total), currency, JSON.stringify({ engine: ENGINE, tax: taxEvidence, ...(disc > 0n ? { coupon: coupons.find((x) => x.sellerId === sellerId)?.code } : {}) })],
         c,
       );
-      G.gross += gross; G.net += net; G.ship += ship; G.tax += tax; G.com += com; G.ent += ent; G.total += total;
+      G.gross += gross; G.disc += disc; G.net += net; G.ship += ship; G.tax += tax; G.com += com; G.ref += ref; G.ent += ent; G.total += total;
     }
     await this.db.exec(
       `insert into public.checkout_financial_snapshots (calculation_run_id, checkout_session_id, product_gross_amount, discount_total,
                product_net_amount, shipping_total, tax_total, customer_fee_total, grand_total, platform_commission_total,
                referral_commission_total, processor_fee_estimate, seller_entitlement_estimate_total, currency_code, calculation_breakdown)
-       values ($1,$2,$3,0,$4,$5,$6,0,$7,$8,0,0,$9,$10,$11::jsonb)`,
-      [runId, sessionId, fromMinor(G.gross), fromMinor(G.net), fromMinor(G.ship), fromMinor(G.tax), fromMinor(G.total), fromMinor(G.com),
-       fromMinor(G.ent), currency, JSON.stringify({ engine: ENGINE, tax: taxEvidence })],
+       values ($1,$2,$3,$4,$5,$6,$7,0,$8,$9,$10,0,$11,$12,$13::jsonb)`,
+      [runId, sessionId, fromMinor(G.gross), fromMinor(G.disc), fromMinor(G.net), fromMinor(G.ship), fromMinor(G.tax), fromMinor(G.total), fromMinor(G.com),
+       fromMinor(G.ref), fromMinor(G.ent), currency, JSON.stringify({ engine: ENGINE, tax: taxEvidence })],
       c,
     );
     await this.db.exec(`select public.finalize_checkout_calculation_run($1)`, [runId], c);

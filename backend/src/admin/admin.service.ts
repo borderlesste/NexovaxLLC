@@ -77,7 +77,8 @@ export class AdminService {
                 (select count(*) from public.payments where status = 'REQUIRES_ACTION')::int as transfers_pending,
                 (select count(*) from public.seller_payout_accounts where verification_status = 'PENDING' and status <> 'DISABLED')::int as payout_accounts_pending,
                 (select count(*) from public.return_requests where status in ('REQUESTED','UNDER_REVIEW','RECEIVED','INSPECTING'))::int as returns_pending,
-                (select count(*) from public.nx_order_cancellations where status = 'APPROVED')::int as cancellations_pending`,
+                (select count(*) from public.nx_order_cancellations where status = 'APPROVED')::int as cancellations_pending,
+                (select count(distinct referrer_id) from public.referral_commissions where status = 'AVAILABLE')::int as affiliates_payable`,
       ),
     ]);
     const recent = await this.db.many(
@@ -114,6 +115,7 @@ export class AdminService {
         transfers_pending: keep('transfers_pending', admin),
         payout_accounts_pending: keep('payout_accounts_pending', admin),
         cancellations_pending: keep('cancellations_pending', admin),
+        affiliates_payable: keep('affiliates_payable', admin),
       },
     };
   }

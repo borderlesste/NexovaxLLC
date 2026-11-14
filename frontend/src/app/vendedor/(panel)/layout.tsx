@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CreditCard, LayoutGrid, Layers, MessageSquare, Package, RotateCcw, Settings, ShoppingCart, Wallet, Clock, AlertTriangle } from 'lucide-react';
+import { CreditCard, LayoutGrid, Layers, MessageSquare, Package, RotateCcw, Settings, ShoppingCart, Wallet, Clock, AlertTriangle , TicketPercent, Handshake } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader } from '@/components/ui/misc';
 import { useAuth } from '@/lib/auth';
@@ -34,6 +34,8 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         { href: '/vendedor/pedidos', label: t('Pedidos'), icon: ShoppingCart, badge: pending || null },
         { href: '/vendedor/devoluciones', label: t('Devoluciones'), icon: RotateCcw, badge: returnsPending || null },
         { href: '/vendedor/inventario', label: t('Inventario'), icon: Layers },
+        { href: '/vendedor/cupones', label: t('Cupones'), icon: TicketPercent },
+        { href: '/vendedor/afiliados', label: t('Afiliados'), icon: Handshake },
         { href: '/vendedor/finanzas', label: t('Finanzas'), icon: Wallet },
         { href: '/vendedor/metodos-cobro', label: t('Métodos de cobro'), icon: CreditCard },
         { href: '/vendedor/mensajes', label: t('Mensajes'), icon: MessageSquare },

@@ -26,7 +26,10 @@ export async function postSaleAllocation(db: DbService, c: PoolClient, paymentId
     [paymentId],
     c,
   );
-  if (existing?.status === 'POSTED') return existing.id;
+  if (existing?.status === 'POSTED') {
+    await postReferralEarnings(db, c, pay.order_id, paymentId, actorUserId, correlationId);
+    return existing.id;
+  }
   if (existing) await db.exec(`update public.financial_allocation_sets set status = 'VOIDED', voided_at = now() where id = $1 and status = 'DRAFT'`, [existing.id], c);
 
   const set = await db.one(
@@ -84,5 +87,14 @@ export async function postSaleAllocation(db: DbService, c: PoolClient, paymentId
   }
   await db.exec(`select public.finalize_financial_allocation_set($1)`, [set!.id], c);
   await db.exec(`select public.post_financial_allocation_set($1, 'SALE', $2, $3, $4)`, [set!.id, `ledger:sale:${paymentId}`, actorUserId, correlationId], c);
+  await postReferralEarnings(db, c, pay.order_id, paymentId, actorUserId, correlationId);
   return set!.id;
+}
+
+/**
+ * Affiliate commissions of the sale (funded by each store): SELLER_PENDING -> REFERRAL_PENDING,
+ * one earning per eligible item, released after delivery + the return window. Idempotent.
+ */
+async function postReferralEarnings(db: DbService, c: PoolClient, orderId: string, paymentId: string, actorUserId: string | null, correlationId: string) {
+  await db.exec(`select public.nx_post_referral_earnings($1,$2,$3,$4)`, [orderId, paymentId, actorUserId, correlationId], c);
 }

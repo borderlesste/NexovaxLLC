@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { get } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { EarnBox } from '@/components/affiliates/earn-box';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -199,6 +200,7 @@ export function ProductDetail({ initial }: { initial: any }) {
             </div>
             <Button variant="soft" className="mt-4 w-full" onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> {t('Contactar vendedor')}</Button>
           </div>
+          <EarnBox productId={p.id} slug={p.slug} />
           <div className="card divide-y divide-line px-5">
             {[
               [Truck, t('Envíos nacionales e internacionales'), t('Tarifa y tiempo según tu dirección, calculados en el checkout.')],

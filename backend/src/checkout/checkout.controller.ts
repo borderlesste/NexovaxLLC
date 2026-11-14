@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 import { IsPersonName, ToNumber } from '../common/validators';
 import { Transform, Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
@@ -13,6 +13,7 @@ import { PaymentsService } from '../payments/payments.service';
 export class QuoteDto {
   @IsOptional() @IsObject() shipping?: Record<string, string>;
   @IsOptional() @IsUUID() addressId?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(10) @IsString({ each: true }) @Length(1, 24, { each: true }) coupons?: string[];
 }
 
 export class CardDto {
@@ -30,6 +31,7 @@ export class PlaceOrderDto {
   @IsOptional() @ValidateNested() @Type(() => CardDto) card?: CardDto;
   @IsOptional() @IsBoolean() saveCard?: boolean;
   @IsOptional() @IsUUID() savedCardId?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(10) @IsString({ each: true }) @Length(1, 24, { each: true }) coupons?: string[];
   @IsString() @Length(8, 100) idempotencyKey: string;
 }
 
