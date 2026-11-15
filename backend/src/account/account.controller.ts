@@ -17,11 +17,11 @@ export class RegisterDto {
   @IsPersonName(3, 120) fullName: string;
   @IsEmailAddress() email: string;
   @IsString() @MinLength(8) @MaxLength(72) password: string;
-  @IsOptional() @IsIn(['es', 'en']) locale?: string;
+  @IsOptional() @IsIn(['es', 'en', 'fr', 'ht']) locale?: string;
 }
 
 export class LocaleDto {
-  @IsIn(['es', 'en']) locale: string;
+  @IsIn(['es', 'en', 'fr', 'ht']) locale: string;
 }
 
 export class RecoveryDto {

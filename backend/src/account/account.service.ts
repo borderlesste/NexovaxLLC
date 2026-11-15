@@ -23,7 +23,7 @@ export interface AddressInput {
 }
 
 const clean = (v?: string | null) => (v && v.trim() ? v.trim() : null);
-export const LOCALES = ['es', 'en'] as const;
+export const LOCALES = ['es', 'en', 'fr', 'ht'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 @Injectable()

@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 const OPTIONS: { code: Locale; label: string }[] = [
   { code: 'es', label: 'Español' },
   { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Français' },
+  { code: 'ht', label: 'Kreyòl ayisyen' },
 ];
 
 export function LanguageSwitcher({ className }: { className?: string }) {
@@ -20,7 +22,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         <Globe className="size-4" /> {current.toUpperCase()}
       </Dropdown.Trigger>
       <Dropdown.Portal>
-        <Dropdown.Content align="end" sideOffset={8} className="z-50 w-40 rounded-xl border border-line bg-white p-1 shadow-xl">
+        <Dropdown.Content align="end" sideOffset={8} className="z-50 w-48 rounded-xl border border-line bg-white p-1 shadow-xl">
           {OPTIONS.map((o) => (
             <Dropdown.Item
               key={o.code}

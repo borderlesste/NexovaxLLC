@@ -7,6 +7,7 @@ import { orderRef, parseOrderRef, parseTicketRef, ticketRef } from '../common/re
 import { badRequest, notFound } from '../common/errors';
 import { isStaff, RequestUser } from '../auth/auth';
 import { MessagingService, UploadedFile } from '../messaging/messaging.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface ReportInput {
   categoryCode: string;
@@ -17,6 +18,8 @@ export interface ReportInput {
   orderNumber?: string;
   storeName?: string;
   platform?: 'WEB' | 'MOBILE' | 'OTHER';
+  /** Browser / device that sent the report (User-Agent), for support. */
+  client?: string;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -35,12 +38,18 @@ export class SupportService {
     private readonly db: DbService,
     private readonly mail: MailService,
     private readonly messaging: MessagingService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   catalogs() {
     return Promise.all([
       this.db.many(`select code, name, description from public.support_ticket_categories where is_active order by sort_order`),
-      this.db.many(`select code, name, rank from public.support_priorities where is_active order by rank`),
+      // Response time each priority promises (published SLA; no specific policy -> default one).
+      this.db.many(
+        `select p.code, p.name, p.rank,
+                coalesce((select s.first_response_target_seconds from public.support_sla_policies s where s.status = 'ACTIVE' and s.priority_code = p.code and s.category_id is null order by s.version desc limit 1),
+                         (select s.first_response_target_seconds from public.support_sla_policies s where s.status = 'ACTIVE' and s.priority_code is null and s.category_id is null order by s.version desc limit 1))::int as first_response_seconds
+           from public.support_priorities p where p.is_active order by p.rank`),
       this.db.many(`select id, code, name from public.support_teams where is_active order by name`),
     ]).then(([categories, priorities, teams]) => ({ categories, priorities, teams }));
   }
@@ -60,7 +69,6 @@ export class SupportService {
       input.url ? `URL afectada: ${input.url}` : null,
       input.orderNumber ? `Pedido: ${input.orderNumber}` : null,
       input.storeName ? `Tienda/vendedor: ${input.storeName}` : null,
-      input.platform ? `Plataforma: ${{ WEB: 'Plataforma web', MOBILE: 'App móvil', OTHER: 'Otro' }[input.platform]}` : null,
     ].filter(Boolean);
     const message = `${input.description.trim()}${context.length ? '\n\n— ' + context.join('\n— ') : ''}`;
     const evidence = await this.messaging.uploadFiles(user.id, files);
@@ -72,6 +80,11 @@ export class SupportService {
       );
       const team = await this.db.one(`select id from public.support_teams where code = 'SUPPORT'`, [], c);
       if (team) await this.db.exec(`update public.support_tickets set current_team_id = $2 where id = $1 and current_team_id is null`, [r!.id, team.id], c);
+      await this.db.exec(
+        `update public.support_tickets set reported_platform = $2, reported_url = $3, reported_client = $4 where id = $1`,
+        [r!.id, input.platform ?? 'WEB', input.url?.trim() || null, input.client?.replace(/[\u0000-\u001f]/g, '').slice(0, 300) || null],
+        c,
+      );
       if (evidence.length) {
         const first = await this.db.one(
           `select m.id, m.conversation_id from public.support_tickets t join public.conversation_messages m on m.conversation_id = t.conversation_id
@@ -85,7 +98,22 @@ export class SupportService {
     });
     this.mail.fire(() => this.mail.supportTicketCreated(id));
     const t = await this.db.one(`select public_number from public.support_tickets where id = $1`, [id]);
+    if (input.priority === 'HIGH' || input.priority === 'CRITICAL') await this.alertStaff(id, ticketRef(t!.public_number), input.priority, input.subject.trim());
     return { id, code: ticketRef(t!.public_number) };
+  }
+
+  /** High / critical reports reach the support team's bell at once (normal ones wait in the queue). */
+  private async alertStaff(id: string, code: string, priority: 'HIGH' | 'CRITICAL', subject: string) {
+    const staff = await this.db.many<{ id: string }>(
+      `select distinct u.id from public.users u join public.user_roles ur on ur.user_id = u.id and ur.revoked_at is null and (ur.expires_at is null or ur.expires_at > now())
+         join public.roles r on r.id = ur.role_id where r.code in ('SUPPORT','ADMIN','SUPER_ADMIN') and u.status = 'ACTIVE'`,
+    );
+    for (const s of staff)
+      await this.notifications.notify(s.id, {
+        category: 'SUPPORT', eventType: `SUPPORT_TICKET_${priority}`,
+        title: `${priority === 'CRITICAL' ? 'Reporte crítico' : 'Reporte de prioridad alta'}: ${code}`,
+        body: subject, url: `/admin/reportes?ticket=${id}`, entityType: 'SUPPORT_TICKET', entityId: id, dedupeKey: `ticket-priority:${id}`,
+      });
   }
 
   async track(code: string, user: RequestUser) {
@@ -123,7 +151,7 @@ export class SupportService {
   }
 
   // ------------------------------------------------------------------ admin
-  async adminList(q: { status?: string; priority?: string; category?: string; search?: string; page?: number }) {
+  async adminList(q: { status?: string; priority?: string; category?: string; platform?: string; search?: string; page?: number }) {
     const params: unknown[] = [];
     const where: string[] = [];
     if (q.status === 'OPEN_ALL') where.push(`t.status in ('OPEN','IN_PROGRESS','PENDING_CUSTOMER','PENDING_INTERNAL')`);
@@ -141,6 +169,10 @@ export class SupportService {
       params.push(q.category);
       where.push(`c.code = $${params.length}`);
     }
+    if (q.platform && ['WEB', 'MOBILE', 'OTHER'].includes(q.platform)) {
+      params.push(q.platform);
+      where.push(`t.reported_platform = $${params.length}`);
+    }
     if (q.search?.trim()) {
       params.push(`%${parseTicketRef(q.search)}%`);
       where.push(`(t.public_number::text ilike $${params.length} or t.subject ilike $${params.length} or coalesce(up.display_name, u.email::text) ilike $${params.length})`);
@@ -148,7 +180,7 @@ export class SupportService {
     const page = Math.max(q.page ?? 1, 1);
     const rows = await this.db.many(
       `select t.id, t.public_number, t.status, t.subject, t.priority_code, t.created_at, t.updated_at, c.name as category, c.code as category_code,
-              coalesce(up.display_name, u.email::text) as requester,
+              t.reported_platform, coalesce(up.display_name, u.email::text) as requester,
               case when exists (select 1 from public.sellers s where s.owner_user_id = u.id) then 'Vendedor' else 'Comprador' end as requester_type,
               coalesce(aup.display_name, au.email::text) as assignee,
               count(*) over() as total
@@ -157,7 +189,9 @@ export class SupportService {
          join public.users u on u.id = t.requester_user_id left join public.user_profiles up on up.user_id = u.id
          left join public.users au on au.id = t.current_assignee_user_id left join public.user_profiles aup on aup.user_id = au.id
         ${where.length ? 'where ' + where.join(' and ') : ''}
-        order by t.updated_at desc limit 20 offset ${(page - 1) * 20}`,
+        order by (t.status in ('OPEN','IN_PROGRESS','PENDING_INTERNAL')) desc,
+                 case when t.status in ('OPEN','IN_PROGRESS','PENDING_INTERNAL') then (select rank from public.support_priorities sp where sp.code = t.priority_code) end desc nulls last,
+                 t.updated_at desc limit 20 offset ${(page - 1) * 20}`,
       params,
     );
     const counts = await this.db.one(
@@ -169,7 +203,7 @@ export class SupportService {
     );
     return {
       items: rows.map((r: any) => ({
-        id: r.id, code: `REP-${r.public_number}`, status: r.status, statusLabel: STATUS_LABEL[r.status], subject: r.subject, priority: r.priority_code,
+        id: r.id, code: `REP-${r.public_number}`, status: r.status, statusLabel: STATUS_LABEL[r.status], subject: r.subject, priority: r.priority_code, platform: r.reported_platform,
         category: r.category, categoryCode: r.category_code, requester: r.requester, requesterType: r.requester_type, assignee: r.assignee,
         createdAt: r.created_at, updatedAt: r.updated_at,
       })),
@@ -230,6 +264,9 @@ export class SupportService {
       statusLabel: STATUS_LABEL[t.status],
       subject: t.subject,
       priority: t.priority_code,
+      platform: t.reported_platform,
+      reportedUrl: t.reported_url,
+      client: t.reported_client,
       category: t.category,
       categoryCode: t.category_code,
       createdAt: t.created_at,

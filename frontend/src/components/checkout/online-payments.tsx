@@ -6,7 +6,7 @@ import { PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, post } from '@/lib/api';
-import { getLocale, t } from '@/lib/i18n';
+import { getPaypalLocale, getStripeLocale, t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 
 const ZERO_DECIMAL = new Set(['CLP', 'JPY', 'KRW', 'VND', 'PYG', 'XAF', 'XOF']);
@@ -20,7 +20,7 @@ export interface PlacedCheckout {
 
 /** Stripe Elements in deferred-intent mode: the card form renders before the order is created. */
 export function StripeBoundary({ publishableKey, amount, currency, saveCard, children }: { publishableKey?: string | null; amount: string; currency: string; saveCard?: boolean; children: React.ReactNode }) {
-  const stripePromise = useMemo(() => (publishableKey ? loadStripe(publishableKey, { locale: getLocale() === 'en' ? 'en' : 'es-419' }) : null), [publishableKey]);
+  const stripePromise = useMemo(() => (publishableKey ? loadStripe(publishableKey, { locale: getStripeLocale() }) : null), [publishableKey]);
   if (!stripePromise) return <>{children}</>;
   return (
     <Elements
@@ -132,7 +132,7 @@ export function PaypalPay({ clientId, currency, place, onPaid, disabled }: { cli
   const checkoutRef = useRef<string | null>(null);
   return (
     <div className="mt-5">
-      <PayPalScriptProvider options={{ clientId, currency, intent: 'capture', components: 'buttons', locale: getLocale() === 'en' ? 'en_US' : 'es_ES' }}>
+      <PayPalScriptProvider options={{ clientId, currency, intent: 'capture', components: 'buttons', locale: getPaypalLocale() }}>
         <PayPalButtons
           style={{ layout: 'vertical', shape: 'rect', label: 'pay', height: 48 }}
           disabled={disabled}

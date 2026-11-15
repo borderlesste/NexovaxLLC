@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { AlertCircle, BookOpen, CreditCard, HelpCircle, Package, RotateCcw, Shield, Store, Truck } from 'lucide-react';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
-import { getServerLocale, getT } from '@/lib/i18n/server';
+import { getHas, getServerLocale, getT } from '@/lib/i18n/server';
 import { serverGet } from '@/lib/server-api';
 
 export async function generateMetadata() {
@@ -27,11 +27,15 @@ type Help = {
 
 export default async function HelpPage() {
   const t = await getT();
-  const en = (await getServerLocale()) === 'en';
+  const locale = await getServerLocale();
+  const en = locale === 'en';
+  const has = await getHas();
   const help = await serverGet<Help>('/help', 30);
   // English: the admin's own translation, else the automatic one.
-  const tr = (es: string, eng?: string | null) => (en ? eng || t(es) : es);
-  const fmt = (v: string, cur: string) => new Intl.NumberFormat(en ? 'en-US' : 'es-US', { style: 'currency', currency: cur }).format(Number(v));
+  // French / Creole: our translation when the text is the stock one, else the English version, else Spanish.
+  const tr = (es: string, eng?: string | null) => (locale === 'es' ? es : en ? eng || t(es) : has(es) ? t(es) : eng || es);
+  const numLocale = ({ es: 'es-US', en: 'en-US', fr: 'fr-FR', ht: 'fr-HT' } as const)[locale];
+  const fmt = (v: string, cur: string) => new Intl.NumberFormat(numLocale, { style: 'currency', currency: cur }).format(Number(v));
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-6 lg:px-8">
       <Breadcrumbs items={[{ label: t('Ayuda') }]} />
@@ -76,7 +80,7 @@ export default async function HelpPage() {
           <h2 className="text-2xl font-extrabold">{t('Comisiones y pagos a vendedores')}</h2>
           {(help.commissions.rate != null || help.commissions.payoutMinimum != null) && (
             <div className="mt-4 flex flex-wrap gap-3">
-              {help.commissions.rate != null && <div className="rounded-xl bg-brand-50 px-4 py-3"><p className="text-xs text-muted">{t('Comisión por venta')}</p><p className="text-2xl font-extrabold text-brand-700">{(help.commissions.rate * 100).toLocaleString(en ? 'en-US' : 'es', { maximumFractionDigits: 2 })} %</p></div>}
+              {help.commissions.rate != null && <div className="rounded-xl bg-brand-50 px-4 py-3"><p className="text-xs text-muted">{t('Comisión por venta')}</p><p className="text-2xl font-extrabold text-brand-700">{(help.commissions.rate * 100).toLocaleString(numLocale, { maximumFractionDigits: 2 })} %</p></div>}
               {help.commissions.payoutMinimum != null && <div className="rounded-xl bg-brand-50 px-4 py-3"><p className="text-xs text-muted">{t('Retiro mínimo')}</p><p className="text-2xl font-extrabold text-brand-700">{fmt(help.commissions.payoutMinimum, help.commissions.currency)}</p></div>}
             </div>
           )}

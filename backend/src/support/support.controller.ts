@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Transform } from 'class-transformer';
 import type { Response } from 'express';
@@ -54,8 +54,8 @@ export class SupportController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('reports')
   @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_FILES, ATTACHMENT_UPLOAD))
-  create(@CurrentUser() user: RequestUser, @Body() dto: ReportDto, @UploadedFiles() files?: Express.Multer.File[]) {
-    return this.support.create(user, dto, files ?? []);
+  create(@CurrentUser() user: RequestUser, @Body() dto: ReportDto, @UploadedFiles() files?: Express.Multer.File[], @Headers('user-agent') ua?: string) {
+    return this.support.create(user, { ...dto, client: ua }, files ?? []);
   }
 
   /** Evidence and attachments of a report (requester or support staff). */
@@ -91,7 +91,7 @@ export class SupportController {
   @Roles('SUPPORT', 'MODERATOR')
   @Get('admin/tickets')
   adminList(@Query() q: Record<string, string>) {
-    return this.support.adminList({ status: q.status, priority: q.priority, category: q.category, search: q.search, page: Number(q.page) || 1 });
+    return this.support.adminList({ status: q.status, priority: q.priority, category: q.category, platform: q.platform, search: q.search, page: Number(q.page) || 1 });
   }
 
   @Roles('SUPPORT', 'MODERATOR')

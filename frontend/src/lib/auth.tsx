@@ -15,7 +15,7 @@ export interface Me {
   firstName?: string;
   lastName?: string;
   phone?: string;
-  locale?: 'es' | 'en';
+  locale?: 'es' | 'en' | 'fr' | 'ht';
   avatarUrl?: string | null;
   memberSince: string;
   roles: Role[];

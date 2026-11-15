@@ -46,7 +46,7 @@ export default function MyReportsPage() {
             {q.data.map((r: any) => (
               <li key={r.id}>
                 <button onClick={() => setOpen(r.id)} className="flex w-full items-center gap-4 p-5 text-left hover:bg-surface">
-                  <div className="min-w-0 flex-1"><p className="font-bold">{r.subject}</p><p className="text-sm text-muted">{r.code} · {r.category} · {fmtDateTime(r.createdAt)}</p></div>
+                  <div className="min-w-0 flex-1"><p className="font-bold">{r.subject}</p><p className="text-sm text-muted">{r.code} · {t(r.category)} · {fmtDateTime(r.createdAt)}</p></div>
                   <StatusBadge status={r.status} label={t(r.statusLabel)} />
                 </button>
               </li>

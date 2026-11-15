@@ -7,7 +7,7 @@ import { CreditCard, Lock, Plus, ShieldCheck, Star, Trash2 } from 'lucide-react'
 import { toast } from 'sonner';
 import { del, errorMessage, get, post } from '@/lib/api';
 import { usePublicConfig } from '@/lib/config';
-import { getLocale, t } from '@/lib/i18n';
+import { getStripeLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, Empty, PageLoader } from '@/components/ui/misc';
@@ -23,7 +23,7 @@ export default function SavedCardsPage() {
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<SavedCard | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const stripePromise = useMemo(() => (cfg?.stripePublishableKey ? loadStripe(cfg.stripePublishableKey, { locale: getLocale() === 'en' ? 'en' : 'es-419' }) : null), [cfg?.stripePublishableKey]);
+  const stripePromise = useMemo(() => (cfg?.stripePublishableKey ? loadStripe(cfg.stripePublishableKey, { locale: getStripeLocale() }) : null), [cfg?.stripePublishableKey]);
   const update = (cards: SavedCard[]) => qc.setQueryData(['cards'], { enabled: true, cards });
   // Back from a bank redirect (3-D Secure): record the confirmed card.
   useEffect(() => {

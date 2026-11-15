@@ -1,0 +1,4806 @@
+{
+"Figuras de acción": {
+"fr": "Figurines d’action",
+"ht": "Figi aksyon"
+},
+"Ropa deportiva": {
+"fr": "Vêtements de sport",
+"ht": "Rad espò"
+},
+"Ambientadores": {
+"fr": "Désodorisants",
+"ht": "Dezodoran lè"
+},
+"Materiales de arte": {
+"fr": "Fournitures d’art",
+"ht": "Materyèl atistik"
+},
+"Artes y manualidades": {
+"fr": "Arts et loisirs créatifs",
+"ht": "Atizana"
+},
+"Arte y manualidades": {
+"fr": "Arts, loisirs créatifs et fournitures",
+"ht": "Atizana ak materyèl kreyatif"
+},
+"Ropa atlética": {
+"fr": "Vêtements de sport",
+"ht": "Rad espò"
+},
+"Calzado deportivo": {
+"fr": "Chaussures de sport",
+"ht": "Soulye espò"
+},
+"Audio y sonido": {
+"fr": "Audio et systèmes de son",
+"ht": "Odyo ak sistèm son"
+},
+"Repuestos de auto": {
+"fr": "Pièces auto",
+"ht": "Pyès machin"
+},
+"Automotriz": {
+"fr": "Automobile et industrie",
+"ht": "Machin ak endistri"
+},
+"Herramientas automotrices": {
+"fr": "Outils automobiles",
+"ht": "Zouti machin"
+},
+"Bebés y maternidad": {
+"fr": "Bébé et maternité",
+"ht": "Tibebe ak matènite"
+},
+"Biberones y accesorios": {
+"fr": "Biberons et accessoires",
+"ht": "Bibwon ak akseswa"
+},
+"Portabebés": {
+"fr": "Porte-bébés",
+"ht": "Pòtè tibebe"
+},
+"Ropa de bebé": {
+"fr": "Vêtements pour bébé",
+"ht": "Rad tibebe"
+},
+"Equipo para bebé": {
+"fr": "Équipement pour bébé",
+"ht": "Ekipman tibebe"
+},
+"Seguridad infantil": {
+"fr": "Sécurité bébé",
+"ht": "Sekirite tibebe"
+},
+"Juguetes para bebé": {
+"fr": "Jouets pour bébé",
+"ht": "Jwèt tibebe"
+},
+"Mochilas": {
+"fr": "Sacs à dos",
+"ht": "Sakado"
+},
+"Utensilios para hornear": {
+"fr": "Moules et ustensiles de pâtisserie",
+"ht": "Zouti pou fè gato"
+},
+"Repostería": {
+"fr": "Fournitures de pâtisserie",
+"ht": "Materyèl pou fè gato"
+},
+"Globos": {
+"fr": "Ballons",
+"ht": "Blad"
+},
+"Béisbol": {
+"fr": "Baseball",
+"ht": "Bezbòl"
+},
+"Baloncesto": {
+"fr": "Basketball",
+"ht": "Baskètbòl"
+},
+"Baño y cuerpo": {
+"fr": "Bain et corps",
+"ht": "Beny ak kò"
+},
+"Artículos de baño": {
+"fr": "Articles de bain",
+"ht": "Atik pou beny"
+},
+"Baño del bebé": {
+"fr": "Toilette de bébé",
+"ht": "Beny tibebe"
+},
+"Belleza": {
+"fr": "Beauté et soins personnels",
+"ht": "Bote ak swen pèsonèl"
+},
+"Herramientas de belleza": {
+"fr": "Outils et accessoires de beauté",
+"ht": "Zouti ak akseswa bote"
+},
+"Ropa de cama": {
+"fr": "Literie",
+"ht": "Dra ak kouvèti"
+},
+"Artículos para aves": {
+"fr": "Articles pour oiseaux",
+"ht": "Atik pou zwazo"
+},
+"Decoración de cumpleaños": {
+"fr": "Décorations d’anniversaire",
+"ht": "Dekorasyon fèt"
+},
+"Juegos de mesa": {
+"fr": "Jeux de société",
+"ht": "Jwèt sou tab"
+},
+"Libros": {
+"fr": "Livres",
+"ht": "Liv"
+},
+"Libros y entretenimiento": {
+"fr": "Livres, médias et divertissement",
+"ht": "Liv, medya ak divètisman"
+},
+"Boxeo y artes marciales": {
+"fr": "Boxe et arts martiaux",
+"ht": "Bòks ak ar masyal"
+},
+"Desayunos": {
+"fr": "Petit-déjeuner",
+"ht": "Manje maten"
+},
+"Escobas y trapeadores": {
+"fr": "Balais et serpillières",
+"ht": "Bale ak mòp"
+},
+"Materiales de construcción": {
+"fr": "Matériaux de construction",
+"ht": "Materyèl konstriksyon"
+},
+"Juguetes de construcción": {
+"fr": "Jeux de construction",
+"ht": "Jwèt konstriksyon"
+},
+"Negocios y profesionales": {
+"fr": "Fournitures professionnelles",
+"ht": "Materyèl biznis"
+},
+"Almacenamiento empresarial": {
+"fr": "Rangement et organisation professionnels",
+"ht": "Ranjman ak òganizasyon biznis"
+},
+"Calculadoras": {
+"fr": "Calculatrices",
+"ht": "Kalkilatris"
+},
+"Cámaras y fotografía": {
+"fr": "Appareils photo et photographie",
+"ht": "Kamera ak fotografi"
+},
+"Camping y senderismo": {
+"fr": "Camping et randonnée",
+"ht": "Kan ak randone"
+},
+"Dulces y chocolates": {
+"fr": "Bonbons et chocolat",
+"ht": "Bonbon ak chokola"
+},
+"Accesorios para auto": {
+"fr": "Accessoires auto",
+"ht": "Akseswa machin"
+},
+"Cuidado del auto": {
+"fr": "Entretien et nettoyage auto",
+"ht": "Netwayaj machin"
+},
+"Electrónica para auto": {
+"fr": "Électronique auto",
+"ht": "Elektwonik machin"
+},
+"Asientos para auto": {
+"fr": "Sièges auto",
+"ht": "Chèz machin pou timoun"
+},
+"Juegos de cartas": {
+"fr": "Jeux de cartes",
+"ht": "Jwèt kat"
+},
+"Equipaje de mano": {
+"fr": "Bagages cabine",
+"ht": "Valiz kabin"
+},
+"Artículos para gatos": {
+"fr": "Articles pour chats",
+"ht": "Atik pou chat"
+},
+"Cargadores, cables y baterías": {
+"fr": "Chargeurs, câbles et batteries externes",
+"ht": "Chajè, kab ak batri ekstèn"
+},
+"Navidad": {
+"fr": "Noël",
+"ht": "Nwèl"
+},
+"Utensilios de limpieza": {
+"fr": "Outils de nettoyage",
+"ht": "Zouti netwayaj"
+},
+"Café": {
+"fr": "Café",
+"ht": "Kafe"
+},
+"Collares, correas y arneses": {
+"fr": "Colliers, laisses et harnais",
+"ht": "Kolye, lès ak ekipay pou bèt"
+},
+"Coleccionables": {
+"fr": "Objets de collection",
+"ht": "Bagay pou koleksyon"
+},
+"Cómics y novelas gráficas": {
+"fr": "BD et romans graphiques",
+"ht": "Komik ak woman grafik"
+},
+"Limpieza comercial": {
+"fr": "Produits d’entretien professionnels",
+"ht": "Pwodwi netwayaj pwofesyonèl"
+},
+"Componentes de computadora": {
+"fr": "Composants et pièces d’ordinateur",
+"ht": "Pyès ak eleman òdinatè"
+},
+"Computadoras y laptops": {
+"fr": "Ordinateurs, portables et accessoires",
+"ht": "Òdinatè, laptop ak akseswa"
+},
+"Ollas y sartenes": {
+"fr": "Batterie de cuisine",
+"ht": "Chodyè ak kasròl"
+},
+"Disfraces": {
+"fr": "Déguisements",
+"ht": "Kostim"
+},
+"Suministros para manualidades": {
+"fr": "Fournitures pour loisirs créatifs",
+"ht": "Materyèl atizana"
+},
+"Ciclismo": {
+"fr": "Cyclisme",
+"ht": "Bisiklèt"
+},
+"Pañales": {
+"fr": "Change",
+"ht": "Kouchèt"
+},
+"Vajillas y cristalería": {
+"fr": "Vaisselle et verrerie",
+"ht": "Asyèt ak vè"
+},
+"Lavado de platos": {
+"fr": "Produits pour la vaisselle",
+"ht": "Pwodwi pou lave asyèt"
+},
+"Kits de manualidades": {
+"fr": "Kits de bricolage créatif",
+"ht": "Twous atizana"
+},
+"Equipos de DJ": {
+"fr": "Équipement de DJ",
+"ht": "Ekipman DJ"
+},
+"Artículos para perros": {
+"fr": "Articles pour chiens",
+"ht": "Atik pou chen"
+},
+"Muñecas y accesorios": {
+"fr": "Poupées et accessoires",
+"ht": "Poupe ak akseswa"
+},
+"Dibujo y pintura": {
+"fr": "Dessin et peinture",
+"ht": "Desen ak penti"
+},
+"Drones y accesorios": {
+"fr": "Drones et accessoires",
+"ht": "Dwòn ak akseswa"
+},
+"Batería y percusión": {
+"fr": "Batteries et percussions",
+"ht": "Tanbou ak pèkisyon"
+},
+"Bolsos de viaje": {
+"fr": "Sacs de voyage",
+"ht": "Sak vwayaj"
+},
+"Semana Santa": {
+"fr": "Pâques",
+"ht": "Pak"
+},
+"Material educativo": {
+"fr": "Matériel éducatif",
+"ht": "Materyèl edikatif"
+},
+"Juguetes educativos": {
+"fr": "Jouets éducatifs",
+"ht": "Jwèt edikatif"
+},
+"Material eléctrico": {
+"fr": "Matériel électrique",
+"ht": "Materyèl elektrik"
+},
+"Electrónica": {
+"fr": "Électronique et technologie",
+"ht": "Elektwonik ak teknoloji"
+},
+"Bebidas energéticas": {
+"fr": "Boissons énergisantes",
+"ht": "Bwason enèji"
+},
+"Accesorios ergonómicos": {
+"fr": "Accessoires ergonomiques",
+"ht": "Akseswa ègonomik"
+},
+"Decoración de eventos": {
+"fr": "Décorations d’événements",
+"ht": "Dekorasyon evènman"
+},
+"Equipos de gimnasio": {
+"fr": "Fitness et équipement de gym",
+"ht": "Ekipman egzèsis ak jim"
+},
+"Accesorios exteriores": {
+"fr": "Accessoires extérieurs",
+"ht": "Akseswa deyò machin"
+},
+"Telas": {
+"fr": "Tissu",
+"ht": "Twal"
+},
+"Ropa": {
+"fr": "Mode et vêtements",
+"ht": "Mòd ak rad"
+},
+"Accesorios de moda": {
+"fr": "Accessoires de mode",
+"ht": "Akseswa mòd"
+},
+"Archivo y organización": {
+"fr": "Classement et organisation",
+"ht": "Klasman ak òganizasyon"
+},
+"Primeros auxilios": {
+"fr": "Fournitures de premiers secours",
+"ht": "Materyèl premye swen"
+},
+"Peces y acuarios": {
+"fr": "Articles pour poissons et aquariums",
+"ht": "Atik pou pwason ak akwaryòm"
+},
+"Pesca": {
+"fr": "Pêche",
+"ht": "Lapèch"
+},
+"Accesorios de fitness": {
+"fr": "Accessoires de fitness",
+"ht": "Akseswa egzèsis"
+},
+"Recuperación deportiva": {
+"fr": "Équipement de récupération",
+"ht": "Ekipman rekiperasyon"
+},
+"Alimentos y gourmet": {
+"fr": "Alimentation et épicerie fine",
+"ht": "Manje ak epis fen"
+},
+"Fragancias y perfumes": {
+"fr": "Parfums",
+"ht": "Pafen"
+},
+"Muebles": {
+"fr": "Meubles",
+"ht": "Mèb"
+},
+"Accesorios gaming": {
+"fr": "Accessoires de jeux vidéo",
+"ht": "Akseswa jwèt videyo"
+},
+"PCs y laptops gaming": {
+"fr": "PC et portables gaming",
+"ht": "PC ak laptop gaming"
+},
+"Jardín y exteriores": {
+"fr": "Jardin et vie extérieure",
+"ht": "Jaden ak lavi deyò"
+},
+"Suministros de jardín": {
+"fr": "Fournitures de jardin",
+"ht": "Materyèl jaden"
+},
+"Herramientas de jardinería": {
+"fr": "Outils de jardinage",
+"ht": "Zouti jaden"
+},
+"Canastas de regalo": {
+"fr": "Paniers garnis",
+"ht": "Panye kado"
+},
+"Envoltura de regalos": {
+"fr": "Emballage cadeau",
+"ht": "Anbalaj kado"
+},
+"Alimentos gourmet": {
+"fr": "Épicerie fine",
+"ht": "Manje fen"
+},
+"GPS y navegación": {
+"fr": "GPS et navigation",
+"ht": "GPS ak navigasyon"
+},
+"Parrillas y BBQ": {
+"fr": "Grills et barbecue",
+"ht": "Gri ak babekyou"
+},
+"Aseo de mascotas": {
+"fr": "Produits de toilettage",
+"ht": "Pwodwi toilèt"
+},
+"Guitarras": {
+"fr": "Guitares",
+"ht": "Gita"
+},
+"Cuidado del cabello": {
+"fr": "Soins capillaires",
+"ht": "Swen cheve"
+},
+"Herramientas de peinado": {
+"fr": "Appareils de coiffure",
+"ht": "Aparèy pou cheve"
+},
+"Halloween": {
+"fr": "Halloween",
+"ht": "Halloween"
+},
+"Herramientas manuales": {
+"fr": "Outils à main",
+"ht": "Zouti alamen"
+},
+"Carteras y bolsos": {
+"fr": "Sacs à main",
+"ht": "Sakamen"
+},
+"Ferretería": {
+"fr": "Quincaillerie",
+"ht": "Kenkayri"
+},
+"Audífonos": {
+"fr": "Casques et écouteurs",
+"ht": "Kas ak ekoutè"
+},
+"Monitores de salud": {
+"fr": "Appareils de suivi de santé",
+"ht": "Aparèy pou swiv sante"
+},
+"Salud y bienestar": {
+"fr": "Santé, bien-être et médical",
+"ht": "Sante, byennèt ak medikal"
+},
+"Accesorios de pasatiempos": {
+"fr": "Accessoires de loisirs",
+"ht": "Akseswa lwazi"
+},
+"Decoración del hogar": {
+"fr": "Décoration intérieure",
+"ht": "Dekorasyon lakay"
+},
+"Mejoras del hogar": {
+"fr": "Accessoires d’amélioration de l’habitat",
+"ht": "Akseswa amelyorasyon lakay"
+},
+"Oficina en casa": {
+"fr": "Bureau à domicile",
+"ht": "Biwo lakay"
+},
+"Reparaciones del hogar": {
+"fr": "Réparation de la maison",
+"ht": "Reparasyon lakay"
+},
+"Hogar": {
+"fr": "Maison, cuisine et vie quotidienne",
+"ht": "Kay, kizin ak lavi"
+},
+"Limpieza del hogar": {
+"fr": "Entretien de la maison",
+"ht": "Pwodwi menaj ak netwayaj"
+},
+"Productos de limpieza": {
+"fr": "Nettoyage de la maison",
+"ht": "Netwayaj lakay"
+},
+"Esenciales del hogar": {
+"fr": "Essentiels de la maison",
+"ht": "Bagay esansyèl lakay"
+},
+"Almacenamiento del hogar": {
+"fr": "Rangement de la maison",
+"ht": "Ranjman lakay"
+},
+"Equipos industriales": {
+"fr": "Équipement industriel",
+"ht": "Ekipman endistriyèl"
+},
+"Seguridad industrial": {
+"fr": "Sécurité industrielle",
+"ht": "Sekirite endistriyèl"
+},
+"Herramientas industriales": {
+"fr": "Outils industriels",
+"ht": "Zouti endistriyèl"
+},
+"Tinta y tóner": {
+"fr": "Encre et toner",
+"ht": "Lank ak tonè"
+},
+"Accesorios para instrumentos": {
+"fr": "Accessoires pour instruments",
+"ht": "Akseswa enstriman"
+},
+"Accesorios interiores": {
+"fr": "Accessoires intérieurs",
+"ht": "Akseswa anndan machin"
+},
+"Comida internacional": {
+"fr": "Produits du monde",
+"ht": "Manje entènasyonal"
+},
+"Riego": {
+"fr": "Irrigation",
+"ht": "Irigasyon"
+},
+"Joyería": {
+"fr": "Bijoux",
+"ht": "Bijou"
+},
+"Bisutería": {
+"fr": "Création de bijoux",
+"ht": "Fè bijou"
+},
+"Teclados y pianos": {
+"fr": "Claviers et pianos",
+"ht": "Klavye ak pyano"
+},
+"Ropa infantil": {
+"fr": "Vêtements pour enfants",
+"ht": "Rad timoun"
+},
+"Electrodomésticos de cocina": {
+"fr": "Électroménager de cuisine",
+"ht": "Aparèy kizin"
+},
+"Utensilios de cocina": {
+"fr": "Ustensiles de cuisine",
+"ht": "Istansil kizin"
+},
+"Tejido y crochet": {
+"fr": "Tricot et crochet",
+"ht": "Trikote ak kwochè"
+},
+"Etiquetas": {
+"fr": "Étiquettes",
+"ht": "Etikèt"
+},
+"Accesorios de lavandería": {
+"fr": "Accessoires de lessive",
+"ht": "Akseswa lesiv"
+},
+"Lavandería": {
+"fr": "Produits de lessive",
+"ht": "Pwodwi lesiv"
+},
+"Herramientas de césped": {
+"fr": "Outils de jardin et pelouse",
+"ht": "Zouti gazon ak jaden"
+},
+"Cuidado del césped": {
+"fr": "Entretien de la pelouse",
+"ht": "Swen gazon"
+},
+"Iluminación": {
+"fr": "Éclairage",
+"ht": "Ekleraj"
+},
+"Maletas y bolsos de viaje": {
+"fr": "Bagages et sacs de voyage",
+"ht": "Valiz ak sak vwayaj"
+},
+"Accesorios de equipaje": {
+"fr": "Accessoires de bagages",
+"ht": "Akseswa valiz"
+},
+"Revistas": {
+"fr": "Magazines",
+"ht": "Magazin"
+},
+"Electrodomésticos": {
+"fr": "Gros électroménager",
+"ht": "Gwo aparèy menaj"
+},
+"Maquillaje y cosméticos": {
+"fr": "Maquillage et cosmétiques",
+"ht": "Makiyaj ak kosmetik"
+},
+"Masaje y recuperación": {
+"fr": "Massage et récupération",
+"ht": "Masaj ak rekiperasyon"
+},
+"Manejo de materiales": {
+"fr": "Manutention",
+"ht": "Manutansyon"
+},
+"Productos de maternidad": {
+"fr": "Produits de maternité",
+"ht": "Pwodwi matènite"
+},
+"Herramientas de medición": {
+"fr": "Outils de mesure",
+"ht": "Zouti pou mezire"
+},
+"Dispositivos médicos": {
+"fr": "Dispositifs médicaux",
+"ht": "Aparèy medikal"
+},
+"Ropa de hombre": {
+"fr": "Vêtements pour homme",
+"ht": "Rad gason"
+},
+"Cuidado masculino": {
+"fr": "Soins pour homme",
+"ht": "Swen pou gason"
+},
+"Calzado de hombre": {
+"fr": "Chaussures pour homme",
+"ht": "Soulye gason"
+},
+"Micrófonos": {
+"fr": "Microphones",
+"ht": "Mikwo"
+},
+"Ayudas de movilidad": {
+"fr": "Aides à la mobilité et au quotidien",
+"ht": "Èd pou mobilite ak lavi chak jou"
+},
+"Maquetas": {
+"fr": "Maquettes",
+"ht": "Twous modèl"
+},
+"Monitores y pantallas": {
+"fr": "Écrans et moniteurs",
+"ht": "Ekran ak monitè"
+},
+"Repuestos de motocicleta": {
+"fr": "Pièces moto",
+"ht": "Pyès moto"
+},
+"Películas": {
+"fr": "Films et supports physiques",
+"ht": "Fim ak sipò fizik"
+},
+"Música y vinilos": {
+"fr": "Musique et vinyles",
+"ht": "Mizik ak vinil"
+},
+"Instrumentos musicales": {
+"fr": "Instruments de musique",
+"ht": "Enstriman mizik"
+},
+"Cuidado de uñas": {
+"fr": "Soins des ongles",
+"ht": "Swen zong"
+},
+"Redes y Wi-Fi": {
+"fr": "Réseaux et Wi-Fi",
+"ht": "Rezo ak Wi-Fi"
+},
+"Bebidas sin alcohol": {
+"fr": "Boissons sans alcool",
+"ht": "Bwason san alkòl"
+},
+"Cuadernos y papel": {
+"fr": "Cahiers et papier",
+"ht": "Kaye ak papye"
+},
+"Decoración infantil": {
+"fr": "Décoration de chambre de bébé",
+"ht": "Dekorasyon chanm tibebe"
+},
+"Muebles infantiles": {
+"fr": "Meubles de chambre de bébé",
+"ht": "Mèb chanm tibebe"
+},
+"Lactancia y alimentación": {
+"fr": "Allaitement et alimentation",
+"ht": "Tete ak manje tibebe"
+},
+"Oficina y escolar": {
+"fr": "Fournitures de bureau et scolaires",
+"ht": "Materyèl biwo ak lekòl"
+},
+"Electrónica de oficina": {
+"fr": "Électronique de bureau",
+"ht": "Elektwonik biwo"
+},
+"Muebles de oficina": {
+"fr": "Mobilier de bureau",
+"ht": "Mèb biwo"
+},
+"Cuidado bucal": {
+"fr": "Hygiène bucco-dentaire",
+"ht": "Swen bouch"
+},
+"Muebles de exterior": {
+"fr": "Mobilier d’extérieur",
+"ht": "Mèb deyò"
+},
+"Iluminación exterior": {
+"fr": "Éclairage extérieur",
+"ht": "Ekleraj deyò"
+},
+"Recreación al aire libre": {
+"fr": "Loisirs de plein air",
+"ht": "Lwazi deyò"
+},
+"Almacenamiento exterior": {
+"fr": "Rangement extérieur",
+"ht": "Ranjman deyò"
+},
+"Snacks": {
+"fr": "Snacks emballés",
+"ht": "Ti goute anbale"
+},
+"Materiales de empaque": {
+"fr": "Matériaux d’emballage",
+"ht": "Materyèl anbalaj"
+},
+"Pintura y suministros": {
+"fr": "Peinture et fournitures",
+"ht": "Penti ak materyèl"
+},
+"Despensa": {
+"fr": "Produits d’épicerie de base",
+"ht": "Pwovizyon debaz"
+},
+"Papel y desechables": {
+"fr": "Papier et produits jetables",
+"ht": "Papye ak pwodwi jetab"
+},
+"Artículos de fiesta": {
+"fr": "Articles de fête",
+"ht": "Materyèl fèt"
+},
+"Fiestas y temporadas": {
+"fr": "Fêtes, événements et saisons",
+"ht": "Fèt, evènman ak sezon"
+},
+"Porta pasaportes": {
+"fr": "Porte-passeports",
+"ht": "Pòt paspò"
+},
+"Patio y terraza": {
+"fr": "Terrasse et vie extérieure",
+"ht": "Galri ak lavi deyò"
+},
+"Accesorios de patio": {
+"fr": "Accessoires de terrasse",
+"ht": "Akseswa galri"
+},
+"Bolígrafos y lápices": {
+"fr": "Stylos, crayons et écriture",
+"ht": "Plim, kreyon ak zouti pou ekri"
+},
+"Higiene personal": {
+"fr": "Hygiène personnelle",
+"ht": "Ijyèn pèsonèl"
+},
+"Equipo de protección personal": {
+"fr": "Équipements de protection individuelle",
+"ht": "Ekipman pwoteksyon pèsonèl"
+},
+"Control de plagas": {
+"fr": "Lutte antiparasitaire",
+"ht": "Kontwòl ensèk"
+},
+"Camas para mascotas": {
+"fr": "Lits et meubles pour animaux",
+"ht": "Kabann ak mèb pou bèt"
+},
+"Alimento para mascotas": {
+"fr": "Nourriture pour animaux",
+"ht": "Manje bèt"
+},
+"Salud de mascotas": {
+"fr": "Santé et bien-être des animaux",
+"ht": "Sante ak byennèt bèt"
+},
+"Mascotas": {
+"fr": "Articles pour animaux",
+"ht": "Atik pou bèt"
+},
+"Juguetes para mascotas": {
+"fr": "Jouets pour animaux",
+"ht": "Jwèt pou bèt"
+},
+"Premios para mascotas": {
+"fr": "Friandises pour animaux",
+"ht": "Ti goute pou bèt"
+},
+"Plantas y macetas": {
+"fr": "Plantes et jardinières",
+"ht": "Plant ak po flè"
+},
+"Plomería": {
+"fr": "Plomberie",
+"ht": "Plonbri"
+},
+"Accesorios punto de venta": {
+"fr": "Accessoires de point de vente",
+"ht": "Akseswa pou kès"
+},
+"Piscinas y accesorios": {
+"fr": "Piscines et accessoires",
+"ht": "Pisin ak akseswa"
+},
+"Herramientas eléctricas": {
+"fr": "Outils électriques",
+"ht": "Zouti elektrik"
+},
+"Equipos de presentación": {
+"fr": "Matériel de présentation",
+"ht": "Ekipman prezantasyon"
+},
+"Impresoras": {
+"fr": "Imprimantes",
+"ht": "Enprimant"
+},
+"Impresión y grabado": {
+"fr": "Impression et gravure",
+"ht": "Enpresyon ak gravi"
+},
+"Audio profesional": {
+"fr": "Matériel audio professionnel",
+"ht": "Ekipman odyo pwofesyonèl"
+},
+"Herramientas profesionales": {
+"fr": "Outils professionnels",
+"ht": "Zouti pwofesyonèl"
+},
+"Rompecabezas": {
+"fr": "Puzzles",
+"ht": "Pezèl"
+},
+"Juguetes a control remoto": {
+"fr": "Jouets radiocommandés",
+"ht": "Jwèt telekomand"
+},
+"Piezas de repuesto": {
+"fr": "Pièces de rechange",
+"ht": "Pyès rechanj"
+},
+"Artículos para reptiles": {
+"fr": "Articles pour reptiles",
+"ht": "Atik pou reptil"
+},
+"Suministros de restaurante": {
+"fr": "Fournitures de restauration",
+"ht": "Materyèl restoran"
+},
+"Suministros de tienda": {
+"fr": "Fournitures de commerce",
+"ht": "Materyèl komès"
+},
+"Alfombras": {
+"fr": "Tapis et moquettes",
+"ht": "Tapi"
+},
+"Running": {
+"fr": "Course à pied",
+"ht": "Kous apye"
+},
+"Equipos de seguridad": {
+"fr": "Équipement de sécurité",
+"ht": "Ekipman sekirite"
+},
+"Salsas y condimentos": {
+"fr": "Sauces et condiments",
+"ht": "Sòs ak kondiman"
+},
+"Escáneres": {
+"fr": "Scanners",
+"ht": "Eskanè"
+},
+"Útiles escolares": {
+"fr": "Fournitures scolaires",
+"ht": "Materyèl lekòl"
+},
+"Scrapbooking": {
+"fr": "Scrapbooking",
+"ht": "Scrapbooking"
+},
+"Escultura y modelado": {
+"fr": "Sculpture et modelage",
+"ht": "Eskilti ak modlaj"
+},
+"Decoración de temporada": {
+"fr": "Décorations saisonnières",
+"ht": "Dekorasyon sezon"
+},
+"Cámaras de seguridad": {
+"fr": "Caméras et systèmes de sécurité",
+"ht": "Kamera ak sistèm sekirite"
+},
+"Costura": {
+"fr": "Couture",
+"ht": "Koud"
+},
+"Costura y telas": {
+"fr": "Couture et tissus",
+"ht": "Koud ak twal"
+},
+"Afeitado y depilación": {
+"fr": "Rasage et épilation",
+"ht": "Raze ak retire pwal"
+},
+"Envíos y empaques": {
+"fr": "Fournitures d’expédition et d’emballage",
+"ht": "Materyèl pou voye ak anbale"
+},
+"Cuidado de la piel": {
+"fr": "Soins de la peau",
+"ht": "Swen po"
+},
+"Descanso y relajación": {
+"fr": "Sommeil et relaxation",
+"ht": "Dòmi ak detant"
+},
+"Pequeños animales": {
+"fr": "Articles pour petits animaux",
+"ht": "Atik pou ti bèt"
+},
+"Hogar inteligente": {
+"fr": "Maison connectée",
+"ht": "Aparèy kay entelijan"
+},
+"Celulares": {
+"fr": "Smartphones et téléphones mobiles",
+"ht": "Telefòn entelijan ak selilè"
+},
+"Smartwatches y wearables": {
+"fr": "Montres connectées et objets connectés",
+"ht": "Mont entelijan ak aparèy pote"
+},
+"Fútbol": {
+"fr": "Football",
+"ht": "Foutbòl"
+},
+"Alimentos especiales": {
+"fr": "Alimentation de spécialité",
+"ht": "Manje espesyal"
+},
+"Deportes": {
+"fr": "Sports et plein air",
+"ht": "Espò ak deyò"
+},
+"Accesorios deportivos": {
+"fr": "Accessoires de sport",
+"ht": "Akseswa espò"
+},
+"Papelería": {
+"fr": "Papeterie",
+"ht": "Papetri"
+},
+"Almacenamiento y organización": {
+"fr": "Rangement et organisation",
+"ht": "Ranjman ak òganizasyon"
+},
+"Coches de bebé": {
+"fr": "Poussettes",
+"ht": "Pousèt"
+},
+"Grabación de estudio": {
+"fr": "Matériel d’enregistrement studio",
+"ht": "Ekipman anrejistreman estidyo"
+},
+"Maletas": {
+"fr": "Valises",
+"ht": "Valiz"
+},
+"Gafas y lentes de sol": {
+"fr": "Lunettes de soleil et lunettes",
+"ht": "Linèt solèy ak linèt"
+},
+"Natación": {
+"fr": "Natation",
+"ht": "Naje"
+},
+"Trajes de baño": {
+"fr": "Maillots de bain",
+"ht": "Kostim de ben"
+},
+"Tablets y lectores": {
+"fr": "Tablettes et liseuses",
+"ht": "Tablèt ak liseuz"
+},
+"Té": {
+"fr": "Thé",
+"ht": "Te"
+},
+"Tenis y raqueta": {
+"fr": "Tennis et sports de raquette",
+"ht": "Tenis ak espò rakèt"
+},
+"Libros de texto": {
+"fr": "Manuels scolaires",
+"ht": "Liv lekòl"
+},
+"Neumáticos y aros": {
+"fr": "Pneus et jantes",
+"ht": "Kawotchou ak wou"
+},
+"Neceseres": {
+"fr": "Trousses de toilette",
+"ht": "Sak twalèt"
+},
+"Organizadores de herramientas": {
+"fr": "Rangement d’outils",
+"ht": "Ranjman zouti"
+},
+"Herramientas y ferretería": {
+"fr": "Outils, quincaillerie et bricolage",
+"ht": "Zouti, kenkayri ak amelyorasyon lakay"
+},
+"Juguetes": {
+"fr": "Jouets",
+"ht": "Jwèt"
+},
+"Cartas coleccionables": {
+"fr": "Cartes à collectionner",
+"ht": "Kat pou koleksyon"
+},
+"Bolsas de basura": {
+"fr": "Sacs poubelle",
+"ht": "Sak fatra"
+},
+"Transportadoras de viaje": {
+"fr": "Voyage et porte-bébés",
+"ht": "Vwayaj ak pòtè"
+},
+"Viajes y equipaje": {
+"fr": "Voyage et bagages",
+"ht": "Vwayaj ak valiz"
+},
+"Accesorios de viaje": {
+"fr": "Accessoires de voyage",
+"ht": "Akseswa vwayaj"
+},
+"Mochilas de viaje": {
+"fr": "Sacs à dos de voyage",
+"ht": "Sakado vwayaj"
+},
+"Organizadores de viaje": {
+"fr": "Organisateurs de voyage",
+"ht": "Òganizatè vwayaj"
+},
+"Almohadas de viaje": {
+"fr": "Oreillers de voyage",
+"ht": "Zòrye vwayaj"
+},
+"TV y cine en casa": {
+"fr": "TV et home cinéma",
+"ht": "Televizyon ak sinema lakay"
+},
+"Ropa interior y pijamas": {
+"fr": "Sous-vêtements et vêtements de nuit",
+"ht": "Kalson ak rad pou dòmi"
+},
+"San Valentín": {
+"fr": "Saint-Valentin",
+"ht": "Jou Sen Valanten"
+},
+"Consolas de videojuegos": {
+"fr": "Consoles de jeux vidéo",
+"ht": "Konsòl jwèt videyo"
+},
+"Vitaminas y suplementos": {
+"fr": "Vitamines et compléments",
+"ht": "Vitamin ak sipleman"
+},
+"Suministros de almacén": {
+"fr": "Fournitures d’entrepôt",
+"ht": "Materyèl depo"
+},
+"Relojes": {
+"fr": "Montres",
+"ht": "Mont"
+},
+"Deportes acuáticos": {
+"fr": "Sports nautiques",
+"ht": "Espò dlo"
+},
+"Artículos de boda": {
+"fr": "Articles de mariage",
+"ht": "Materyèl maryaj"
+},
+"Accesorios de bienestar": {
+"fr": "Accessoires de bien-être",
+"ht": "Akseswa byennèt"
+},
+"Ropa de mujer": {
+"fr": "Vêtements pour femme",
+"ht": "Rad fanm"
+},
+"Calzado de mujer": {
+"fr": "Chaussures pour femme",
+"ht": "Soulye fanm"
+},
+"Equipos de taller": {
+"fr": "Équipement d’atelier",
+"ht": "Ekipman atelye"
+},
+"Precisión": {
+"fr": "Précision",
+"ht": "Presizyon"
+},
+"Ingredientes activos": {
+"fr": "Principes actifs",
+"ht": "Engredyan aktif"
+},
+"Cancelación activa de ruido": {
+"fr": "Réduction de bruit active",
+"ht": "Anile bri aktif"
+},
+"Ajustable": {
+"fr": "Réglable",
+"ht": "Ajistab"
+},
+"Grupo de edad": {
+"fr": "Tranche d’âge",
+"ht": "Gwoup laj"
+},
+"Alérgenos": {
+"fr": "Informations sur les allergènes",
+"ht": "Enfòmasyon sou alèjen"
+},
+"Animal": {
+"fr": "Animal",
+"ht": "Bèt"
+},
+"Artista": {
+"fr": "Artiste",
+"ht": "Atis"
+},
+"Requiere ensamblaje": {
+"fr": "Montage requis",
+"ht": "Bezwen monte l"
+},
+"Canales de audio": {
+"fr": "Canaux audio",
+"ht": "Kanal odyo"
+},
+"Autor": {
+"fr": "Auteur",
+"ht": "Otè"
+},
+"Solo B": {
+"fr": "B uniquement",
+"ht": "B sèlman"
+},
+"Tipo de bolso": {
+"fr": "Type de sac",
+"ht": "Kalite sak"
+},
+"Material de la correa": {
+"fr": "Matériau du bracelet",
+"ht": "Materyèl braslè a"
+},
+"Tipo de base": {
+"fr": "Type de base",
+"ht": "Kalite baz"
+},
+"Contenido de la canasta": {
+"fr": "Contenu du panier",
+"ht": "Sa ki nan panye a"
+},
+"Capacidad de batería": {
+"fr": "Capacité de la batterie",
+"ht": "Kapasite batri"
+},
+"Batería incluida": {
+"fr": "Batterie incluse",
+"ht": "Batri ladan l"
+},
+"Duración de batería": {
+"fr": "Autonomie de la batterie",
+"ht": "Dire batri"
+},
+"Origen del grano": {
+"fr": "Origine du grain",
+"ht": "Orijin grenn nan"
+},
+"Libre de BPA": {
+"fr": "Sans BPA",
+"ht": "San BPA"
+},
+"Brillo": {
+"fr": "Luminosité",
+"ht": "Klète"
+},
+"Micrófono integrado": {
+"fr": "Microphone intégré",
+"ht": "Mikwo entegre"
+},
+"Largo del cable": {
+"fr": "Longueur du câble",
+"ht": "Longè kab la"
+},
+"Contenido de cafeína": {
+"fr": "Teneur en caféine",
+"ht": "Kantite kafeyin"
+},
+"Cafeína por porción": {
+"fr": "Caféine par portion",
+"ht": "Kafeyin pa pòsyon"
+},
+"Resolución de cámara": {
+"fr": "Résolution de la caméra",
+"ht": "Rezolisyon kamera"
+},
+"Capacidad": {
+"fr": "Capacité",
+"ht": "Kapasite"
+},
+"Capacidad (personas)": {
+"fr": "Capacité (personnes)",
+"ht": "Kapasite (moun)"
+},
+"Instrucciones de cuidado": {
+"fr": "Instructions d’entretien",
+"ht": "Enstriksyon pou swen"
+},
+"Bloqueo de operador": {
+"fr": "Statut de verrouillage opérateur",
+"ht": "Eta bloke operatè"
+},
+"Diámetro de la caja": {
+"fr": "Diamètre du boîtier",
+"ht": "Dyamèt bwatye a"
+},
+"Red celular": {
+"fr": "Réseau cellulaire",
+"ht": "Rezo selilè"
+},
+"Personaje / franquicia": {
+"fr": "Personnage / franchise",
+"ht": "Pèsonaj / franchiz"
+},
+"Rango de edad infantil": {
+"fr": "Tranche d’âge de l’enfant",
+"ht": "Laj timoun nan"
+},
+"Rango de peso infantil": {
+"fr": "Plage de poids de l’enfant",
+"ht": "Pwa timoun nan"
+},
+"Tipo de cierre": {
+"fr": "Type de fermeture",
+"ht": "Kalite fèmen"
+},
+"Impresión a color": {
+"fr": "Impression couleur",
+"ht": "Enpresyon an koulè"
+},
+"Temperatura de color": {
+"fr": "Température de couleur",
+"ht": "Tanperati koulè"
+},
+"Estufas compatibles": {
+"fr": "Plaques compatibles",
+"ht": "Recho ki konpatib"
+},
+"Compatible con": {
+"fr": "Compatible avec",
+"ht": "Konpatib ak"
+},
+"Tamaño de conexión": {
+"fr": "Taille de raccord",
+"ht": "Gwosè koneksyon"
+},
+"Conectividad": {
+"fr": "Connectivité",
+"ht": "Koneksyon"
+},
+"Tipo de conector": {
+"fr": "Type de connecteur",
+"ht": "Kalite konektè"
+},
+"Clasificación de contenido": {
+"fr": "Classification du contenu",
+"ht": "Klasifikasyon kontni"
+},
+"Convertible": {
+"fr": "Convertible",
+"ht": "Konvètib"
+},
+"Área de cobertura": {
+"fr": "Surface couverte",
+"ht": "Zòn ki kouvri"
+},
+"Cocina": {
+"fr": "Cuisine",
+"ht": "Kizin"
+},
+"Corriente nominal": {
+"fr": "Intensité nominale",
+"ht": "Kouran nominal"
+},
+"Pantalla curva": {
+"fr": "Écran incurvé",
+"ht": "Ekran koube"
+},
+"Ancho de corte": {
+"fr": "Largeur de coupe",
+"ht": "Lajè koupe"
+},
+"Preferencias dietéticas": {
+"fr": "Préférences alimentaires",
+"ht": "Preferans manje"
+},
+"Regulable": {
+"fr": "Variateur compatible",
+"ht": "Ka ajiste limyè"
+},
+"Apto para lavavajillas": {
+"fr": "Passe au lave-vaisselle",
+"ht": "Ka lave nan machin asyèt"
+},
+"Resolución de pantalla": {
+"fr": "Résolution d’écran",
+"ht": "Rezolisyon ekran"
+},
+"Edición": {
+"fr": "Édition",
+"ht": "Edisyon"
+},
+"Nivel educativo": {
+"fr": "Niveau scolaire",
+"ht": "Nivo lekòl"
+},
+"Enfoque educativo": {
+"fr": "Objectif éducatif",
+"ht": "Objektif edikatif"
+},
+"Eficiencia energética": {
+"fr": "Classe d’efficacité énergétique",
+"ht": "Klas efikasite enèji"
+},
+"Expandible": {
+"fr": "Extensible",
+"ht": "Ka elaji"
+},
+"Ancho de la tela": {
+"fr": "Largeur du tissu",
+"ht": "Lajè twal"
+},
+"Acabado": {
+"fr": "Finition",
+"ht": "Fini"
+},
+"Ajuste": {
+"fr": "Coupe",
+"ht": "Fòm sou kò"
+},
+"Tiempo de vuelo": {
+"fr": "Temps de vol",
+"ht": "Tan vòl"
+},
+"Plegable": {
+"fr": "Pliable",
+"ht": "Ka pliye"
+},
+"Presentación": {
+"fr": "Forme",
+"ht": "Fòm"
+},
+"Factor de forma": {
+"fr": "Format physique",
+"ht": "Fòma"
+},
+"Formato del libro": {
+"fr": "Format",
+"ht": "Fòma"
+},
+"Concentración de fragancia": {
+"fr": "Concentration du parfum",
+"ht": "Konsantrasyon pafen"
+},
+"Material del marco": {
+"fr": "Matériau du cadre",
+"ht": "Materyèl ankadreman"
+},
+"Tipo de combustible": {
+"fr": "Type de carburant",
+"ht": "Kalite gaz"
+},
+"Funciones": {
+"fr": "Fonctions",
+"ht": "Fonksyon"
+},
+"Plataforma de juego": {
+"fr": "Plateforme de jeu",
+"ht": "Platfòm jwèt"
+},
+"Tipo de prenda": {
+"fr": "Type de vêtement",
+"ht": "Kalite rad"
+},
+"Piedra preciosa": {
+"fr": "Pierre précieuse",
+"ht": "Pyè presye"
+},
+"Dirigido a": {
+"fr": "Genre",
+"ht": "Sèks"
+},
+"Género": {
+"fr": "Genre",
+"ht": "Jan"
+},
+"Gráficos (GPU)": {
+"fr": "Carte graphique (GPU)",
+"ht": "Kat grafik (GPU)"
+},
+"Tipo de cabello": {
+"fr": "Type de cheveux",
+"ht": "Kalite cheve"
+},
+"Lateralidad": {
+"fr": "Latéralité",
+"ht": "Men dwat / goch"
+},
+"Sensores de salud": {
+"fr": "Capteurs de santé",
+"ht": "Detektè sante"
+},
+"Atributo inactivo": {
+"fr": "Attribut inactif",
+"ht": "Atribi inaktif"
+},
+"Uso interior / exterior": {
+"fr": "Usage intérieur / extérieur",
+"ht": "Itilize anndan / deyò"
+},
+"Inflable": {
+"fr": "Gonflable",
+"ht": "Gonfle"
+},
+"Ingredientes": {
+"fr": "Ingrédients",
+"ht": "Engredyan"
+},
+"Tipo de instalación": {
+"fr": "Type d’installation",
+"ht": "Kalite enstalasyon"
+},
+"Niveles de intensidad": {
+"fr": "Niveaux d’intensité",
+"ht": "Nivo entansite"
+},
+"Interfaz / socket": {
+"fr": "Interface / socket",
+"ht": "Entèfas / soket"
+},
+"ISBN": {
+"fr": "ISBN",
+"ht": "ISBN"
+},
+"Peso del artículo (sin empaque)": {
+"fr": "Poids de l’article (sans emballage)",
+"ht": "Pwa atik la (san anbalaj)"
+},
+"Tipo de joya": {
+"fr": "Type de bijou",
+"ht": "Kalite bijou"
+},
+"Idioma": {
+"fr": "Langue",
+"ht": "Lang"
+},
+"Compartimento para laptop": {
+"fr": "Compartiment pour ordinateur portable",
+"ht": "Konpatiman laptop"
+},
+"Largo": {
+"fr": "Longueur",
+"ht": "Longè"
+},
+"Características del lente": {
+"fr": "Caractéristiques de l’objectif",
+"ht": "Karakteristik lantiy"
+},
+"Montura del lente": {
+"fr": "Monture d’objectif",
+"ht": "Monti lantiy"
+},
+"Etapa de vida": {
+"fr": "Étape de vie",
+"ht": "Etap lavi"
+},
+"Fuente de luz": {
+"fr": "Source lumineuse",
+"ht": "Sous limyè"
+},
+"Índice de carga": {
+"fr": "Indice de charge",
+"ht": "Endis chaj"
+},
+"Lavable a máquina": {
+"fr": "Lavable en machine",
+"ht": "Ka lave nan machin"
+},
+"Garantía del fabricante": {
+"fr": "Garantie du fabricant",
+"ht": "Garanti fabrikan"
+},
+"Cobertura de mapas": {
+"fr": "Couverture cartographique",
+"ht": "Kouvèti kat"
+},
+"Material": {
+"fr": "Matériau",
+"ht": "Materyèl"
+},
+"Velocidad máxima": {
+"fr": "Vitesse maximale",
+"ht": "Vitès maksimòm"
+},
+"Temperatura máxima": {
+"fr": "Température maximale",
+"ht": "Tanperati maksimòm"
+},
+"Tipo de medición": {
+"fr": "Type de mesure",
+"ht": "Kalite mezi"
+},
+"Rango de medición": {
+"fr": "Plage de mesure",
+"ht": "Pòte mezi"
+},
+"Formato del soporte": {
+"fr": "Format du support",
+"ht": "Fòma sipò"
+},
+"Técnica": {
+"fr": "Médium",
+"ht": "Mwayen"
+},
+"Metal": {
+"fr": "Métal",
+"ht": "Metal"
+},
+"Apto para microondas": {
+"fr": "Passe au micro-ondes",
+"ht": "Ka mete nan mikwo-ond"
+},
+"Edad mínima recomendada": {
+"fr": "Âge minimum recommandé",
+"ht": "Laj minimòm rekòmande"
+},
+"Número de modelo": {
+"fr": "Numéro de modèle",
+"ht": "Nimewo modèl"
+},
+"Contenido neto": {
+"fr": "Quantité nette",
+"ht": "Kantite nèt"
+},
+"Visión nocturna": {
+"fr": "Vision nocturne",
+"ht": "Vizyon lannwit"
+},
+"Velocidad en vacío": {
+"fr": "Vitesse à vide",
+"ht": "Vitès san chaj"
+},
+"Antiadherente": {
+"fr": "Antiadhésif",
+"ht": "Pa kole"
+},
+"Número de hornillas": {
+"fr": "Nombre de brûleurs",
+"ht": "Kantite recho"
+},
+"Número de canales": {
+"fr": "Nombre de canaux",
+"ht": "Kantite kanal"
+},
+"Número de compartimentos": {
+"fr": "Nombre de compartiments",
+"ht": "Kantite konpatiman"
+},
+"Número de teclas": {
+"fr": "Nombre de touches",
+"ht": "Kantite touch"
+},
+"Número de lavados": {
+"fr": "Nombre de lavages",
+"ht": "Kantite lesiv"
+},
+"Número de páginas": {
+"fr": "Nombre de pages",
+"ht": "Kantite paj"
+},
+"Número de piezas": {
+"fr": "Nombre de pièces",
+"ht": "Kantite pyès"
+},
+"Número de jugadores": {
+"fr": "Nombre de joueurs",
+"ht": "Kantite jwè"
+},
+"Número de hojas": {
+"fr": "Nombre de feuilles",
+"ht": "Kantite fèy"
+},
+"Número de velocidades": {
+"fr": "Nombre de vitesses",
+"ht": "Kantite vitès"
+},
+"Número de cuerdas": {
+"fr": "Nombre de cordes",
+"ht": "Kantite kòd"
+},
+"Número de ruedas": {
+"fr": "Nombre de roues",
+"ht": "Kantite wou"
+},
+"Ocasión": {
+"fr": "Occasion",
+"ht": "Okazyon"
+},
+"Sistema operativo": {
+"fr": "Système d’exploitation",
+"ht": "Sistèm operasyon"
+},
+"Apto para horno": {
+"fr": "Passe au four",
+"ht": "Ka mete nan fou"
+},
+"Rendimiento de páginas": {
+"fr": "Rendement en pages",
+"ht": "Kantite paj li enprime"
+},
+"Tipo de panel": {
+"fr": "Type de dalle",
+"ht": "Kalite panèl"
+},
+"Tamaño de papel": {
+"fr": "Format de papier",
+"ht": "Gwosè papye"
+},
+"Número de parte (OEM/MPN)": {
+"fr": "Référence de pièce (OEM/MPN)",
+"ht": "Nimewo pyès (OEM/MPN)"
+},
+"Estampado": {
+"fr": "Motif",
+"ht": "Desen"
+},
+"Altura del pelo": {
+"fr": "Hauteur des poils",
+"ht": "Wotè pwal"
+},
+"Ubicación en el vehículo": {
+"fr": "Emplacement sur le véhicule",
+"ht": "Kote sou machin nan"
+},
+"Tiempo de juego": {
+"fr": "Durée de jeu",
+"ht": "Tan jwe"
+},
+"Capas": {
+"fr": "Épaisseur (plis)",
+"ht": "Epesè (kouch)"
+},
+"Grosor de punta": {
+"fr": "Taille de pointe",
+"ht": "Gwosè pwent"
+},
+"Patrón polar": {
+"fr": "Directivité",
+"ht": "Direksyon mikwo"
+},
+"Diámetro de la maceta": {
+"fr": "Diamètre du pot",
+"ht": "Dyamèt po a"
+},
+"Potencia": {
+"fr": "Puissance",
+"ht": "Pisans"
+},
+"Fuente de energía": {
+"fr": "Alimentation",
+"ht": "Sous kouran"
+},
+"Velocidad de impresión": {
+"fr": "Vitesse d’impression",
+"ht": "Vitès enpresyon"
+},
+"Tecnología de impresión": {
+"fr": "Technologie d’impression",
+"ht": "Teknoloji enpresyon"
+},
+"Procesador (CPU)": {
+"fr": "Processeur (CPU)",
+"ht": "Processeur (CPU)"
+},
+"Certificación profesional": {
+"fr": "Classement professionnel",
+"ht": "Klasman pwofesyonèl"
+},
+"Editorial": {
+"fr": "Éditeur",
+"ht": "Editè"
+},
+"RAM": {
+"fr": "RAM",
+"ht": "RAM"
+},
+"Alcance": {
+"fr": "Portée",
+"ht": "Distans"
+},
+"Tamaño de mascota recomendado": {
+"fr": "Taille d’animal recommandée",
+"ht": "Gwosè bèt rekòmande"
+},
+"Superficie recomendada": {
+"fr": "Surface recommandée",
+"ht": "Sifas rekòmande"
+},
+"Sello discográfico": {
+"fr": "Label",
+"ht": "Konpayi disk"
+},
+"Almacenamiento de grabación": {
+"fr": "Stockage de l’enregistrement",
+"ht": "Kote anrejistreman sere"
+},
+"Recargable": {
+"fr": "Rechargeable",
+"ht": "Ka ranpli ankò"
+},
+"Frecuencia de actualización": {
+"fr": "Taux de rafraîchissement",
+"ht": "To rafrechisman"
+},
+"Código de región": {
+"fr": "Code de région",
+"ht": "Kòd rejyon"
+},
+"Año de lanzamiento / publicación": {
+"fr": "Année de sortie / publication",
+"ht": "Ane sòti / piblikasyon"
+},
+"Bloqueo RFID": {
+"fr": "Blocage RFID",
+"ht": "Bloke RFID"
+},
+"Nivel de tueste": {
+"fr": "Niveau de torréfaction",
+"ht": "Nivo griye"
+},
+"Habitación": {
+"fr": "Pièce",
+"ht": "Pyès kay"
+},
+"Rayado": {
+"fr": "Réglure",
+"ht": "Liy kaye"
+},
+"Norma / certificación de seguridad": {
+"fr": "Norme / certification de sécurité",
+"ht": "Nòm / sètifikasyon sekirite"
+},
+"Escala": {
+"fr": "Échelle",
+"ht": "Echèl"
+},
+"Resolución de escaneo": {
+"fr": "Résolution de numérisation",
+"ht": "Rezolisyon eskanè"
+},
+"Familia olfativa": {
+"fr": "Famille olfactive",
+"ht": "Fanmi odè"
+},
+"Tamaño de pantalla": {
+"fr": "Taille de l’écran",
+"ht": "Gwosè ekran"
+},
+"Temporada": {
+"fr": "Saison",
+"ht": "Sezon"
+},
+"Tamaño del sensor": {
+"fr": "Taille du capteur",
+"ht": "Gwosè detektè"
+},
+"Serie / colección": {
+"fr": "Série / ensemble",
+"ht": "Seri / ansanm"
+},
+"Porciones por envase": {
+"fr": "Portions par contenant",
+"ht": "Pòsyon pa bwat"
+},
+"Forma": {
+"fr": "Forme",
+"ht": "Fòm"
+},
+"Tipo de carcasa": {
+"fr": "Type de coque",
+"ht": "Kalite kokiy"
+},
+"Tipo de calzado": {
+"fr": "Type de chaussure",
+"ht": "Kalite soulye"
+},
+"Tipo de SIM": {
+"fr": "Type de SIM",
+"ht": "Kalite SIM"
+},
+"Tamaño / especificación": {
+"fr": "Taille / spécification",
+"ht": "Gwosè / espesifikasyon"
+},
+"Nivel de habilidad": {
+"fr": "Niveau",
+"ht": "Nivo"
+},
+"Tipo de piel": {
+"fr": "Type de peau",
+"ht": "Kalite po"
+},
+"Largo de manga": {
+"fr": "Longueur des manches",
+"ht": "Longè manch"
+},
+"Ecosistema de hogar inteligente": {
+"fr": "Écosystème de maison connectée",
+"ht": "Ekosistèm kay entelijan"
+},
+"Plataforma Smart TV": {
+"fr": "Plateforme Smart TV",
+"ht": "Platfòm Smart TV"
+},
+"Especificación": {
+"fr": "Spécification",
+"ht": "Espesifikasyon"
+},
+"Índice de velocidad": {
+"fr": "Indice de vitesse",
+"ht": "Endis vitès"
+},
+"FPS": {
+"fr": "SPF",
+"ht": "SPF"
+},
+"Deporte": {
+"fr": "Sport",
+"ht": "Espò"
+},
+"Apilable": {
+"fr": "Empilable",
+"ht": "Ka anpile"
+},
+"Capacidad de almacenamiento": {
+"fr": "Capacité de stockage",
+"ht": "Kapasite depo"
+},
+"Instrucciones de almacenamiento": {
+"fr": "Instructions de conservation",
+"ht": "Enstriksyon pou konsève"
+},
+"Tipo de almacenamiento": {
+"fr": "Type de stockage",
+"ht": "Kalite depo"
+},
+"Estilo": {
+"fr": "Style",
+"ht": "Stil"
+},
+"Materia": {
+"fr": "Matière",
+"ht": "Matyè"
+},
+"Requerimiento de sol": {
+"fr": "Besoin d’ensoleillement",
+"ht": "Bezwen solèy"
+},
+"Plagas objetivo": {
+"fr": "Nuisibles ciblés",
+"ht": "Ensèk ki vize"
+},
+"Tipo de té": {
+"fr": "Type de thé",
+"ht": "Kalite te"
+},
+"Temática": {
+"fr": "Thème",
+"ht": "Tèm"
+},
+"Número de hilos": {
+"fr": "Nombre de fils",
+"ht": "Kantite fil"
+},
+"Candado TSA": {
+"fr": "Cadenas TSA",
+"ht": "Kadna TSA"
+},
+"Tipo": {
+"fr": "Type",
+"ht": "Kalite"
+},
+"Unidades por paquete": {
+"fr": "Unités par paquet",
+"ht": "Inite pa pake"
+},
+"Compatibilidad (marca / modelo / año)": {
+"fr": "Compatibilité véhicule (marque / modèle / année)",
+"ht": "Konpatib ak machin (mak / modèl / ane)"
+},
+"Resolución de video": {
+"fr": "Résolution vidéo",
+"ht": "Rezolisyon videyo"
+},
+"Voltaje": {
+"fr": "Tension",
+"ht": "Vòltaj"
+},
+"Volumen": {
+"fr": "Volume",
+"ht": "Volim"
+},
+"Tipo de movimiento": {
+"fr": "Mouvement de montre",
+"ht": "Mouvman mont"
+},
+"Resistencia al agua": {
+"fr": "Résistance à l’eau",
+"ht": "Reziste dlo"
+},
+"Tipo de agua": {
+"fr": "Type d’eau",
+"ht": "Kalite dlo"
+},
+"Impermeable": {
+"fr": "Étanche",
+"ht": "Enpèmeyab"
+},
+"Resistente a la intemperie": {
+"fr": "Résistant aux intempéries",
+"ht": "Reziste move tan"
+},
+"Gramaje (g/m²)": {
+"fr": "Grammage (g/m²)",
+"ht": "Pwa (g/m²)"
+},
+"Capacidad de peso": {
+"fr": "Charge maximale",
+"ht": "Kapasite pwa"
+},
+"Teclas contrapesadas": {
+"fr": "Touches lestées",
+"ht": "Touch lou"
+},
+"Uso en mojado y seco": {
+"fr": "Usage humide et sec",
+"ht": "Itilize mouye ak sèk"
+},
+"Tamaño de rueda": {
+"fr": "Taille des roues",
+"ht": "Gwosè wou"
+},
+"Estándar Wi-Fi": {
+"fr": "Norme Wi-Fi",
+"ht": "Estanda Wi-Fi"
+},
+"Calibre del cable": {
+"fr": "Calibre du fil",
+"ht": "Kalib fil"
+},
+"Inalámbrico": {
+"fr": "Sans fil",
+"ht": "San fil"
+},
+"Grosor del hilo": {
+"fr": "Grosseur du fil",
+"ht": "Epesè fil"
+},
+"Camiseta": {
+"fr": "T-shirt",
+"ht": "Mayo"
+},
+"Camisa": {
+"fr": "Chemise",
+"ht": "Chemiz"
+},
+"Polo": {
+"fr": "Polo",
+"ht": "Polo"
+},
+"Blusa": {
+"fr": "Chemisier",
+"ht": "Kòsaj"
+},
+"Suéter": {
+"fr": "Pull",
+"ht": "Swetè"
+},
+"Sudadera": {
+"fr": "Sweat à capuche",
+"ht": "Swetè kapuchon"
+},
+"Chaqueta": {
+"fr": "Veste",
+"ht": "Jakèt"
+},
+"Abrigo": {
+"fr": "Manteau",
+"ht": "Manto"
+},
+"Chaleco": {
+"fr": "Gilet",
+"ht": "Jile"
+},
+"Vestido": {
+"fr": "Robe",
+"ht": "Wòb"
+},
+"Falda": {
+"fr": "Jupe",
+"ht": "Jip"
+},
+"Pantalón": {
+"fr": "Pantalon",
+"ht": "Pantalon"
+},
+"Jeans": {
+"fr": "Jean",
+"ht": "Djin"
+},
+"Pantalón corto": {
+"fr": "Short",
+"ht": "Bout pantalon"
+},
+"Leggings": {
+"fr": "Legging",
+"ht": "Legin"
+},
+"Enterizo": {
+"fr": "Combinaison",
+"ht": "Konbinezon"
+},
+"Traje": {
+"fr": "Costume",
+"ht": "Kostim"
+},
+"Traje de baño": {
+"fr": "Maillot de bain",
+"ht": "Kostim de ben"
+},
+"Ropa interior": {
+"fr": "Sous-vêtements",
+"ht": "Kalson"
+},
+"Pijama": {
+"fr": "Vêtements de nuit",
+"ht": "Rad pou dòmi"
+},
+"Medias": {
+"fr": "Chaussettes",
+"ht": "Chosèt"
+},
+"Sin mangas": {
+"fr": "Sans manches",
+"ht": "San manch"
+},
+"Manga casquillo": {
+"fr": "Mancherons",
+"ht": "Ti manch zepòl"
+},
+"Manga corta": {
+"fr": "Manches courtes",
+"ht": "Manch kout"
+},
+"Manga 3/4": {
+"fr": "Manches 3/4",
+"ht": "Manch 3/4"
+},
+"Manga larga": {
+"fr": "Manches longues",
+"ht": "Manch long"
+},
+"Ajustado (slim)": {
+"fr": "Ajustée",
+"ht": "Sere"
+},
+"Pitillo (skinny)": {
+"fr": "Skinny",
+"ht": "Skinny"
+},
+"Regular": {
+"fr": "Normale",
+"ht": "Nòmal"
+},
+"Entallado": {
+"fr": "Cintrée",
+"ht": "Byen koupe"
+},
+"Holgado": {
+"fr": "Décontractée",
+"ht": "Alèz"
+},
+"Suelto": {
+"fr": "Ample",
+"ht": "Laj"
+},
+"Oversize": {
+"fr": "Oversize",
+"ht": "Twò gwo"
+},
+"Liso": {
+"fr": "Uni",
+"ht": "Inifòm"
+},
+"Rayas": {
+"fr": "Rayé",
+"ht": "Bann"
+},
+"Cuadros": {
+"fr": "Carreaux",
+"ht": "Kawo"
+},
+"Floral": {
+"fr": "Fleuri",
+"ht": "Flè"
+},
+"Lunares": {
+"fr": "À pois",
+"ht": "Pwen"
+},
+"Animal print": {
+"fr": "Imprimé animal",
+"ht": "Po bèt"
+},
+"Camuflaje": {
+"fr": "Camouflage",
+"ht": "Kamouflaj"
+},
+"Geométrico": {
+"fr": "Géométrique",
+"ht": "Jewometrik"
+},
+"Estampado gráfico": {
+"fr": "Imprimé graphique",
+"ht": "Enprime grafik"
+},
+"Tie-dye": {
+"fr": "Tie-dye",
+"ht": "Tie-dye"
+},
+"Abstracto": {
+"fr": "Abstrait",
+"ht": "Abstrè"
+},
+"Con logo": {
+"fr": "Logo",
+"ht": "Logo"
+},
+"Casual": {
+"fr": "Décontracté",
+"ht": "Kazyèl"
+},
+"Formal": {
+"fr": "Habillé",
+"ht": "Fòmèl"
+},
+"Deportivo": {
+"fr": "Sportif",
+"ht": "Espòtif"
+},
+"Urbano": {
+"fr": "Streetwear",
+"ht": "Streetwear"
+},
+"Clásico": {
+"fr": "Classique",
+"ht": "Klasik"
+},
+"Moderno": {
+"fr": "Moderne",
+"ht": "Modèn"
+},
+"Vintage": {
+"fr": "Vintage",
+"ht": "Ansyen mòd"
+},
+"Elegante": {
+"fr": "Élégant",
+"ht": "Elegan"
+},
+"Bohemio": {
+"fr": "Bohème",
+"ht": "Boyèm"
+},
+"Minimalista": {
+"fr": "Minimaliste",
+"ht": "Minimalis"
+},
+"Rústico": {
+"fr": "Rustique",
+"ht": "Riral"
+},
+"Industrial": {
+"fr": "Industriel",
+"ht": "Endistriyèl"
+},
+"Uso diario": {
+"fr": "Quotidien",
+"ht": "Chak jou"
+},
+"Trabajo": {
+"fr": "Travail",
+"ht": "Travay"
+},
+"Fiesta": {
+"fr": "Fête",
+"ht": "Fèt"
+},
+"Boda": {
+"fr": "Mariage",
+"ht": "Maryaj"
+},
+"Playa": {
+"fr": "Plage",
+"ht": "Plaj"
+},
+"Viaje": {
+"fr": "Voyage",
+"ht": "Vwayaj"
+},
+"Todas las estaciones": {
+"fr": "Toutes saisons",
+"ht": "Tout sezon"
+},
+"Primavera": {
+"fr": "Printemps",
+"ht": "Prentan"
+},
+"Verano": {
+"fr": "Été",
+"ht": "Ete"
+},
+"Otoño": {
+"fr": "Automne",
+"ht": "Otòn"
+},
+"Invierno": {
+"fr": "Hiver",
+"ht": "Ivè"
+},
+"Cremallera": {
+"fr": "Fermeture éclair",
+"ht": "Zip"
+},
+"Botones": {
+"fr": "Boutons",
+"ht": "Bouton"
+},
+"Broches": {
+"fr": "Pression",
+"ht": "Pres"
+},
+"Velcro": {
+"fr": "Scratch",
+"ht": "Velkwo"
+},
+"Cordones": {
+"fr": "Lacets",
+"ht": "Lasèt"
+},
+"Hebilla": {
+"fr": "Boucle",
+"ht": "Bouk"
+},
+"Magnético": {
+"fr": "Magnétique",
+"ht": "Mayetik"
+},
+"Cordón ajustable": {
+"fr": "Cordon de serrage",
+"ht": "Kòdon"
+},
+"Elástico": {
+"fr": "Élastique",
+"ht": "Elastik"
+},
+"Sin cierre": {
+"fr": "Sans lacets",
+"ht": "San lasèt"
+},
+"Tenis": {
+"fr": "Baskets",
+"ht": "Tenis"
+},
+"Botas": {
+"fr": "Bottes",
+"ht": "Bòt"
+},
+"Sandalias": {
+"fr": "Sandales",
+"ht": "Sandal"
+},
+"Tacones": {
+"fr": "Talons",
+"ht": "Talon"
+},
+"Bailarinas": {
+"fr": "Ballerines",
+"ht": "Soulye plat"
+},
+"Mocasines": {
+"fr": "Mocassins",
+"ht": "Mokasen"
+},
+"De vestir": {
+"fr": "Chaussures habillées",
+"ht": "Soulye abiye"
+},
+"Pantuflas": {
+"fr": "Chaussons",
+"ht": "Pantouf"
+},
+"Tacos (fútbol)": {
+"fr": "Chaussures à crampons",
+"ht": "Krampon"
+},
+"Mochila": {
+"fr": "Sac à dos",
+"ht": "Sakado"
+},
+"Bolso tote": {
+"fr": "Cabas",
+"ht": "Sak tòt"
+},
+"Bandolera": {
+"fr": "Sac bandoulière",
+"ht": "Sak an bandoulyè"
+},
+"Bolso de hombro": {
+"fr": "Sac porté épaule",
+"ht": "Sak zepòl"
+},
+"Cartera de mano": {
+"fr": "Sac à main",
+"ht": "Sakamen"
+},
+"Clutch": {
+"fr": "Pochette",
+"ht": "Ti sakamen"
+},
+"Bolso de viaje": {
+"fr": "Sac de sport",
+"ht": "Sak espò"
+},
+"Riñonera": {
+"fr": "Sac banane",
+"ht": "Sak senti"
+},
+"Bolso mensajero": {
+"fr": "Sac besace",
+"ht": "Sak mesaje"
+},
+"Billetera": {
+"fr": "Portefeuille",
+"ht": "Bous"
+},
+"Mujer": {
+"fr": "Femme",
+"ht": "Fanm"
+},
+"Hombre": {
+"fr": "Homme",
+"ht": "Gason"
+},
+"Unisex": {
+"fr": "Unisexe",
+"ht": "Initè"
+},
+"Niña": {
+"fr": "Fille",
+"ht": "Tifi"
+},
+"Niño": {
+"fr": "Garçon",
+"ht": "Tigason"
+},
+"Niños (unisex)": {
+"fr": "Enfant (unisexe)",
+"ht": "Timoun (initè)"
+},
+"Bebé": {
+"fr": "Bébé",
+"ht": "Tibebe"
+},
+"Adulto": {
+"fr": "Adulte",
+"ht": "Granmoun"
+},
+"Adolescente": {
+"fr": "Adolescent",
+"ht": "Adolesan"
+},
+"Niños": {
+"fr": "Enfants",
+"ht": "Timoun"
+},
+"Niños pequeños": {
+"fr": "Tout-petit",
+"ht": "Ti piti"
+},
+"Todas las edades": {
+"fr": "Tous âges",
+"ht": "Tout laj"
+},
+"Algodón": {
+"fr": "Coton",
+"ht": "Koton"
+},
+"Poliéster": {
+"fr": "Polyester",
+"ht": "Polyestè"
+},
+"Nailon": {
+"fr": "Nylon",
+"ht": "Nayilon"
+},
+"Lana": {
+"fr": "Laine",
+"ht": "Lenn"
+},
+"Lino": {
+"fr": "Lin",
+"ht": "Len"
+},
+"Seda": {
+"fr": "Soie",
+"ht": "Swa"
+},
+"Mezclilla": {
+"fr": "Denim",
+"ht": "Djin"
+},
+"Elastano": {
+"fr": "Élasthanne",
+"ht": "Elastàn"
+},
+"Polar": {
+"fr": "Polaire",
+"ht": "Polè"
+},
+"Cuero": {
+"fr": "Cuir",
+"ht": "Kwi"
+},
+"Cuero sintético": {
+"fr": "Similicuir",
+"ht": "Fo kwi"
+},
+"Tela": {
+"fr": "Tissu",
+"ht": "Twal"
+},
+"Madera": {
+"fr": "Bois",
+"ht": "Bwa"
+},
+"Bambú": {
+"fr": "Bambou",
+"ht": "Banbou"
+},
+"Acero inoxidable": {
+"fr": "Acier inoxydable",
+"ht": "Asye pwòp"
+},
+"Aluminio": {
+"fr": "Aluminium",
+"ht": "Aliminyòm"
+},
+"Hierro": {
+"fr": "Fer",
+"ht": "Fè"
+},
+"Plástico": {
+"fr": "Plastique",
+"ht": "Plastik"
+},
+"Vidrio": {
+"fr": "Verre",
+"ht": "Vè"
+},
+"Cerámica": {
+"fr": "Céramique",
+"ht": "Seramik"
+},
+"Silicona": {
+"fr": "Silicone",
+"ht": "Silikòn"
+},
+"Caucho": {
+"fr": "Caoutchouc",
+"ht": "Kawotchou"
+},
+"Papel": {
+"fr": "Papier",
+"ht": "Papye"
+},
+"Piedra": {
+"fr": "Pierre",
+"ht": "Wòch"
+},
+"Mármol": {
+"fr": "Marbre",
+"ht": "Mab"
+},
+"Lavar a mano": {
+"fr": "Lavage à la main",
+"ht": "Lave alamen"
+},
+"Limpieza en seco": {
+"fr": "Nettoyage à sec uniquement",
+"ht": "Netwayaj sèk sèlman"
+},
+"Lavar en frío, no usar secadora": {
+"fr": "Lavage en machine à froid, séchage doux",
+"ht": "Lave nan machin ak dlo frèt, seche dousman"
+},
+"Limpiar con paño húmedo": {
+"fr": "Nettoyer avec un chiffon",
+"ht": "Siye ak twal"
+},
+"Anillo": {
+"fr": "Bague",
+"ht": "Bag"
+},
+"Collar": {
+"fr": "Collier",
+"ht": "Kolye"
+},
+"Aretes": {
+"fr": "Boucles d’oreilles",
+"ht": "Zanno"
+},
+"Pulsera": {
+"fr": "Bracelet",
+"ht": "Braslè"
+},
+"Colgante": {
+"fr": "Pendentif",
+"ht": "Pandantif"
+},
+"Broche": {
+"fr": "Broche",
+"ht": "Bwòch"
+},
+"Tobillera": {
+"fr": "Chaîne de cheville",
+"ht": "Chèn pye"
+},
+"Juego": {
+"fr": "Parure",
+"ht": "Ansanm"
+},
+"Oro 18k": {
+"fr": "Or 18 carats",
+"ht": "Lò 18 kara"
+},
+"Oro 14k": {
+"fr": "Or 14 carats",
+"ht": "Lò 14 kara"
+},
+"Oro 10k": {
+"fr": "Or 10 carats",
+"ht": "Lò 10 kara"
+},
+"Oro blanco": {
+"fr": "Or blanc",
+"ht": "Lò blan"
+},
+"Oro rosa": {
+"fr": "Or rose",
+"ht": "Lò woz"
+},
+"Chapado en oro": {
+"fr": "Plaqué or",
+"ht": "Plake lò"
+},
+"Plata 925": {
+"fr": "Argent sterling",
+"ht": "Ajan"
+},
+"Platino": {
+"fr": "Platine",
+"ht": "Platin"
+},
+"Titanio": {
+"fr": "Titane",
+"ht": "Titàn"
+},
+"Latón": {
+"fr": "Laiton",
+"ht": "Kwiv jòn"
+},
+"Sin piedra": {
+"fr": "Aucune",
+"ht": "Okenn"
+},
+"Diamante": {
+"fr": "Diamant",
+"ht": "Dyaman"
+},
+"Rubí": {
+"fr": "Rubis",
+"ht": "Rubi"
+},
+"Zafiro": {
+"fr": "Saphir",
+"ht": "Safi"
+},
+"Esmeralda": {
+"fr": "Émeraude",
+"ht": "Emwòd"
+},
+"Amatista": {
+"fr": "Améthyste",
+"ht": "Ametis"
+},
+"Topacio": {
+"fr": "Topaze",
+"ht": "Topaz"
+},
+"Perla": {
+"fr": "Perle",
+"ht": "Pèl"
+},
+"Zirconia": {
+"fr": "Zircon cubique",
+"ht": "Zikon"
+},
+"Ámbar": {
+"fr": "Ambre",
+"ht": "Anb"
+},
+"Larimar": {
+"fr": "Larimar",
+"ht": "Larimar"
+},
+"Cuarzo": {
+"fr": "Quartz",
+"ht": "Kwats"
+},
+"Automático": {
+"fr": "Automatique",
+"ht": "Otomatik"
+},
+"Mecánico (cuerda manual)": {
+"fr": "Mécanique (remontage manuel)",
+"ht": "Mekanik (remonte alamen)"
+},
+"Solar": {
+"fr": "Solaire",
+"ht": "Solè"
+},
+"Inteligente": {
+"fr": "Connectée",
+"ht": "Entelijan"
+},
+"No resistente": {
+"fr": "Non résistante à l’eau",
+"ht": "Pa reziste dlo"
+},
+"Resistente a salpicaduras": {
+"fr": "Résistante aux éclaboussures",
+"ht": "Reziste ti dlo"
+},
+"IPX4": {
+"fr": "IPX4",
+"ht": "IPX4"
+},
+"IP67": {
+"fr": "IP67",
+"ht": "IP67"
+},
+"IP68": {
+"fr": "IP68",
+"ht": "IP68"
+},
+"3 ATM (30 m)": {
+"fr": "3 ATM (30 m)",
+"ht": "3 ATM (30 m)"
+},
+"5 ATM (50 m)": {
+"fr": "5 ATM (50 m)",
+"ht": "5 ATM (50 m)"
+},
+"10 ATM (100 m)": {
+"fr": "10 ATM (100 m)",
+"ht": "10 ATM (100 m)"
+},
+"20 ATM (200 m)": {
+"fr": "20 ATM (200 m)",
+"ht": "20 ATM (200 m)"
+},
+"Parfum (extracto)": {
+"fr": "Parfum",
+"ht": "Pafen"
+},
+"Eau de Parfum": {
+"fr": "Eau de parfum",
+"ht": "Eau de parfum"
+},
+"Eau de Toilette": {
+"fr": "Eau de toilette",
+"ht": "Eau de toilette"
+},
+"Eau de Cologne": {
+"fr": "Eau de Cologne",
+"ht": "Eau de Cologne"
+},
+"Body mist": {
+"fr": "Brume pour le corps",
+"ht": "Espre pou kò"
+},
+"Cítrica": {
+"fr": "Hespéridé",
+"ht": "Sitwon"
+},
+"Amaderada": {
+"fr": "Boisé",
+"ht": "Bwa"
+},
+"Oriental / ámbar": {
+"fr": "Oriental / ambré",
+"ht": "Oryantal / anb"
+},
+"Fresca": {
+"fr": "Frais",
+"ht": "Fre"
+},
+"Frutal": {
+"fr": "Fruité",
+"ht": "Fwi"
+},
+"Gourmand": {
+"fr": "Gourmand",
+"ht": "Dous"
+},
+"Aromática": {
+"fr": "Aromatique",
+"ht": "Awomatik"
+},
+"Todo tipo de piel": {
+"fr": "Tous types de peau",
+"ht": "Tout kalite po"
+},
+"Normal": {
+"fr": "Normale",
+"ht": "Nòmal"
+},
+"Seca": {
+"fr": "Sèche",
+"ht": "Sèk"
+},
+"Grasa": {
+"fr": "Grasse",
+"ht": "Gra"
+},
+"Mixta": {
+"fr": "Mixte",
+"ht": "Melanje"
+},
+"Sensible": {
+"fr": "Sensible",
+"ht": "Sansib"
+},
+"Con tendencia acneica": {
+"fr": "À tendance acnéique",
+"ht": "Ki fè bouton"
+},
+"Madura": {
+"fr": "Mature",
+"ht": "Matirite"
+},
+"Todo tipo de cabello": {
+"fr": "Tous types de cheveux",
+"ht": "Tout kalite cheve"
+},
+"Ondulado": {
+"fr": "Ondulés",
+"ht": "Ondile"
+},
+"Rizado": {
+"fr": "Bouclés",
+"ht": "Boukle"
+},
+"Afro / muy rizado": {
+"fr": "Crépus",
+"ht": "Grenn"
+},
+"Seco": {
+"fr": "Secs",
+"ht": "Sèk"
+},
+"Graso": {
+"fr": "Gras",
+"ht": "Gra"
+},
+"Dañado": {
+"fr": "Abîmés",
+"ht": "Domaje"
+},
+"Teñido": {
+"fr": "Colorés",
+"ht": "Kolore"
+},
+"Bluetooth": {
+"fr": "Bluetooth",
+"ht": "Bluetooth"
+},
+"Wi-Fi": {
+"fr": "Wi-Fi",
+"ht": "Wi-Fi"
+},
+"Wi-Fi y Bluetooth": {
+"fr": "Wi-Fi et Bluetooth",
+"ht": "Wi-Fi ak Bluetooth"
+},
+"USB": {
+"fr": "USB",
+"ht": "USB"
+},
+"Cableado": {
+"fr": "Filaire",
+"ht": "Ak fil"
+},
+"NFC": {
+"fr": "NFC",
+"ht": "NFC"
+},
+"Ethernet": {
+"fr": "Ethernet",
+"ht": "Ethernet"
+},
+"Infrarrojo": {
+"fr": "Infrarouge",
+"ht": "Enfrawouj"
+},
+"Zigbee": {
+"fr": "Zigbee",
+"ht": "Zigbee"
+},
+"USB-C": {
+"fr": "USB-C",
+"ht": "USB-C"
+},
+"USB-A": {
+"fr": "USB-A",
+"ht": "USB-A"
+},
+"Micro USB": {
+"fr": "Micro USB",
+"ht": "Micro USB"
+},
+"Lightning": {
+"fr": "Lightning",
+"ht": "Lightning"
+},
+"HDMI": {
+"fr": "HDMI",
+"ht": "HDMI"
+},
+"DisplayPort": {
+"fr": "DisplayPort",
+"ht": "DisplayPort"
+},
+"Jack 3,5 mm": {
+"fr": "Jack 3,5 mm",
+"ht": "Jack 3,5 mm"
+},
+"XLR": {
+"fr": "XLR",
+"ht": "XLR"
+},
+"RCA": {
+"fr": "RCA",
+"ht": "RCA"
+},
+"Ethernet (RJ45)": {
+"fr": "Ethernet (RJ45)",
+"ht": "Ethernet (RJ45)"
+},
+"Baterías": {
+"fr": "Piles",
+"ht": "Pil"
+},
+"Batería recargable": {
+"fr": "Batterie rechargeable",
+"ht": "Batri rechajab"
+},
+"Eléctrico (enchufe)": {
+"fr": "Électrique sur secteur",
+"ht": "Elektrik ak fil"
+},
+"Manual": {
+"fr": "Manuel",
+"ht": "Manyèl"
+},
+"Gas": {
+"fr": "Gaz",
+"ht": "Gaz"
+},
+"Windows": {
+"fr": "Windows",
+"ht": "Windows"
+},
+"macOS": {
+"fr": "macOS",
+"ht": "macOS"
+},
+"Linux": {
+"fr": "Linux",
+"ht": "Linux"
+},
+"ChromeOS": {
+"fr": "ChromeOS",
+"ht": "ChromeOS"
+},
+"Android": {
+"fr": "Android",
+"ht": "Android"
+},
+"iOS": {
+"fr": "iOS",
+"ht": "iOS"
+},
+"iPadOS": {
+"fr": "iPadOS",
+"ht": "iPadOS"
+},
+"Sin sistema operativo": {
+"fr": "Sans système d’exploitation",
+"ht": "San sistèm operasyon"
+},
+"720p (HD)": {
+"fr": "720p (HD)",
+"ht": "720p (HD)"
+},
+"1080p (Full HD)": {
+"fr": "1080p (Full HD)",
+"ht": "1080p (Full HD)"
+},
+"1440p (QHD)": {
+"fr": "1440p (QHD)",
+"ht": "1440p (QHD)"
+},
+"4K (UHD)": {
+"fr": "4K (UHD)",
+"ht": "4K (UHD)"
+},
+"8K": {
+"fr": "8K",
+"ht": "8K"
+},
+"720p": {
+"fr": "720p",
+"ht": "720p"
+},
+"1080p": {
+"fr": "1080p",
+"ht": "1080p"
+},
+"2K": {
+"fr": "2K",
+"ht": "2K"
+},
+"4K": {
+"fr": "4K",
+"ht": "4K"
+},
+"OLED": {
+"fr": "OLED",
+"ht": "OLED"
+},
+"QLED": {
+"fr": "QLED",
+"ht": "QLED"
+},
+"Mini LED": {
+"fr": "Mini LED",
+"ht": "Mini LED"
+},
+"LED": {
+"fr": "LED",
+"ht": "LED"
+},
+"LCD": {
+"fr": "LCD",
+"ht": "LCD"
+},
+"IPS": {
+"fr": "IPS",
+"ht": "IPS"
+},
+"VA": {
+"fr": "VA",
+"ht": "VA"
+},
+"TN": {
+"fr": "TN",
+"ht": "TN"
+},
+"Google TV": {
+"fr": "Google TV",
+"ht": "Google TV"
+},
+"Android TV": {
+"fr": "Android TV",
+"ht": "Android TV"
+},
+"Roku TV": {
+"fr": "Roku TV",
+"ht": "Roku TV"
+},
+"Fire TV": {
+"fr": "Fire TV",
+"ht": "Fire TV"
+},
+"Tizen (Samsung)": {
+"fr": "Tizen (Samsung)",
+"ht": "Tizen (Samsung)"
+},
+"webOS (LG)": {
+"fr": "webOS (LG)",
+"ht": "webOS (LG)"
+},
+"VIDAA": {
+"fr": "VIDAA",
+"ht": "VIDAA"
+},
+"No es Smart TV": {
+"fr": "Pas une Smart TV",
+"ht": "Se pa yon Smart TV"
+},
+"Amazon Alexa": {
+"fr": "Amazon Alexa",
+"ht": "Amazon Alexa"
+},
+"Google Home": {
+"fr": "Google Home",
+"ht": "Google Home"
+},
+"Apple HomeKit": {
+"fr": "Apple HomeKit",
+"ht": "Apple HomeKit"
+},
+"SmartThings": {
+"fr": "SmartThings",
+"ht": "SmartThings"
+},
+"Matter": {
+"fr": "Matter",
+"ht": "Matter"
+},
+"Ninguno": {
+"fr": "Aucun",
+"ht": "Okenn"
+},
+"Wi-Fi 4 (802.11n)": {
+"fr": "Wi-Fi 4 (802.11n)",
+"ht": "Wi-Fi 4 (802.11n)"
+},
+"Wi-Fi 5 (802.11ac)": {
+"fr": "Wi-Fi 5 (802.11ac)",
+"ht": "Wi-Fi 5 (802.11ac)"
+},
+"Wi-Fi 6 (802.11ax)": {
+"fr": "Wi-Fi 6 (802.11ax)",
+"ht": "Wi-Fi 6 (802.11ax)"
+},
+"Wi-Fi 6E": {
+"fr": "Wi-Fi 6E",
+"ht": "Wi-Fi 6E"
+},
+"Wi-Fi 7 (802.11be)": {
+"fr": "Wi-Fi 7 (802.11be)",
+"ht": "Wi-Fi 7 (802.11be)"
+},
+"5G": {
+"fr": "5G",
+"ht": "5G"
+},
+"4G LTE": {
+"fr": "4G LTE",
+"ht": "4G LTE"
+},
+"3G": {
+"fr": "3G",
+"ht": "3G"
+},
+"Sin red celular": {
+"fr": "Sans réseau cellulaire",
+"ht": "San rezo selilè"
+},
+"Liberado": {
+"fr": "Débloqué",
+"ht": "Debloke"
+},
+"Bloqueado a operador": {
+"fr": "Verrouillé opérateur",
+"ht": "Bloke pa operatè"
+},
+"Nano SIM": {
+"fr": "Nano SIM",
+"ht": "Nano SIM"
+},
+"eSIM": {
+"fr": "eSIM",
+"ht": "eSIM"
+},
+"Nano SIM + eSIM": {
+"fr": "Nano SIM + eSIM",
+"ht": "Nano SIM + eSIM"
+},
+"Dual SIM": {
+"fr": "Double SIM",
+"ht": "De SIM"
+},
+"SSD NVMe": {
+"fr": "SSD NVMe",
+"ht": "SSD NVMe"
+},
+"SSD": {
+"fr": "SSD",
+"ht": "SSD"
+},
+"Disco duro (HDD)": {
+"fr": "Disque dur (HDD)",
+"ht": "Disk di (HDD)"
+},
+"SSD + HDD": {
+"fr": "SSD + HDD",
+"ht": "SSD + HDD"
+},
+"eMMC": {
+"fr": "eMMC",
+"ht": "eMMC"
+},
+"Portátil": {
+"fr": "Portable",
+"ht": "Laptop"
+},
+"Escritorio": {
+"fr": "Bureau",
+"ht": "Biwo"
+},
+"Torre": {
+"fr": "Tour",
+"ht": "Tou"
+},
+"Mini PC": {
+"fr": "Mini PC",
+"ht": "Mini PC"
+},
+"Todo en uno": {
+"fr": "Tout-en-un",
+"ht": "Tout-an-yon"
+},
+"Tableta": {
+"fr": "Tablette",
+"ht": "Tablèt"
+},
+"2 en 1": {
+"fr": "2-en-1",
+"ht": "2-an-1"
+},
+"Mono": {
+"fr": "Mono",
+"ht": "Mono"
+},
+"2.0 (estéreo)": {
+"fr": "2.0 (stéréo)",
+"ht": "2.0 (estereyo)"
+},
+"2.1": {
+"fr": "2.1",
+"ht": "2.1"
+},
+"3.1": {
+"fr": "3.1",
+"ht": "3.1"
+},
+"5.1": {
+"fr": "5.1",
+"ht": "5.1"
+},
+"7.1": {
+"fr": "7.1",
+"ht": "7.1"
+},
+"Dolby Atmos": {
+"fr": "Dolby Atmos",
+"ht": "Dolby Atmos"
+},
+"Cardioide": {
+"fr": "Cardioïde",
+"ht": "Kadyoyid"
+},
+"Supercardioide": {
+"fr": "Supercardioïde",
+"ht": "Sipè kadyoyid"
+},
+"Omnidireccional": {
+"fr": "Omnidirectionnel",
+"ht": "Tout direksyon"
+},
+"Bidireccional (figura 8)": {
+"fr": "Bidirectionnel (en 8)",
+"ht": "De direksyon (fòm 8)"
+},
+"Multipatrón": {
+"fr": "Multidirectionnel",
+"ht": "Plizyè direksyon"
+},
+"Inyección de tinta": {
+"fr": "Jet d’encre",
+"ht": "Jè lank"
+},
+"Tanque de tinta": {
+"fr": "Réservoir d’encre",
+"ht": "Rezèvwa lank"
+},
+"Láser": {
+"fr": "Laser",
+"ht": "Lazè"
+},
+"Térmica": {
+"fr": "Thermique",
+"ht": "Tèmik"
+},
+"Matricial": {
+"fr": "Matricielle",
+"ht": "Matris pwen"
+},
+"3D": {
+"fr": "3D",
+"ht": "3D"
+},
+"Full frame": {
+"fr": "Plein format",
+"ht": "Fòma konplè"
+},
+"APS-C": {
+"fr": "APS-C",
+"ht": "APS-C"
+},
+"Micro 4/3": {
+"fr": "Micro Four Thirds",
+"ht": "Micro Four Thirds"
+},
+"1 pulgada": {
+"fr": "1 pouce",
+"ht": "1 pous"
+},
+"Formato medio": {
+"fr": "Moyen format",
+"ht": "Fòma mwayen"
+},
+"Menor a 1 pulgada": {
+"fr": "Moins de 1 pouce",
+"ht": "Pi piti pase 1 pous"
+},
+"Canon RF": {
+"fr": "Canon RF",
+"ht": "Canon RF"
+},
+"Canon EF": {
+"fr": "Canon EF",
+"ht": "Canon EF"
+},
+"Nikon Z": {
+"fr": "Nikon Z",
+"ht": "Nikon Z"
+},
+"Nikon F": {
+"fr": "Nikon F",
+"ht": "Nikon F"
+},
+"Sony E": {
+"fr": "Sony E",
+"ht": "Sony E"
+},
+"Fujifilm X": {
+"fr": "Fujifilm X",
+"ht": "Fujifilm X"
+},
+"L-Mount": {
+"fr": "Monture L",
+"ht": "Monti L"
+},
+"Tarjeta microSD": {
+"fr": "Carte microSD",
+"ht": "Kat microSD"
+},
+"Nube": {
+"fr": "Cloud",
+"ht": "Nwaj (cloud)"
+},
+"microSD y nube": {
+"fr": "microSD et cloud",
+"ht": "microSD ak nwaj"
+},
+"Grabador (NVR/DVR)": {
+"fr": "Enregistreur (NVR/DVR)",
+"ht": "Anrejistrè (NVR/DVR)"
+},
+"Sin grabación": {
+"fr": "Sans enregistrement",
+"ht": "San anrejistreman"
+},
+"Frecuencia cardíaca": {
+"fr": "Fréquence cardiaque",
+"ht": "Batman kè"
+},
+"Oxígeno en sangre": {
+"fr": "Oxygène sanguin",
+"ht": "Oksijèn nan san"
+},
+"ECG": {
+"fr": "ECG",
+"ht": "ECG"
+},
+"Sueño": {
+"fr": "Sommeil",
+"ht": "Dòmi"
+},
+"Temperatura": {
+"fr": "Température",
+"ht": "Tanperati"
+},
+"GPS": {
+"fr": "GPS",
+"ht": "GPS"
+},
+"PlayStation 5": {
+"fr": "PlayStation 5",
+"ht": "PlayStation 5"
+},
+"PlayStation 4": {
+"fr": "PlayStation 4",
+"ht": "PlayStation 4"
+},
+"Xbox Series X|S": {
+"fr": "Xbox Series X|S",
+"ht": "Xbox Series X|S"
+},
+"Xbox One": {
+"fr": "Xbox One",
+"ht": "Xbox One"
+},
+"Nintendo Switch": {
+"fr": "Nintendo Switch",
+"ht": "Nintendo Switch"
+},
+"PC": {
+"fr": "PC",
+"ht": "PC"
+},
+"Mac": {
+"fr": "Mac",
+"ht": "Mac"
+},
+"Móvil": {
+"fr": "Mobile",
+"ht": "Mobil"
+},
+"LGA 1700": {
+"fr": "LGA 1700",
+"ht": "LGA 1700"
+},
+"LGA 1851": {
+"fr": "LGA 1851",
+"ht": "LGA 1851"
+},
+"AM5": {
+"fr": "AM5",
+"ht": "AM5"
+},
+"AM4": {
+"fr": "AM4",
+"ht": "AM4"
+},
+"PCIe 5.0": {
+"fr": "PCIe 5.0",
+"ht": "PCIe 5.0"
+},
+"PCIe 4.0": {
+"fr": "PCIe 4.0",
+"ht": "PCIe 4.0"
+},
+"M.2": {
+"fr": "M.2",
+"ht": "M.2"
+},
+"SATA": {
+"fr": "SATA",
+"ht": "SATA"
+},
+"A+++": {
+"fr": "A+++",
+"ht": "A+++"
+},
+"A++": {
+"fr": "A++",
+"ht": "A++"
+},
+"A+": {
+"fr": "A+",
+"ht": "A+"
+},
+"A": {
+"fr": "A",
+"ht": "A"
+},
+"B": {
+"fr": "B",
+"ht": "B"
+},
+"C": {
+"fr": "C",
+"ht": "C"
+},
+"D": {
+"fr": "D",
+"ht": "D"
+},
+"Energy Star": {
+"fr": "Energy Star",
+"ht": "Energy Star"
+},
+"Incandescente": {
+"fr": "Incandescente",
+"ht": "Ensandesan"
+},
+"Halógena": {
+"fr": "Halogène",
+"ht": "Alojèn"
+},
+"Fluorescente": {
+"fr": "Fluorescente",
+"ht": "Fliyoresan"
+},
+"E26": {
+"fr": "E26",
+"ht": "E26"
+},
+"E27": {
+"fr": "E27",
+"ht": "E27"
+},
+"E12": {
+"fr": "E12",
+"ht": "E12"
+},
+"E14": {
+"fr": "E14",
+"ht": "E14"
+},
+"GU10": {
+"fr": "GU10",
+"ht": "GU10"
+},
+"G9": {
+"fr": "G9",
+"ht": "G9"
+},
+"MR16": {
+"fr": "MR16",
+"ht": "MR16"
+},
+"B22": {
+"fr": "B22",
+"ht": "B22"
+},
+"Sala": {
+"fr": "Salon",
+"ht": "Salon"
+},
+"Dormitorio": {
+"fr": "Chambre",
+"ht": "Chanm"
+},
+"Baño": {
+"fr": "Salle de bain",
+"ht": "Twalèt"
+},
+"Comedor": {
+"fr": "Salle à manger",
+"ht": "Salamanje"
+},
+"Oficina": {
+"fr": "Bureau",
+"ht": "Biwo"
+},
+"Exterior": {
+"fr": "Extérieur",
+"ht": "Deyò"
+},
+"Interior": {
+"fr": "Intérieur",
+"ht": "Anndan"
+},
+"Interior y exterior": {
+"fr": "Intérieur et extérieur",
+"ht": "Anndan ak deyò"
+},
+"Independiente": {
+"fr": "Pose libre",
+"ht": "Kanpe poukont li"
+},
+"Empotrado": {
+"fr": "Encastrable",
+"ht": "Entegre"
+},
+"Montaje en pared": {
+"fr": "Murale",
+"ht": "Sou mi"
+},
+"Sobre encimera": {
+"fr": "Plan de travail",
+"ht": "Sou kontwa"
+},
+"Bajo encimera": {
+"fr": "Sous plan",
+"ht": "Anba kontwa"
+},
+"Techo": {
+"fr": "Plafond",
+"ht": "Plafon"
+},
+"Mate": {
+"fr": "Mat",
+"ht": "Mat"
+},
+"Brillante": {
+"fr": "Brillant",
+"ht": "Klere"
+},
+"Satinado": {
+"fr": "Satiné",
+"ht": "Saten"
+},
+"Metálico": {
+"fr": "Métallisé",
+"ht": "Metalik"
+},
+"Cepillado": {
+"fr": "Brossé",
+"ht": "Bwose"
+},
+"Pulido": {
+"fr": "Poli",
+"ht": "Poli"
+},
+"Texturizado": {
+"fr": "Texturé",
+"ht": "Teksti"
+},
+"Natural": {
+"fr": "Naturel",
+"ht": "Natirèl"
+},
+"Redondo": {
+"fr": "Rond",
+"ht": "Won"
+},
+"Cuadrado": {
+"fr": "Carré",
+"ht": "Kare"
+},
+"Rectangular": {
+"fr": "Rectangulaire",
+"ht": "Rektangilè"
+},
+"Ovalado": {
+"fr": "Ovale",
+"ht": "Oval"
+},
+"Corazón": {
+"fr": "Cœur",
+"ht": "Kè"
+},
+"Irregular": {
+"fr": "Irrégulier",
+"ht": "Iregilye"
+},
+"Acero": {
+"fr": "Acier",
+"ht": "Asye"
+},
+"Acrílico": {
+"fr": "Acrylique",
+"ht": "Akrilik"
+},
+"Tejido plano": {
+"fr": "Tissage plat",
+"ht": "Tise plat"
+},
+"Pelo corto": {
+"fr": "Poils ras",
+"ht": "Ti pwal"
+},
+"Pelo medio": {
+"fr": "Poils moyens",
+"ht": "Pwal mwayen"
+},
+"Pelo largo": {
+"fr": "Poils longs",
+"ht": "Gwo pwal"
+},
+"Todas": {
+"fr": "Toutes",
+"ht": "Tout"
+},
+"Eléctrica": {
+"fr": "Électrique",
+"ht": "Elektrik"
+},
+"Inducción": {
+"fr": "Induction",
+"ht": "Endiksyon"
+},
+"Vitrocerámica": {
+"fr": "Vitrocéramique",
+"ht": "Seramik"
+},
+"Gasolina": {
+"fr": "Essence",
+"ht": "Gazolin"
+},
+"Diésel": {
+"fr": "Diesel",
+"ht": "Dizèl"
+},
+"Eléctrico": {
+"fr": "Électrique",
+"ht": "Elektrik"
+},
+"Batería": {
+"fr": "Batterie",
+"ht": "Batri"
+},
+"Propano": {
+"fr": "Propane",
+"ht": "Pwopàn"
+},
+"Gas natural": {
+"fr": "Gaz naturel",
+"ht": "Gaz natirèl"
+},
+"Carbón": {
+"fr": "Charbon de bois",
+"ht": "Chabon"
+},
+"Leña": {
+"fr": "Bois",
+"ht": "Bwa"
+},
+"Sol pleno": {
+"fr": "Plein soleil",
+"ht": "Plen solèy"
+},
+"Semisombra": {
+"fr": "Mi-ombre",
+"ht": "Mwatye lonbraj"
+},
+"Sombra": {
+"fr": "Ombre",
+"ht": "Lonbraj"
+},
+"Luz indirecta": {
+"fr": "Lumière vive indirecte",
+"ht": "Limyè klè endirèk"
+},
+"Mosquitos": {
+"fr": "Moustiques",
+"ht": "Moustik"
+},
+"Hormigas": {
+"fr": "Fourmis",
+"ht": "Foumi"
+},
+"Cucarachas": {
+"fr": "Cafards",
+"ht": "Ravèt"
+},
+"Roedores": {
+"fr": "Rongeurs",
+"ht": "Rat ak sourit"
+},
+"Moscas": {
+"fr": "Mouches",
+"ht": "Mouch"
+},
+"Termitas": {
+"fr": "Termites",
+"ht": "Poudbwa"
+},
+"Chinches": {
+"fr": "Punaises de lit",
+"ht": "Pinèz"
+},
+"Pulgas y garrapatas": {
+"fr": "Puces et tiques",
+"ht": "Pis ak tik"
+},
+"Todo tipo": {
+"fr": "Toutes surfaces",
+"ht": "Tout sifas"
+},
+"Cerámica / baldosa": {
+"fr": "Carrelage",
+"ht": "Mozayik"
+},
+"Alfombra": {
+"fr": "Moquette",
+"ht": "Tapi"
+},
+"Concreto": {
+"fr": "Béton",
+"ht": "Beton"
+},
+"Césped": {
+"fr": "Gazon",
+"ht": "Gazon"
+},
+"Carretera": {
+"fr": "Route",
+"ht": "Wout"
+},
+"Montaña / sendero": {
+"fr": "Sentier",
+"ht": "Chemen"
+},
+"Cancha": {
+"fr": "Terrain",
+"ht": "Teren"
+},
+"Vegano": {
+"fr": "Végan",
+"ht": "Vegan"
+},
+"Vegetariano": {
+"fr": "Végétarien",
+"ht": "Vejetaryen"
+},
+"Sin gluten": {
+"fr": "Sans gluten",
+"ht": "San gluten"
+},
+"Sin azúcar": {
+"fr": "Sans sucre",
+"ht": "San sik"
+},
+"Sin lactosa": {
+"fr": "Sans lactose",
+"ht": "San laktoz"
+},
+"Keto": {
+"fr": "Céto",
+"ht": "Keto"
+},
+"Orgánico": {
+"fr": "Biologique",
+"ht": "Òganik"
+},
+"Sin OGM": {
+"fr": "Sans OGM",
+"ht": "San OGM"
+},
+"Kosher": {
+"fr": "Casher",
+"ht": "Kosher"
+},
+"Halal": {
+"fr": "Halal",
+"ht": "Halal"
+},
+"Sin alérgenos declarados": {
+"fr": "Aucun allergène déclaré",
+"ht": "Pa gen alèjen ki deklare"
+},
+"Contiene gluten": {
+"fr": "Contient du gluten",
+"ht": "Gen gluten"
+},
+"Contiene leche": {
+"fr": "Contient du lait",
+"ht": "Gen lèt"
+},
+"Contiene huevo": {
+"fr": "Contient des œufs",
+"ht": "Gen ze"
+},
+"Contiene frutos secos": {
+"fr": "Contient des fruits à coque",
+"ht": "Gen nwa"
+},
+"Contiene maní": {
+"fr": "Contient des arachides",
+"ht": "Gen pistach"
+},
+"Contiene soya": {
+"fr": "Contient du soja",
+"ht": "Gen soya"
+},
+"Contiene pescado": {
+"fr": "Contient du poisson",
+"ht": "Gen pwason"
+},
+"Contiene mariscos": {
+"fr": "Contient des crustacés",
+"ht": "Gen fwidmè"
+},
+"Contiene sésamo": {
+"fr": "Contient du sésame",
+"ht": "Gen wowoli"
+},
+"Polvo": {
+"fr": "Poudre",
+"ht": "Poud"
+},
+"Líquido": {
+"fr": "Liquide",
+"ht": "Likid"
+},
+"Cápsulas": {
+"fr": "Gélules",
+"ht": "Kapsil"
+},
+"Tabletas": {
+"fr": "Comprimés",
+"ht": "Grenn"
+},
+"Gomitas": {
+"fr": "Gommes",
+"ht": "Jelatin"
+},
+"Crema": {
+"fr": "Crème",
+"ht": "Krèm"
+},
+"Gel": {
+"fr": "Gel",
+"ht": "Jèl"
+},
+"Spray": {
+"fr": "Spray",
+"ht": "Espre"
+},
+"Barra": {
+"fr": "Barre",
+"ht": "Ba"
+},
+"En grano": {
+"fr": "Grains entiers",
+"ht": "Grenn antye"
+},
+"Molido": {
+"fr": "Moulu",
+"ht": "Moulen"
+},
+"Cápsulas monodosis": {
+"fr": "Dosettes",
+"ht": "Kapsil kafe"
+},
+"En bolsitas": {
+"fr": "Sachets",
+"ht": "Ti sachè"
+},
+"Con cafeína": {
+"fr": "Avec caféine",
+"ht": "Ak kafeyin"
+},
+"Mitad cafeína": {
+"fr": "Mi-décaféiné",
+"ht": "Mwatye kafeyin"
+},
+"Descafeinado": {
+"fr": "Décaféiné",
+"ht": "Dekafeyine"
+},
+"Sin cafeína": {
+"fr": "Sans caféine",
+"ht": "San kafeyin"
+},
+"Claro": {
+"fr": "Clair",
+"ht": "Klè"
+},
+"Medio": {
+"fr": "Moyen",
+"ht": "Mwayen"
+},
+"Medio oscuro": {
+"fr": "Moyen-foncé",
+"ht": "Mwayen fonse"
+},
+"Oscuro": {
+"fr": "Foncé",
+"ht": "Fonse"
+},
+"República Dominicana": {
+"fr": "République dominicaine",
+"ht": "Repiblik Dominikèn"
+},
+"Colombia": {
+"fr": "Colombie",
+"ht": "Kolonbi"
+},
+"Brasil": {
+"fr": "Brésil",
+"ht": "Brezil"
+},
+"Etiopía": {
+"fr": "Éthiopie",
+"ht": "Etyopi"
+},
+"Guatemala": {
+"fr": "Guatemala",
+"ht": "Gwatemala"
+},
+"Costa Rica": {
+"fr": "Costa Rica",
+"ht": "Kosta Rika"
+},
+"Honduras": {
+"fr": "Honduras",
+"ht": "Ondiras"
+},
+"México": {
+"fr": "Mexique",
+"ht": "Meksik"
+},
+"Perú": {
+"fr": "Pérou",
+"ht": "Pewou"
+},
+"Kenia": {
+"fr": "Kenya",
+"ht": "Kenya"
+},
+"Mezcla de orígenes": {
+"fr": "Assemblage",
+"ht": "Melanj"
+},
+"Negro": {
+"fr": "Noir",
+"ht": "Nwa"
+},
+"Verde": {
+"fr": "Vert",
+"ht": "Vèt"
+},
+"Blanco": {
+"fr": "Blanc",
+"ht": "Blan"
+},
+"Oolong": {
+"fr": "Oolong",
+"ht": "Oolong"
+},
+"Infusión herbal": {
+"fr": "Infusion",
+"ht": "Te fèy"
+},
+"Rooibos": {
+"fr": "Rooibos",
+"ht": "Rooibos"
+},
+"Chai": {
+"fr": "Chai",
+"ht": "Chai"
+},
+"Matcha": {
+"fr": "Matcha",
+"ht": "Matcha"
+},
+"Yerba mate": {
+"fr": "Maté",
+"ht": "Yèrba mate"
+},
+"Latinoamericana": {
+"fr": "Latino-américaine",
+"ht": "Amerik Latin"
+},
+"Caribeña": {
+"fr": "Caribéenne",
+"ht": "Karayib"
+},
+"Mexicana": {
+"fr": "Mexicaine",
+"ht": "Meksiken"
+},
+"Italiana": {
+"fr": "Italienne",
+"ht": "Italyen"
+},
+"Mediterránea": {
+"fr": "Méditerranéenne",
+"ht": "Mediterane"
+},
+"Asiática": {
+"fr": "Asiatique",
+"ht": "Azyatik"
+},
+"Americana": {
+"fr": "Américaine",
+"ht": "Ameriken"
+},
+"Perro": {
+"fr": "Chien",
+"ht": "Chen"
+},
+"Gato": {
+"fr": "Chat",
+"ht": "Chat"
+},
+"Ave": {
+"fr": "Oiseau",
+"ht": "Zwazo"
+},
+"Pez": {
+"fr": "Poisson",
+"ht": "Pwason"
+},
+"Pequeños mamíferos": {
+"fr": "Petit animal",
+"ht": "Ti bèt"
+},
+"Reptil": {
+"fr": "Reptile",
+"ht": "Reptil"
+},
+"Caballo": {
+"fr": "Cheval",
+"ht": "Chwal"
+},
+"Todas las etapas": {
+"fr": "Toutes étapes de vie",
+"ht": "Tout etap lavi"
+},
+"Cachorro / gatito": {
+"fr": "Chiot / chaton",
+"ht": "Ti chen / ti chat"
+},
+"Senior": {
+"fr": "Senior",
+"ht": "Granmoun"
+},
+"Todos los tamaños": {
+"fr": "Toutes tailles",
+"ht": "Tout gwosè"
+},
+"Muy pequeño": {
+"fr": "Très petite",
+"ht": "Tou piti"
+},
+"Pequeño": {
+"fr": "Petite",
+"ht": "Piti"
+},
+"Mediano": {
+"fr": "Moyenne",
+"ht": "Mwayen"
+},
+"Grande": {
+"fr": "Grande",
+"ht": "Gwo"
+},
+"Muy grande": {
+"fr": "Géante",
+"ht": "Jeyan"
+},
+"Agua dulce": {
+"fr": "Eau douce",
+"ht": "Dlo dous"
+},
+"Agua salada": {
+"fr": "Eau salée",
+"ht": "Dlo sale"
+},
+"Agua dulce y salada": {
+"fr": "Eau douce et salée",
+"ht": "Dlo dous ak dlo sale"
+},
+"0–6 meses": {
+"fr": "0–6 mois",
+"ht": "0–6 mwa"
+},
+"6–12 meses": {
+"fr": "6–12 mois",
+"ht": "6–12 mwa"
+},
+"1–2 años": {
+"fr": "1–2 ans",
+"ht": "1–2 an"
+},
+"3–4 años": {
+"fr": "3–4 ans",
+"ht": "3–4 an"
+},
+"5–7 años": {
+"fr": "5–7 ans",
+"ht": "5–7 an"
+},
+"8–11 años": {
+"fr": "8–11 ans",
+"ht": "8–11 an"
+},
+"12 años o más": {
+"fr": "12 ans et +",
+"ht": "12 an oswa plis"
+},
+"Todos los niveles": {
+"fr": "Tous niveaux",
+"ht": "Tout nivo"
+},
+"Principiante": {
+"fr": "Débutant",
+"ht": "Debitan"
+},
+"Intermedio": {
+"fr": "Intermédiaire",
+"ht": "Entèmedyè"
+},
+"Avanzado": {
+"fr": "Avancé",
+"ht": "Avanse"
+},
+"Profesional": {
+"fr": "Professionnel",
+"ht": "Pwofesyonèl"
+},
+"1 jugador": {
+"fr": "1 joueur",
+"ht": "1 jwè"
+},
+"2 jugadores": {
+"fr": "2 joueurs",
+"ht": "2 jwè"
+},
+"2–4 jugadores": {
+"fr": "2–4 joueurs",
+"ht": "2–4 jwè"
+},
+"2–6 jugadores": {
+"fr": "2–6 joueurs",
+"ht": "2–6 jwè"
+},
+"4 o más jugadores": {
+"fr": "4 joueurs et +",
+"ht": "4 jwè oswa plis"
+},
+"6 o más jugadores": {
+"fr": "6 joueurs et +",
+"ht": "6 jwè oswa plis"
+},
+"STEM": {
+"fr": "STIM",
+"ht": "STEM"
+},
+"Lectura": {
+"fr": "Lecture",
+"ht": "Lekti"
+},
+"Matemáticas": {
+"fr": "Mathématiques",
+"ht": "Matematik"
+},
+"Motricidad": {
+"fr": "Motricité",
+"ht": "Mouvman kò"
+},
+"Creatividad": {
+"fr": "Créativité",
+"ht": "Kreyativite"
+},
+"Idiomas": {
+"fr": "Langues",
+"ht": "Lang"
+},
+"Habilidades sociales": {
+"fr": "Compétences sociales",
+"ht": "Konpetans sosyal"
+},
+"Preescolar": {
+"fr": "Maternelle",
+"ht": "Prèskolè"
+},
+"Primaria": {
+"fr": "Primaire",
+"ht": "Primè"
+},
+"Secundaria": {
+"fr": "Secondaire",
+"ht": "Segondè"
+},
+"Universidad": {
+"fr": "Université",
+"ht": "Inivèsite"
+},
+"Ciencias": {
+"fr": "Sciences",
+"ht": "Syans"
+},
+"Lengua y lectura": {
+"fr": "Langue et littérature",
+"ht": "Lang ak literati"
+},
+"Historia": {
+"fr": "Histoire",
+"ht": "Istwa"
+},
+"Geografía": {
+"fr": "Géographie",
+"ht": "Jewografi"
+},
+"Arte": {
+"fr": "Art",
+"ht": "A"
+},
+"Música": {
+"fr": "Musique",
+"ht": "Mizik"
+},
+"Tecnología": {
+"fr": "Technologie",
+"ht": "Teknoloji"
+},
+"Tapa dura": {
+"fr": "Relié",
+"ht": "Kouvèti di"
+},
+"Tapa blanda": {
+"fr": "Broché",
+"ht": "Kouvèti mou"
+},
+"Libro de cartón": {
+"fr": "Livre cartonné",
+"ht": "Liv katon"
+},
+"Espiral": {
+"fr": "À spirale",
+"ht": "Espiral"
+},
+"Libro electrónico": {
+"fr": "Livre numérique",
+"ht": "Liv dijital"
+},
+"Audiolibro": {
+"fr": "Livre audio",
+"ht": "Liv odyo"
+},
+"DVD": {
+"fr": "DVD",
+"ht": "DVD"
+},
+"Blu-ray": {
+"fr": "Blu-ray",
+"ht": "Blu-ray"
+},
+"4K Ultra HD Blu-ray": {
+"fr": "Blu-ray 4K Ultra HD",
+"ht": "Blu-ray 4K Ultra HD"
+},
+"CD": {
+"fr": "CD",
+"ht": "CD"
+},
+"Vinilo": {
+"fr": "Vinyle",
+"ht": "Vinil"
+},
+"Casete": {
+"fr": "Cassette",
+"ht": "Kasèt"
+},
+"Digital": {
+"fr": "Numérique",
+"ht": "Dijital"
+},
+"Libre de región": {
+"fr": "Toutes zones",
+"ht": "Tout rejyon"
+},
+"Región 1 (EE. UU. / Canadá)": {
+"fr": "Zone 1 (États-Unis / Canada)",
+"ht": "Rejyon 1 (Etazini / Kanada)"
+},
+"Región 2 (Europa)": {
+"fr": "Zone 2 (Europe)",
+"ht": "Rejyon 2 (Ewòp)"
+},
+"Región 4 (Latinoamérica)": {
+"fr": "Zone 4 (Amérique latine)",
+"ht": "Rejyon 4 (Amerik Latin)"
+},
+"Blu-ray A": {
+"fr": "Blu-ray A",
+"ht": "Blu-ray A"
+},
+"Blu-ray B": {
+"fr": "Blu-ray B",
+"ht": "Blu-ray B"
+},
+"Blu-ray C": {
+"fr": "Blu-ray C",
+"ht": "Blu-ray C"
+},
+"Todo público (E)": {
+"fr": "Tout public (E)",
+"ht": "Tout moun (E)"
+},
+"Mayores de 10 (E10+)": {
+"fr": "10 ans et + (E10+)",
+"ht": "10 an oswa plis (E10+)"
+},
+"Adolescentes (T)": {
+"fr": "Adolescents (T)",
+"ht": "Adolesan (T)"
+},
+"Mayores de 17 (M)": {
+"fr": "17 ans et + (M)",
+"ht": "17 an oswa plis (M)"
+},
+"Solo adultos (AO)": {
+"fr": "Adultes uniquement (AO)",
+"ht": "Granmoun sèlman (AO)"
+},
+"G": {
+"fr": "G",
+"ht": "G"
+},
+"PG": {
+"fr": "PG",
+"ht": "PG"
+},
+"PG-13": {
+"fr": "PG-13",
+"ht": "PG-13"
+},
+"R": {
+"fr": "R",
+"ht": "R"
+},
+"Sin clasificar": {
+"fr": "Non classé",
+"ht": "San klasman"
+},
+"Ficción": {
+"fr": "Fiction",
+"ht": "Fiksyon"
+},
+"No ficción": {
+"fr": "Non-fiction",
+"ht": "Non-fiksyon"
+},
+"Romance": {
+"fr": "Romance",
+"ht": "Womans"
+},
+"Misterio": {
+"fr": "Policier",
+"ht": "Mistè"
+},
+"Ciencia ficción": {
+"fr": "Science-fiction",
+"ht": "Syans-fiksyon"
+},
+"Fantasía": {
+"fr": "Fantasy",
+"ht": "Fantezi"
+},
+"Terror": {
+"fr": "Horreur",
+"ht": "Laperèz"
+},
+"Biografía": {
+"fr": "Biographie",
+"ht": "Biyografi"
+},
+"Autoayuda": {
+"fr": "Développement personnel",
+"ht": "Devlopman pèsonèl"
+},
+"Comedia": {
+"fr": "Comédie",
+"ht": "Komedi"
+},
+"Drama": {
+"fr": "Drame",
+"ht": "Dram"
+},
+"Acción": {
+"fr": "Action",
+"ht": "Aksyon"
+},
+"Rock": {
+"fr": "Rock",
+"ht": "Rock"
+},
+"Pop": {
+"fr": "Pop",
+"ht": "Pop"
+},
+"Música latina": {
+"fr": "Musique latine",
+"ht": "Mizik latin"
+},
+"Clásica": {
+"fr": "Classique",
+"ht": "Klasik"
+},
+"Jazz": {
+"fr": "Jazz",
+"ht": "Jazz"
+},
+"Estándar": {
+"fr": "Standard",
+"ht": "Estanda"
+},
+"Primera edición": {
+"fr": "Première édition",
+"ht": "Premye edisyon"
+},
+"Especial": {
+"fr": "Spéciale",
+"ht": "Espesyal"
+},
+"Deluxe": {
+"fr": "Deluxe",
+"ht": "Liks"
+},
+"Limitada": {
+"fr": "Limitée",
+"ht": "Limite"
+},
+"Español": {
+"fr": "Espagnol",
+"ht": "Panyòl"
+},
+"Inglés": {
+"fr": "Anglais",
+"ht": "Anglè"
+},
+"Portugués": {
+"fr": "Portugais",
+"ht": "Pòtigè"
+},
+"Francés": {
+"fr": "Français",
+"ht": "Franse"
+},
+"Alemán": {
+"fr": "Allemand",
+"ht": "Alman"
+},
+"Italiano": {
+"fr": "Italien",
+"ht": "Italyen"
+},
+"Chino": {
+"fr": "Chinois",
+"ht": "Chinwa"
+},
+"Japonés": {
+"fr": "Japonais",
+"ht": "Japonè"
+},
+"Bilingüe español-inglés": {
+"fr": "Bilingue espagnol-anglais",
+"ht": "Bileng panyòl-anglè"
+},
+"Multilingüe": {
+"fr": "Multilingue",
+"ht": "Plizyè lang"
+},
+"Óleo": {
+"fr": "Huile",
+"ht": "Lwil"
+},
+"Acuarela": {
+"fr": "Aquarelle",
+"ht": "Akwarèl"
+},
+"Carboncillo": {
+"fr": "Fusain",
+"ht": "Chabon"
+},
+"Lápiz": {
+"fr": "Crayon",
+"ht": "Kreyon"
+},
+"Tinta": {
+"fr": "Encre",
+"ht": "Lank"
+},
+"Técnica mixta": {
+"fr": "Techniques mixtes",
+"ht": "Teknik melanje"
+},
+"Fotografía": {
+"fr": "Photographie",
+"ht": "Fotografi"
+},
+"Carta": {
+"fr": "Lettre",
+"ht": "Lèt"
+},
+"Oficio / legal": {
+"fr": "Légal",
+"ht": "Legal"
+},
+"A4": {
+"fr": "A4",
+"ht": "A4"
+},
+"A5": {
+"fr": "A5",
+"ht": "A5"
+},
+"A3": {
+"fr": "A3",
+"ht": "A3"
+},
+"Tabloide": {
+"fr": "Tabloïd",
+"ht": "Tabloyid"
+},
+"4 × 6 in (foto)": {
+"fr": "4 × 6 po (photo)",
+"ht": "4 × 6 pous (foto)"
+},
+"Rayado universitario": {
+"fr": "Lignes étroites",
+"ht": "Liy etwat"
+},
+"Rayado ancho": {
+"fr": "Lignes larges",
+"ht": "Liy laj"
+},
+"Cuadriculado": {
+"fr": "Quadrillé",
+"ht": "Kadriye"
+},
+"Punteado": {
+"fr": "Pointillé",
+"ht": "Pwen"
+},
+"Sin rayas": {
+"fr": "Uni",
+"ht": "Blan"
+},
+"Encaje (0)": {
+"fr": "Dentelle (0)",
+"ht": "Dantèl (0)"
+},
+"Superfino (1)": {
+"fr": "Très fin (1)",
+"ht": "Trè fen (1)"
+},
+"Fino (2)": {
+"fr": "Fin (2)",
+"ht": "Fen (2)"
+},
+"Ligero (3)": {
+"fr": "Léger (3)",
+"ht": "Lejè (3)"
+},
+"Medio (4)": {
+"fr": "Moyen (4)",
+"ht": "Mwayen (4)"
+},
+"Grueso (5)": {
+"fr": "Épais (5)",
+"ht": "Epè (5)"
+},
+"Muy grueso (6)": {
+"fr": "Très épais (6)",
+"ht": "Trè epè (6)"
+},
+"Jumbo (7)": {
+"fr": "Jumbo (7)",
+"ht": "Jumbo (7)"
+},
+"Sin certificar": {
+"fr": "Non gradé",
+"ht": "Pa klase"
+},
+"PSA": {
+"fr": "PSA",
+"ht": "PSA"
+},
+"BGS (Beckett)": {
+"fr": "BGS (Beckett)",
+"ht": "BGS (Beckett)"
+},
+"CGC": {
+"fr": "CGC",
+"ht": "CGC"
+},
+"SGC": {
+"fr": "SGC",
+"ht": "SGC"
+},
+"Rígida": {
+"fr": "Coque rigide",
+"ht": "Kokiy di"
+},
+"Blanda": {
+"fr": "Coque souple",
+"ht": "Kokiy mou"
+},
+"Híbrida": {
+"fr": "Hybride",
+"ht": "Ibrid"
+},
+"Diestro": {
+"fr": "Droitier",
+"ht": "Dwatye"
+},
+"Zurdo": {
+"fr": "Gaucher",
+"ht": "Goche"
+},
+"Ambidiestro": {
+"fr": "Ambidextre",
+"ht": "Ambidèks"
+},
+"Voleibol": {
+"fr": "Volley-ball",
+"ht": "Volebòl"
+},
+"Fitness / gimnasio": {
+"fr": "Fitness",
+"ht": "Egzèsis"
+},
+"Yoga": {
+"fr": "Yoga",
+"ht": "Yoga"
+},
+"Golf": {
+"fr": "Golf",
+"ht": "Gòlf"
+},
+"Boxeo": {
+"fr": "Boxe",
+"ht": "Bòks"
+},
+"Senderismo": {
+"fr": "Randonnée",
+"ht": "Randone"
+},
+"CE": {
+"fr": "CE",
+"ht": "CE"
+},
+"UL": {
+"fr": "UL",
+"ht": "UL"
+},
+"ETL": {
+"fr": "ETL",
+"ht": "ETL"
+},
+"FCC": {
+"fr": "FCC",
+"ht": "FCC"
+},
+"ASTM F963": {
+"fr": "ASTM F963",
+"ht": "ASTM F963"
+},
+"EN 71": {
+"fr": "EN 71",
+"ht": "EN 71"
+},
+"CPSIA": {
+"fr": "CPSIA",
+"ht": "CPSIA"
+},
+"ISO": {
+"fr": "ISO",
+"ht": "ISO"
+},
+"NOM": {
+"fr": "NOM",
+"ht": "NOM"
+},
+"Universal": {
+"fr": "Universel",
+"ht": "Inivèsèl"
+},
+"Delantero": {
+"fr": "Avant",
+"ht": "Devan"
+},
+"Trasero": {
+"fr": "Arrière",
+"ht": "Dèyè"
+},
+"Izquierdo (conductor)": {
+"fr": "Gauche (conducteur)",
+"ht": "Goch (chofè)"
+},
+"Derecho (pasajero)": {
+"fr": "Droite (passager)",
+"ht": "Dwat (pasaje)"
+},
+"Q (160 km/h)": {
+"fr": "Q (160 km/h)",
+"ht": "Q (160 km/h)"
+},
+"R (170 km/h)": {
+"fr": "R (170 km/h)",
+"ht": "R (170 km/h)"
+},
+"S (180 km/h)": {
+"fr": "S (180 km/h)",
+"ht": "S (180 km/h)"
+},
+"T (190 km/h)": {
+"fr": "T (190 km/h)",
+"ht": "T (190 km/h)"
+},
+"H (210 km/h)": {
+"fr": "H (210 km/h)",
+"ht": "H (210 km/h)"
+},
+"V (240 km/h)": {
+"fr": "V (240 km/h)",
+"ht": "V (240 km/h)"
+},
+"W (270 km/h)": {
+"fr": "W (270 km/h)",
+"ht": "W (270 km/h)"
+},
+"Y (300 km/h)": {
+"fr": "Y (300 km/h)",
+"ht": "Y (300 km/h)"
+},
+"ZR (más de 240 km/h)": {
+"fr": "ZR (plus de 240 km/h)",
+"ht": "ZR (plis pase 240 km/h)"
+}
+}

@@ -24,7 +24,8 @@ interface Contact {
 }
 
 const RESEND_URL = 'https://api.resend.com/emails';
-const loc = (v: unknown): Locale => (v === 'en' ? 'en' : 'es');
+/** E-mail texts exist in Spanish and English; French and Haitian Creole readers get the English version. */
+const loc = (v: unknown): Locale => (v === 'en' || v === 'fr' || v === 'ht' ? 'en' : 'es');
 /** Picks the Spanish or English variant. */
 const tr = (l: Locale) => (es: string, en: string) => (l === 'en' ? en : es);
 

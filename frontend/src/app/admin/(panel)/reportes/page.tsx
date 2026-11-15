@@ -20,6 +20,7 @@ export default function ReportsAdminPage() {
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [category, setCategory] = useState('');
+  const [platform, setPlatform] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sel, setSel] = useState<string | null>(null);
@@ -28,7 +29,9 @@ export default function ReportsAdminPage() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const cats = useQuery({ queryKey: ['support-catalogs'], queryFn: () => get('/support/catalogs'), staleTime: Infinity });
-  const list = useQuery({ queryKey: ['tickets', status, priority, category, search, page], queryFn: () => get(`/support/admin/tickets?status=${status}&priority=${priority}&category=${category}&search=${encodeURIComponent(search)}&page=${page}`), refetchInterval: 30_000 });
+  const list = useQuery({ queryKey: ['tickets', status, priority, category, platform, search, page], queryFn: () => get(`/support/admin/tickets?status=${status}&priority=${priority}&category=${category}&platform=${platform}&search=${encodeURIComponent(search)}&page=${page}`), refetchInterval: 30_000 });
+  // Deep link from the bell (/admin/reportes?ticket=…).
+  useEffect(() => { const id = new URLSearchParams(window.location.search).get('ticket'); if (id && /^[0-9a-f-]{36}$/i.test(id)) setSel(id); }, []);
   useEffect(() => { if (!sel && list.data?.items[0]) setSel(list.data.items[0].id); }, [list.data, sel]);
   const tk = useQuery({ queryKey: ['ticket', sel], queryFn: () => get(`/support/admin/tickets/${sel}`), enabled: !!sel });
   const c = list.data?.counts;
@@ -54,7 +57,8 @@ export default function ReportsAdminPage() {
           <div className="flex flex-wrap gap-3 p-4">
             <Input icon={<Search />} placeholder={t('Buscar por ID, asunto o usuario...')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-xs" />
             <Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-40"><option value="">{t('Prioridad: Todas')}</option><option value="CRITICAL">{t('Crítica')}</option><option value="HIGH">{t('Alta')}</option><option value="NORMAL">{t('Media')}</option><option value="LOW">{t('Baja')}</option></Select>
-            <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-48"><option value="">{t('Tipo: Todos')}</option>{cats.data?.categories.map((x: any) => <option key={x.code} value={x.code}>{x.name}</option>)}</Select>
+            <Select value={platform} onChange={(e) => { setPlatform(e.target.value); setPage(1); }} className="w-44" data-platform-filter><option value="">{t('Plataforma: Todas')}</option><option value="WEB">{t('Computadora')}</option><option value="MOBILE">{t('Celular o tablet')}</option><option value="OTHER">{t('Otro')}</option></Select>
+            <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-48"><option value="">{t('Tipo: Todos')}</option>{cats.data?.categories.map((x: any) => <option key={x.code} value={x.code}>{t(x.name)}</option>)}</Select>
           </div>
           {list.isLoading ? <div className="grid place-items-center py-10"><Spinner /></div> : !list.data?.items.length ? <Empty title={t('No hay reportes')} /> : (
             <div className="overflow-x-auto">
@@ -64,7 +68,7 @@ export default function ReportsAdminPage() {
                   const [pl, pt] = PRIORITY[r.priority] ?? [r.priority, 'gray'];
                   return (
                     <tr key={r.id} onClick={() => setSel(r.id)} className={cn('cursor-pointer hover:bg-surface/70', sel === r.id && 'bg-brand-50/70')}>
-                      <td className="px-5 py-3 font-bold">{r.code}</td><td><b className="line-clamp-1">{r.subject}</b><span className="text-xs text-muted">{r.category}</span></td>
+                      <td className="px-5 py-3 font-bold">{r.code}</td><td><b className="line-clamp-1">{r.subject}</b><span className="text-xs text-muted">{t(r.category)}</span></td>
                       <td><b>{r.requester}</b><span className="block text-xs text-muted">{r.requesterType}</span></td><td><Badge tone={pt}>{pl}</Badge></td>
                       <td><StatusBadge status={r.status} label={t(r.statusLabel)} /></td><td className="text-muted">{r.assignee ?? t('Sin asignar')}</td><td className="text-muted">{relative(r.updatedAt)}</td>
                     </tr>
@@ -81,12 +85,14 @@ export default function ReportsAdminPage() {
               <div className="border-b border-line p-5">
                 <div className="flex items-center justify-between"><p className="text-sm font-bold text-brand-700">{t('REPORTE #')}{d.code}</p><StatusBadge status={d.status} label={d.statusLabel} /></div>
                 <p className="mt-1 text-xl font-extrabold">{d.subject}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs"><Badge tone={(PRIORITY[d.priority] ?? ['', 'gray'])[1]}>{t('Prioridad')}{' '}{(PRIORITY[d.priority] ?? [d.priority])[0].toLowerCase()}</Badge><Badge>{d.category}</Badge><span className="text-muted">{fmtDateTime(d.createdAt)}</span></div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs"><Badge tone={(PRIORITY[d.priority] ?? ['', 'gray'])[1]}>{t('Prioridad')}{' '}{(PRIORITY[d.priority] ?? [d.priority])[0].toLowerCase()}</Badge><Badge>{t(d.category)}</Badge>{d.platform && <Badge data-ticket-platform={d.platform}>{t(({ WEB: 'Computadora', MOBILE: 'Celular o tablet', OTHER: 'Otro' } as Record<string, string>)[d.platform] ?? d.platform)}</Badge>}<span className="text-muted">{fmtDateTime(d.createdAt)}</span></div>
               </div>
               <div className="border-b border-line p-5 text-sm">
                 <p className="font-bold">{t('Reportado por')}</p>
                 <div className="mt-2 flex items-center gap-3"><Avatar name={d.requester.name} /><span className="flex-1"><b>{d.requester.name}</b><span className="block text-xs text-muted">{d.requester.email} · {d.requester.type}</span></span>{d.requester.verified && <span className="text-xs text-muted">{t('Correo verificado')}</span>}</div>
                 {d.orderNumber && <p className="mt-2 text-xs">{t('Pedido relacionado:')}{' '}<b>{d.orderNumber}</b></p>}
+                {d.reportedUrl && <p className="mt-1 break-all text-xs">{t('Página afectada:')}{' '}<a href={d.reportedUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-brand-700 underline">{d.reportedUrl}</a></p>}
+                {d.client && <p className="mt-1 break-all text-xs text-muted" title={d.client}>{t('Navegador / dispositivo:')}{' '}{d.client.slice(0, 120)}</p>}
                 {d.sla?.firstResponseDueAt && <p className="mt-1 text-xs text-muted">{t('Primera respuesta antes de:')}{' '}{fmtDateTime(d.sla.firstResponseDueAt)}</p>}
               </div>
               <div className="max-h-72 space-y-2 overflow-y-auto border-b border-line p-5 scrollbar-thin">

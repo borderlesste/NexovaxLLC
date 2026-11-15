@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, AlertCircle, BookOpen, Check, CheckCircle2, ClipboardList, Clock, CreditCard, ExternalLink, Headphones, Layers, Link2, Mail, Monitor, MoreHorizontal, Package, Pencil, Search, Send, Smartphone, Store, User, MessageSquare } from 'lucide-react';
+import { Activity, AlertCircle, AlertTriangle, BookOpen, Check, CheckCircle2, ClipboardList, Clock, CreditCard, ExternalLink, Headphones, Layers, Link2, Mail, Monitor, MoreHorizontal, Package, Pencil, Search, Send, Smartphone, Store, User, MessageSquare, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post, upload } from '@/lib/api';
 import { FilePicker, formWith } from '@/components/attachments/attachments';
@@ -13,7 +13,7 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
-import { t } from '@/lib/i18n';
+import { getIntlLocale, t } from '@/lib/i18n';
 
 const DRAFT_KEY = 'rd-report-draft';
 
@@ -21,7 +21,7 @@ function ReportForm() {
   const sp = useSearchParams();
   const { me, session } = useAuth();
   const catalogs = useQuery({ queryKey: ['support-catalogs'], queryFn: () => get('/support/catalogs'), staleTime: Infinity });
-  const health = useQuery({ queryKey: ['health'], queryFn: () => get('/health'), refetchInterval: 60_000 });
+  const health = useQuery({ queryKey: ['health-services'], queryFn: () => get('/health/services'), refetchInterval: 60_000 });
   const [f, setF] = useState({ categoryCode: sp.get('tipo') ?? '', priority: 'NORMAL', subject: '', description: '', url: '', orderNumber: sp.get('pedido') ?? '', storeName: '', platform: 'WEB' });
   const [accept, setAccept] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -30,10 +30,20 @@ function ReportForm() {
   const [trackCode, setTrackCode] = useState('');
   const [track, setTrack] = useState<any>(null);
   useEffect(() => {
+    let draft = false;
     try {
       const d = localStorage.getItem(DRAFT_KEY);
-      if (d) setF((x) => ({ ...x, ...JSON.parse(d) }));
+      if (d) { setF((x) => ({ ...x, ...JSON.parse(d) })); draft = true; }
     } catch {}
+    if (draft) return;
+    // Sensible defaults the user can change: the device in use and the page they came from.
+    const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+    let from = '';
+    try {
+      const r = document.referrer ? new URL(document.referrer) : null;
+      if (r && r.origin === window.location.origin && !r.pathname.startsWith('/ayuda/reportar') && !r.pathname.startsWith('/auth/')) from = r.href;
+    } catch {}
+    setF((x) => ({ ...x, platform: mobile ? 'MOBILE' : 'WEB', url: x.url || from }));
   }, []);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
   const submit = async () => {
@@ -60,8 +70,19 @@ function ReportForm() {
       toast.error(errorMessage(e));
     }
   };
-  const services = [[Monitor, t('Sitio web')], [CreditCard, t('Pagos')], [MessageSquare, t('Mensajería')], [Layers, t('Catálogo')]];
-  const up = health.data?.status === 'ok';
+  const services: [string, any, string][] = [['WEB', Monitor, t('Sitio web')], ['PAYMENTS', CreditCard, t('Pagos')], ['MESSAGING', MessageSquare, t('Mensajería')], ['CATALOG', Layers, t('Catálogo')]];
+  const stateOf = (code: string): string => (health.isError ? 'DOWN' : health.data?.services?.find((x: any) => x.code === code)?.status ?? 'CHECKING');
+  const STATE: Record<string, [string, string, any]> = {
+    OPERATIONAL: [t('Operativo'), 'bg-emerald-50 text-emerald-700', Check],
+    DEGRADED: [t('Funcionamiento parcial'), 'bg-amber-50 text-amber-700', AlertTriangle],
+    DOWN: [t('Sin servicio'), 'bg-red-50 text-red-700', XCircle],
+    CHECKING: [t('Verificando'), 'bg-surface text-muted', Clock],
+  };
+  const respTime = (code: string) => {
+    const s = catalogs.data?.priorities?.find((p: any) => p.code === code)?.first_response_seconds;
+    if (!s) return null;
+    return s < 3600 ? t('{n} min', { n: Math.round(s / 60) }) : t('{n} h', { n: Math.round(s / 3600) });
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-5 lg:px-8">
@@ -87,20 +108,20 @@ function ReportForm() {
           ) : (
             <>
               <div className="flex items-start gap-3"><ClipboardList className="size-8 text-brand-600" /><div><h2 className="text-xl font-bold">{t('Completa el formulario')}</h2><p className="text-sm text-muted">{t('Bríndanos la mayor cantidad de detalles posible para poder ayudarte de forma más rápida y efectiva.')}</p></div></div>
-              {!session && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('Para enviar un reporte necesitas una cuenta.')}{' '}<Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold underline">{t('Inicia sesión')}</Link> o <Link href="/auth/registrarse" className="font-semibold underline">{t('regístrate')}</Link>.</p>}
+              {!session && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('Para enviar un reporte necesitas una cuenta.')}{' '}<Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold underline">{t('Inicia sesión')}</Link> {t('o')} <Link href="/auth/registrarse" className="font-semibold underline">{t('regístrate')}</Link>.</p>}
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <Field label={t('Nombre completo')} required><Input icon={<User />} value={me?.displayName ?? ''} disabled placeholder={t('Ej. Juan Pérez')} /></Field>
                 <Field label={t('Correo electrónico')} required><Input icon={<Mail />} value={me?.email ?? ''} disabled placeholder={t('Ej. juan.perez@email.com')} /></Field>
                 <Field label={t('Tipo de problema')} required>
                   <Select value={f.categoryCode} onChange={(e) => set('categoryCode', e.target.value)}>
                     <option value="">{t('Selecciona un tipo de problema')}</option>
-                    {catalogs.data?.categories.map((c: any) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                    {catalogs.data?.categories.map((c: any) => <option key={c.code} value={c.code}>{t(c.name)}</option>)}
                   </Select>
                 </Field>
-                <Field label={t('Prioridad')} required>
+                <Field label={t('Prioridad')} required hint={respTime(f.priority) ? t('Primera respuesta en menos de {a}', { a: respTime(f.priority)! }) : undefined}>
                   <div className="grid grid-cols-3 gap-2">
                     {[['NORMAL', t('Normal')], ['HIGH', t('Alta')], ['CRITICAL', t('Crítica')]].map(([v, l]) => (
-                      <button key={v} type="button" onClick={() => set('priority', v)} className={cn('flex h-10 items-center justify-center gap-2 rounded-lg border text-sm font-semibold', f.priority === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-line')}>
+                      <button key={v} type="button" aria-pressed={f.priority === v} data-priority={v} onClick={() => set('priority', v)} className={cn('flex h-10 items-center justify-center gap-2 rounded-lg border text-sm font-semibold', f.priority === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-line')}>
                         <span className={cn('size-3.5 rounded-full border-2', f.priority === v ? 'border-brand-600 bg-brand-600 ring-2 ring-inset ring-white' : 'border-gray-300')} /> {l}
                       </button>
                     ))}
@@ -119,8 +140,8 @@ function ReportForm() {
                 <Field label={t('Nombre de la tienda o vendedor')} hint={t('(opcional)')}><Input rule="businessName" icon={<Store />} value={f.storeName} onChange={(e) => set('storeName', e.target.value)} placeholder={t('Ej. Urban Style Co.')} /></Field>
                 <Field label={t('Plataforma desde donde ocurre el problema')} required>
                   <div className="grid grid-cols-3 gap-2">
-                    {[['WEB', t('Plataforma web'), Monitor], ['MOBILE', t('App móvil'), Smartphone], ['OTHER', t('Otro'), MoreHorizontal]].map(([v, l, I]: any) => (
-                      <button key={v} type="button" onClick={() => set('platform', v)} className={cn('flex h-10 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold', f.platform === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-line')}><I className="size-4" /> {l}</button>
+                    {[['WEB', t('Computadora'), Monitor], ['MOBILE', t('Celular o tablet'), Smartphone], ['OTHER', t('Otro'), MoreHorizontal]].map(([v, l, I]: any) => (
+                      <button key={v} type="button" aria-pressed={f.platform === v} data-platform={v} onClick={() => set('platform', v)} className={cn('flex h-10 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold', f.platform === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-line')}><I className="size-4" /> {l}</button>
                     ))}
                   </div>
                 </Field>
@@ -140,15 +161,20 @@ function ReportForm() {
           <div className="card p-5">
             <div className="flex items-start gap-3"><Activity className="size-7 text-brand-600" /><div><p className="text-lg font-bold">{t('Estado de la plataforma')}</p><p className="text-sm text-muted">{t('Revisa el estado actual de los principales servicios del marketplace.')}</p></div></div>
             <ul className="mt-3 divide-y divide-line">
-              {services.map(([I, n]: any) => (
-                <li key={n} className="flex items-center justify-between py-2.5 text-sm"><span className="flex items-center gap-3 font-semibold"><I className="size-5 text-muted" /> {n}</span><span className={cn('flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', up ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}><Check className="size-3" /> {up ? t('Operativo') : t('Verificando')}</span></li>
-              ))}
+              {services.map(([code, I, n]) => {
+                const [label, tone, SI] = STATE[stateOf(code)];
+                return (
+                  <li key={code} className="flex items-center justify-between py-2.5 text-sm" data-service={code} data-service-status={stateOf(code)}><span className="flex items-center gap-3 font-semibold"><I className="size-5 text-muted" /> {n}</span><span className={cn('flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', tone)}><SI className="size-3" /> {label}</span></li>
+                );
+              })}
             </ul>
+            {health.data?.checkedAt && <p className="mt-2 text-xs text-muted">{t('Comprobado a las {a}. Se actualiza cada minuto.', { a: new Date(health.data.checkedAt).toLocaleTimeString(getIntlLocale(), { hour: '2-digit', minute: '2-digit' }) })}</p>}
+            {stateOf('WEB') !== 'CHECKING' && services.some(([c]) => stateOf(c) !== 'OPERATIONAL') && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{t('Ya estamos al tanto de la falla. Si te afecta, envía el reporte igualmente para avisarte cuando se resuelva.')}</p>}
           </div>
           <div className="card p-5">
             <p className="text-lg font-bold">{t('¿Qué puedes reportar?')}</p>
             <ul className="mt-3 space-y-1.5 text-sm">
-              {(catalogs.data?.categories ?? []).slice(0, 6).map((c: any) => <li key={c.code} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" /><span><b>{c.name}:</b> {c.description}</span></li>)}
+              {(catalogs.data?.categories ?? []).slice(0, 6).map((c: any) => <li key={c.code} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" /><span><b>{t(c.name)}:</b> {t(c.description ?? '')}</span></li>)}
             </ul>
           </div>
           <div className="card p-5">
@@ -158,7 +184,7 @@ function ReportForm() {
             ) : (
               <p className="mt-3 text-sm text-muted">{t('Inicia sesión con la cuenta que envió el reporte para consultar su estado.')} <Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold text-brand-700 hover:underline">{t('Iniciar sesión')}</Link></p>
             )}
-            {track && <div className="mt-3 flex items-center justify-between rounded-lg bg-surface px-3 py-2 text-sm"><span><b>{track.code}</b> · {track.category}</span><StatusBadge status={track.status} label={track.statusLabel} /></div>}
+            {track && <div className="mt-3 flex items-center justify-between rounded-lg bg-surface px-3 py-2 text-sm"><span><b>{track.code}</b> · {t(track.category)}</span><StatusBadge status={track.status} label={track.statusLabel} /></div>}
           </div>
           <div className="rounded-[14px] bg-brand-50 p-5">
             <div className="flex items-start gap-3"><Headphones className="size-7 text-brand-600" /><div><p className="text-lg font-bold">{t('¿Necesitas más ayuda?')}</p><p className="text-sm text-muted">{t('También puedes consultar nuestra documentación o conocer los tiempos de atención.')}</p></div></div>

@@ -66,6 +66,12 @@ export class PaypalService {
     );
   }
 
+  /** OAuth round-trip used by the status page (no money moves). */
+  async ping() {
+    this.token = undefined;
+    await this.accessToken();
+  }
+
   getOrder(id: string) {
     return this.call<any>('GET', `/v2/checkout/orders/${encodeURIComponent(id)}`);
   }

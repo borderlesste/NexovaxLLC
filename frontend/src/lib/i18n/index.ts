@@ -1,5 +1,5 @@
 'use client';
-import { intlLocale, isLocale, Locale, LOCALE_COOKIE, translate } from './core';
+import { hasTranslation, intlLocale, isLocale, Locale, LOCALE_COOKIE, paypalLocale, stripeLocale, translate } from './core';
 
 export type { Locale } from './core';
 export { LOCALES, isLocale } from './core';
@@ -20,6 +20,10 @@ export function configureI18n(locale: Locale, defaultCurrency: string) {
 export const getLocale = () => current;
 export const getCurrency = () => currency;
 export const getIntlLocale = () => intlLocale(current);
+export const getStripeLocale = () => stripeLocale(current);
+export const getPaypalLocale = () => paypalLocale(current);
+/** True when the current language has its own translation of this Spanish text. */
+export const isTranslated = (es: string) => hasTranslation(current, es);
 
 /** Translates a Spanish UI string to the current language. */
 export function t(es: string, vars?: Record<string, string | number | null | undefined>) {
@@ -41,7 +45,7 @@ export async function switchLocale(next: Locale, persist?: (l: Locale) => Promis
 export function countryName(code?: string | null) {
   if (!code) return '';
   try {
-    return new Intl.DisplayNames([current], { type: 'region' }).of(code) ?? code;
+    return new Intl.DisplayNames([intlLocale(current)], { type: 'region' }).of(code) ?? code;
   } catch {
     return code;
   }

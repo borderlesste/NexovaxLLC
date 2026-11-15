@@ -98,13 +98,15 @@ export class MessagingService {
       ).catch(() => this.db.many(`select owner_user_id as user_id from public.sellers where id = $1`, [c.seller_id]));
       for (const t of team)
         if (t.user_id !== senderId) {
-          const en = (await this.locale(t.user_id)) === 'en';
-          await this.notifications.message(t.user_id, conversationId, en ? `New message from ${c.sender}` : `Nuevo mensaje de ${c.sender}`, preview, `${config.webUrl}/vendedor/mensajes?c=${conversationId}`);
+          const l = await this.locale(t.user_id);
+          const title = ({ en: `New message from ${c.sender}`, fr: `Nouveau message de ${c.sender}`, ht: `Nouvo mesaj nan men ${c.sender}` } as Record<string, string>)[l] ?? `Nuevo mensaje de ${c.sender}`;
+          await this.notifications.message(t.user_id, conversationId, title, preview, `${config.webUrl}/vendedor/mensajes?c=${conversationId}`);
         }
     } else {
-      const en = (await this.locale(c.requester_user_id)) === 'en';
-      const store = c.store ?? (en ? 'The store' : 'La tienda');
-      await this.notifications.message(c.requester_user_id, conversationId, en ? `${store} replied to you` : `${store} te respondió`, preview, `${config.webUrl}/cuenta/mensajes?c=${conversationId}`);
+      const l = await this.locale(c.requester_user_id);
+      const store = c.store ?? (({ en: 'The store', fr: 'La boutique', ht: 'Boutik la' } as Record<string, string>)[l] ?? 'La tienda');
+      const title = ({ en: `${store} replied to you`, fr: `${store} vous a répondu`, ht: `${store} reponn ou` } as Record<string, string>)[l] ?? `${store} te respondió`;
+      await this.notifications.message(c.requester_user_id, conversationId, title, preview, `${config.webUrl}/cuenta/mensajes?c=${conversationId}`);
     }
   }
 

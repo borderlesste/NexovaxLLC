@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, HttpException } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
+import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
@@ -298,6 +299,68 @@ const NOUNS: Record<string, string> = {
   Tienda: 'Store', Variante: 'Variant', Vendedor: 'Seller',
 };
 
+export type ApiLocale = 'es' | 'en' | 'fr' | 'ht';
+
+/** Same sentence shapes as translateMessage, for French (fr) and Haitian Creole (ht). */
+function translateFrHt(msg: string, l: 'fr' | 'ht'): string {
+  const dict = l === 'fr' ? FR : HT;
+  if (dict[msg]) return dict[msg];
+  const fr = l === 'fr';
+  const NOUN_FR: Record<string, string> = { Archivo: 'Fichier', Categoría: 'Catégorie', Conversación: 'Conversation', Cuenta: 'Compte', Dirección: 'Adresse', Envío: 'Envoi', Imagen: 'Image', Pago: 'Paiement', Pedido: 'Commande', Producto: 'Produit', Reporte: 'Signalement', Tienda: 'Boutique', Variante: 'Variante', Vendedor: 'Vendeur', Usuario: 'Utilisateur', Incidencia: 'Incident' };
+  const NOUN_HT: Record<string, string> = { Archivo: 'Fichye', Categoría: 'Kategori', Conversación: 'Konvèsasyon', Cuenta: 'Kont', Dirección: 'Adrès', Envío: 'Livrezon', Imagen: 'Imaj', Pago: 'Peman', Pedido: 'Kòmand', Producto: 'Pwodwi', Reporte: 'Rapò', Tienda: 'Boutik', Variante: 'Varyant', Vendedor: 'Machann', Usuario: 'Itilizatè', Incidencia: 'Ensidan' };
+  let m = /^(.+) no encontrado\.$/.exec(msg);
+  if (m) return fr ? `${NOUN_FR[m[1]] ?? m[1]} introuvable.` : `Nou pa jwenn ${(NOUN_HT[m[1]] ?? m[1]).toLowerCase()} an.`;
+  m = /^(.+): (debe ser un número|elige Sí o No|elige una opción de la lista|el valor no es válido|es obligatorio)\.$/.exec(msg);
+  if (m) {
+    const F: Record<string, [string, string]> = { 'debe ser un número': ['doit être un nombre', 'dwe yon nonb'], 'elige Sí o No': ['choisissez Oui ou Non', 'chwazi Wi oswa Non'], 'elige una opción de la lista': ['choisissez une option dans la liste', 'chwazi yon opsyon nan lis la'], 'el valor no es válido': ['la valeur n’est pas valable', 'valè a pa valab'], 'es obligatorio': ['est obligatoire', 'obligatwa'] };
+    return `${m[1]} : ${F[m[2]][fr ? 0 : 1]}.`.replace(' :', fr ? ' :' : ':');
+  }
+  m = /^Debe tener al menos (\d+) caracteres\.$/.exec(msg);
+  if (m) return fr ? `Doit contenir au moins ${m[1]} caractères.` : `Dwe gen omwen ${m[1]} karaktè.`;
+  m = /^Admite máximo (\d+) caracteres\.$/.exec(msg);
+  if (m) return fr ? `${m[1]} caractères maximum.` : `${m[1]} karaktè maksimòm.`;
+  m = /^El monto mínimo es ([\d.]+)\.$/.exec(msg);
+  if (m) return fr ? `Le montant minimum est ${m[1]}.` : `Montan minimòm lan se ${m[1]}.`;
+  m = /^El monto máximo es ([\d.]+)\.$/.exec(msg);
+  if (m) return fr ? `Le montant maximum est ${m[1]}.` : `Montan maksimòm lan se ${m[1]}.`;
+  m = /^(El peso|El largo|El ancho|El alto|La medida) (debe ser un número|debe ser mayor que 0|supera el máximo permitido \((\d+)\))\.$/.exec(msg);
+  if (m) {
+    const W: Record<string, [string, string]> = { 'El peso': ['Le poids', 'Pwa a'], 'El largo': ['La longueur', 'Longè a'], 'El ancho': ['La largeur', 'Lajè a'], 'El alto': ['La hauteur', 'Wotè a'], 'La medida': ['La mesure', 'Mezi a'] };
+    const what = W[m[1]][fr ? 0 : 1];
+    if (m[2].startsWith('debe ser un')) return fr ? `${what} doit être un nombre.` : `${what} dwe yon nonb.`;
+    if (m[2].startsWith('debe ser mayor')) return fr ? `${what} doit être supérieur(e) à 0.` : `${what} dwe pi gran pase 0.`;
+    return fr ? `${what} dépasse le maximum autorisé (${m[3]}).` : `${what} depase maksimòm ki otorize a (${m[3]}).`;
+  }
+  m = /^Tu rol \((.+)\) no permite esta acción\. Requiere: (.+)\.$/.exec(msg);
+  if (m) {
+    const R: Record<string, [string, string]> = { Cliente: ['Client', 'Kliyan'], Vendedor: ['Vendeur', 'Machann'], Soporte: ['Support', 'Sipò'], Moderador: ['Modérateur', 'Moderatè'], Administrador: ['Administrateur', 'Administratè'], 'Super administrador': ['Super administrateur', 'Super administratè'] };
+    const tr = (x: string) => x.split(/(, | o )/).map((p) => (p === ' o ' ? (fr ? ' ou ' : ' oswa ') : R[p]?.[fr ? 0 : 1] ?? p)).join('');
+    return fr ? `Votre rôle (${tr(m[1])}) ne permet pas cette action. Requis : ${tr(m[2])}.` : `Wòl ou (${tr(m[1])}) pa pèmèt aksyon sa a. Li mande: ${tr(m[2])}.`;
+  }
+  m = /^El cupón requiere una compra mínima de ([\d.]+) en esa tienda\.$/.exec(msg);
+  if (m) return fr ? `Le coupon exige un achat minimum de ${m[1]} dans cette boutique.` : `Koupon an mande yon acha minimòm ${m[1]} nan boutik sa a.`;
+  m = /^([A-Z0-9][A-Z0-9_-]{2,23}): (.+)$/.exec(msg);
+  if (m) return `${m[1]}: ${translateFrHt(m[2].charAt(0).toUpperCase() + m[2].slice(1), l)}`;
+  const P: [RegExp, string, string][] = [
+    [/^No se pudo subir la imagen: (.*)$/, 'L’image n’a pas pu être importée : ', 'Nou pa t ka monte imaj la: '],
+    [/^No se pudo crear la cuenta: (.*)$/, 'Le compte n’a pas pu être créé : ', 'Nou pa t ka kreye kont lan: '],
+    [/^No se pudo completar el pago: (.*)$/, 'Le paiement n’a pas pu être finalisé : ', 'Peman an pa t ka fini: '],
+    [/^Shippo no pudo generar la etiqueta: (.*)$/, 'Shippo n’a pas pu créer l’étiquette : ', 'Shippo pa t ka kreye etikèt la: '],
+  ];
+  for (const [re, f, h] of P) {
+    const x = re.exec(msg);
+    if (x) return `${fr ? f : h}${x[1]}`;
+  }
+  return msg;
+}
+
+/** API message in the requested language (Spanish is the source). */
+export function localizeMessage(msg: string, l: ApiLocale): string {
+  if (l === 'en') return translateMessage(msg);
+  if (l === 'fr' || l === 'ht') return translateFrHt(msg, l);
+  return msg;
+}
+
 export function translateMessage(msg: string): string {
   if (EN[msg]) return EN[msg];
   let m = /^(.+) no encontrado\.$/.exec(msg);
@@ -338,10 +401,11 @@ export function translateMessage(msg: string): string {
   return msg;
 }
 
-export function requestLocale(req: any): 'es' | 'en' {
+export function requestLocale(req: any): ApiLocale {
   const h = (req?.headers?.['x-locale'] ?? '') as string;
-  if (h === 'en' || h === 'es') return h;
-  return /^en\b/i.test(String(req?.headers?.['accept-language'] ?? '')) ? 'en' : 'es';
+  if (h === 'en' || h === 'es' || h === 'fr' || h === 'ht') return h;
+  const al = String(req?.headers?.['accept-language'] ?? '');
+  return /^ht\b/i.test(al) ? 'ht' : /^fr\b/i.test(al) ? 'fr' : /^en\b/i.test(al) ? 'en' : 'es';
 }
 
 /** Translates error messages to English when the client asked for English (x-locale / Accept-Language). */
@@ -349,12 +413,13 @@ export function requestLocale(req: any): 'es' | 'en' {
 export class LocalizedExceptionFilter extends BaseExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
     const req = host.switchToHttp().getRequest();
-    if (requestLocale(req) === 'en') {
+    const l = requestLocale(req);
+    if (l !== 'es') {
       const body: any = exception.getResponse();
       if (body && typeof body === 'object' && typeof body.message === 'string') {
-        const translated = { ...body, message: translateMessage(body.message) };
+        const translated = { ...body, message: localizeMessage(body.message, l) };
         if (Array.isArray(body.details))
-          translated.details = body.details.map((d: any) => (d && Array.isArray(d.errors) ? { ...d, errors: d.errors.map((e: string) => translateMessage(e)) } : d));
+          translated.details = body.details.map((d: any) => (d && Array.isArray(d.errors) ? { ...d, errors: d.errors.map((e: string) => localizeMessage(e, l)) } : d));
         const res = host.switchToHttp().getResponse();
         return res.status(exception.getStatus()).json(translated);
       }

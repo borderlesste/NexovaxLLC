@@ -114,6 +114,11 @@ export class StripeService {
     );
   }
 
+  /** Cheap authenticated call used by the status page (no money moves). */
+  async ping() {
+    await this.stripe.balance.retrieve(undefined, { timeout: 5000, maxNetworkRetries: 0 });
+  }
+
   /** Refunds of a charge (charge.refunded no longer embeds them). */
   async listRefunds(chargeId: string) {
     const out: Stripe.Refund[] = [];
