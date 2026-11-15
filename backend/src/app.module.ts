@@ -44,6 +44,8 @@ import { ReturnsService } from './returns/returns.service';
 import { ReturnsController } from './returns/returns.controller';
 import { CancellationsController } from './orders/cancellations.controller';
 import { PromotionsController } from './promotions/promotions.controller';
+import { AnalyticsController } from './analytics/analytics.controller';
+import { AnalyticsService } from './analytics/analytics.service';
 import { CouponsService } from './promotions/coupons.service';
 import { AffiliatesService } from './promotions/affiliates.service';
 import { CancellationsService } from './orders/cancellations.service';
@@ -73,7 +75,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, CardsController, PayoutSchedulesController, AccountDeletionController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
   providers: [
     DbService,
     SettingsService,
@@ -101,6 +103,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     CancellationsService,
     CouponsService,
     AffiliatesService,
+    AnalyticsService,
     CardsService,
     PayoutSchedulesService,
     ShippingSettlementService,

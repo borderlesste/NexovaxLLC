@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Pencil, Plus, TicketPercent, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,6 +26,11 @@ export default function CouponsPage() {
   const [dlg, setDlg] = useState<null | { id?: string; f: typeof EMPTY }>(null);
   const [busy, setBusy] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ['seller-coupons'] });
+  // Coming from Statistics → "Crear cupón": open a new coupon for that product.
+  useEffect(() => {
+    const pid = new URLSearchParams(window.location.search).get('producto');
+    if (pid && /^[0-9a-f-]{36}$/i.test(pid)) setDlg({ f: { ...EMPTY, productIds: [pid] } });
+  }, []);
   const save = async () => {
     if (!dlg) return;
     const f = dlg.f;

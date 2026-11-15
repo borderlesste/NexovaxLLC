@@ -59,15 +59,15 @@ export function Donut({ data, total, label, height = 220 }: { data: { name: stri
   );
 }
 
-export function Bars({ data, xKey, bars, height = 260, stacked = false, xFormatter }: { data: any[]; xKey: string; bars: { key: string; name: string; color?: string }[]; height?: number; stacked?: boolean; xFormatter?: (v: any) => string }) {
+export function Bars({ data, xKey, bars, height = 260, stacked = false, xFormatter, currency = true }: { data: any[]; xKey: string; bars: { key: string; name: string; color?: string }[]; height?: number; stacked?: boolean; xFormatter?: (v: any) => string; currency?: boolean }) {
   const rows = data.map((d) => Object.fromEntries(Object.entries(d).map(([k, v]) => [k, bars.some((b) => b.key === k) ? Number(v) : v])));
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="#e9eef6" vertical={false} />
         <XAxis dataKey={xKey} tickLine={false} axisLine={false} tickFormatter={xFormatter} minTickGap={8} />
-        <YAxis tickFormatter={(v) => `$${compact(v)}`} tickLine={false} axisLine={false} width={56} />
-        <Tooltip formatter={(v: any) => money(v)} labelFormatter={xFormatter} contentStyle={{ borderRadius: 12, border: '1px solid #e3e8f0' }} />
+        <YAxis tickFormatter={(v) => (currency ? `$${compact(v)}` : compact(v))} tickLine={false} axisLine={false} width={56} allowDecimals={currency} />
+        <Tooltip formatter={(v: any) => (currency ? money(v) : v)} labelFormatter={xFormatter} contentStyle={{ borderRadius: 12, border: '1px solid #e3e8f0' }} />
         {bars.length > 1 && <Legend iconType="square" />}
         {bars.map((b, i) => <Bar key={b.key} dataKey={b.key} name={t(b.name)} stackId={stacked ? 's' : undefined} fill={b.color ?? PALETTE[i]} radius={stacked && i < bars.length - 1 ? 0 : [6, 6, 0, 0]} maxBarSize={36} />)}
       </BarChart>

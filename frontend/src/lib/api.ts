@@ -1,6 +1,7 @@
 'use client';
 import { supabase } from './supabase';
 import { getLocale, t as tr } from './i18n';
+import { analyticsAllowed } from './consent';
 
 export class ApiError extends Error {
   constructor(
@@ -30,6 +31,7 @@ export async function api<T = any>(path: string, init: RequestInit & { json?: un
   if (t) headers.set('Authorization', `Bearer ${t}`);
   if (sellerContext) headers.set('x-seller-id', sellerContext);
   headers.set('x-locale', getLocale());
+  if (analyticsAllowed()) headers.set('x-nx-consent', 'analytics');
   let body = init.body;
   if (init.json !== undefined) {
     headers.set('Content-Type', 'application/json');

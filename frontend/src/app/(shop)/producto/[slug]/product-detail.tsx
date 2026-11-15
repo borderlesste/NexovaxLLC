@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight, BadgeCheck, Box, Check, CreditCard, ExternalLink, FileText, Heart, HelpCircle, List, Maximize2, MessageSquare, Minus, Plus, RotateCcw, ShieldCheck,
@@ -10,6 +10,7 @@ import {
 import { get } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { EarnBox } from '@/components/affiliates/earn-box';
+import { trackProductView } from '@/lib/analytics';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { t, getIntlLocale } from '@/lib/i18n';
 export function ProductDetail({ initial }: { initial: any }) {
   const router = useRouter();
   const { session } = useAuth();
+  useEffect(() => trackProductView(initial.id), [initial.id]);
   const q = useQuery({ queryKey: ['product', initial.slug, !!session], queryFn: () => get(`/products/${initial.slug}`), initialData: initial });
   const p = q.data;
   const [img, setImg] = useState(0);

@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { Logo } from './logo';
+import { openConsent } from '@/lib/consent';
 import { t } from '@/lib/i18n';
 import { usePublicConfig } from '@/lib/config';
 import { SOCIAL_ICONS, SOCIAL_NAMES } from './social-icons';
@@ -51,6 +52,7 @@ export function ShopFooter() {
             <Link href="/ayuda#terminos">{t('Términos y condiciones')}</Link>
             <Link href="/ayuda#privacidad">{t('Privacidad')}</Link>
             <Link href="/ayuda#cookies">{t('Cookies')}</Link>
+            <button type="button" onClick={openConsent} className="hover:text-white" data-cookie-prefs>{t('Preferencias de cookies')}</button>
             <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" title="CC BY 4.0">{t('Datos geográficos: GeoNames')}</a>
           </span>
         </div>

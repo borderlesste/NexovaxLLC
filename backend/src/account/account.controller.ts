@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -56,6 +57,7 @@ export class AccountController {
   constructor(
     private readonly account: AccountService,
     private readonly settings: SettingsService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   @Public()
@@ -143,8 +145,10 @@ export class AccountController {
   }
 
   @Post('me/favorites/:productId')
-  toggleFavorite(@CurrentUser() user: RequestUser, @Param('productId', ParseUUIDPipe) productId: string) {
-    return this.account.toggleFavorite(user.id, productId);
+  async toggleFavorite(@CurrentUser() user: RequestUser, @Param('productId', ParseUUIDPipe) productId: string, @Headers('x-nx-consent') consent?: string) {
+    const r = await this.account.toggleFavorite(user.id, productId);
+    void this.analytics.recordServer(r.favorite ? 'FAVORITE' : 'UNFAVORITE', productId, user.id, consent === 'analytics');
+    return r;
   }
 
   @Get('me/following')

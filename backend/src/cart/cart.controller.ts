@@ -1,10 +1,12 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { IsInt, IsUUID, Max, Min } from 'class-validator';
 import { ToNumber } from '../common/validators';
 import { Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
 import { CartService } from './cart.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { DbService } from '../db/db.service';
 
 export class AddCartItemDto {
   @IsUUID() variantId: string;
@@ -18,7 +20,11 @@ export class UpdateCartItemDto {
 @ApiTags('cart')
 @Controller('cart')
 export class CartController {
-  constructor(private readonly cart: CartService) {}
+  constructor(
+    private readonly cart: CartService,
+    private readonly analytics: AnalyticsService,
+    private readonly db: DbService,
+  ) {}
 
   @Get()
   get(@CurrentUser() user: RequestUser) {
@@ -26,8 +32,11 @@ export class CartController {
   }
 
   @Post('items')
-  add(@CurrentUser() user: RequestUser, @Body() dto: AddCartItemDto) {
-    return this.cart.addItem(user.id, dto.variantId, dto.quantity, 'add');
+  async add(@CurrentUser() user: RequestUser, @Body() dto: AddCartItemDto, @Headers('x-nx-consent') consent?: string) {
+    const cart = await this.cart.addItem(user.id, dto.variantId, dto.quantity, 'add');
+    const v = await this.db.one<{ product_id: string }>(`select product_id from public.product_variants where id = $1`, [dto.variantId]);
+    if (v) void this.analytics.recordServer('ADD_TO_CART', v.product_id, user.id, consent === 'analytics');
+    return cart;
   }
 
   @Put('items/:id')

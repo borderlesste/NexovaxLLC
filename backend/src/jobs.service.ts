@@ -6,6 +6,7 @@ import { config } from './config';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
 import { ShippingSettlementService } from './shipping/shipping-settlement.service';
 import { AffiliatesService } from './promotions/affiliates.service';
+import { AnalyticsService } from './analytics/analytics.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -20,6 +21,7 @@ export class JobsService {
     private readonly payoutSchedules: PayoutSchedulesService,
     private readonly shippingSettlement: ShippingSettlementService,
     private readonly affiliates: AffiliatesService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   /** Shipping settlements that failed at dispatch time (retry). */
@@ -78,6 +80,29 @@ export class JobsService {
       if (n) this.logger.log(`Auto-confirmed deliveries: ${n}`);
     } catch (e: any) {
       this.logger.warn(`autoConfirmManualDeliveries: ${e.message}`);
+    }
+  }
+
+  /** Product analytics: roll today's and yesterday's events into daily totals. */
+  @Cron(CronExpression.EVERY_HOUR)
+  async productAnalytics() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      await this.analytics.aggregate(1);
+    } catch (e: any) {
+      this.logger.warn(`productAnalytics: ${e.message}`);
+    }
+  }
+
+  /** Raw browsing events are kept 90 days; daily totals stay. */
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async purgeAnalytics() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const n = await this.analytics.purge(90);
+      if (n) this.logger.log(`Analytics events purged: ${n}`);
+    } catch (e: any) {
+      this.logger.warn(`purgeAnalytics: ${e.message}`);
     }
   }
 

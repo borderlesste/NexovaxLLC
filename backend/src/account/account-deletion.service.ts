@@ -165,6 +165,8 @@ export class AccountDeletionService {
       if (this.stripe.enabled)
         for (const c of await this.db.many(`select external_customer_id as c from public.customer_payment_provider_profiles where customer_id = $1 and provider_code = 'STRIPE'`, [userId]))
           await this.stripe.deleteCustomer(c.c).catch((e) => this.logger.warn(`stripe customer: ${e?.message}`));
+      // Browsing analytics keep only anonymous counts once the person leaves.
+      await this.db.exec(`update public.nx_product_events set user_id = null, visitor_id = null, consented = false where user_id = $1`, [userId]);
       const res = await this.db.tx((c) => this.db.one<{ r: any }>(`select public.nx_delete_account($1) as r`, [userId], c));
       await this.db.exec(
         `update public.nx_account_deletion_requests set status = 'COMPLETED', mode = $2, completed_at = now(), result = $3::jsonb, updated_at = now() where id = $1`,
