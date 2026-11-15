@@ -5,7 +5,7 @@ import { trackingLink } from '../common/tracking-links';
 import { DbService } from '../db/db.service';
 import { categoryForTemplate, NotificationsService } from '../notifications/notifications.service';
 import { orderRef, paymentRef, payoutRef, refundRef, returnRef, ticketRef } from '../common/refs';
-import { esc, ItemLine, itemsTable, itemsText, layout, Locale, money, p, Rendered, rows } from './mail.templates';
+import { esc, intlLocale, ItemLine, itemsTable, itemsText, layout, Locale, money, p, Rendered, rows } from './mail.templates';
 
 interface SendInput {
   template: string;
@@ -24,10 +24,11 @@ interface Contact {
 }
 
 const RESEND_URL = 'https://api.resend.com/emails';
-/** E-mail texts exist in Spanish and English; French and Haitian Creole readers get the English version. */
-const loc = (v: unknown): Locale => (v === 'en' || v === 'fr' || v === 'ht' ? 'en' : 'es');
+/** E-mails are written in Spanish, English, French and Haitian Creole. */
+const loc = (v: unknown): Locale => (v === 'en' || v === 'fr' || v === 'ht' ? v : 'es');
 /** Picks the Spanish or English variant. */
-const tr = (l: Locale) => (es: string, en: string) => (l === 'en' ? en : es);
+const tr = (l: Locale) => (es: string, en: string, fr?: string, ht?: string) =>
+  l === 'en' ? en : l === 'fr' ? fr ?? en : l === 'ht' ? ht ?? fr ?? en : es;
 
 /**
  * Transactional e-mail through Resend, in the recipient's language (users.locale).
@@ -161,15 +162,15 @@ export class MailService {
       entityId: userId,
       message: layout({
         locale: u.locale,
-        subject: t('¡Bienvenido a NEXOVAX!', 'Welcome to NEXOVAX!'),
-        preheader: t('Tu cuenta está lista. Descubre tiendas de todo el mundo.', 'Your account is ready. Discover stores from around the world.'),
-        title: t(`¡Hola, ${u.name}!`, `Hi ${u.name}!`),
+        subject: t('¡Bienvenido a NEXOVAX!', 'Welcome to NEXOVAX!', 'Bienvenue sur NEXOVAX !', 'Byenvini sou NEXOVAX!'),
+        preheader: t('Tu cuenta está lista. Descubre tiendas de todo el mundo.', 'Your account is ready. Discover stores from around the world.', 'Votre compte est prêt. Découvrez des boutiques du monde entier.', 'Kont ou pare. Dekouvri boutik toupatou nan mond lan.'),
+        title: t(`¡Hola, ${u.name}!`, `Hi ${u.name}!`, `Bonjour ${u.name} !`, `Bonjou ${u.name}!`),
         body:
           p(t('Tu cuenta en <b>NEXOVAX</b> fue creada con éxito. Ya puedes comprar en múltiples tiendas con un solo carrito, guardar favoritos y seguir tus pedidos.',
-              'Your <b>NEXOVAX</b> account is ready. Shop from multiple stores with a single cart, save favorites and track your orders.')) +
-          p(t('¿Tienes un negocio? También puedes abrir tu tienda y vender a clientes de todo el mundo.', 'Own a business? Open your store and sell to customers worldwide.')),
-        cta: { label: t('Explorar productos', 'Browse products'), url: `${config.webUrl}/catalogo` },
-        text: t('Tu cuenta en NEXOVAX fue creada con éxito.', 'Your NEXOVAX account is ready.'),
+              'Your <b>NEXOVAX</b> account is ready. Shop from multiple stores with a single cart, save favorites and track your orders.', 'Votre compte <b>NEXOVAX</b> est prêt. Achetez dans plusieurs boutiques avec un seul panier, enregistrez vos favoris et suivez vos commandes.', 'Kont <b>NEXOVAX</b> ou pare. Achte nan plizyè boutik ak yon sèl panye, sere favori ou epi swiv kòmand ou yo.')) +
+          p(t('¿Tienes un negocio? También puedes abrir tu tienda y vender a clientes de todo el mundo.', 'Own a business? Open your store and sell to customers worldwide.', 'Vous avez une entreprise ? Ouvrez votre boutique et vendez à des clients du monde entier.', 'Ou gen yon biznis? Louvri boutik ou epi vann bay kliyan toupatou nan mond lan.')),
+        cta: { label: t('Explorar productos', 'Browse products', 'Parcourir les produits', 'Gade pwodwi yo'), url: `${config.webUrl}/catalogo` },
+        text: t('Tu cuenta en NEXOVAX fue creada con éxito.', 'Your NEXOVAX account is ready.', 'Votre compte NEXOVAX est prêt.', 'Kont NEXOVAX ou pare.'),
       }),
     });
   }
@@ -187,15 +188,15 @@ export class MailService {
       entityId: userId,
       message: layout({
         locale: l,
-        subject: t('Confirma tu correo en NEXOVAX', 'Confirm your NEXOVAX e-mail'),
-        preheader: t('Un paso más para activar tu cuenta.', 'One more step to activate your account.'),
-        title: t(`¡Hola${u?.name ? `, ${u.name}` : ''}!`, `Hi${u?.name ? ` ${u.name}` : ''}!`),
+        subject: t('Confirma tu correo en NEXOVAX', 'Confirm your NEXOVAX e-mail', 'Confirmez votre e-mail NEXOVAX', 'Konfime imèl NEXOVAX ou'),
+        preheader: t('Un paso más para activar tu cuenta.', 'One more step to activate your account.', 'Plus qu’une étape pour activer votre compte.', 'Yon sèl etap ki rete pou aktive kont ou.'),
+        title: t(`¡Hola${u?.name ? `, ${u.name}` : ''}!`, `Hi${u?.name ? ` ${u.name}` : ''}!`, `Bonjour${u?.name ? ` ${u.name}` : ''} !`, `Bonjou${u?.name ? ` ${u.name}` : ''}!`),
         body:
           p(t('Gracias por registrarte en <b>NEXOVAX</b>. Confirma que este correo te pertenece para activar tu cuenta.',
-              'Thanks for signing up to <b>NEXOVAX</b>. Confirm this e-mail belongs to you to activate your account.')) +
-          p(`<span style="color:#64748b;font-size:13px">${t('El enlace solo puede usarse una vez y vence pronto. Si no creaste esta cuenta, ignora este correo.', 'The link can be used once and expires soon. If you didn’t create this account, ignore this e-mail.')}</span>`),
-        cta: { label: t('Confirmar correo', 'Confirm e-mail'), url: link },
-        text: t('Confirma tu correo para activar tu cuenta de NEXOVAX.', 'Confirm your e-mail to activate your NEXOVAX account.'),
+              'Thanks for signing up to <b>NEXOVAX</b>. Confirm this e-mail belongs to you to activate your account.', 'Merci de vous être inscrit sur <b>NEXOVAX</b>. Confirmez que cet e-mail vous appartient pour activer votre compte.', 'Mèsi paske w enskri sou <b>NEXOVAX</b>. Konfime imèl sa a se pou ou pou aktive kont ou.')) +
+          p(`<span style="color:#64748b;font-size:13px">${t('El enlace solo puede usarse una vez y vence pronto. Si no creaste esta cuenta, ignora este correo.', 'The link can be used once and expires soon. If you didn’t create this account, ignore this e-mail.', 'Le lien ne peut être utilisé qu’une fois et expire bientôt. Si vous n’avez pas créé ce compte, ignorez cet e-mail.', 'Ou ka itilize lyen an yon sèl fwa epi l ap ekspire talè. Si se pa ou ki kreye kont sa a, inyore imèl sa a.')}</span>`),
+        cta: { label: t('Confirmar correo', 'Confirm e-mail', 'Confirmer l’e-mail', 'Konfime imèl'), url: link },
+        text: t('Confirma tu correo para activar tu cuenta de NEXOVAX.', 'Confirm your e-mail to activate your NEXOVAX account.', 'Confirmez votre e-mail pour activer votre compte NEXOVAX.', 'Konfime imèl ou pou aktive kont NEXOVAX ou.'),
       }),
     });
   }
@@ -213,14 +214,14 @@ export class MailService {
       entityId: userId,
       message: layout({
         locale: l,
-        subject: t('Restablece tu contraseña de NEXOVAX', 'Reset your NEXOVAX password'),
-        preheader: t('Usa este enlace para crear una nueva contraseña.', 'Use this link to create a new password.'),
-        title: t('Restablecer contraseña', 'Reset your password'),
+        subject: t('Restablece tu contraseña de NEXOVAX', 'Reset your NEXOVAX password', 'Réinitialisez votre mot de passe NEXOVAX', 'Chanje modpas NEXOVAX ou'),
+        preheader: t('Usa este enlace para crear una nueva contraseña.', 'Use this link to create a new password.', 'Utilisez ce lien pour créer un nouveau mot de passe.', 'Itilize lyen sa a pou kreye yon nouvo modpas.'),
+        title: t('Restablecer contraseña', 'Reset your password', 'Réinitialisez votre mot de passe', 'Chanje modpas ou'),
         body:
-          p(t('Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.', 'We received a request to reset your password. Click the button to create a new one.')) +
-          p(`<span style="color:#64748b;font-size:13px">${t('El enlace vence en 1 hora y solo puede usarse una vez. Si no fuiste tú, ignora este correo: tu contraseña no cambiará.', 'The link expires in 1 hour and can be used once. If this wasn’t you, ignore this e-mail: your password won’t change.')}</span>`),
-        cta: { label: t('Crear nueva contraseña', 'Create a new password'), url: link },
-        text: t('Recibimos una solicitud para restablecer tu contraseña. El enlace vence en 1 hora.', 'We received a request to reset your password. The link expires in 1 hour.'),
+          p(t('Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.', 'We received a request to reset your password. Click the button to create a new one.', 'Nous avons reçu une demande de réinitialisation de votre mot de passe. Cliquez sur le bouton pour en créer un nouveau.', 'Nou resevwa yon demann pou chanje modpas ou. Klike sou bouton an pou kreye yon nouvo.')) +
+          p(`<span style="color:#64748b;font-size:13px">${t('El enlace vence en 1 hora y solo puede usarse una vez. Si no fuiste tú, ignora este correo: tu contraseña no cambiará.', 'The link expires in 1 hour and can be used once. If this wasn’t you, ignore this e-mail: your password won’t change.', 'Le lien expire dans 1 heure et ne peut être utilisé qu’une fois. Si ce n’était pas vous, ignorez cet e-mail : votre mot de passe ne changera pas.', 'Lyen an ekspire nan 1 èdtan epi ou ka itilize l yon sèl fwa. Si se pa ou, inyore imèl sa a: modpas ou p ap chanje.')}</span>`),
+        cta: { label: t('Crear nueva contraseña', 'Create a new password', 'Créer un nouveau mot de passe', 'Kreye yon nouvo modpas'), url: link },
+        text: t('Recibimos una solicitud para restablecer tu contraseña. El enlace vence en 1 hora.', 'We received a request to reset your password. The link expires in 1 hour.', 'Nous avons reçu une demande de réinitialisation de votre mot de passe. Le lien expire dans 1 heure.', 'Nou resevwa yon demann pou chanje modpas ou. Lyen an ekspire nan 1 èdtan.'),
       }),
     });
   }
@@ -258,25 +259,25 @@ export class MailService {
         entityId: orderId,
         message: layout({
           locale: l,
-          subject: t(`Confirmamos tu pedido ${ref}`, `Your order ${ref} is confirmed`),
-          preheader: t(`Total pagado ${money(o.total, cur, l)}. Te avisaremos cuando se envíe.`, `Total paid ${money(o.total, cur, l)}. We’ll let you know when it ships.`),
-          title: t('¡Gracias por tu compra!', 'Thanks for your order!'),
+          subject: t(`Confirmamos tu pedido ${ref}`, `Your order ${ref} is confirmed`, `Votre commande ${ref} est confirmée`, `Kòmand ou ${ref} konfime`),
+          preheader: t(`Total pagado ${money(o.total, cur, l)}. Te avisaremos cuando se envíe.`, `Total paid ${money(o.total, cur, l)}. We’ll let you know when it ships.`, `Total payé ${money(o.total, cur, l)}. Nous vous préviendrons de son expédition.`, `Total peye ${money(o.total, cur, l)}. N ap fè w konnen lè l pati.`),
+          title: t('¡Gracias por tu compra!', 'Thanks for your order!', 'Merci pour votre commande !', 'Mèsi pou kòmand ou!'),
           body:
             p(t(`Hola ${esc(u.name)}, recibimos el pago de tu pedido <b>${ref}</b>. Las tiendas ya fueron notificadas y te avisaremos cuando tus productos vayan en camino.`,
-                `Hi ${esc(u.name)}, we received the payment for order <b>${ref}</b>. The stores have been notified and we’ll let you know when your items ship.`)) +
+                `Hi ${esc(u.name)}, we received the payment for order <b>${ref}</b>. The stores have been notified and we’ll let you know when your items ship.`, `Bonjour ${esc(u.name)}, nous avons reçu le paiement de la commande <b>${ref}</b>. Les boutiques ont été prévenues et nous vous avertirons quand vos articles seront expédiés.`, `Bonjou ${esc(u.name)}, nou resevwa peman kòmand <b>${ref}</b>. Boutik yo resevwa avi epi n ap fè w konnen lè atik ou yo pati.`)) +
             itemsTable(items, cur, l) +
             rows(
               [
-                [t('Subtotal', 'Subtotal'), esc(money(o.subtotal, cur, l))],
-                [t('Envío', 'Shipping'), esc(money(o.shipping, cur, l))],
-                [o.tax_name || t('Impuestos', 'Tax'), esc(money(o.tax, cur, l))],
-                [t('Total pagado', 'Total paid'), esc(money(o.total, cur, l))],
+                [t('Subtotal', 'Subtotal', 'Sous-total', 'Sou-total'), esc(money(o.subtotal, cur, l))],
+                [t('Envío', 'Shipping', 'Livraison', 'Livrezon'), esc(money(o.shipping, cur, l))],
+                [o.tax_name || t('Impuestos', 'Tax', 'Taxes', 'Taks'), esc(money(o.tax, cur, l))],
+                [t('Total pagado', 'Total paid', 'Total payé', 'Total peye'), esc(money(o.total, cur, l))],
               ],
               { boldLast: true },
             ) +
-            (address.length ? p(`<b>${t('Dirección de entrega', 'Shipping address')}</b><br>${address.map(esc).join('<br>')}`) : ''),
-          cta: { label: t('Ver mi pedido', 'View my order'), url: `${config.webUrl}/cuenta/pedidos/${orderId}` },
-          text: `${t('Pedido', 'Order')} ${ref}\n\n${itemsText(items, cur, l)}\n\n${t('Total pagado', 'Total paid')}: ${money(o.total, cur, l)}`,
+            (address.length ? p(`<b>${t('Dirección de entrega', 'Shipping address', 'Adresse de livraison', 'Adrès livrezon')}</b><br>${address.map(esc).join('<br>')}`) : ''),
+          cta: { label: t('Ver mi pedido', 'View my order', 'Voir ma commande', 'Wè kòmand mwen'), url: `${config.webUrl}/cuenta/pedidos/${orderId}` },
+          text: `${t('Pedido', 'Order', 'Commande', 'Kòmand')} ${ref}\n\n${itemsText(items, cur, l)}\n\n${t('Total pagado', 'Total paid', 'Total payé', 'Total peye')}: ${money(o.total, cur, l)}`,
         }),
       });
     }
@@ -303,23 +304,23 @@ export class MailService {
         entityId: so.id,
         message: layout({
           locale: l,
-          subject: t(`Nueva venta en ${s.store}: pedido ${ref}`, `New sale at ${s.store}: order ${ref}`),
-          preheader: t('Prepara el pedido para enviarlo lo antes posible.', 'Prepare the order so it ships as soon as possible.'),
-          title: t('¡Tienes una nueva venta!', 'You have a new sale!'),
+          subject: t(`Nueva venta en ${s.store}: pedido ${ref}`, `New sale at ${s.store}: order ${ref}`, `Nouvelle vente chez ${s.store} : commande ${ref}`, `Nouvo vant nan ${s.store}: kòmand ${ref}`),
+          preheader: t('Prepara el pedido para enviarlo lo antes posible.', 'Prepare the order so it ships as soon as possible.', 'Préparez la commande pour qu’elle parte au plus vite.', 'Prepare kòmand lan pou l pati pi vit posib.'),
+          title: t('¡Tienes una nueva venta!', 'You have a new sale!', 'Vous avez une nouvelle vente !', 'Ou gen yon nouvo vant!'),
           body:
-            p(t(`El pedido <b>${ref}</b> fue pagado y está listo para que lo prepares.`, `Order <b>${ref}</b> has been paid and is ready to be prepared.`)) +
+            p(t(`El pedido <b>${ref}</b> fue pagado y está listo para que lo prepares.`, `Order <b>${ref}</b> has been paid and is ready to be prepared.`, `La commande <b>${ref}</b> a été payée et est prête à être préparée.`, `Kòmand <b>${ref}</b> peye epi li pare pou prepare.`)) +
             itemsTable(soItems, cur, l) +
             rows(
               [
-                [t('Venta de productos', 'Product sales'), esc(money(so.subtotal, cur, l))],
-                [t('Comisión de la plataforma', 'Platform commission'), esc(`− ${money(so.commission, cur, l)}`)],
-                [t('Ingreso estimado', 'Estimated earnings'), esc(money(so.net, cur, l))],
+                [t('Venta de productos', 'Product sales', 'Ventes de produits', 'Vant pwodwi'), esc(money(so.subtotal, cur, l))],
+                [t('Comisión de la plataforma', 'Platform commission', 'Commission de la plateforme', 'Komisyon platfòm lan'), esc(`− ${money(so.commission, cur, l)}`)],
+                [t('Ingreso estimado', 'Estimated earnings', 'Gains estimés', 'Benefis estime'), esc(money(so.net, cur, l))],
               ],
               { boldLast: true },
             ) +
-            p(t('El dinero queda disponible para retiro cuando el pedido sea entregado.', 'Funds become available for payout once the order is delivered.')),
-          cta: { label: t('Gestionar pedido', 'Manage order'), url: `${config.webUrl}/vendedor/pedidos/${orderId}` },
-          text: `${t('Pedido', 'Order')} ${ref}\n\n${itemsText(soItems, cur, l)}\n\n${t('Ingreso estimado', 'Estimated earnings')}: ${money(so.net, cur, l)}`,
+            p(t('El dinero queda disponible para retiro cuando el pedido sea entregado.', 'Funds become available for payout once the order is delivered.', 'Les fonds deviennent disponibles pour versement une fois la commande livrée.', 'Lajan an vin disponib pou peman lè kòmand lan livre.')),
+          cta: { label: t('Gestionar pedido', 'Manage order', 'Gérer la commande', 'Jere kòmand lan'), url: `${config.webUrl}/vendedor/pedidos/${orderId}` },
+          text: `${t('Pedido', 'Order', 'Commande', 'Kòmand')} ${ref}\n\n${itemsText(soItems, cur, l)}\n\n${t('Ingreso estimado', 'Estimated earnings', 'Gains estimés', 'Benefis estime')}: ${money(so.net, cur, l)}`,
         }),
       });
     }
@@ -335,11 +336,11 @@ export class MailService {
     const t = tr(l);
     const amount = money(pay.amount, pay.currency_code, l);
     const details: Array<[string, string]> = [
-      [t('Monto', 'Amount'), `<b>${esc(amount)}</b>`],
-      [t('Referencia', 'Reference'), `<b>${esc(bt.reference)}</b>`],
-      [t('Banco', 'Bank'), esc(bt.bank)],
-      [t('Titular', 'Account holder'), esc(bt.accountName)],
-      [t('Cuenta', 'Account'), esc(bt.accountNumber)],
+      [t('Monto', 'Amount', 'Montant', 'Montan'), `<b>${esc(amount)}</b>`],
+      [t('Referencia', 'Reference', 'Référence', 'Referans'), `<b>${esc(bt.reference)}</b>`],
+      [t('Banco', 'Bank', 'Banque', 'Bank'), esc(bt.bank)],
+      [t('Titular', 'Account holder', 'Titulaire', 'Titilè'), esc(bt.accountName)],
+      [t('Cuenta', 'Account', 'Compte', 'Kont'), esc(bt.accountNumber)],
     ];
     if (bt.routingOrSwift) details.push(['Routing / SWIFT', esc(bt.routingOrSwift)]);
     if (bt.iban) details.push(['IBAN', esc(bt.iban)]);
@@ -352,16 +353,16 @@ export class MailService {
       entityId: paymentId,
       message: layout({
         locale: l,
-        subject: t(`Completa tu pago por transferencia (${bt.reference})`, `Complete your bank transfer (${bt.reference})`),
-        preheader: t(`Transfiere ${amount} con la referencia ${bt.reference}.`, `Transfer ${amount} using reference ${bt.reference}.`),
-        title: t('Tu pedido está reservado', 'Your order is reserved'),
+        subject: t(`Completa tu pago por transferencia (${bt.reference})`, `Complete your bank transfer (${bt.reference})`, `Effectuez votre virement bancaire (${bt.reference})`, `Fè transfè labank ou (${bt.reference})`),
+        preheader: t(`Transfiere ${amount} con la referencia ${bt.reference}.`, `Transfer ${amount} using reference ${bt.reference}.`, `Virez ${amount} avec la référence ${bt.reference}.`, `Voye ${amount} ak referans ${bt.reference}.`),
+        title: t('Tu pedido está reservado', 'Your order is reserved', 'Votre commande est réservée', 'Kòmand ou rezève'),
         body:
           p(t(`Hola ${esc(u.name)}, para confirmar tu compra realiza una transferencia por el monto exacto e incluye la referencia.`,
-              `Hi ${esc(u.name)}, to confirm your purchase send a bank transfer for the exact amount and include the reference.`)) +
+              `Hi ${esc(u.name)}, to confirm your purchase send a bank transfer for the exact amount and include the reference.`, `Bonjour ${esc(u.name)}, pour confirmer votre achat, effectuez un virement bancaire du montant exact en indiquant la référence.`, `Bonjou ${esc(u.name)}, pou konfime acha ou fè yon transfè labank pou montan egzak la epi mete referans lan.`)) +
           rows(details) +
           p(esc(bt.instructions)),
-        cta: { label: t('Ver mis pedidos', 'View my orders'), url: `${config.webUrl}/cuenta/pedidos` },
-        text: `${t('Transfiere', 'Transfer')} ${amount} → ${bt.bank}, ${bt.accountNumber} (${bt.accountName}). ${t('Referencia', 'Reference')}: ${bt.reference}. ${bt.instructions}`,
+        cta: { label: t('Ver mis pedidos', 'View my orders', 'Voir mes commandes', 'Wè kòmand mwen yo'), url: `${config.webUrl}/cuenta/pedidos` },
+        text: `${t('Transfiere', 'Transfer', 'Virement', 'Transfè')} ${amount} → ${bt.bank}, ${bt.accountNumber} (${bt.accountName}). ${t('Referencia', 'Reference', 'Référence', 'Referans')}: ${bt.reference}. ${bt.instructions}`,
       }),
     });
   }
@@ -383,14 +384,14 @@ export class MailService {
       entityId: paymentId,
       message: layout({
         locale: l,
-        subject: t(`No pudimos validar tu transferencia ${ref}`, `We couldn’t verify your transfer ${ref}`),
-        preheader: t('Tu compra fue cancelada.', 'Your purchase was cancelled.'),
-        title: t('Transferencia no validada', 'Transfer not verified'),
+        subject: t(`No pudimos validar tu transferencia ${ref}`, `We couldn’t verify your transfer ${ref}`, `Nous n’avons pas pu vérifier votre virement ${ref}`, `Nou pa t ka verifye transfè ou ${ref}`),
+        preheader: t('Tu compra fue cancelada.', 'Your purchase was cancelled.', 'Votre achat a été annulé.', 'Acha ou anile.'),
+        title: t('Transferencia no validada', 'Transfer not verified', 'Virement non vérifié', 'Transfè pa verifye'),
         body:
           p(t(`Hola ${esc(u.name)}, no pudimos validar la transferencia de <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (referencia ${ref}), por lo que la compra fue cancelada.`,
-              `Hi ${esc(u.name)}, we couldn’t verify the transfer of <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (reference ${ref}), so the purchase was cancelled.`)) +
-          p(`<b>${t('Motivo', 'Reason')}:</b> ${esc(reason || t('No especificado', 'Not specified'))}`),
-        cta: { label: t('Contactar soporte', 'Contact support'), url: `${config.webUrl}/ayuda/reportar` },
+              `Hi ${esc(u.name)}, we couldn’t verify the transfer of <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (reference ${ref}), so the purchase was cancelled.`, `Bonjour ${esc(u.name)}, nous n’avons pas pu vérifier le virement de <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (référence ${ref}), l’achat a donc été annulé.`, `Bonjou ${esc(u.name)}, nou pa t ka verifye transfè <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (referans ${ref}), kidonk acha a anile.`)) +
+          p(`<b>${t('Motivo', 'Reason', 'Motif', 'Rezon')}:</b> ${esc(reason || t('No especificado', 'Not specified', 'Non précisé', 'Pa presize'))}`),
+        cta: { label: t('Contactar soporte', 'Contact support', 'Contacter le support', 'Kontakte sipò'), url: `${config.webUrl}/ayuda/reportar` },
         text: `${ref}: ${reason || ''}`,
       }),
     });
@@ -416,7 +417,7 @@ export class MailService {
       const items = await this.orderItems(r.order_id, sellerOrderId);
       const link = trackingLink(r);
       const tracking = link.url
-        ? `<a href="${esc(link.url)}" style="color:#0a6cf5">${esc(r.tracking_number)}</a>${link.external ? ` <span style="color:#64748b;font-size:12px">(${esc(t('enlace externo', 'external link'))}: ${esc(link.host)})</span>` : ''}`
+        ? `<a href="${esc(link.url)}" style="color:#0a6cf5">${esc(r.tracking_number)}</a>${link.external ? ` <span style="color:#64748b;font-size:12px">(${esc(t('enlace externo', 'external link', 'lien externe', 'lyen deyò'))}: ${esc(link.host)})</span>` : ''}`
         : `<b>${esc(r.tracking_number ?? '—')}</b>`;
       await this.send({
         template: 'ORDER_SHIPPED',
@@ -427,17 +428,17 @@ export class MailService {
         entityId: r.shipment_id,
         message: layout({
           locale: l,
-          subject: t(`Tu pedido ${ref} va en camino`, `Your order ${ref} is on its way`),
-          preheader: t(`${r.store} despachó tu paquete con ${r.carrier}.`, `${r.store} shipped your package with ${r.carrier}.`),
-          title: t('¡Tu paquete va en camino!', 'Your package is on its way!'),
+          subject: t(`Tu pedido ${ref} va en camino`, `Your order ${ref} is on its way`, `Votre commande ${ref} est en route`, `Kòmand ou ${ref} sou wout`),
+          preheader: t(`${r.store} despachó tu paquete con ${r.carrier}.`, `${r.store} shipped your package with ${r.carrier}.`, `${r.store} a expédié votre colis avec ${r.carrier}.`, `${r.store} voye koli ou ak ${r.carrier}.`),
+          title: t('¡Tu paquete va en camino!', 'Your package is on its way!', 'Votre colis est en route !', 'Koli ou sou wout!'),
           body:
-            p(t(`Hola ${esc(u.name)}, <b>${esc(r.store)}</b> despachó tu paquete del pedido <b>${ref}</b>.`, `Hi ${esc(u.name)}, <b>${esc(r.store)}</b> shipped your package for order <b>${ref}</b>.`)) +
+            p(t(`Hola ${esc(u.name)}, <b>${esc(r.store)}</b> despachó tu paquete del pedido <b>${ref}</b>.`, `Hi ${esc(u.name)}, <b>${esc(r.store)}</b> shipped your package for order <b>${ref}</b>.`, `Bonjour ${esc(u.name)}, <b>${esc(r.store)}</b> a expédié votre colis de la commande <b>${ref}</b>.`, `Bonjou ${esc(u.name)}, <b>${esc(r.store)}</b> voye koli kòmand <b>${ref}</b> ou.`)) +
             rows([
-              [t('Transportadora', 'Carrier'), esc(r.service || r.carrier || '—')],
-              [t('Número de rastreo', 'Tracking number'), tracking],
+              [t('Transportadora', 'Carrier', 'Transporteur', 'Transpòtè'), esc(r.service || r.carrier || '—')],
+              [t('Número de rastreo', 'Tracking number', 'Numéro de suivi', 'Nimewo swivi'), tracking],
             ]) +
             itemsTable(items, r.currency_code, l),
-          cta: { label: t('Seguir mi pedido', 'Track my order'), url: `${config.webUrl}/cuenta/pedidos/${r.order_id}` },
+          cta: { label: t('Seguir mi pedido', 'Track my order', 'Suivre ma commande', 'Swiv kòmand mwen'), url: `${config.webUrl}/cuenta/pedidos/${r.order_id}` },
           text: `${ref}: ${r.carrier} ${r.tracking_number ?? ''}`,
         }),
       });
@@ -466,14 +467,14 @@ export class MailService {
         entityId: shipmentId,
         message: layout({
           locale: u.locale,
-          subject: t(`Entregamos tu pedido ${ref}`, `Your order ${ref} was delivered`),
-          preheader: t('Cuéntanos qué te parecieron tus productos.', 'Tell us what you think of your products.'),
-          title: t('¡Pedido entregado!', 'Order delivered!'),
+          subject: t(`Entregamos tu pedido ${ref}`, `Your order ${ref} was delivered`, `Votre commande ${ref} a été livrée`, `Kòmand ou ${ref} livre`),
+          preheader: t('Cuéntanos qué te parecieron tus productos.', 'Tell us what you think of your products.', 'Dites-nous ce que vous pensez de vos produits.', 'Di nou sa w panse de pwodwi ou yo.'),
+          title: t('¡Pedido entregado!', 'Order delivered!', 'Commande livrée !', 'Kòmand livre!'),
           body:
-            p(t(`Hola ${esc(u.name)}, tu paquete de <b>${esc(r.store)}</b> (pedido ${ref}) fue entregado.`, `Hi ${esc(u.name)}, your package from <b>${esc(r.store)}</b> (order ${ref}) was delivered.`)) +
-            p(t('Tu opinión ayuda a otros compradores: deja una reseña de los productos que recibiste.', 'Your feedback helps other shoppers: leave a review of the products you received.')),
-          cta: { label: t('Calificar productos', 'Review products'), url: `${config.webUrl}/cuenta/pedidos/${r.order_id}` },
-          text: `${ref}: ${t('entregado', 'delivered')}`,
+            p(t(`Hola ${esc(u.name)}, tu paquete de <b>${esc(r.store)}</b> (pedido ${ref}) fue entregado.`, `Hi ${esc(u.name)}, your package from <b>${esc(r.store)}</b> (order ${ref}) was delivered.`, `Bonjour ${esc(u.name)}, votre colis de <b>${esc(r.store)}</b> (commande ${ref}) a été livré.`, `Bonjou ${esc(u.name)}, koli ou soti nan <b>${esc(r.store)}</b> (kòmand ${ref}) livre.`)) +
+            p(t('Tu opinión ayuda a otros compradores: deja una reseña de los productos que recibiste.', 'Your feedback helps other shoppers: leave a review of the products you received.', 'Votre avis aide les autres acheteurs : laissez un avis sur les produits reçus.', 'Avi ou ede lòt achtè: kite yon avi sou pwodwi ou resevwa yo.')),
+          cta: { label: t('Calificar productos', 'Review products', 'Donner mon avis', 'Bay avi sou pwodwi yo'), url: `${config.webUrl}/cuenta/pedidos/${r.order_id}` },
+          text: `${ref}: ${t('entregado', 'delivered', 'livré', 'livre')}`,
         }),
       });
     }
@@ -489,13 +490,13 @@ export class MailService {
         entityId: shipmentId,
         message: layout({
           locale: s.locale,
-          subject: t(`Pedido ${ref} entregado`, `Order ${ref} delivered`),
-          preheader: t('Los fondos de esta venta pasan a tu balance disponible.', 'Funds from this sale move to your available balance.'),
-          title: t('Pedido entregado', 'Order delivered'),
+          subject: t(`Pedido ${ref} entregado`, `Order ${ref} delivered`, `Commande ${ref} livrée`, `Kòmand ${ref} livre`),
+          preheader: t('Los fondos de esta venta pasan a tu balance disponible.', 'Funds from this sale move to your available balance.', 'Les fonds de cette vente passent sur votre solde disponible.', 'Lajan vant sa a pase sou balans disponib ou.'),
+          title: t('Pedido entregado', 'Order delivered', 'Commande livrée', 'Kòmand livre'),
           body: p(t(`El pedido <b>${ref}</b> fue entregado al cliente. Los fondos de esta venta pasan a tu balance disponible según la política de pagos.`,
-                    `Order <b>${ref}</b> was delivered to the customer. Funds from this sale move to your available balance according to the payout policy.`)),
-          cta: { label: t('Ver mis finanzas', 'View my finances'), url: `${config.webUrl}/vendedor/finanzas` },
-          text: `${ref}: ${t('entregado', 'delivered')}`,
+                    `Order <b>${ref}</b> was delivered to the customer. Funds from this sale move to your available balance according to the payout policy.`, `La commande <b>${ref}</b> a été livrée au client. Les fonds de cette vente passent sur votre solde disponible selon la politique de versement.`, `Kòmand <b>${ref}</b> livre bay kliyan an. Lajan vant sa a pase sou balans disponib ou selon règ peman an.`)),
+          cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${config.webUrl}/vendedor/finanzas` },
+          text: `${ref}: ${t('entregado', 'delivered', 'livré', 'livre')}`,
         }),
       });
     }
@@ -516,13 +517,13 @@ export class MailService {
       entityId: sellerId,
       message: layout({
         locale: s.locale,
-        subject: t(`Recibimos la solicitud de ${s.store}`, `We received ${s.store}’s application`),
-        preheader: t('Revisaremos tus datos y te avisaremos.', 'We’ll review your details and get back to you.'),
-        title: t('Solicitud recibida', 'Application received'),
+        subject: t(`Recibimos la solicitud de ${s.store}`, `We received ${s.store}’s application`, `Nous avons reçu la demande de ${s.store}`, `Nou resevwa demann ${s.store}`),
+        preheader: t('Revisaremos tus datos y te avisaremos.', 'We’ll review your details and get back to you.', 'Nous examinerons vos informations et reviendrons vers vous.', 'N ap revize enfòmasyon ou epi n ap reponn ou.'),
+        title: t('Solicitud recibida', 'Application received', 'Demande reçue', 'Demann resevwa'),
         body: p(t(`Hola ${esc(s.name)}, recibimos la solicitud para abrir <b>${esc(s.store)}</b>. Nuestro equipo verificará los datos y te avisaremos por este medio. Mientras tanto ya puedes preparar tus productos.`,
-                  `Hi ${esc(s.name)}, we received the application to open <b>${esc(s.store)}</b>. Our team will verify the details and let you know by e-mail. Meanwhile you can start preparing your products.`)),
-        cta: { label: t('Ir a mi panel', 'Go to my dashboard'), url: `${config.webUrl}/vendedor/dashboard` },
-        text: t(`Recibimos la solicitud para abrir ${s.store}.`, `We received the application to open ${s.store}.`),
+                  `Hi ${esc(s.name)}, we received the application to open <b>${esc(s.store)}</b>. Our team will verify the details and let you know by e-mail. Meanwhile you can start preparing your products.`, `Bonjour ${esc(s.name)}, nous avons reçu la demande d’ouverture de <b>${esc(s.store)}</b>. Notre équipe vérifiera les informations et vous préviendra par e-mail. En attendant, vous pouvez préparer vos produits.`, `Bonjou ${esc(s.name)}, nou resevwa demann pou louvri <b>${esc(s.store)}</b>. Ekip nou an ap verifye enfòmasyon yo epi n ap fè w konnen pa imèl. Pandan tan sa a ou ka kòmanse prepare pwodwi ou yo.`)),
+        cta: { label: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen'), url: `${config.webUrl}/vendedor/dashboard` },
+        text: t(`Recibimos la solicitud para abrir ${s.store}.`, `We received the application to open ${s.store}.`, `Nous avons reçu la demande d’ouverture de ${s.store}.`, `Nou resevwa demann pou louvri ${s.store}.`),
       }),
     });
   }
@@ -532,14 +533,14 @@ export class MailService {
     if (!s) return;
     const t = tr(s.locale);
     const copy = {
-      APPROVE: { subject: t(`¡${s.store} fue aprobada!`, `${s.store} has been approved!`), title: t('¡Tu tienda está activa!', 'Your store is live!'),
-        body: t('Tu tienda fue verificada y aprobada. Tus productos aprobados ya pueden verse en el marketplace.', 'Your store was verified and approved. Your approved products are now visible on the marketplace.'), cta: t('Ir a mi panel', 'Go to my dashboard') },
-      REJECT: { subject: t(`Solicitud de ${s.store} no aprobada`, `${s.store}’s application was not approved`), title: t('Solicitud no aprobada', 'Application not approved'),
-        body: t('Revisamos tu solicitud y no pudimos aprobarla en este momento.', 'We reviewed your application and couldn’t approve it at this time.'), cta: t('Revisar mi información', 'Review my information') },
-      SUSPEND: { subject: t(`${s.store} fue suspendida`, `${s.store} has been suspended`), title: t('Tienda suspendida', 'Store suspended'),
-        body: t('Tu tienda fue suspendida y tus productos dejaron de mostrarse temporalmente.', 'Your store was suspended and your products are temporarily hidden.'), cta: t('Contactar soporte', 'Contact support') },
-      REACTIVATE: { subject: t(`${s.store} fue reactivada`, `${s.store} has been reactivated`), title: t('Tienda reactivada', 'Store reactivated'),
-        body: t('Tu tienda fue reactivada. Ya puedes volver a publicar tus productos.', 'Your store was reactivated. You can publish your products again.'), cta: t('Ir a mi panel', 'Go to my dashboard') },
+      APPROVE: { subject: t(`¡${s.store} fue aprobada!`, `${s.store} has been approved!`, `${s.store} a été approuvée !`, `${s.store} apwouve!`), title: t('¡Tu tienda está activa!', 'Your store is live!', 'Votre boutique est en ligne !', 'Boutik ou an liy!'),
+        body: t('Tu tienda fue verificada y aprobada. Tus productos aprobados ya pueden verse en el marketplace.', 'Your store was verified and approved. Your approved products are now visible on the marketplace.', 'Votre boutique a été vérifiée et approuvée. Vos produits approuvés sont désormais visibles sur la marketplace.', 'Boutik ou verifye e apwouve. Pwodwi ou ki apwouve yo parèt sou maketplas la kounye a.'), cta: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen') },
+      REJECT: { subject: t(`Solicitud de ${s.store} no aprobada`, `${s.store}’s application was not approved`, `La demande de ${s.store} n’a pas été approuvée`, `Demann ${s.store} pa apwouve`), title: t('Solicitud no aprobada', 'Application not approved', 'Demande non approuvée', 'Demann pa apwouve'),
+        body: t('Revisamos tu solicitud y no pudimos aprobarla en este momento.', 'We reviewed your application and couldn’t approve it at this time.', 'Nous avons examiné votre demande et ne pouvons pas l’approuver pour le moment.', 'Nou revize demann ou epi nou pa ka apwouve l kounye a.'), cta: t('Revisar mi información', 'Review my information', 'Vérifier mes informations', 'Revize enfòmasyon mwen') },
+      SUSPEND: { subject: t(`${s.store} fue suspendida`, `${s.store} has been suspended`, `${s.store} a été suspendue`, `${s.store} sispann`), title: t('Tienda suspendida', 'Store suspended', 'Boutique suspendue', 'Boutik sispann'),
+        body: t('Tu tienda fue suspendida y tus productos dejaron de mostrarse temporalmente.', 'Your store was suspended and your products are temporarily hidden.', 'Votre boutique a été suspendue et vos produits sont temporairement masqués.', 'Boutik ou sispann epi pwodwi ou yo kache pou kounye a.'), cta: t('Contactar soporte', 'Contact support', 'Contacter le support', 'Kontakte sipò') },
+      REACTIVATE: { subject: t(`${s.store} fue reactivada`, `${s.store} has been reactivated`, `${s.store} a été réactivée`, `${s.store} reaktive`), title: t('Tienda reactivada', 'Store reactivated', 'Boutique réactivée', 'Boutik reaktive'),
+        body: t('Tu tienda fue reactivada. Ya puedes volver a publicar tus productos.', 'Your store was reactivated. You can publish your products again.', 'Votre boutique a été réactivée. Vous pouvez de nouveau publier vos produits.', 'Boutik ou reaktive. Ou ka pibliye pwodwi ou yo ankò.'), cta: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen') },
     }[action];
     await this.send({
       template: `SELLER_${action}`,
@@ -553,9 +554,9 @@ export class MailService {
         subject: copy.subject,
         preheader: copy.body,
         title: copy.title,
-        body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(copy.body.charAt(0).toLowerCase() + copy.body.slice(1))}`) + (reason?.trim() ? p(`<b>${t('Motivo', 'Reason')}:</b> ${esc(reason.trim())}`) : ''),
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(copy.body.charAt(0).toLowerCase() + copy.body.slice(1))}`) + (reason?.trim() ? p(`<b>${t('Motivo', 'Reason', 'Motif', 'Rezon')}:</b> ${esc(reason.trim())}`) : ''),
         cta: { label: copy.cta, url: action === 'SUSPEND' ? `${config.webUrl}/ayuda/reportar` : `${config.webUrl}/vendedor/dashboard` },
-        text: `${copy.body}${reason?.trim() ? `\n${t('Motivo', 'Reason')}: ${reason.trim()}` : ''}`,
+        text: `${copy.body}${reason?.trim() ? `\n${t('Motivo', 'Reason', 'Motif', 'Rezon')}: ${reason.trim()}` : ''}`,
       }),
     });
   }
@@ -567,9 +568,9 @@ export class MailService {
     if (!s) return;
     const t = tr(s.locale);
     const copy = {
-      APPROVE: [t('Producto aprobado', 'Product approved'), t(`«${pr.title}» fue aprobado y ya está publicado en el marketplace.`, `“${pr.title}” was approved and is now live on the marketplace.`)],
-      REJECT: [t('Producto rechazado', 'Product rejected'), t(`«${pr.title}» no cumple las políticas del marketplace y fue rechazado.`, `“${pr.title}” doesn’t meet the marketplace policies and was rejected.`)],
-      REQUEST_CHANGES: [t('Tu producto requiere cambios', 'Your product needs changes'), t(`«${pr.title}» necesita algunos ajustes antes de publicarse.`, `“${pr.title}” needs a few changes before it can be published.`)],
+      APPROVE: [t('Producto aprobado', 'Product approved', 'Produit approuvé', 'Pwodwi apwouve'), t(`«${pr.title}» fue aprobado y ya está publicado en el marketplace.`, `“${pr.title}” was approved and is now live on the marketplace.`, `« ${pr.title} » a été approuvé et est maintenant en ligne sur la marketplace.`, `«${pr.title}» apwouve epi li an liy sou maketplas la kounye a.`)],
+      REJECT: [t('Producto rechazado', 'Product rejected', 'Produit refusé', 'Pwodwi refize'), t(`«${pr.title}» no cumple las políticas del marketplace y fue rechazado.`, `“${pr.title}” doesn’t meet the marketplace policies and was rejected.`, `« ${pr.title} » ne respecte pas les politiques de la marketplace et a été refusé.`, `«${pr.title}» pa respekte règ maketplas la epi li refize.`)],
+      REQUEST_CHANGES: [t('Tu producto requiere cambios', 'Your product needs changes', 'Votre produit doit être modifié', 'Pwodwi ou bezwen chanjman'), t(`«${pr.title}» necesita algunos ajustes antes de publicarse.`, `“${pr.title}” needs a few changes before it can be published.`, `« ${pr.title} » nécessite quelques modifications avant d’être publié.`, `«${pr.title}» bezwen kèk chanjman anvan li ka pibliye.`)],
     }[decision];
     await this.send({
       template: `PRODUCT_${decision}`,
@@ -583,8 +584,8 @@ export class MailService {
         subject: `${copy[0]}: ${pr.title}`,
         preheader: copy[1],
         title: copy[0],
-        body: p(esc(copy[1])) + (note?.trim() ? p(`<b>${t('Nota del moderador', 'Moderator note')}:</b> ${esc(note.trim())}`) : ''),
-        cta: { label: t('Ver mis productos', 'View my products'), url: `${config.webUrl}/vendedor/productos` },
+        body: p(esc(copy[1])) + (note?.trim() ? p(`<b>${t('Nota del moderador', 'Moderator note', 'Note du modérateur', 'Nòt moderatè a')}:</b> ${esc(note.trim())}`) : ''),
+        cta: { label: t('Ver mis productos', 'View my products', 'Voir mes produits', 'Wè pwodwi mwen yo'), url: `${config.webUrl}/vendedor/productos` },
         text: `${copy[1]}${note?.trim() ? `\n${note.trim()}` : ''}`,
       }),
     });
@@ -599,8 +600,8 @@ export class MailService {
     const t = tr(s.locale);
     const amount = money(po.amount, po.currency_code, s.locale);
     const line = po.status === 'APPROVAL_REQUIRED'
-      ? t(`Solicitamos tu retiro programado de ${amount}. Finanzas lo revisará y te avisaremos cuando se transfiera.`, `We requested your scheduled payout of ${amount}. Finance will review it and we will let you know when it is sent.`)
-      : t(`Solicitamos tu retiro programado de ${amount}. Te avisaremos cuando se transfiera.`, `We requested your scheduled payout of ${amount}. We will let you know when it is sent.`);
+      ? t(`Solicitamos tu retiro programado de ${amount}. Finanzas lo revisará y te avisaremos cuando se transfiera.`, `We requested your scheduled payout of ${amount}. Finance will review it and we will let you know when it is sent.`, `Nous avons demandé votre versement programmé de ${amount}. La finance va l’examiner et nous vous préviendrons de son envoi.`, `Nou mande peman pwograme ou ${amount}. Finans ap revize l epi n ap fè w konnen lè l voye.`)
+      : t(`Solicitamos tu retiro programado de ${amount}. Te avisaremos cuando se transfiera.`, `We requested your scheduled payout of ${amount}. We will let you know when it is sent.`, `Nous avons demandé votre versement programmé de ${amount}. Nous vous préviendrons de son envoi.`, `Nou mande peman pwograme ou ${amount}. N ap fè w konnen lè l voye.`);
     await this.send({
       template: 'PAYOUT_SCHEDULED',
       dedupeKey: `payout:${payoutId}:SCHEDULED`,
@@ -610,11 +611,11 @@ export class MailService {
       entityId: payoutId,
       message: layout({
         locale: s.locale,
-        subject: `${t('Retiro programado solicitado', 'Scheduled payout requested')} (${payoutRef(po.public_number)})`,
+        subject: `${t('Retiro programado solicitado', 'Scheduled payout requested', 'Versement programmé demandé', 'Peman pwograme mande')} (${payoutRef(po.public_number)})`,
         preheader: line,
-        title: t('Retiro programado solicitado', 'Scheduled payout requested'),
-        body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-        cta: { label: t('Ver mis finanzas', 'View my finances'), url: `${config.webUrl}/vendedor/finanzas` },
+        title: t('Retiro programado solicitado', 'Scheduled payout requested', 'Versement programmé demandé', 'Peman pwograme mande'),
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${config.webUrl}/vendedor/finanzas` },
         text: line,
       }),
     });
@@ -628,11 +629,11 @@ export class MailService {
     const t = tr(s.locale);
     const amount = money(po.amount, po.currency_code, s.locale);
     const copy = {
-      MARK_PAID: [t('Retiro pagado', 'Payout sent'), t(`Transferimos ${amount} a tu cuenta de cobro.`, `We transferred ${amount} to your payout account.`)],
-      FAIL: [t('Retiro no completado', 'Payout failed'), t(`No pudimos completar la transferencia de ${amount}. El monto volvió a tu balance disponible.`, `We couldn’t complete the transfer of ${amount}. The amount is back in your available balance.`)],
-      CANCEL: [t('Retiro cancelado', 'Payout cancelled'), t(`El retiro de ${amount} fue cancelado y el monto volvió a tu balance disponible.`, `The payout of ${amount} was cancelled and the amount is back in your available balance.`)],
+      MARK_PAID: [t('Retiro pagado', 'Payout sent', 'Versement envoyé', 'Peman voye'), t(`Transferimos ${amount} a tu cuenta de cobro.`, `We transferred ${amount} to your payout account.`, `Nous avons viré ${amount} sur votre compte de versement.`, `Nou transfere ${amount} sou kont peman ou.`)],
+      FAIL: [t('Retiro no completado', 'Payout failed', 'Échec du versement', 'Peman echwe'), t(`No pudimos completar la transferencia de ${amount}. El monto volvió a tu balance disponible.`, `We couldn’t complete the transfer of ${amount}. The amount is back in your available balance.`, `Nous n’avons pas pu effectuer le virement de ${amount}. Le montant est de retour sur votre solde disponible.`, `Nou pa t ka fini transfè ${amount} an. Montan an retounen sou balans disponib ou.`)],
+      CANCEL: [t('Retiro cancelado', 'Payout cancelled', 'Versement annulé', 'Peman anile'), t(`El retiro de ${amount} fue cancelado y el monto volvió a tu balance disponible.`, `The payout of ${amount} was cancelled and the amount is back in your available balance.`, `Le versement de ${amount} a été annulé et le montant est de retour sur votre solde disponible.`, `Peman ${amount} an anile epi montan an retounen sou balans disponib ou.`)],
     }[action];
-    const label = action === 'MARK_PAID' ? t('Referencia', 'Reference') : t('Motivo', 'Reason');
+    const label = action === 'MARK_PAID' ? t('Referencia', 'Reference', 'Référence', 'Referans') : t('Motivo', 'Reason', 'Motif', 'Rezon');
     await this.send({
       template: `PAYOUT_${action}`,
       dedupeKey: `payout:${payoutId}:${action}`,
@@ -645,8 +646,8 @@ export class MailService {
         subject: `${copy[0]} (${payoutRef(po.public_number)})`,
         preheader: copy[1],
         title: copy[0],
-        body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(copy[1].charAt(0).toLowerCase() + copy[1].slice(1))}`) + (detail?.trim() ? p(`<b>${label}:</b> ${esc(detail.trim())}`) : ''),
-        cta: { label: t('Ver mis finanzas', 'View my finances'), url: `${config.webUrl}/vendedor/finanzas` },
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(copy[1].charAt(0).toLowerCase() + copy[1].slice(1))}`) + (detail?.trim() ? p(`<b>${label}:</b> ${esc(detail.trim())}`) : ''),
+        cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${config.webUrl}/vendedor/finanzas` },
         text: `${copy[1]}${detail?.trim() ? `\n${label}: ${detail.trim()}` : ''}`,
       }),
     });
@@ -663,14 +664,14 @@ export class MailService {
     const now = money(prod.price, prod.currency, u.locale);
     const before = prod.previous ? money(prod.previous, prod.currency, u.locale) : '';
     const [title, line] = kind === 'STOCK'
-      ? [t('Volvió a estar disponible', 'Back in stock'), t(`«${prod.title}» de ${prod.store} ya está disponible de nuevo a ${now}. Las unidades pueden agotarse pronto.`, `“${prod.title}” from ${prod.store} is available again at ${now}. Units may sell out soon.`)]
-      : [t('Bajó de precio', 'Price drop'), t(`«${prod.title}» de ${prod.store} bajó de ${before} a ${now}.`, `“${prod.title}” from ${prod.store} dropped from ${before} to ${now}.`)];
+      ? [t('Volvió a estar disponible', 'Back in stock', 'De retour en stock', 'Tounen an stòk'), t(`«${prod.title}» de ${prod.store} ya está disponible de nuevo a ${now}. Las unidades pueden agotarse pronto.`, `“${prod.title}” from ${prod.store} is available again at ${now}. Units may sell out soon.`, `« ${prod.title} » de ${prod.store} est de nouveau disponible à ${now}. Les unités pourraient vite s’épuiser.`, `«${prod.title}» nan ${prod.store} disponib ankò a ${now}. Inite yo ka fini vit.`)]
+      : [t('Bajó de precio', 'Price drop', 'Baisse de prix', 'Pri a bese'), t(`«${prod.title}» de ${prod.store} bajó de ${before} a ${now}.`, `“${prod.title}” from ${prod.store} dropped from ${before} to ${now}.`, `« ${prod.title} » de ${prod.store} est passé de ${before} à ${now}.`, `«${prod.title}» nan ${prod.store} soti ${before} desann ${now}.`)];
     await this.send({
       template: kind === 'STOCK' ? 'PRODUCT_ALERT_STOCK' : 'PRODUCT_ALERT_PRICE',
       dedupeKey, to: u.email, userId, entityType: 'PRODUCT', entityId: prod.id,
       message: layout({ locale: u.locale, subject: `${title}: ${prod.title}`, preheader: line, title,
-        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-        cta: { label: t('Ver producto', 'View product'), url: `${config.webUrl}/producto/${prod.slug}` }, text: line }),
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Ver producto', 'View product', 'Voir le produit', 'Wè pwodwi a'), url: `${config.webUrl}/producto/${prod.slug}` }, text: line }),
     });
   }
 
@@ -680,19 +681,19 @@ export class MailService {
     if (!u) return;
     const t = tr(u.locale);
     const discount = o.type === 'PERCENT' ? `${o.value} %` : money(String(o.value), o.currency, u.locale);
-    const until = o.endsAt ? new Date(o.endsAt).toLocaleDateString(u.locale === 'en' ? 'en-US' : 'es', { day: 'numeric', month: 'long' }) : null;
-    const title = t(`${discount} de descuento en algo que te gustó`, `${discount} off something you liked`);
+    const until = o.endsAt ? new Date(o.endsAt).toLocaleDateString(intlLocale(u.locale), { day: 'numeric', month: 'long' }) : null;
+    const title = t(`${discount} de descuento en algo que te gustó`, `${discount} off something you liked`, `${discount} de remise sur un article qui vous plaît`, `${discount} rabè sou yon bagay ou renmen`);
     const line = t(`${o.store} te ofrece ${discount} de descuento en «${o.title}» con el cupón ${o.code}${until ? ` hasta el ${until}` : ''}.`,
-      `${o.store} offers you ${discount} off “${o.title}” with coupon ${o.code}${until ? ` until ${until}` : ''}.`);
+      `${o.store} offers you ${discount} off “${o.title}” with coupon ${o.code}${until ? ` until ${until}` : ''}.`, `${o.store} vous offre ${discount} de remise sur « ${o.title} » avec le coupon ${o.code}${until ? ` jusqu’au ${until}` : ''}.`, `${o.store} ofri w ${discount} rabè sou «${o.title}» ak koupon ${o.code}${until ? ` jiska ${until}` : ''}.`);
     await this.send({
       template: 'PRODUCT_ALERT_OFFER', dedupeKey, to: u.email, userId, entityType: 'PRODUCT', entityId: o.productId,
       message: layout({ locale: u.locale, subject: `${title}: ${o.title}`, preheader: line, title,
-        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`)
-          + (o.message ? p(`<b>${t('Mensaje de la tienda', 'Message from the store')}:</b> ${esc(o.message)}`) : '')
-          + rows([[t('Cupón', 'Coupon'), `<b>${esc(o.code)}</b>`], [t('Descuento', 'Discount'), esc(discount)]])
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`)
+          + (o.message ? p(`<b>${t('Mensaje de la tienda', 'Message from the store', 'Message de la boutique', 'Mesaj boutik la')}:</b> ${esc(o.message)}`) : '')
+          + rows([[t('Cupón', 'Coupon', 'Coupon', 'Koupon'), `<b>${esc(o.code)}</b>`], [t('Descuento', 'Discount', 'Remise', 'Rabè'), esc(discount)]])
           + p(t('Escribe el código al pagar. Recibes esta oferta porque tienes el producto en tus favoritos o en tu carrito; puedes desactivar estos avisos en tus preferencias de notificación.',
-                'Enter the code at checkout. You get this offer because the product is in your favorites or cart; you can turn these alerts off in your notification preferences.')),
-        cta: { label: t('Ver producto', 'View product'), url: `${config.webUrl}/producto/${o.slug}` }, text: line }),
+                'Enter the code at checkout. You get this offer because the product is in your favorites or cart; you can turn these alerts off in your notification preferences.', 'Saisissez le code au paiement. Vous recevez cette offre car le produit est dans vos favoris ou votre panier ; vous pouvez désactiver ces alertes dans vos préférences de notification.', 'Antre kòd la lè w ap peye. Ou resevwa òf sa a paske pwodwi a nan favori oswa panye ou; ou ka dezaktive alèt sa yo nan preferans notifikasyon ou.')),
+        cta: { label: t('Ver producto', 'View product', 'Voir le produit', 'Wè pwodwi a'), url: `${config.webUrl}/producto/${o.slug}` }, text: line }),
     });
   }
 
@@ -705,7 +706,7 @@ export class MailService {
     await this.send({
       template: 'PAYMENT_INCIDENT_ADMIN', dedupeKey: n.dedupeKey, to: u.email, userId, entityType: 'PAYMENT_INCIDENT', entityId: null,
       message: layout({ locale: u.locale, subject: n.title, preheader: n.body, title: n.title, body: p(esc(n.body)),
-        cta: { label: t('Ver incidencias de pago', 'View payment incidents'), url: `${config.webUrl}/admin/incidencias-pago` }, text: n.body }),
+        cta: { label: t('Ver incidencias de pago', 'View payment incidents', 'Voir les incidents de paiement', 'Wè ensidan peman yo'), url: `${config.webUrl}/admin/incidencias-pago` }, text: n.body }),
     });
   }
 
@@ -724,7 +725,7 @@ export class MailService {
     const oref = orderRef(c.order_number);
     const sellerUrl = `${config.webUrl}/vendedor/pedidos/${c.order_id}`;
     const customerUrl = `${config.webUrl}/cuenta/pedidos/${c.order_id}`;
-    const toSeller = async (title: [string, string], line: [string, string], key: string) => {
+    const toSeller = async (title: [string, string, string, string], line: [string, string, string, string], key: string) => {
       const s = await this.sellerContact(c.seller_id);
       if (!s) return;
       const t = tr(s.locale);
@@ -733,11 +734,11 @@ export class MailService {
         template: `ORDER_CANCEL_${key}_SELLER`, dedupeKey: `cancel:${cancellationId}:${key}:seller`, to: s.email, userId: s.ownerUserId,
         entityType: 'ORDER', entityId: c.order_id,
         message: layout({ locale: s.locale, subject: `${t(...title)} (${oref})`, preheader: l, title: t(...title),
-          body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(l.charAt(0).toLowerCase() + l.slice(1))}`),
-          cta: { label: t('Ver pedido', 'View order'), url: sellerUrl }, text: l }),
+          body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(l.charAt(0).toLowerCase() + l.slice(1))}`),
+          cta: { label: t('Ver pedido', 'View order', 'Voir la commande', 'Wè kòmand lan'), url: sellerUrl }, text: l }),
       });
     };
-    const toCustomer = async (title: [string, string], line: [string, string], key: string, extra?: (t: (es: string, en: string) => string, l: Locale) => string) => {
+    const toCustomer = async (title: [string, string, string, string], line: [string, string, string, string], key: string, extra?: (t: (es: string, en: string, fr?: string, ht?: string) => string, l: Locale) => string) => {
       const u = await this.userContact(c.customer_id);
       if (!u) return;
       const t = tr(u.locale);
@@ -746,40 +747,40 @@ export class MailService {
         template: key === 'REFUNDED' ? 'REFUND_COMPLETED' : `ORDER_CANCEL_${key}`, dedupeKey: `cancel:${cancellationId}:${key}`, to: u.email, userId: c.customer_id,
         entityType: 'ORDER', entityId: c.order_id,
         message: layout({ locale: u.locale, subject: `${t(...title)} (${oref})`, preheader: l, title: t(...title),
-          body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(l.charAt(0).toLowerCase() + l.slice(1))}`) + (extra ? extra(t, u.locale) : ''),
-          cta: { label: t('Ver mi pedido', 'View my order'), url: customerUrl }, text: l }),
+          body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(l.charAt(0).toLowerCase() + l.slice(1))}`) + (extra ? extra(t, u.locale) : ''),
+          cta: { label: t('Ver mi pedido', 'View my order', 'Voir ma commande', 'Wè kòmand mwen'), url: customerUrl }, text: l }),
       });
     };
     if (event === 'REQUESTED') {
-      await toSeller(['Solicitud de cancelación', 'Cancellation request'],
+      await toSeller(['Solicitud de cancelación', 'Cancellation request', 'Demande d’annulation', 'Demann anilasyon'],
         [`El cliente pidió cancelar su compra del pedido ${oref} antes del envío. No lo prepares ni lo envíes: acéptala o recházala desde el pedido.`,
-         `The customer asked to cancel their purchase in order ${oref} before shipping. Don’t prepare or ship it: accept or reject the request from the order.`], 'REQUESTED');
+         `The customer asked to cancel their purchase in order ${oref} before shipping. Don’t prepare or ship it: accept or reject the request from the order.`, `Le client a demandé l’annulation de son achat de la commande ${oref} avant l’expédition. Ne le préparez pas et ne l’expédiez pas : acceptez ou refusez la demande depuis la commande.`, `Kliyan an mande anile acha li nan kòmand ${oref} anvan li pati. Pa prepare l ni voye l: aksepte oswa refize demann lan nan kòmand lan.`], 'REQUESTED');
       return;
     }
     if (event === 'REJECTED') {
-      await toCustomer(['Cancelación rechazada', 'Cancellation rejected'],
+      await toCustomer(['Cancelación rechazada', 'Cancellation rejected', 'Annulation refusée', 'Anilasyon refize'],
         [`${c.store} no pudo cancelar tu compra del pedido ${oref}${c.decision_note ? `. Motivo: ${c.decision_note}` : ''}. Si ya lo recibes y no lo quieres, puedes pedir una devolución.`,
-         `${c.store} couldn’t cancel your purchase in order ${oref}${c.decision_note ? `. Reason: ${c.decision_note}` : ''}. If you receive it and don’t want it, you can request a return.`], 'REJECTED');
+         `${c.store} couldn’t cancel your purchase in order ${oref}${c.decision_note ? `. Reason: ${c.decision_note}` : ''}. If you receive it and don’t want it, you can request a return.`, `${c.store} n’a pas pu annuler votre achat de la commande ${oref}${c.decision_note ? `. Motif : ${c.decision_note}` : ''}. Si vous le recevez et n’en voulez pas, vous pouvez demander un retour.`, `${c.store} pa t ka anile acha ou nan kòmand ${oref}${c.decision_note ? `. Rezon: ${c.decision_note}` : ''}. Si w resevwa l epi ou pa vle l, ou ka mande yon retou.`], 'REJECTED');
       return;
     }
     if (event === 'APPROVED') {
-      await toCustomer(['Pedido cancelado', 'Order cancelled'],
+      await toCustomer(['Pedido cancelado', 'Order cancelled', 'Commande annulée', 'Kòmand anile'],
         [`Cancelamos tu compra de ${c.store} en el pedido ${oref}. Estamos procesando el reembolso completo al mismo medio de pago; te avisaremos cuando se emita.`,
-         `We cancelled your purchase from ${c.store} in order ${oref}. We’re processing the full refund to your original payment method and will let you know when it’s issued.`], 'APPROVED');
+         `We cancelled your purchase from ${c.store} in order ${oref}. We’re processing the full refund to your original payment method and will let you know when it’s issued.`, `Nous avons annulé votre achat chez ${c.store} dans la commande ${oref}. Nous traitons le remboursement complet sur votre moyen de paiement d’origine et vous préviendrons quand il sera effectué.`, `Nou anile acha ou nan ${c.store} nan kòmand ${oref}. N ap trete ranbousman konplè a sou metòd peman orijinal ou epi n ap fè w konnen lè l fèt.`], 'APPROVED');
       if (c.requested_by_role !== 'SELLER')
-        await toSeller(['Pedido cancelado', 'Order cancelled'],
+        await toSeller(['Pedido cancelado', 'Order cancelled', 'Commande annulée', 'Kòmand anile'],
           [`La compra del pedido ${oref} fue cancelada antes del envío. No la prepares ni la envíes; el stock volvió a tu inventario.`,
-           `The purchase in order ${oref} was cancelled before shipping. Don’t prepare or ship it; the stock is back in your inventory.`], 'APPROVED');
+           `The purchase in order ${oref} was cancelled before shipping. Don’t prepare or ship it; the stock is back in your inventory.`, `L’achat de la commande ${oref} a été annulé avant l’expédition. Ne le préparez pas et ne l’expédiez pas ; le stock est de retour dans votre inventaire.`, `Acha nan kòmand ${oref} anile anvan li pati. Pa prepare l ni voye l; stòk la retounen nan envantè ou.`], 'APPROVED');
       return;
     }
     const s = await this.sellerContact(c.seller_id);
-    await toCustomer(['Reembolso realizado', 'Refund issued'],
+    await toCustomer(['Reembolso realizado', 'Refund issued', 'Remboursement effectué', 'Ranbousman fèt'],
       [`Te devolvimos ${money(c.refunded ?? '0', c.currency_code, 'es')} por la cancelación de tu compra del pedido ${oref}, al mismo medio de pago. Según tu banco puede tardar de 5 a 10 días hábiles en verse.`,
-       `We refunded ${money(c.refunded ?? '0', c.currency_code, 'en')} for the cancelled purchase in order ${oref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`], 'REFUNDED',
-      (t, l) => (c.refund_number ? rows([[t('Reembolso', 'Refund'), esc(refundRef(c.refund_number))], [t('Monto', 'Amount'), esc(money(c.refunded ?? '0', c.currency_code, l))], [t('Pedido', 'Order'), esc(oref)]]) : ''));
-    if (s) await toSeller(['Cancelación reembolsada', 'Cancellation refunded'],
+       `We refunded ${money(c.refunded ?? '0', c.currency_code, 'en')} for the cancelled purchase in order ${oref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`, `Nous vous avons remboursé ${money(c.refunded ?? '0', c.currency_code, 'fr')} pour l’achat annulé de la commande ${oref}, sur votre moyen de paiement d’origine. Selon votre banque, cela peut prendre 5 à 10 jours ouvrés pour apparaître.`, `Nou ranbouse w ${money(c.refunded ?? '0', c.currency_code, 'ht')} pou acha anile nan kòmand ${oref}, sou metòd peman orijinal ou. Selon bank ou, li ka pran 5 a 10 jou travay pou parèt.`], 'REFUNDED',
+      (t, l) => (c.refund_number ? rows([[t('Reembolso', 'Refund', 'Remboursement', 'Ranbousman'), esc(refundRef(c.refund_number))], [t('Monto', 'Amount', 'Montant', 'Montan'), esc(money(c.refunded ?? '0', c.currency_code, l))], [t('Pedido', 'Order', 'Commande', 'Kòmand'), esc(oref)]]) : ''));
+    if (s) await toSeller(['Cancelación reembolsada', 'Cancellation refunded', 'Annulation remboursée', 'Anilasyon ranbouse'],
       [`Se reembolsó al cliente la compra cancelada del pedido ${oref}; tu ingreso pendiente de ese pedido se anuló.`,
-       `The cancelled purchase in order ${oref} was refunded to the customer; your pending earnings from that order were voided.`], 'REFUNDED');
+       `The cancelled purchase in order ${oref} was refunded to the customer; your pending earnings from that order were voided.`, `L’achat annulé de la commande ${oref} a été remboursé au client ; vos gains en attente de cette commande ont été annulés.`, `Acha anile nan kòmand ${oref} ranbouse bay kliyan an; benefis an atant ou pou kòmand sa a anile.`], 'REFUNDED');
   }
 
   async returnEvent(returnId: string, event: 'REQUESTED' | 'IN_TRANSIT' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'INSPECTED' | 'REFUNDED' | 'CLOSED_NO_REFUND' | 'LABEL_READY') {
@@ -806,8 +807,8 @@ export class MailService {
       const t = tr(s.locale);
       const [title, line] =
         event === 'REQUESTED'
-          ? [t('Nueva solicitud de devolución', 'New return request'), t(`Un cliente pidió devolver productos del pedido ${oref}: ${r.products}. Revísala y apruébala o recházala.`, `A customer asked to return items from order ${oref}: ${r.products}. Review it and approve or reject it.`)]
-          : [t('El cliente envió la devolución', 'The customer shipped the return'), t(`El cliente despachó la devolución ${ref} con ${r.carrier}${r.tracking_number ? ` (guía ${r.tracking_number})` : ''}. Márcala como recibida cuando llegue.`, `The customer shipped return ${ref} with ${r.carrier}${r.tracking_number ? ` (tracking ${r.tracking_number})` : ''}. Mark it as received when it arrives.`)];
+          ? [t('Nueva solicitud de devolución', 'New return request', 'Nouvelle demande de retour', 'Nouvo demann retou'), t(`Un cliente pidió devolver productos del pedido ${oref}: ${r.products}. Revísala y apruébala o recházala.`, `A customer asked to return items from order ${oref}: ${r.products}. Review it and approve or reject it.`, `Un client a demandé à retourner des articles de la commande ${oref} : ${r.products}. Examinez-la puis approuvez-la ou refusez-la.`, `Yon kliyan mande retounen atik nan kòmand ${oref}: ${r.products}. Revize l epi apwouve oswa refize l.`)]
+          : [t('El cliente envió la devolución', 'The customer shipped the return', 'Le client a expédié le retour', 'Kliyan an voye retou a'), t(`El cliente despachó la devolución ${ref} con ${r.carrier}${r.tracking_number ? ` (guía ${r.tracking_number})` : ''}. Márcala como recibida cuando llegue.`, `The customer shipped return ${ref} with ${r.carrier}${r.tracking_number ? ` (tracking ${r.tracking_number})` : ''}. Mark it as received when it arrives.`, `Le client a expédié le retour ${ref} avec ${r.carrier}${r.tracking_number ? ` (suivi ${r.tracking_number})` : ''}. Marquez-le comme reçu à son arrivée.`, `Kliyan an voye retou ${ref} ak ${r.carrier}${r.tracking_number ? ` (swivi ${r.tracking_number})` : ''}. Make l resevwa lè l rive.`)];
       await this.send({
         template: `RETURN_${event}_SELLER`,
         dedupeKey: `return:${returnId}:${event}:seller`,
@@ -820,8 +821,8 @@ export class MailService {
           subject: `${title} (${ref})`,
           preheader: line,
           title,
-          body: p(`${t('Hola', 'Hi')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-          cta: { label: t('Ver devolución', 'View return'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
+          body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+          cta: { label: t('Ver devolución', 'View return', 'Voir le retour', 'Wè retou a'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
           text: line,
         }),
       });
@@ -832,13 +833,13 @@ export class MailService {
     const t = tr(u.locale);
     const amount = money(r.refunded, r.currency_code, u.locale);
     const copy: Record<string, [string, string]> = {
-      APPROVED: [t('Devolución aprobada', 'Return approved'), t(`${r.store} aprobó tu devolución ${ref}. Envía el paquete a la dirección que verás en la solicitud y registra la guía.`, `${r.store} approved your return ${ref}. Ship the package to the address shown in the request and add the tracking number.`)],
-      REJECTED: [t('Devolución rechazada', 'Return rejected'), t(`${r.store} rechazó tu devolución ${ref}.${r.rejection_detail ? ` Motivo: ${r.rejection_detail}` : ''} Si no estás de acuerdo, abre un reporte en el centro de ayuda.`, `${r.store} rejected your return ${ref}.${r.rejection_detail ? ` Reason: ${r.rejection_detail}` : ''} If you disagree, open a report in the help center.`)],
-      RECEIVED: [t('La tienda recibió tu devolución', 'The store received your return'), t(`${r.store} recibió el paquete de la devolución ${ref} y lo está revisando.`, `${r.store} received the package for return ${ref} and is checking it.`)],
-      INSPECTED: [t('Devolución revisada', 'Return checked'), t(`${r.store} revisó los productos de la devolución ${ref}. Procesaremos tu reembolso en breve.`, `${r.store} checked the items of return ${ref}. We will process your refund shortly.`)],
-      REFUNDED: [t('Reembolso realizado', 'Refund issued'), t(`Te devolvimos ${amount} por la devolución ${ref} al mismo medio de pago. Según tu banco puede tardar de 5 a 10 días hábiles en verse.`, `We refunded ${amount} for return ${ref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`)],
-      LABEL_READY: [t('Tu etiqueta de devolución está lista', 'Your return label is ready'), t(`Descarga la etiqueta prepagada de la devolución ${ref}, pégala en el paquete y entrégalo a la transportadora. No tienes que pagar el envío.`, `Download the prepaid label for return ${ref}, stick it on the package and hand it to the carrier. You don’t pay for shipping.`)],
-      CLOSED_NO_REFUND: [t('Devolución cerrada', 'Return closed'), t(`La revisión de la devolución ${ref} no aceptó unidades para reembolso. Si tienes dudas, abre un reporte en el centro de ayuda.`, `The inspection of return ${ref} accepted no units for a refund. If you have questions, open a report in the help center.`)],
+      APPROVED: [t('Devolución aprobada', 'Return approved', 'Retour approuvé', 'Retou apwouve'), t(`${r.store} aprobó tu devolución ${ref}. Envía el paquete a la dirección que verás en la solicitud y registra la guía.`, `${r.store} approved your return ${ref}. Ship the package to the address shown in the request and add the tracking number.`, `${r.store} a approuvé votre retour ${ref}. Expédiez le colis à l’adresse indiquée dans la demande et ajoutez le numéro de suivi.`, `${r.store} apwouve retou ${ref} ou. Voye koli a nan adrès ki nan demann lan epi ajoute nimewo swivi a.`)],
+      REJECTED: [t('Devolución rechazada', 'Return rejected', 'Retour refusé', 'Retou refize'), t(`${r.store} rechazó tu devolución ${ref}.${r.rejection_detail ? ` Motivo: ${r.rejection_detail}` : ''} Si no estás de acuerdo, abre un reporte en el centro de ayuda.`, `${r.store} rejected your return ${ref}.${r.rejection_detail ? ` Reason: ${r.rejection_detail}` : ''} If you disagree, open a report in the help center.`, `${r.store} a refusé votre retour ${ref}.${r.rejection_detail ? ` Motif : ${r.rejection_detail}` : ''} Si vous n’êtes pas d’accord, ouvrez un signalement dans le centre d’aide.`, `${r.store} refize retou ${ref} ou.${r.rejection_detail ? ` Rezon: ${r.rejection_detail}` : ''} Si w pa dakò, louvri yon rapò nan sant èd la.`)],
+      RECEIVED: [t('La tienda recibió tu devolución', 'The store received your return', 'La boutique a reçu votre retour', 'Boutik la resevwa retou ou'), t(`${r.store} recibió el paquete de la devolución ${ref} y lo está revisando.`, `${r.store} received the package for return ${ref} and is checking it.`, `${r.store} a reçu le colis du retour ${ref} et le vérifie.`, `${r.store} resevwa koli retou ${ref} a epi l ap verifye l.`)],
+      INSPECTED: [t('Devolución revisada', 'Return checked', 'Retour vérifié', 'Retou verifye'), t(`${r.store} revisó los productos de la devolución ${ref}. Procesaremos tu reembolso en breve.`, `${r.store} checked the items of return ${ref}. We will process your refund shortly.`, `${r.store} a vérifié les articles du retour ${ref}. Nous allons traiter votre remboursement sous peu.`, `${r.store} verifye atik retou ${ref} yo. N ap trete ranbousman ou talè.`)],
+      REFUNDED: [t('Reembolso realizado', 'Refund issued', 'Remboursement effectué', 'Ranbousman fèt'), t(`Te devolvimos ${amount} por la devolución ${ref} al mismo medio de pago. Según tu banco puede tardar de 5 a 10 días hábiles en verse.`, `We refunded ${amount} for return ${ref} to your original payment method. Depending on your bank it can take 5–10 business days to show.`, `Nous vous avons remboursé ${amount} pour le retour ${ref}, sur votre moyen de paiement d’origine. Selon votre banque, cela peut prendre 5 à 10 jours ouvrés pour apparaître.`, `Nou ranbouse w ${amount} pou retou ${ref}, sou metòd peman orijinal ou. Selon bank ou, li ka pran 5 a 10 jou travay pou parèt.`)],
+      LABEL_READY: [t('Tu etiqueta de devolución está lista', 'Your return label is ready', 'Votre étiquette de retour est prête', 'Etikèt retou ou pare'), t(`Descarga la etiqueta prepagada de la devolución ${ref}, pégala en el paquete y entrégalo a la transportadora. No tienes que pagar el envío.`, `Download the prepaid label for return ${ref}, stick it on the package and hand it to the carrier. You don’t pay for shipping.`, `Téléchargez l’étiquette prépayée du retour ${ref}, collez-la sur le colis et remettez-le au transporteur. Vous ne payez pas l’envoi.`, `Telechaje etikèt prepeye retou ${ref} a, kole l sou koli a epi remèt li bay transpòtè a. Ou pa peye livrezon an.`)],
+      CLOSED_NO_REFUND: [t('Devolución cerrada', 'Return closed', 'Retour clôturé', 'Retou fèmen'), t(`La revisión de la devolución ${ref} no aceptó unidades para reembolso. Si tienes dudas, abre un reporte en el centro de ayuda.`, `The inspection of return ${ref} accepted no units for a refund. If you have questions, open a report in the help center.`, `L’inspection du retour ${ref} n’a accepté aucune unité pour remboursement. Pour toute question, ouvrez un signalement dans le centre d’aide.`, `Enspeksyon retou ${ref} a pa aksepte okenn inite pou ranbouse. Si w gen kesyon, louvri yon rapò nan sant èd la.`)],
     };
     const [title, line] = copy[event];
     await this.send({
@@ -853,9 +854,9 @@ export class MailService {
         subject: `${title} (${ref})`,
         preheader: line,
         title,
-        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
-          (event === 'REFUNDED' && r.refund_number ? rows([[t('Reembolso', 'Refund'), esc(refundRef(r.refund_number))], [t('Monto', 'Amount'), esc(amount)], [t('Pedido', 'Order'), esc(oref)]]) : ''),
-        cta: { label: event === 'LABEL_READY' ? t('Descargar etiqueta', 'Download label') : t('Ver mi devolución', 'View my return'), url: `${config.webUrl}/cuenta/devoluciones/${returnId}` },
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
+          (event === 'REFUNDED' && r.refund_number ? rows([[t('Reembolso', 'Refund', 'Remboursement', 'Ranbousman'), esc(refundRef(r.refund_number))], [t('Monto', 'Amount', 'Montant', 'Montan'), esc(amount)], [t('Pedido', 'Order', 'Commande', 'Kòmand'), esc(oref)]]) : ''),
+        cta: { label: event === 'LABEL_READY' ? t('Descargar etiqueta', 'Download label', 'Télécharger l’étiquette', 'Telechaje etikèt') : t('Ver mi devolución', 'View my return', 'Voir mon retour', 'Wè retou mwen'), url: `${config.webUrl}/cuenta/devoluciones/${returnId}` },
         text: line,
       }),
     });
@@ -863,7 +864,7 @@ export class MailService {
       const s = await this.sellerContact(r.seller_id);
       if (s) {
         const ts = tr(s.locale);
-        const line2 = ts(`Se reembolsaron ${money(r.refunded, r.currency_code, s.locale)} al cliente por la devolución ${ref}; el monto correspondiente se descontó de tu balance.`, `${money(r.refunded, r.currency_code, s.locale)} was refunded to the customer for return ${ref}; your share was deducted from your balance.`);
+        const line2 = ts(`Se reembolsaron ${money(r.refunded, r.currency_code, s.locale)} al cliente por la devolución ${ref}; el monto correspondiente se descontó de tu balance.`, `${money(r.refunded, r.currency_code, s.locale)} was refunded to the customer for return ${ref}; your share was deducted from your balance.`, `${money(r.refunded, r.currency_code, s.locale)} ont été remboursés au client pour le retour ${ref} ; votre part a été déduite de votre solde.`, `${money(r.refunded, r.currency_code, s.locale)} ranbouse bay kliyan an pou retou ${ref}; pati pa w la retire sou balans ou.`);
         await this.send({
           template: 'REFUND_COMPLETED_SELLER',
           dedupeKey: `return:${returnId}:REFUNDED:seller`,
@@ -873,11 +874,11 @@ export class MailService {
           entityId: returnId,
           message: layout({
             locale: s.locale,
-            subject: `${ts('Reembolso de devolución', 'Return refund')} (${ref})`,
+            subject: `${ts('Reembolso de devolución', 'Return refund', 'Remboursement de retour', 'Ranbousman retou')} (${ref})`,
             preheader: line2,
-            title: ts('Reembolso de devolución', 'Return refund'),
-            body: p(`${ts('Hola', 'Hi')} ${esc(s.name)}, ${esc(line2.charAt(0).toLowerCase() + line2.slice(1))}`),
-            cta: { label: ts('Ver devolución', 'View return'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
+            title: ts('Reembolso de devolución', 'Return refund', 'Remboursement de retour', 'Ranbousman retou'),
+            body: p(`${ts('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(line2.charAt(0).toLowerCase() + line2.slice(1))}`),
+            cta: { label: ts('Ver devolución', 'View return', 'Voir le retour', 'Wè retou a'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
             text: line2,
           }),
         });
@@ -895,10 +896,10 @@ export class MailService {
     const t = tr(u.locale);
     const [title, line] =
       event === 'REQUESTED'
-        ? [t('Recibimos tu solicitud para eliminar la cuenta', 'We received your account deletion request'),
-           t('Nuestro equipo la revisará en un máximo de 3 días hábiles. Mientras tanto puedes cancelarla desde Seguridad.', 'Our team will review it within 3 business days. Meanwhile you can cancel it from Security.')]
-        : [t('No pudimos eliminar tu cuenta', 'We could not delete your account'),
-           t(`Tu solicitud de eliminación fue rechazada.${r.decision_note ? ` Motivo: ${r.decision_note}` : ''}`, `Your deletion request was rejected.${r.decision_note ? ` Reason: ${r.decision_note}` : ''}`)];
+        ? [t('Recibimos tu solicitud para eliminar la cuenta', 'We received your account deletion request', 'Nous avons reçu votre demande de suppression de compte', 'Nou resevwa demann ou pou efase kont ou'),
+           t('Nuestro equipo la revisará en un máximo de 3 días hábiles. Mientras tanto puedes cancelarla desde Seguridad.', 'Our team will review it within 3 business days. Meanwhile you can cancel it from Security.', 'Notre équipe l’examinera sous 3 jours ouvrés. En attendant, vous pouvez l’annuler depuis Sécurité.', 'Ekip nou an ap revize l nan 3 jou travay. Pandan tan sa a ou ka anile l nan Sekirite.')]
+        : [t('No pudimos eliminar tu cuenta', 'We could not delete your account', 'Nous n’avons pas pu supprimer votre compte', 'Nou pa t ka efase kont ou'),
+           t(`Tu solicitud de eliminación fue rechazada.${r.decision_note ? ` Motivo: ${r.decision_note}` : ''}`, `Your deletion request was rejected.${r.decision_note ? ` Reason: ${r.decision_note}` : ''}`, `Votre demande de suppression a été refusée.${r.decision_note ? ` Motif : ${r.decision_note}` : ''}`, `Demann efasman ou refize.${r.decision_note ? ` Rezon: ${r.decision_note}` : ''}`)];
     await this.send({
       template: `ACCOUNT_DELETION_${event}`,
       dedupeKey: `account-deletion:${requestId}:${event}`,
@@ -911,8 +912,8 @@ export class MailService {
         subject: title,
         preheader: line,
         title,
-        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-        cta: { label: t('Ir a Seguridad', 'Go to Security'), url: `${config.webUrl}/cuenta/seguridad` },
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Ir a Seguridad', 'Go to Security', 'Aller à Sécurité', 'Ale nan Sekirite'), url: `${config.webUrl}/cuenta/seguridad` },
         text: line,
       }),
     });
@@ -922,7 +923,7 @@ export class MailService {
   async accountDeleted(email: string, name: string | null, locale: Locale, requestId: string) {
     const t = tr(locale);
     const line = t('Eliminamos tu cuenta de NEXOVAX y tus datos personales. Los registros de compras que la ley nos obliga a conservar quedaron anónimos.',
-                   'We deleted your NEXOVAX account and your personal data. Purchase records we are legally required to keep are now anonymous.');
+                   'We deleted your NEXOVAX account and your personal data. Purchase records we are legally required to keep are now anonymous.', 'Nous avons supprimé votre compte NEXOVAX et vos données personnelles. Les traces d’achat que la loi nous oblige à conserver sont désormais anonymes.', 'Nou efase kont NEXOVAX ou ak done pèsonèl ou. Dosye acha lalwa oblije nou kenbe yo vin san non kounye a.');
     await this.send({
       template: 'ACCOUNT_DELETED',
       dedupeKey: `account-deletion:${requestId}:DELETED`,
@@ -932,11 +933,11 @@ export class MailService {
       entityId: requestId,
       message: layout({
         locale,
-        subject: t('Tu cuenta fue eliminada', 'Your account was deleted'),
+        subject: t('Tu cuenta fue eliminada', 'Your account was deleted', 'Votre compte a été supprimé', 'Kont ou efase'),
         preheader: line,
-        title: t('Cuenta eliminada', 'Account deleted'),
-        body: p(`${t('Hola', 'Hi')}${name ? ` ${esc(name)}` : ''}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
-          p(t('Gracias por haber sido parte de NEXOVAX. Si cambias de opinión, puedes crear una cuenta nueva cuando quieras.', 'Thank you for being part of NEXOVAX. If you change your mind, you can create a new account at any time.')),
+        title: t('Cuenta eliminada', 'Account deleted', 'Compte supprimé', 'Kont efase'),
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')}${name ? ` ${esc(name)}` : ''}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
+          p(t('Gracias por haber sido parte de NEXOVAX. Si cambias de opinión, puedes crear una cuenta nueva cuando quieras.', 'Thank you for being part of NEXOVAX. If you change your mind, you can create a new account at any time.', 'Merci d’avoir fait partie de NEXOVAX. Si vous changez d’avis, vous pouvez créer un nouveau compte à tout moment.', 'Mèsi paske w te fè pati NEXOVAX. Si w chanje lide, ou ka kreye yon nouvo kont nenpòt lè.')),
         text: line,
       }),
     });
@@ -964,12 +965,12 @@ export class MailService {
       entityId: ticketId,
       message: layout({
         locale: x.u.locale,
-        subject: t(`Recibimos tu reporte ${x.code}`, `We received your report ${x.code}`),
-        preheader: t('Nuestro equipo lo revisará pronto.', 'Our team will review it shortly.'),
-        title: t('Reporte recibido', 'Report received'),
+        subject: t(`Recibimos tu reporte ${x.code}`, `We received your report ${x.code}`, `Nous avons reçu votre signalement ${x.code}`, `Nou resevwa rapò ou ${x.code}`),
+        preheader: t('Nuestro equipo lo revisará pronto.', 'Our team will review it shortly.', 'Notre équipe l’examinera sous peu.', 'Ekip nou an ap revize l talè.'),
+        title: t('Reporte recibido', 'Report received', 'Signalement reçu', 'Rapò resevwa'),
         body: p(t(`Hola ${esc(x.u.name)}, recibimos tu reporte <b>«${esc(x.tk.subject)}»</b>. Tu código de seguimiento es <b>${x.code}</b>. Te escribiremos cuando tengamos novedades.`,
-                  `Hi ${esc(x.u.name)}, we received your report <b>“${esc(x.tk.subject)}”</b>. Your tracking code is <b>${x.code}</b>. We’ll write back when we have news.`)),
-        cta: { label: t('Ver mis reportes', 'View my reports'), url: `${config.webUrl}/cuenta/reportes` },
+                  `Hi ${esc(x.u.name)}, we received your report <b>“${esc(x.tk.subject)}”</b>. Your tracking code is <b>${x.code}</b>. We’ll write back when we have news.`, `Bonjour ${esc(x.u.name)}, nous avons reçu votre signalement <b>« ${esc(x.tk.subject)} »</b>. Votre code de suivi est <b>${x.code}</b>. Nous vous écrirons dès que nous aurons du nouveau.`, `Bonjou ${esc(x.u.name)}, nou resevwa rapò ou <b>«${esc(x.tk.subject)}»</b>. Kòd swivi ou se <b>${x.code}</b>. N ap ekri w lè nou gen nouvèl.`)),
+        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${config.webUrl}/cuenta/reportes` },
         text: `${x.code}: ${x.tk.subject}`,
       }),
     });
@@ -988,13 +989,13 @@ export class MailService {
       entityId: ticketId,
       message: layout({
         locale: x.u.locale,
-        subject: t(`Respuesta a tu reporte ${x.code}`, `Reply to your report ${x.code}`),
+        subject: t(`Respuesta a tu reporte ${x.code}`, `Reply to your report ${x.code}`, `Réponse à votre signalement ${x.code}`, `Repons pou rapò ou ${x.code}`),
         preheader: body.slice(0, 120),
-        title: t('Tienes una respuesta de soporte', 'You have a reply from support'),
+        title: t('Tienes una respuesta de soporte', 'You have a reply from support', 'Vous avez une réponse du support', 'Ou gen yon repons sipò'),
         body:
-          p(t(`Hola ${esc(x.u.name)}, nuestro equipo respondió tu reporte <b>«${esc(x.tk.subject)}»</b>:`, `Hi ${esc(x.u.name)}, our team replied to your report <b>“${esc(x.tk.subject)}”</b>:`)) +
+          p(t(`Hola ${esc(x.u.name)}, nuestro equipo respondió tu reporte <b>«${esc(x.tk.subject)}»</b>:`, `Hi ${esc(x.u.name)}, our team replied to your report <b>“${esc(x.tk.subject)}”</b>:`, `Bonjour ${esc(x.u.name)}, notre équipe a répondu à votre signalement <b>« ${esc(x.tk.subject)} »</b> :`, `Bonjou ${esc(x.u.name)}, ekip nou an reponn rapò ou <b>«${esc(x.tk.subject)}»</b>:`)) +
           `<div style="margin:0 0 16px;padding:14px 16px;background:#f1f6ff;border-left:4px solid #0a6cf5;border-radius:8px;white-space:pre-wrap">${esc(body.trim())}</div>`,
-        cta: { label: t('Responder', 'Reply'), url: `${config.webUrl}/cuenta/reportes` },
+        cta: { label: t('Responder', 'Reply', 'Réponse', 'Repons'), url: `${config.webUrl}/cuenta/reportes` },
         text: `${x.code}:\n\n${body.trim()}`,
       }),
     });
@@ -1006,7 +1007,7 @@ export class MailService {
     if (!x) return;
     const t = tr(x.u.locale);
     const resolved = status === 'RESOLVED';
-    const word = resolved ? t('resuelto', 'resolved') : t('cerrado', 'closed');
+    const word = resolved ? t('resuelto', 'resolved', 'résolu', 'rezoud') : t('cerrado', 'closed', 'clôturé', 'fèmen');
     await this.send({
       template: `SUPPORT_${status}`,
       dedupeKey: `ticket-status:${ticketId}:${status}`,
@@ -1016,12 +1017,12 @@ export class MailService {
       entityId: ticketId,
       message: layout({
         locale: x.u.locale,
-        subject: t(`Tu reporte ${x.code} fue ${word}`, `Your report ${x.code} was ${word}`),
-        preheader: t('Gracias por ayudarnos a mejorar.', 'Thanks for helping us improve.'),
-        title: resolved ? t('Reporte resuelto', 'Report resolved') : t('Reporte cerrado', 'Report closed'),
+        subject: t(`Tu reporte ${x.code} fue ${word}`, `Your report ${x.code} was ${word}`, `Votre signalement ${x.code} a été ${word}`, `Rapò ou ${x.code} ${word}`),
+        preheader: t('Gracias por ayudarnos a mejorar.', 'Thanks for helping us improve.', 'Merci de nous aider à nous améliorer.', 'Mèsi paske w ede nou amelyore.'),
+        title: resolved ? t('Reporte resuelto', 'Report resolved', 'Signalement résolu', 'Rapò rezoud') : t('Reporte cerrado', 'Report closed', 'Signalement clôturé', 'Rapò fèmen'),
         body: p(t(`Hola ${esc(x.u.name)}, marcamos tu reporte <b>«${esc(x.tk.subject)}»</b> (${x.code}) como ${word}. Si el problema continúa, puedes responder desde tus reportes.`,
-                  `Hi ${esc(x.u.name)}, we marked your report <b>“${esc(x.tk.subject)}”</b> (${x.code}) as ${word}. If the problem continues, you can reply from your reports.`)),
-        cta: { label: t('Ver mis reportes', 'View my reports'), url: `${config.webUrl}/cuenta/reportes` },
+                  `Hi ${esc(x.u.name)}, we marked your report <b>“${esc(x.tk.subject)}”</b> (${x.code}) as ${word}. If the problem continues, you can reply from your reports.`, `Bonjour ${esc(x.u.name)}, nous avons marqué votre signalement <b>« ${esc(x.tk.subject)} »</b> (${x.code}) comme ${word}. Si le problème persiste, vous pouvez répondre depuis vos signalements.`, `Bonjou ${esc(x.u.name)}, nou make rapò ou <b>«${esc(x.tk.subject)}»</b> (${x.code}) kòm ${word}. Si pwoblèm nan kontinye, ou ka reponn nan rapò ou yo.`)),
+        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${config.webUrl}/cuenta/reportes` },
         text: `${x.code}: ${word}`,
       }),
     });
@@ -1031,7 +1032,7 @@ export class MailService {
 function countryName(code: string | null | undefined, l: Locale) {
   if (!code) return null;
   try {
-    return new Intl.DisplayNames([l === 'en' ? 'en' : 'es'], { type: 'region' }).of(code) ?? code;
+    return new Intl.DisplayNames([intlLocale(l)], { type: 'region' }).of(code) ?? code;
   } catch {
     return code;
   }

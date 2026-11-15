@@ -173,7 +173,7 @@ export class AccountDeletionService {
         [id, res!.r.mode, JSON.stringify(res!.r)],
       );
       invalidateUserCache(userId);
-      this.mail.fire(() => this.mail.accountDeleted(req.email_snapshot, req.name_snapshot, locale === 'en' ? 'en' : 'es', id));
+      this.mail.fire(() => this.mail.accountDeleted(req.email_snapshot, req.name_snapshot, (['en', 'fr', 'ht'] as const).find((v) => v === locale) ?? 'es', id));
     } catch (e: any) {
       await this.db.exec(
         `update public.nx_account_deletion_requests set status = 'REQUESTED', decided_by = null, decided_at = null, result = jsonb_build_object('lastError', $2::text), updated_at = now() where id = $1`,

@@ -1,11 +1,14 @@
 /**
- * Transactional e-mail templates (Spanish / English). Table-based, inline-styled
+ * Transactional e-mail templates (Spanish / English / French / Haitian Creole). Table-based, inline-styled
  * HTML so they render consistently in Gmail, Outlook and mobile clients.
  * Every dynamic value goes through `esc()`.
  */
 import { config } from '../config';
 
-export type Locale = 'es' | 'en';
+export type Locale = 'es' | 'en' | 'fr' | 'ht';
+
+/** Number/date locale (Haitian Creole uses French formats, as in Haiti). */
+export const intlLocale = (l: Locale) => ({ es: 'es-419', en: 'en-US', fr: 'fr-FR', ht: 'fr-HT' })[l] ?? 'es-419';
 
 export const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -16,7 +19,7 @@ const SYMBOLS: Record<string, string> = { USD: 'US$', EUR: '€', GBP: '£', CAD
 export const money = (amount: string | number | null | undefined, currency = 'USD', locale: Locale = 'es') => {
   const n = Number(amount ?? 0);
   const digits = currency === 'CLP' ? 0 : 2;
-  const num = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-419', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Math.abs(n));
+  const num = new Intl.NumberFormat(intlLocale(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Math.abs(n));
   const sym = currency === 'USD' && locale === 'en' ? '$' : SYMBOLS[currency] ?? currency;
   return `${n < 0 ? '-' : ''}${sym}${locale === 'en' && sym.length <= 2 ? '' : '\u00a0'}${num}`;
 };
@@ -49,9 +52,13 @@ export function layout(i: LayoutInput): Rendered {
   const cta = i.cta
     ? `<tr><td style="padding:8px 0 24px"><a href="${esc(i.cta.url)}" style="display:inline-block;background:${BLUE};color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">${esc(i.cta.label)}</a></td></tr>`
     : '';
-  const footer = en
-    ? `This is an automated message from NEXOVAX. Need help? Visit <a href="${esc(config.webUrl)}/ayuda" style="color:${BLUE}">our help center</a>.`
-    : `Este es un correo automático de NEXOVAX. ¿Necesitas ayuda? Visita <a href="${esc(config.webUrl)}/ayuda" style="color:${BLUE}">el centro de ayuda</a>.`;
+  const help = `${esc(config.webUrl)}/ayuda`;
+  const footer = {
+    en: `This is an automated message from NEXOVAX. Need help? Visit <a href="${help}" style="color:${BLUE}">our help center</a>.`,
+    fr: `Ceci est un message automatique de NEXOVAX. Besoin d’aide ? Consultez <a href="${help}" style="color:${BLUE}">notre centre d’aide</a>.`,
+    ht: `Sa a se yon mesaj otomatik NEXOVAX. Ou bezwen èd? Ale nan <a href="${help}" style="color:${BLUE}">sant èd nou an</a>.`,
+    es: `Este es un correo automático de NEXOVAX. ¿Necesitas ayuda? Visita <a href="${help}" style="color:${BLUE}">el centro de ayuda</a>.`,
+  }[i.locale] ?? '';
   const html = `<!doctype html><html lang="${i.locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(i.subject)}</title></head>
 <body style="margin:0;background:#f2f5fa;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a">
 <span style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(i.preheader)}</span>
@@ -90,7 +97,7 @@ export interface ItemLine {
 }
 
 export function itemsTable(items: ItemLine[], currency: string, locale: Locale) {
-  const [h1, h2, h3] = locale === 'en' ? ['Product', 'Qty', 'Total'] : ['Producto', 'Cant.', 'Total'];
+  const [h1, h2, h3] = ({ en: ['Product', 'Qty', 'Total'], fr: ['Produit', 'Qté', 'Total'], ht: ['Pwodwi', 'Kantite', 'Total'], es: ['Producto', 'Cant.', 'Total'] } as Record<Locale, string[]>)[locale] ?? ['Producto', 'Cant.', 'Total'];
   const th = 'padding:6px 0;border-bottom:2px solid #e3e8f0;color:#475569;font-weight:600';
   const td = 'padding:8px 0;border-bottom:1px solid #eef1f6';
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:6px 0 18px;border-collapse:collapse;font-size:14px">
