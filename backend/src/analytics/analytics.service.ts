@@ -185,9 +185,9 @@ function suggest(r: any, conversion: number | null, days: number) {
   if (r.visitors >= 30 && (conversion ?? 0) < 0.01)
     out.push({ code: 'LOW_CONVERSION', tone: 'amber', message: 'Muchas visitas y pocas ventas: prueba bajar el precio, ponerlo en oferta o crear un cupón.', actions: r.has_coupon ? ['PRICE'] : ['COUPON', 'PRICE'] });
   if (r.cart >= 5 && r.orders / r.cart < 0.2)
-    out.push({ code: 'CART_ABANDON', tone: 'amber', message: 'Lo agregan al carrito pero no lo compran: un cupón o un envío más barato puede ayudar.', actions: r.has_coupon ? ['PRICE'] : ['COUPON'] });
-  if (r.fav_total >= 3 && !r.on_sale && !r.has_coupon)
-    out.push({ code: 'FAVORITES', tone: 'blue', message: '{n} personas lo tienen en favoritos: una oferta o un cupón puede convertirlas en compras.', params: { n: r.fav_total }, actions: ['COUPON', 'PRICE'] });
+    out.push({ code: 'CART_ABANDON', tone: 'amber', message: 'Lo agregan al carrito pero no lo compran: envíales un cupón o mejora el envío.', actions: ['OFFER', 'PRICE'] });
+  if (r.fav_total >= 3 && !r.on_sale)
+    out.push({ code: 'FAVORITES', tone: 'blue', message: '{n} personas lo tienen en favoritos: envíales un cupón para convertirlas en compras.', params: { n: r.fav_total }, actions: ['OFFER', 'PRICE'] });
   if (r.views < 5 && ageDays >= 7 && days >= 7 && r.status === 'ACTIVE')
     out.push({ code: 'LOW_VISIBILITY', tone: 'blue', message: 'Pocas visitas: mejora las fotos, el título y la descripción, o compártelo con tu enlace.', actions: ['EDIT'] });
   if (r.orders >= 5 && (conversion ?? 0) >= 0.05)

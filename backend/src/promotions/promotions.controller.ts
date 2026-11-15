@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
@@ -6,6 +6,7 @@ import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, Is
 import { CurrentUser, Public, RequestUser, Roles, requireSeller } from '../auth/auth';
 import { CouponsService } from './coupons.service';
 import { AffiliatesService } from './affiliates.service';
+import { OffersService } from './offers.service';
 
 export class CouponDto {
   @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]{2,23}$/, { message: 'El código debe tener de 3 a 24 caracteres: letras, números, guion o guion bajo.' }) code: string;
@@ -45,6 +46,17 @@ export class PayoutProfileDto {
   @IsOptional() @IsString() @Length(0, 254) paypalEmail?: string;
   @IsOptional() @ValidateNested() @Type(() => BankDto) bank?: BankDto;
 }
+class NewCouponDto {
+  @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(90) percent: number;
+  @Type(() => Number) @IsInt() @Min(1) @Max(30) days: number;
+}
+export class OfferDto {
+  @IsUUID() productId: string;
+  @IsIn(['FAVORITES', 'CART', 'BOTH']) audience: 'FAVORITES' | 'CART' | 'BOTH';
+  @IsOptional() @IsUUID() couponId?: string;
+  @IsOptional() @ValidateNested() @Type(() => NewCouponDto) newCoupon?: NewCouponDto;
+  @IsOptional() @IsString() @Length(0, 280) message?: string;
+}
 export class PayAffiliateDto {
   @IsString() @Length(3, 80) reference: string;
 }
@@ -55,7 +67,25 @@ export class PromotionsController {
   constructor(
     private readonly coupons: CouponsService,
     private readonly affiliates: AffiliatesService,
+    private readonly offers: OffersService,
   ) {}
+
+  // ---- seller: coupon offers to interested buyers (counts only, never identities)
+  @Get('seller/offers/audience')
+  offerAudience(@CurrentUser() u: RequestUser, @Query('productId', ParseUUIDPipe) productId: string, @Headers('x-seller-id') h?: string) {
+    return this.offers.audience(requireSeller(u, h).id, productId);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('seller/offers')
+  sendOffer(@CurrentUser() u: RequestUser, @Body() dto: OfferDto, @Headers('x-seller-id') h?: string) {
+    return this.offers.send(u, requireSeller(u, h).id, dto);
+  }
+
+  @Get('seller/offers')
+  offerCampaigns(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
+    return this.offers.campaigns(requireSeller(u, h).id);
+  }
 
   // ---- seller: coupons
   @Get('seller/coupons')

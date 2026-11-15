@@ -3,6 +3,14 @@ import { BaseExceptionFilter } from '@nestjs/core';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "El producto debe estar publicado para enviar una oferta.": "The product must be published to send an offer.",
+  "Elige a quién enviar la oferta.": "Choose who to send the offer to.",
+  "El mensaje admite hasta 280 caracteres y no puede incluir enlaces.": "The message allows up to 280 characters and can’t include links.",
+  "Ya enviaste una oferta de este producto en los últimos 7 días. Podrás enviar otra después.": "You already sent an offer for this product in the last 7 days. You can send another one later.",
+  "No hay personas a quienes enviar esta oferta en este momento.": "There’s no one to send this offer to right now.",
+  "El cupón debe estar activo y aplicar a este producto.": "The coupon must be active and apply to this product.",
+  "El descuento debe ser de 1 % a 90 % y durar de 1 a 30 días.": "The discount must be 1 % to 90 % and last 1 to 30 days.",
+  "Elige un cupón o crea uno para esta oferta.": "Choose a coupon or create one for this offer.",
   "La variante no pertenece a este producto.": "The variant doesn’t belong to this product.",
   "Este producto ya está disponible: puedes comprarlo ahora.": "This product is already available: you can buy it now.",
   "No puedes pedir avisos de tus propios productos.": "You can’t request alerts for your own products.",

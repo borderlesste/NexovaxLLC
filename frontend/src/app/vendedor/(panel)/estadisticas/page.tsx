@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Eye, Heart, Lightbulb, MousePointerClick, Package, Percent, ShoppingCart, TicketPercent } from 'lucide-react';
+import { Eye, Heart, Lightbulb, MousePointerClick, Package, Percent, Send, ShoppingCart, TicketPercent } from 'lucide-react';
 import { get } from '@/lib/api';
 import { money } from '@/lib/utils';
 import { getIntlLocale, t } from '@/lib/i18n';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Empty, PageLoader, Pills } from '@/components/ui/misc';
 import { Bars } from '@/components/charts/charts';
+import { OfferCampaigns, OfferDialog } from '@/components/seller/offer-dialog';
 
 const day = (d: string) => new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString(getIntlLocale(), { day: '2-digit', month: 'short' });
 const ACTION: Record<string, (p: any) => { label: string; href: string; icon: any }> = {
@@ -23,6 +24,7 @@ const ACTION: Record<string, (p: any) => { label: string; href: string; icon: an
 
 export default function SellerStatsPage() {
   const [days, setDays] = useState('30');
+  const [offerFor, setOfferFor] = useState<any>(null);
   const q = useQuery({ queryKey: ['seller-analytics', days], queryFn: () => get<any>(`/seller/analytics?days=${days}`), placeholderData: (p) => p });
   if (q.isLoading || !q.data) return <PageLoader />;
   const d = q.data;
@@ -54,6 +56,7 @@ export default function SellerStatsPage() {
                 <span className="min-w-0 flex-1 text-muted">{t(sg.message, sg.params)}</span>
                 <span className="flex gap-2">
                   {sg.actions.map((a: string) => {
+                    if (a === 'OFFER') return <Button key={a} size="sm" onClick={() => setOfferFor(p)} data-offer-open><Send /> {t('Ofrecer cupón a interesados')}</Button>;
                     const x = ACTION[a](p);
                     return <Button key={a} size="sm" variant="outline" asChild><Link href={x.href}><x.icon /> {t(x.label)}</Link></Button>;
                   })}
@@ -80,7 +83,8 @@ export default function SellerStatsPage() {
                     <td>{p.visitors}</td>
                     <td>{p.avgDwellSeconds != null ? `${p.avgDwellSeconds} s` : '—'}</td>
                     <td>{p.addToCart}</td>
-                    <td>{p.favorites}{p.favoritesAdded > 0 && <span className="ml-1 text-xs text-emerald-700">+{p.favoritesAdded}</span>}</td>
+                    <td>{p.favorites}{p.favoritesAdded > 0 && <span className="ml-1 text-xs text-emerald-700">+{p.favoritesAdded}</span>}
+                      {(p.favorites > 0 || p.addToCart > 0) && <button className="block text-xs font-semibold text-brand-700 hover:underline" onClick={() => setOfferFor(p)} data-offer-row-open={p.id}>{t('Ofrecer cupón')}</button>}</td>
                     <td>{p.units}<span className="block text-xs text-muted">{money(p.revenue)}</span></td>
                     <td>{p.conversion != null ? `${p.conversion} %` : '—'}</td>
                     <td className={p.stock <= 0 ? 'font-semibold text-red-600' : ''}>{p.stock}{p.waiting > 0 && <span className="block text-xs font-normal text-brand-700" data-waiting>{t('{n} esperan', { n: p.waiting })}</span>}</td>
@@ -91,6 +95,8 @@ export default function SellerStatsPage() {
           </div>
         ) : <Empty icon={<Eye />} title={t('Aún no hay datos')} description={t('Las estadísticas aparecen cuando tus productos reciben visitas.')} />}
       </Card>
+      <OfferCampaigns />
+      {offerFor && <OfferDialog product={{ id: offerFor.id, title: offerFor.title }} onClose={() => setOfferFor(null)} />}
     </>
   );
 }

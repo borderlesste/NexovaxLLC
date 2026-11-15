@@ -673,6 +673,28 @@ export class MailService {
     });
   }
 
+  /** A store's coupon offer to someone who has the product in favorites / cart (store never sees who). */
+  async productOffer(userId: string, o: { productId: string; slug: string; title: string; store: string; code: string; type: string; value: number; currency: string; endsAt?: string | null; message?: string | null }, dedupeKey: string) {
+    const u = await this.userContact(userId);
+    if (!u) return;
+    const t = tr(u.locale);
+    const discount = o.type === 'PERCENT' ? `${o.value} %` : money(String(o.value), o.currency, u.locale);
+    const until = o.endsAt ? new Date(o.endsAt).toLocaleDateString(u.locale === 'en' ? 'en-US' : 'es', { day: 'numeric', month: 'long' }) : null;
+    const title = t(`${discount} de descuento en algo que te gustó`, `${discount} off something you liked`);
+    const line = t(`${o.store} te ofrece ${discount} de descuento en «${o.title}» con el cupón ${o.code}${until ? ` hasta el ${until}` : ''}.`,
+      `${o.store} offers you ${discount} off “${o.title}” with coupon ${o.code}${until ? ` until ${until}` : ''}.`);
+    await this.send({
+      template: 'PRODUCT_ALERT_OFFER', dedupeKey, to: u.email, userId, entityType: 'PRODUCT', entityId: o.productId,
+      message: layout({ locale: u.locale, subject: `${title}: ${o.title}`, preheader: line, title,
+        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`)
+          + (o.message ? p(`<b>${t('Mensaje de la tienda', 'Message from the store')}:</b> ${esc(o.message)}`) : '')
+          + rows([[t('Cupón', 'Coupon'), `<b>${esc(o.code)}</b>`], [t('Descuento', 'Discount'), esc(discount)]])
+          + p(t('Escribe el código al pagar. Recibes esta oferta porque tienes el producto en tus favoritos o en tu carrito; puedes desactivar estos avisos en tus preferencias de notificación.',
+                'Enter the code at checkout. You get this offer because the product is in your favorites or cart; you can turn these alerts off in your notification preferences.')),
+        cta: { label: t('Ver producto', 'View product'), url: `${config.webUrl}/producto/${o.slug}` }, text: line }),
+    });
+  }
+
   /** Order cancellation (before shipping): request, approval, rejection and refund notices. */
   async orderCancellationEvent(cancellationId: string, event: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'REFUNDED') {
     const c = await this.db.one(
