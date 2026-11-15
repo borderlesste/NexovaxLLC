@@ -11,6 +11,7 @@ import { get } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { EarnBox } from '@/components/affiliates/earn-box';
 import { StockAlertButton } from '@/components/shop/stock-alert';
+import { Recommendations } from '@/components/shop/recommendations';
 import { trackProductView } from '@/lib/analytics';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -286,15 +287,18 @@ export function ProductDetail({ initial }: { initial: any }) {
           </div>
         </div>
         <div className="card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">{t('Productos relacionados')}</h2>
-            <Link href={`/catalogo/categorias/${p.category.slug}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">{t('Ver más')}{' '}<ArrowRight className="size-4" /></Link>
-          </div>
-          {p.related.length ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
-              {p.related.slice(0, 4).map((r: any) => <ProductCard key={r.id} p={r} />)}
-            </div>
-          ) : <Empty title={t('Sin productos relacionados')} />}
+          <Recommendations context="product" productId={p.id} limit={4} gridClassName="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4"
+            fallback={<>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold">{t('Productos relacionados')}</h2>
+                <Link href={`/catalogo/categorias/${p.category.slug}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">{t('Ver más')}{' '}<ArrowRight className="size-4" /></Link>
+              </div>
+              {p.related.length ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
+                  {p.related.slice(0, 4).map((r: any) => <ProductCard key={r.id} p={r} />)}
+                </div>
+              ) : <Empty title={t('Sin productos relacionados')} />}
+            </>} />
         </div>
       </div>
 

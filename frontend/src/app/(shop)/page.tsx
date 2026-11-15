@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, CheckCircle2, Globe2, Headphones, LayoutGrid, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import { serverGet } from '@/lib/server-api';
+import { Recommendations } from '@/components/shop/recommendations';
 import { ProductGrid, ProductImage } from '@/components/shop/product-card';
 import { getT } from '@/lib/i18n/server';
 import { CategoryIcon } from '@/components/shop/category-icon';
@@ -88,6 +89,8 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
+
+        <Recommendations context="home" limit={12} className="mt-12" />
 
         <section className="mt-12">
           <div className="mb-5 flex items-end justify-between">

@@ -6,6 +6,7 @@ import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, 
 import { CurrentUser, Public, RequestUser, requireSeller } from '../auth/auth';
 import { AnalyticsService } from './analytics.service';
 import { AlertsService } from './alerts.service';
+import { RecommendationsService } from './recommendations.service';
 
 class EventDto {
   @IsIn(['VIEW']) type: 'VIEW';
@@ -28,7 +29,24 @@ export class AnalyticsController {
   constructor(
     private readonly analytics: AnalyticsService,
     private readonly alerts: AlertsService,
+    private readonly recommendations: RecommendationsService,
   ) {}
+
+  /** Recommendations for the home page, a product page or the cart (personalized only with consent). */
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get('recommendations')
+  recommend(
+    @CurrentUser() u: RequestUser | undefined,
+    @Query('context') context?: string,
+    @Query('productId') productId?: string,
+    @Query('visitorId') visitorId?: string,
+    @Query('limit') limit?: string,
+    @Headers('x-nx-consent') consent?: string,
+  ) {
+    const ctx = context === 'product' || context === 'cart' ? context : 'home';
+    return this.recommendations.recommend(ctx, { userId: u?.id ?? null, visitorId: visitorId ?? null, consent: consent === 'analytics' }, { productId, limit: Number(limit) || undefined });
+  }
 
   // ---- buyer alerts (back in stock)
   @Get('me/alerts')

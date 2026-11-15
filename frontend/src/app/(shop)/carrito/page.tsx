@@ -10,6 +10,7 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Empty, PageLoader } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
+import { Recommendations } from '@/components/shop/recommendations';
 import { t } from '@/lib/i18n';
 
 export default function CartPage() {
@@ -90,6 +91,7 @@ export default function CartPage() {
           </div>
         </div>
       )}
+      {!!c?.groups.length && <Recommendations context="cart" limit={6} className="mt-10" />}
     </div>
   );
 }

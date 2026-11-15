@@ -8,6 +8,7 @@ import { ShippingSettlementService } from './shipping/shipping-settlement.servic
 import { AffiliatesService } from './promotions/affiliates.service';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AlertsService } from './analytics/alerts.service';
+import { RecommendationsService } from './analytics/recommendations.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -24,6 +25,7 @@ export class JobsService {
     private readonly affiliates: AffiliatesService,
     private readonly analytics: AnalyticsService,
     private readonly alerts: AlertsService,
+    private readonly recommendations: RecommendationsService,
   ) {}
 
   /** Shipping settlements that failed at dispatch time (retry). */
@@ -105,6 +107,19 @@ export class JobsService {
       if (r.stock || r.price) this.logger.log(`Product alerts: ${r.stock} back in stock, ${r.price} price drops`);
     } catch (e: any) {
       this.logger.warn(`productAlerts: ${e.message}`);
+    }
+  }
+
+  /** Recommendation model: co-views, co-purchases and popularity. */
+  @Cron(CronExpression.EVERY_6_HOURS)
+  async rebuildRecommendations() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      await this.analytics.aggregate(1);
+      const r = await this.recommendations.rebuild(90);
+      this.logger.log(`Recommendations rebuilt: ${JSON.stringify(r)}`);
+    } catch (e: any) {
+      this.logger.warn(`rebuildRecommendations: ${e.message}`);
     }
   }
 
