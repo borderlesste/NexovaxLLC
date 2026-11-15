@@ -7,6 +7,7 @@ import { PayoutSchedulesService } from './seller/payout-schedules.service';
 import { ShippingSettlementService } from './shipping/shipping-settlement.service';
 import { AffiliatesService } from './promotions/affiliates.service';
 import { AnalyticsService } from './analytics/analytics.service';
+import { AlertsService } from './analytics/alerts.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -22,6 +23,7 @@ export class JobsService {
     private readonly shippingSettlement: ShippingSettlementService,
     private readonly affiliates: AffiliatesService,
     private readonly analytics: AnalyticsService,
+    private readonly alerts: AlertsService,
   ) {}
 
   /** Shipping settlements that failed at dispatch time (retry). */
@@ -91,6 +93,18 @@ export class JobsService {
       await this.analytics.aggregate(1);
     } catch (e: any) {
       this.logger.warn(`productAnalytics: ${e.message}`);
+    }
+  }
+
+  /** Buyer alerts: back in stock and price drops on favorites / cart. */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async productAlerts() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const r = await this.alerts.scan();
+      if (r.stock || r.price) this.logger.log(`Product alerts: ${r.stock} back in stock, ${r.price} price drops`);
+    } catch (e: any) {
+      this.logger.warn(`productAlerts: ${e.message}`);
     }
   }
 

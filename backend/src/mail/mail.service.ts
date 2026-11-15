@@ -654,6 +654,25 @@ export class MailService {
   // ------------------------------------------------------------------ returns & refunds
 
   /** Return lifecycle e-mails: the store hears about requests and shipments, the buyer about every decision. */
+  /** Buyer product alerts: back in stock (asked for) and price drops (favorites / cart). */
+  async productAlert(userId: string, kind: 'STOCK' | 'PRICE', prod: { id: string; slug: string; title: string; price: string; previous?: string; currency: string; store: string }, dedupeKey: string) {
+    const u = await this.userContact(userId);
+    if (!u) return;
+    const t = tr(u.locale);
+    const now = money(prod.price, prod.currency, u.locale);
+    const before = prod.previous ? money(prod.previous, prod.currency, u.locale) : '';
+    const [title, line] = kind === 'STOCK'
+      ? [t('Volvió a estar disponible', 'Back in stock'), t(`«${prod.title}» de ${prod.store} ya está disponible de nuevo a ${now}. Las unidades pueden agotarse pronto.`, `“${prod.title}” from ${prod.store} is available again at ${now}. Units may sell out soon.`)]
+      : [t('Bajó de precio', 'Price drop'), t(`«${prod.title}» de ${prod.store} bajó de ${before} a ${now}.`, `“${prod.title}” from ${prod.store} dropped from ${before} to ${now}.`)];
+    await this.send({
+      template: kind === 'STOCK' ? 'PRODUCT_ALERT_STOCK' : 'PRODUCT_ALERT_PRICE',
+      dedupeKey, to: u.email, userId, entityType: 'PRODUCT', entityId: prod.id,
+      message: layout({ locale: u.locale, subject: `${title}: ${prod.title}`, preheader: line, title,
+        body: p(`${t('Hola', 'Hi')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Ver producto', 'View product'), url: `${config.webUrl}/producto/${prod.slug}` }, text: line }),
+    });
+  }
+
   /** Order cancellation (before shipping): request, approval, rejection and refund notices. */
   async orderCancellationEvent(cancellationId: string, event: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'REFUNDED') {
     const c = await this.db.one(

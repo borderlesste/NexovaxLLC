@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { badRequest } from '../common/errors';
 
-export type NotificationCategory = 'ORDERS' | 'MESSAGES' | 'RETURNS' | 'PAYMENTS' | 'SUPPORT' | 'STORE' | 'ACCOUNT';
+export type NotificationCategory = 'ORDERS' | 'MESSAGES' | 'RETURNS' | 'PAYMENTS' | 'SUPPORT' | 'STORE' | 'PRODUCT_ALERTS' | 'ACCOUNT';
 export type Channel = 'IN_APP' | 'EMAIL';
 
 export interface NoticeInput {
@@ -19,6 +19,7 @@ export interface NoticeInput {
 
 /** E-mail template → notification category (anything not listed is ACCOUNT, always delivered). */
 const TEMPLATE_CATEGORY: [RegExp, NotificationCategory][] = [
+  [/^PRODUCT_ALERT_/, 'PRODUCT_ALERTS'],
   [/^(ORDER_|SELLER_NEW_ORDER|SELLER_ORDER_DELIVERED)/, 'ORDERS'],
   [/^(BANK_TRANSFER_|PAYOUT_)/, 'PAYMENTS'],
   [/^(RETURN_|REFUND_)/, 'RETURNS'],
@@ -143,7 +144,7 @@ export class NotificationsService {
               coalesce((select p.enabled from public.notification_preferences p where p.user_id = $1 and p.category_code = c.code and p.channel_code = 'IN_APP'), true) as in_app,
               coalesce((select p.enabled from public.notification_preferences p where p.user_id = $1 and p.category_code = c.code and p.channel_code = 'EMAIL'), true) as email
          from public.notification_categories c where c.is_active
-        order by array_position(array['ORDERS','MESSAGES','RETURNS','PAYMENTS','SUPPORT','STORE','ACCOUNT'], c.code::text)`,
+        order by array_position(array['ORDERS','MESSAGES','RETURNS','PAYMENTS','SUPPORT','PRODUCT_ALERTS','STORE','ACCOUNT'], c.code::text)`,
       [userId],
     );
     return rows.map((r: any) => ({ code: r.code, name: r.name, description: r.description, configurable: r.configurable, inApp: r.configurable ? r.in_app : true, email: r.configurable ? r.email : true }));

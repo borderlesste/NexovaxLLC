@@ -3,6 +3,9 @@ import { BaseExceptionFilter } from '@nestjs/core';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "La variante no pertenece a este producto.": "The variant doesn’t belong to this product.",
+  "Este producto ya está disponible: puedes comprarlo ahora.": "This product is already available: you can buy it now.",
+  "No puedes pedir avisos de tus propios productos.": "You can’t request alerts for your own products.",
   "Ese código ya existe en el marketplace. Elige otro.": "That code already exists in the marketplace. Choose another one.",
   "El código debe tener de 3 a 24 caracteres: letras, números, guion o guion bajo.": "The code must have 3 to 24 characters: letters, numbers, hyphen or underscore.",
   "Elige el tipo de descuento.": "Choose the discount type.",
@@ -270,7 +273,7 @@ const EN: Record<string, string> = {
 };
 
 const NOUNS: Record<string, string> = {
-  Archivo: 'File', 'Artículo del carrito': 'Cart item', Artículo: 'Item', Categoría: 'Category', Compra: 'Purchase', Conversación: 'Conversation',
+  Aviso: 'Alert', Archivo: 'File', 'Artículo del carrito': 'Cart item', Artículo: 'Item', Categoría: 'Category', Compra: 'Purchase', Conversación: 'Conversation',
   'Dirección de despacho': 'Ship-from address', Dirección: 'Address', Envío: 'Shipment', Imagen: 'Image', Impuesto: 'Tax rate',
   'Método de cobro': 'Payout method', Pago: 'Payment', Pedido: 'Order', Producto: 'Product', Reporte: 'Report', Retiro: 'Payout',
   Tienda: 'Store', Variante: 'Variant', Vendedor: 'Seller',

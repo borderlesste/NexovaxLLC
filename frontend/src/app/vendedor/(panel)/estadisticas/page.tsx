@@ -83,7 +83,7 @@ export default function SellerStatsPage() {
                     <td>{p.favorites}{p.favoritesAdded > 0 && <span className="ml-1 text-xs text-emerald-700">+{p.favoritesAdded}</span>}</td>
                     <td>{p.units}<span className="block text-xs text-muted">{money(p.revenue)}</span></td>
                     <td>{p.conversion != null ? `${p.conversion} %` : '—'}</td>
-                    <td className={p.stock <= 0 ? 'font-semibold text-red-600' : ''}>{p.stock}</td>
+                    <td className={p.stock <= 0 ? 'font-semibold text-red-600' : ''}>{p.stock}{p.waiting > 0 && <span className="block text-xs font-normal text-brand-700" data-waiting>{t('{n} esperan', { n: p.waiting })}</span>}</td>
                   </tr>
                 ))}
               </tbody>

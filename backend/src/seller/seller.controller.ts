@@ -13,6 +13,8 @@ import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
 import { SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
+import { AlertsService } from '../analytics/alerts.service';
+import { DbService } from '../db/db.service';
 import { badRequest } from '../common/errors';
 
 const PHONE = /^\+?[0-9][0-9 ().-]{5,47}$/;
@@ -151,6 +153,8 @@ export class SellerController {
   constructor(
     private readonly seller: SellerService,
     private readonly orders: OrdersService,
+    private readonly alerts: AlertsService,
+    private readonly db: DbService,
   ) {}
 
   private sid(user: RequestUser, header?: string) {
@@ -207,13 +211,17 @@ export class SellerController {
   }
 
   @Put('products/:id')
-  updateProduct(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.saveProduct(user, this.sid(user, h), dto, id);
+  async updateProduct(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductDto, @Headers('x-seller-id') h?: string) {
+    const r = await this.seller.saveProduct(user, this.sid(user, h), dto, id);
+    this.alerts.touch([id]); // price or stock may have changed: tell waiting buyers
+    return r;
   }
 
   @Post('products/:id/status')
-  productStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductStatusDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.setProductStatus(user, this.sid(user, h), id, dto.action);
+  async productStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductStatusDto, @Headers('x-seller-id') h?: string) {
+    const r = await this.seller.setProductStatus(user, this.sid(user, h), id, dto.action);
+    this.alerts.touch([id]);
+    return r;
   }
 
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
@@ -251,8 +259,11 @@ export class SellerController {
   }
 
   @Post('inventory/adjust')
-  adjust(@CurrentUser() user: RequestUser, @Body() dto: AdjustDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.adjustStock(user, this.sid(user, h), dto);
+  async adjust(@CurrentUser() user: RequestUser, @Body() dto: AdjustDto, @Headers('x-seller-id') h?: string) {
+    const r = await this.seller.adjustStock(user, this.sid(user, h), dto);
+    const v = await this.db.one<{ product_id: string }>(`select product_id from public.product_variants where id = $1`, [dto.variantId]);
+    if (v) this.alerts.touch([v.product_id]);
+    return r;
   }
 
   // orders

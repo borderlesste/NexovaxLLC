@@ -10,6 +10,7 @@ import {
 import { get } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { EarnBox } from '@/components/affiliates/earn-box';
+import { StockAlertButton } from '@/components/shop/stock-alert';
 import { trackProductView } from '@/lib/analytics';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -179,6 +180,7 @@ export function ProductDetail({ initial }: { initial: any }) {
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <Button size="lg" onClick={() => addToCart(false)} loading={cart.isPending} disabled={!variant || stock <= 0}><ShoppingCart /> {t('Agregar al carrito')}</Button>
               <Button size="lg" variant="outline" onClick={() => addToCart(true)} disabled={!variant || stock <= 0}><Zap /> {t('Comprar ahora')}</Button>
+              {variant && stock <= 0 && <StockAlertButton productId={p.id} variantId={p.variants?.length > 1 ? variant.id : null} slug={p.slug} />}
             </div>
           </div>
         </div>

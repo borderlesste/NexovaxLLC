@@ -118,6 +118,7 @@ export class AnalyticsService {
                 case when coalesce(st.dwell_n,0) > 0 then (st.dwell_total / st.dwell_n)::int end as avg_dwell_ms,
                 coalesce(sales.orders,0) as orders, coalesce(sales.units,0) as units, coalesce(sales.revenue,'0') as revenue,
                 (select count(*)::int from public.customer_favorites cf where cf.product_id = p.id) as fav_total,
+                (select count(*)::int from public.nx_product_alerts a where a.product_id = p.id and a.status = 'ACTIVE') as waiting,
                 (select coalesce(sum(ii.available_to_sell),0)::int from public.inventory_items ii join public.product_variants v on v.id = ii.variant_id where v.product_id = p.id and ii.status = 'ACTIVE') as stock,
                 (select min(vpv.amount)::text from public.product_variants v join public.variant_price_versions vpv on vpv.variant_id = v.id and vpv.status = 'ACTIVE' where v.product_id = p.id) as price,
                 (select bool_or(vpv.compare_at_amount > vpv.amount) from public.product_variants v join public.variant_price_versions vpv on vpv.variant_id = v.id and vpv.status = 'ACTIVE' where v.product_id = p.id) as on_sale,
@@ -150,7 +151,7 @@ export class AnalyticsService {
     const products = rows.map((r: any) => {
       const conversion = r.visitors > 0 ? r.orders / r.visitors : null;
       return {
-        id: r.id, slug: r.slug, title: r.title, status: r.status, price: r.price, onSale: !!r.on_sale, hasCoupon: !!r.has_coupon, stock: r.stock,
+        id: r.id, slug: r.slug, title: r.title, status: r.status, price: r.price, onSale: !!r.on_sale, hasCoupon: !!r.has_coupon, stock: r.stock, waiting: r.waiting,
         views: r.views, visitors: r.visitors, addToCart: r.cart, favoritesAdded: r.fav_added, favorites: r.fav_total,
         orders: r.orders, units: r.units, revenue: r.revenue, avgDwellSeconds: r.avg_dwell_ms != null ? Math.round(r.avg_dwell_ms / 1000) : null,
         conversion: conversion != null ? Math.round(conversion * 1000) / 10 : null,
@@ -177,7 +178,9 @@ export class AnalyticsService {
 function suggest(r: any, conversion: number | null, days: number) {
   const out: { code: string; tone: 'red' | 'amber' | 'blue' | 'green'; message: string; params?: Record<string, unknown>; actions: string[] }[] = [];
   const ageDays = (Date.now() - new Date(r.published_at ?? r.created_at).getTime()) / 86400_000;
-  if (r.stock <= 0 && r.views >= 10)
+  if (r.stock <= 0 && r.waiting > 0)
+    out.push({ code: 'OUT_OF_STOCK_DEMAND', tone: 'red', message: '{n} personas esperan que vuelva a estar disponible: repón inventario y les avisaremos automáticamente.', params: { n: r.waiting }, actions: ['STOCK'] });
+  else if (r.stock <= 0 && r.views >= 10)
     out.push({ code: 'OUT_OF_STOCK_DEMAND', tone: 'red', message: 'Se agotó y la gente lo sigue visitando: repón inventario para no perder ventas.', actions: ['STOCK'] });
   if (r.visitors >= 30 && (conversion ?? 0) < 0.01)
     out.push({ code: 'LOW_CONVERSION', tone: 'amber', message: 'Muchas visitas y pocas ventas: prueba bajar el precio, ponerlo en oferta o crear un cupón.', actions: r.has_coupon ? ['PRICE'] : ['COUPON', 'PRICE'] });

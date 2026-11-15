@@ -46,6 +46,7 @@ import { CancellationsController } from './orders/cancellations.controller';
 import { PromotionsController } from './promotions/promotions.controller';
 import { AnalyticsController } from './analytics/analytics.controller';
 import { AnalyticsService } from './analytics/analytics.service';
+import { AlertsService } from './analytics/alerts.service';
 import { CouponsService } from './promotions/coupons.service';
 import { AffiliatesService } from './promotions/affiliates.service';
 import { CancellationsService } from './orders/cancellations.service';
@@ -104,6 +105,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     CouponsService,
     AffiliatesService,
     AnalyticsService,
+    AlertsService,
     CardsService,
     PayoutSchedulesService,
     ShippingSettlementService,

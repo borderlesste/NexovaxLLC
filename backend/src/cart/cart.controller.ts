@@ -6,6 +6,7 @@ import { Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
 import { CartService } from './cart.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AlertsService } from '../analytics/alerts.service';
 import { DbService } from '../db/db.service';
 
 export class AddCartItemDto {
@@ -24,6 +25,7 @@ export class CartController {
     private readonly cart: CartService,
     private readonly analytics: AnalyticsService,
     private readonly db: DbService,
+    private readonly alerts: AlertsService,
   ) {}
 
   @Get()
@@ -35,7 +37,10 @@ export class CartController {
   async add(@CurrentUser() user: RequestUser, @Body() dto: AddCartItemDto, @Headers('x-nx-consent') consent?: string) {
     const cart = await this.cart.addItem(user.id, dto.variantId, dto.quantity, 'add');
     const v = await this.db.one<{ product_id: string }>(`select product_id from public.product_variants where id = $1`, [dto.variantId]);
-    if (v) void this.analytics.recordServer('ADD_TO_CART', v.product_id, user.id, consent === 'analytics');
+    if (v) {
+      void this.analytics.recordServer('ADD_TO_CART', v.product_id, user.id, consent === 'analytics');
+      await this.alerts.watch(user.id, v.product_id, 'CART');
+    }
     return cart;
   }
 

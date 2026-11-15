@@ -647,5 +647,20 @@
 "Lo agregan al carrito pero no lo compran: un cupón o un envío más barato puede ayudar.": "People add it to the cart but don’t buy it: a coupon or cheaper shipping can help.",
 "{n} personas lo tienen en favoritos: una oferta o un cupón puede convertirlas en compras.": "{n} people have it in favorites: a sale or a coupon can turn them into purchases.",
 "Pocas visitas: mejora las fotos, el título y la descripción, o compártelo con tu enlace.": "Few views: improve the photos, title and description, or share it with your link.",
-"Se vende bien: asegúrate de tener inventario suficiente.": "It sells well: make sure you have enough stock."
+"Se vende bien: asegúrate de tener inventario suficiente.": "It sells well: make sure you have enough stock.",
+"Inicia sesión para que te avisemos cuando haya stock": "Sign in so we can tell you when it’s back in stock",
+"Aviso cancelado.": "Alert cancelled.",
+"Listo: te avisaremos cuando vuelva a estar disponible.": "Done: we’ll let you know when it’s available again.",
+"Te avisaremos cuando vuelva a estar disponible.": "We’ll let you know when it’s available again.",
+"Cancelar aviso": "Cancel alert",
+"Avísame cuando haya stock": "Notify me when it’s back in stock",
+"Productos que guardaste para después. Si alguno baja de precio, te avisamos.": "Products you saved for later. If any drops in price, we’ll let you know.",
+"Avisos de stock": "Stock alerts",
+"Te avisamos el {d}: ya está disponible": "We told you on {d}: it’s available",
+"Esperando stock desde el {d}": "Waiting for stock since {d}",
+"Avisos": "Alerts",
+"{n} esperan": "{n} waiting",
+"{n} personas esperan que vuelva a estar disponible: repón inventario y les avisaremos automáticamente.": "{n} people are waiting for it to be available again: restock and we’ll notify them automatically.",
+"Avisos de productos": "Product alerts",
+"Vuelta a stock y bajadas de precio de tus favoritos y tu carrito.": "Back in stock and price drops on your favorites and cart."
 }

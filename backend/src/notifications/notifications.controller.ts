@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 import { CurrentUser, RequestUser } from '../auth/auth';
 import { NotificationsService } from './notifications.service';
 
-const CATS = ['ORDERS', 'MESSAGES', 'RETURNS', 'PAYMENTS', 'SUPPORT', 'STORE', 'ACCOUNT'];
+const CATS = ['ORDERS', 'MESSAGES', 'RETURNS', 'PAYMENTS', 'SUPPORT', 'STORE', 'PRODUCT_ALERTS', 'ACCOUNT'];
 
 export class MarkReadDto {
   @IsOptional() @IsBoolean() all?: boolean;

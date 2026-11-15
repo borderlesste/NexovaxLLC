@@ -12,7 +12,7 @@ import { Empty, PageLoader, Pills, Switch } from '@/components/ui/misc';
 import { CATEGORY_ICON, CATEGORY_TONE, type Notice } from '@/components/notifications/notification-bell';
 
 const CATEGORIES = [
-  ['', 'Todas'], ['ORDERS', 'Pedidos'], ['MESSAGES', 'Mensajes'], ['RETURNS', 'Devoluciones'], ['PAYMENTS', 'Pagos'], ['SUPPORT', 'Soporte'], ['STORE', 'Mi tienda'], ['ACCOUNT', 'Cuenta'],
+  ['', 'Todas'], ['ORDERS', 'Pedidos'], ['MESSAGES', 'Mensajes'], ['RETURNS', 'Devoluciones'], ['PAYMENTS', 'Pagos'], ['SUPPORT', 'Soporte'], ['PRODUCT_ALERTS', 'Avisos'], ['STORE', 'Mi tienda'], ['ACCOUNT', 'Cuenta'],
 ] as const;
 
 function NotificationsInner() {
