@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { use, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Clock, Copy, Landmark, Package } from 'lucide-react';
+import { CheckCircle2, Clock, Copy, Landmark, Package, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { get, post } from '@/lib/api';
 import { money } from '@/lib/utils';
@@ -12,7 +12,7 @@ import { t } from '@/lib/i18n';
 
 export default function ConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const q = useQuery({ queryKey: ['checkout', id], queryFn: () => get(`/checkout/${id}`), refetchInterval: (query) => (query.state.data?.paymentStatus === 'REQUIRES_ACTION' ? 15_000 : false) });
+  const q = useQuery({ queryKey: ['checkout', id], queryFn: () => get(`/checkout/${id}`), refetchInterval: (query) => (['REQUIRES_ACTION', 'PROCESSING'].includes(query.state.data?.paymentStatus) && !query.state.data?.orderId ? 15_000 : false) });
   // Return from a 3-D Secure redirect: verify the card payment with Stripe once.
   const verified = useRef(false);
   useEffect(() => {
@@ -25,6 +25,21 @@ export default function ConfirmationPage({ params }: { params: Promise<{ id: str
   if (q.isError) return <div className="mx-auto max-w-2xl px-4 py-16"><ErrorBox message="No encontramos esta compra." /></div>;
   const r = q.data;
   const paid = !!r.orderId;
+  const failed = !paid && ['CANCELLED', 'FAILED'].includes(r.paymentStatus);
+  if (failed)
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <div className="card p-8 text-center" data-payment-failed>
+          <XCircle className="mx-auto size-16 text-red-500" />
+          <h1 className="mt-4 text-3xl font-extrabold">{t('No se pudo completar el pago')}</h1>
+          <p className="mt-2 text-muted">{t('El procesador rechazó el pago y no se te cobró. Tus productos siguen en el carrito: puedes intentarlo de nuevo con otro medio de pago.')}</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button asChild><Link href="/carrito">{t('Volver al carrito')}</Link></Button>
+            <Button variant="outline" asChild><Link href="/catalogo">{t('Seguir comprando')}</Link></Button>
+          </div>
+        </div>
+      </div>
+    );
   const copy = (v: string) => navigator.clipboard.writeText(v).then(() => toast.success(t('Copiado.')));
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -36,7 +51,9 @@ export default function ConfirmationPage({ params }: { params: Promise<{ id: str
             ? t('Tu pedido {a} fue confirmado. Te avisaremos cuando la tienda lo despache.', { a: r.orderNumber })
             : r.bankTransfer
               ? t('Completa la transferencia bancaria para confirmar tu pedido.')
-              : t('Estamos confirmando tu pago con el procesador. Esta página se actualizará automáticamente.')}
+              : r.paymentStatus === 'PROCESSING'
+                ? t('PayPal o tu banco aún está procesando el pago. Tu pedido queda reservado y te avisaremos en cuanto se confirme; esta página se actualiza sola.')
+                : t('Estamos confirmando tu pago con el procesador. Esta página se actualizará automáticamente.')}
         </p>
         <p className="mt-4 text-2xl font-extrabold">{money(r.amount, r.currency)}</p>
         {r.bankTransfer && (

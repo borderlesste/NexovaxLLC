@@ -134,7 +134,7 @@ export class CancellationsService {
   }
 
   // ------------------------------------------------------------------ refund (admin)
-  async refund(user: RequestUser, id: string, input: { manualReference?: string } = {}) {
+  async refund(user: RequestUser, id: string, input: { manualReference?: string; external?: { providerRefundId: string; providerStatus: string } } = {}) {
     if (!isStaff(user)) throw forbiddenFor(user, ['ADMIN']);
     const c = await this.db.one(`select * from public.nx_order_cancellations where id = $1`, [id]);
     if (!c) throw notFound('Pedido');
@@ -163,7 +163,11 @@ export class CancellationsService {
       const r = await this.db.one(`select status, refund_amount::text as amount, currency_code from public.refunds where id = $1`, [refundId]);
       let providerId: string | null = null;
       let providerStatus: string | null = null;
-      if (r!.status !== 'COMPLETED') {
+      if (r!.status !== 'COMPLETED' && input.external) {
+        // The money already went back from the provider's dashboard: record it, don't refund twice.
+        providerId = input.external.providerRefundId;
+        providerStatus = input.external.providerStatus;
+      } else if (r!.status !== 'COMPLETED') {
         if (pay.provider_code === 'STRIPE') {
           if (!pay.external_charge_id) throw conflict('CHARGE_NOT_FOUND', 'No se encontró el cargo de la tarjeta.');
           const sr = await this.stripe.refund({ chargeOrIntent: pay.external_charge_id, amount: r!.amount, currency: r!.currency_code, refundId });
@@ -193,6 +197,39 @@ export class CancellationsService {
     }
     this.mail.fire(() => this.mail.orderCancellationEvent(id, 'REFUNDED'));
     return this.view(id, 'staff');
+  }
+
+  /**
+   * A refund of the whole order made outside NEXOVAX (Stripe/PayPal dashboard), confirmed by an
+   * admin: cancels every store's part that can still be cancelled and books the refunds with the
+   * provider's reference, without calling the provider again. Returns false when it doesn't fit.
+   */
+  async cancelForExternalRefund(user: RequestUser, orderId: string, ext: { providerRefundId: string; providerStatus: string; label: string }) {
+    const sos = await this.db.many(
+      `select so.id, ${CANCELLABLE_SQL('so', 'o')} as ok from public.seller_orders so join public.orders o on o.id = so.order_id
+        where so.order_id = $1 and so.lifecycle_status <> 'CANCELLED' order by so.created_at, so.id`,
+      [orderId],
+    );
+    if (!sos.length || sos.some((x) => !x.ok)) return false;
+    let n = 0;
+    for (const so of sos) {
+      const existing = await this.db.one(`select id, status from public.nx_order_cancellations where seller_order_id = $1 and status = any($2::text[])`, [so.id, OPEN]);
+      let id: string;
+      if (existing?.status === 'APPROVED') id = existing.id;
+      else if (existing?.status === 'REQUESTED') {
+        // The customer had asked to cancel: the external refund settles that request.
+        id = existing.id;
+        await this.db.tx(async (c) => {
+          await this.lockOwned(c, id, { staff: true });
+          await this.db.exec(`update public.nx_order_cancellations set status = 'APPROVED', decided_by = $2, decided_at = now(), decision_note = $3, updated_at = now() where id = $1`,
+            [id, user.id, `Reembolso hecho desde ${ext.label}`], c);
+          await this.undoFulfillment(c, so.id, user.id, id);
+        });
+      } else id = await this.open(user, so.id, 'STAFF', 'OTHER', `Reembolso hecho desde ${ext.label}`, true);
+      n += 1;
+      await this.refund(user, id, { external: { providerRefundId: n === 1 ? ext.providerRefundId : `${ext.providerRefundId}#${n}`, providerStatus: ext.providerStatus } });
+    }
+    return true;
   }
 
   // ------------------------------------------------------------------ reads

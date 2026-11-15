@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Coins, Layers, LayoutGrid, Lock, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign, X } from 'lucide-react';
+import { AlertTriangle, Check, Coins, Layers, LayoutGrid, Lock, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign, X, Scale } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader, Empty } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { ROLE_SCOPE, SECTIONS, roleList, sectionFor } from '@/lib/permissions';
 const ICONS: Record<string, any> = {
   '/admin/dashboard': LayoutGrid, '/admin/productos': Package, '/admin/pedidos': ShoppingCart, '/admin/categorias': Layers,
   '/admin/vendedores': Users, '/admin/moderacion': Shield, '/admin/reportes': AlertTriangle, '/admin/devoluciones': RotateCcw,
-  '/admin/finanzas': DollarSign, '/admin/comisiones': Coins, '/admin/usuarios': UserCog, '/admin/configuracion': Settings,
+  '/admin/finanzas': DollarSign, '/admin/incidencias-pago': Scale, '/admin/comisiones': Coins, '/admin/usuarios': UserCog, '/admin/configuracion': Settings,
 };
 
 /** Shown instead of a section the user's role can't open: says why and what the role can do. */
@@ -58,6 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [loading, session, router, pathname]);
   const dash = useQuery({ queryKey: ['admin-attention'], queryFn: () => get('/admin/dashboard?days=7'), enabled: isStaff, refetchInterval: 60_000 });
   const deletions = useQuery({ queryKey: ['account-deletions', 'REQUESTED'], queryFn: () => get<any[]>('/admin/account-deletions?status=REQUESTED'), enabled: isAdmin, refetchInterval: 120_000 });
+  const incidents = useQuery({ queryKey: ['payment-incidents-count'], queryFn: () => get<{ open: number }>('/admin/payment-incidents/count'), enabled: isAdmin, refetchInterval: 60_000 });
   const returns = useQuery({ queryKey: ['admin-returns-count'], queryFn: () => get('/admin/returns?status=REFUND_PENDING'), enabled: isAdmin, refetchInterval: 60_000 });
   if (loading || !session || !me) return <PageLoader />;
   if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title={t('Acceso restringido')} description={t('Esta sección es solo para el equipo del marketplace.')} /></div>;
@@ -70,6 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Admins act on refunds; support on the review / receive / inspect queue.
     '/admin/devoluciones': (isAdmin ? returns.data?.counts?.refund_pending : a?.returns_pending) || null,
     '/admin/finanzas': a?.transfers_pending || null,
+    '/admin/incidencias-pago': incidents.data?.open || null,
     '/admin/comisiones': (a?.payouts_pending ?? 0) + (a?.payout_accounts_pending ?? 0) + (a?.affiliates_payable ?? 0) || null,
     '/admin/usuarios': deletions.data?.length || null,
   };

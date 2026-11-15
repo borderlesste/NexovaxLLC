@@ -114,6 +114,13 @@ export class StripeService {
     );
   }
 
+  /** Refunds of a charge (charge.refunded no longer embeds them). */
+  async listRefunds(chargeId: string) {
+    const out: Stripe.Refund[] = [];
+    for await (const r of this.stripe.refunds.list({ charge: chargeId, limit: 100 })) out.push(r);
+    return out;
+  }
+
   /** Verifies a webhook signature against any configured endpoint secret. */
   constructEvent(raw: Buffer, signature: string): Stripe.Event {
     let last: any;

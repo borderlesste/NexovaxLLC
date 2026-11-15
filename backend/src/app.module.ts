@@ -38,6 +38,8 @@ import { StripeService } from './payments/stripe.service';
 import { PaypalService } from './payments/paypal.service';
 import { PaymentsService } from './payments/payments.service';
 import { PaymentsWebhooksController } from './payments/payments.controller';
+import { PaymentIncidentsController } from './payments/incidents.controller';
+import { PaymentIncidentsService } from './payments/incidents.service';
 import { NotificationsService } from './notifications/notifications.service';
 import { NotificationsController } from './notifications/notifications.controller';
 import { ReturnsService } from './returns/returns.service';
@@ -78,7 +80,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
   providers: [
     DbService,
     SettingsService,
@@ -100,6 +102,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     StripeService,
     PaypalService,
     PaymentsService,
+    PaymentIncidentsService,
     NotificationsService,
     ReturnsService,
     ReturnPolicyService,

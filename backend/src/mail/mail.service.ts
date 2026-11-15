@@ -696,6 +696,18 @@ export class MailService {
   }
 
   /** Order cancellation (before shipping): request, approval, rejection and refund notices. */
+  /** Admin: a dispute or a refund made outside NEXOVAX needs attention (admins see Spanish/English per their locale). */
+  async paymentIncidentAdmin(userId: string, n: { title: string; body: string; dedupeKey: string }) {
+    const u = await this.userContact(userId);
+    if (!u) return;
+    const t = tr(u.locale);
+    await this.send({
+      template: 'PAYMENT_INCIDENT_ADMIN', dedupeKey: n.dedupeKey, to: u.email, userId, entityType: 'PAYMENT_INCIDENT', entityId: null,
+      message: layout({ locale: u.locale, subject: n.title, preheader: n.body, title: n.title, body: p(esc(n.body)),
+        cta: { label: t('Ver incidencias de pago', 'View payment incidents'), url: `${config.webUrl}/admin/incidencias-pago` }, text: n.body }),
+    });
+  }
+
   async orderCancellationEvent(cancellationId: string, event: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'REFUNDED') {
     const c = await this.db.one(
       `select c.id, c.public_number, c.customer_id, c.seller_id, c.order_id, c.requested_by_role, c.decision_note, c.note,

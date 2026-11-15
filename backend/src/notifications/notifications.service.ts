@@ -21,14 +21,14 @@ export interface NoticeInput {
 const TEMPLATE_CATEGORY: [RegExp, NotificationCategory][] = [
   [/^PRODUCT_ALERT_/, 'PRODUCT_ALERTS'],
   [/^(ORDER_|SELLER_NEW_ORDER|SELLER_ORDER_DELIVERED)/, 'ORDERS'],
-  [/^(BANK_TRANSFER_|PAYOUT_)/, 'PAYMENTS'],
+  [/^(BANK_TRANSFER_|PAYOUT_|PAYMENT_INCIDENT_)/, 'PAYMENTS'],
   [/^(RETURN_|REFUND_)/, 'RETURNS'],
   [/^SUPPORT_/, 'SUPPORT'],
   [/^(SELLER_APPROVE|SELLER_REJECT|SELLER_SUSPEND|SELLER_REACTIVATE|SELLER_APPLICATION_RECEIVED|PRODUCT_)/, 'STORE'],
   [/^MESSAGE_/, 'MESSAGES'],
 ];
 /** Security mail that never becomes a bell notice (links must stay in the inbox only). */
-const NO_IN_APP = new Set(['EMAIL_VERIFICATION', 'PASSWORD_RECOVERY']);
+const NO_IN_APP = new Set(['EMAIL_VERIFICATION', 'PASSWORD_RECOVERY', 'PAYMENT_INCIDENT_ADMIN']);
 
 export const categoryForTemplate = (template: string): NotificationCategory =>
   TEMPLATE_CATEGORY.find(([re]) => re.test(template))?.[1] ?? 'ACCOUNT';

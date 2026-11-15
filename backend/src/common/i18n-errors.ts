@@ -3,6 +3,17 @@ import { BaseExceptionFilter } from '@nestjs/core';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "El reembolso del procesador no coincide con el pago.": "The processor refund doesn’t match the payment.",
+  "Esta incidencia ya está resuelta.": "This incident is already resolved.",
+  "Solo las disputas se pueden reintentar.": "Only disputes can be retried.",
+  "La disputa sigue abierta con el procesador: se cerrará sola cuando haya resultado.": "The dispute is still open with the processor: it will close on its own once there’s an outcome.",
+  "No se pudo contabilizar el resultado de la disputa. Revisa el detalle del error.": "The dispute outcome couldn’t be booked. Check the error details.",
+  "Las disputas se resuelven con el procesador.": "Disputes are resolved with the processor.",
+  "El reembolso no cubre todo el pedido: resuélvelo con la tienda (devolución o ajuste) y márcalo como revisado.": "The refund doesn’t cover the whole order: settle it with the store (return or adjustment) and mark it as reviewed.",
+  "El pedido ya se envió o tiene devoluciones: no se puede registrar como cancelación. Resuélvelo con la tienda y márcalo como revisado.": "The order has already shipped or has returns: it can’t be recorded as a cancellation. Settle it with the store and mark it as reviewed.",
+  "Las disputas se cierran solas cuando el procesador da el resultado.": "Disputes close on their own when the processor gives the outcome.",
+  "Explica cómo se resolvió (mínimo 5 caracteres).": "Explain how it was resolved (at least 5 characters).",
+  "PayPal rechazó el pago. Prueba con otro medio de pago.": "PayPal declined the payment. Try another payment method.",
   "El producto debe estar publicado para enviar una oferta.": "The product must be published to send an offer.",
   "Elige a quién enviar la oferta.": "Choose who to send the offer to.",
   "El mensaje admite hasta 280 caracteres y no puede incluir enlaces.": "The message allows up to 280 characters and can’t include links.",

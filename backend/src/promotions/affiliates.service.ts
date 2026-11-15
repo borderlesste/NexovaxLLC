@@ -413,7 +413,10 @@ export class AffiliatesService {
     const due = await this.db.many(
       `select ar.id, rc.referrer_id, rc.id as earning_id from public.referral_availability_records ar join public.referral_commissions rc on rc.id = ar.referral_commission_id
         join public.order_items oi on oi.id = rc.order_item_id
-        where ar.status = 'PENDING' and rc.status = 'PENDING' and oi.delivered_quantity >= oi.quantity limit 200`,
+        where ar.status = 'PENDING' and rc.status = 'PENDING' and oi.delivered_quantity >= oi.quantity
+          and not exists (select 1 from public.nx_payment_incidents i where i.order_id = oi.order_id and i.status = 'OPEN')
+          and not exists (select 1 from public.payment_disputes pd where pd.order_id = oi.order_id and pd.status in ('OPEN','UNDER_REVIEW'))
+        limit 200`,
     );
     let released = 0;
     for (const d of due) {

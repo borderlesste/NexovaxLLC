@@ -10,6 +10,8 @@ import { orderRef } from '../common/refs';
 import { fromStripeAmount, StripeService } from './stripe.service';
 import { PaypalService } from './paypal.service';
 import { CardsService } from './cards.service';
+import { DisputeEvent, PaymentIncidentsService } from './incidents.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export type ProviderCode = 'STRIPE' | 'PAYPAL' | 'RD_SANDBOX';
 
@@ -43,6 +45,8 @@ export class PaymentsService {
     private readonly paypal: PaypalService,
     private readonly mail: MailService,
     private readonly cards: CardsService,
+    private readonly incidents: PaymentIncidentsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   providerFor(method: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER'): { code: ProviderCode; environment: 'TEST' | 'LIVE' } | null {
@@ -146,6 +150,15 @@ export class PaymentsService {
     let order = await this.paypal.getOrder(p.external_intent_id);
     if (order.status === 'APPROVED') order = await this.paypal.captureOrder(p.external_intent_id, p.id);
     const capture = order?.purchase_units?.[0]?.payments?.captures?.[0];
+    if (capture?.status === 'PENDING') {
+      // PayPal is still clearing it (eCheck, review…): the order stays reserved until PAYMENT.CAPTURE.COMPLETED.
+      await this.markProcessing(p.id);
+      return { status: 'PROCESSING' };
+    }
+    if (capture && ['DECLINED', 'FAILED'].includes(capture.status)) {
+      await this.cancelLocally(p, 'PROVIDER_DECLINED');
+      throw new AppError('PAYMENT_DECLINED', 'PayPal rechazó el pago. Prueba con otro medio de pago.', HttpStatus.PAYMENT_REQUIRED, { captureStatus: capture.status });
+    }
     if (order.status !== 'COMPLETED' || !capture || capture.status !== 'COMPLETED')
       throw new AppError('PAYMENT_NOT_COMPLETED', 'PayPal aún no confirma el pago.', HttpStatus.PAYMENT_REQUIRED, { paypalStatus: order.status, captureStatus: capture?.status });
     const orderId = await this.finalize(p.id, {
@@ -185,6 +198,8 @@ export class PaymentsService {
       );
       await this.db.exec(`select public.post_payment_capture_to_ledger($1,$2,$3,$4)`, [paymentId, `capture:${paymentId}`, actorUserId, corr], c);
       await postSaleAllocation(this.db, c, paymentId, actorUserId, corr);
+      // Who bears a lost dispute, fixed at the sale (policy in force now).
+      await this.db.exec(`select public.nx_pin_chargeback_policies($1)`, [r!.order_id], c);
       return { orderId: r!.order_id as string, created: true };
     });
     if (result.created) this.mail.fire(() => this.mail.orderConfirmed(result.orderId));
@@ -213,13 +228,41 @@ export class PaymentsService {
       const order = await this.paypal.getOrder(p.external_intent_id).catch(() => null);
       if (order?.status === 'COMPLETED' || order?.status === 'APPROVED') return this.capturePaypal(checkoutId, p.customer_id);
     }
+    await this.cancelLocally(p, reason);
+    return { status: 'CANCELLED' };
+  }
+
+  /** Mirrors a cancelled/declined provider payment: payment cancelled, checkout closed, stock released. */
+  private async cancelLocally(p: { id: string; customer_id: string; checkout_session_id: string }, reason: string) {
     await this.db.tx(async (c) => {
       await this.db.exec(`select public.cancel_unpaid_payment($1,$2,$3,$4)`, [p.id, reason, p.customer_id, randomUUID()], c);
       const cs = await this.db.one(`select status from public.checkout_sessions where id = $1`, [p.checkout_session_id], c);
       if (cs && !['CANCELLED', 'COMPLETED', 'EXPIRED', 'FAILED'].includes(cs.status))
         await this.db.exec(`select public.cancel_checkout_session($1,$2,$3,null)`, [p.checkout_session_id, p.customer_id, reason], c).catch(() => undefined);
     });
-    return { status: 'CANCELLED' };
+  }
+
+  /** Provider accepted the payment but hasn't cleared it yet: keep the reservation, wait for the webhook. */
+  private async markProcessing(paymentId: string) {
+    await this.db.tx(async (c) => {
+      const p = await this.db.one(
+        `select p.status, (select i.id from public.payment_provider_intents i where i.payment_id = p.id order by i.sequence_number desc limit 1) as intent_id
+           from public.payments p where p.id = $1 for update`,
+        [paymentId],
+        c,
+      );
+      if (p && p.intent_id && ['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD', 'AUTHORIZED'].includes(p.status))
+        await this.db.exec(`select public.mark_payment_processing($1,$2,$3)`, [paymentId, p.intent_id, randomUUID()], c);
+    });
+  }
+
+  /** Pending payment by id, with what cancelLocally needs. */
+  private async pendingPayment(paymentId: string | null | undefined, provider: ProviderCode) {
+    if (!paymentId || !/^[0-9a-f-]{36}$/i.test(paymentId)) return null;
+    return this.db.one(
+      `select id, status, customer_id, checkout_session_id from public.payments where id = $1 and provider_code = $2`,
+      [paymentId, provider],
+    );
   }
 
   /** Releases abandoned card/PayPal payments of a buyer so the cart can be edited again. */
@@ -254,60 +297,233 @@ export class PaymentsService {
       .catch(() => undefined);
   }
 
+  /**
+   * Stripe events NEXOVAX acts on (subscribe the endpoint to these):
+   *   payment_intent.succeeded | processing | payment_failed | canceled,
+   *   charge.refunded, charge.refund.updated, refund.created, refund.updated,
+   *   charge.dispute.created | updated | closed | funds_withdrawn | funds_reinstated.
+   */
   async handleStripeWebhook(raw: Buffer, signature: string) {
     const event = this.stripe.constructEvent(raw, signature);
     const rec = await this.receipt('STRIPE', event.id, event.type, event);
     if (rec.status === 'PROCESSED') return { received: true, duplicate: true };
     try {
-      if (event.type === 'payment_intent.succeeded') {
-        const pi: any = event.data.object;
-        const paymentId = pi.metadata?.payment_id;
-        const own = paymentId ? await this.db.one(`select id, customer_id from public.payments where id = $1 and provider_code = 'STRIPE'`, [paymentId]) : null;
-        if (!own) {
-          await this.closeReceipt(rec.id, 'IGNORED');
-          return { received: true, ignored: true };
-        }
-        await this.cards.recordFromIntent(own.customer_id, pi);
-        await this.finalize(paymentId, {
-          externalChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id ?? pi.id,
-          amount: fromStripeAmount(pi.amount_received, pi.currency),
-          currency: String(pi.currency).toUpperCase(),
-          eventAt: new Date(event.created * 1000),
-          webhookReceiptId: rec.id,
-        }, null);
-        await this.closeReceipt(rec.id, 'PROCESSED');
-      } else {
-        await this.closeReceipt(rec.id, 'IGNORED');
-      }
-      return { received: true };
+      const done = await this.stripeEvent(event, rec.id);
+      await this.closeReceipt(rec.id, done ? 'PROCESSED' : 'IGNORED');
+      return done ? { received: true } : { received: true, ignored: true };
     } catch (e: any) {
       await this.closeReceipt(rec.id, 'FAILED', e?.message ?? String(e));
       throw e;
     }
   }
 
+  private async stripeEvent(event: any, receiptId: string): Promise<boolean> {
+    const env: 'TEST' | 'LIVE' = event.livemode ? 'LIVE' : 'TEST';
+    const o: any = event.data.object;
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const own = await this.pendingPayment(o.metadata?.payment_id, 'STRIPE');
+        if (!own) return false;
+        await this.cards.recordFromIntent(own.customer_id, o);
+        await this.finalize(own.id, {
+          externalChargeId: typeof o.latest_charge === 'string' ? o.latest_charge : o.latest_charge?.id ?? o.id,
+          amount: fromStripeAmount(o.amount_received, o.currency),
+          currency: String(o.currency).toUpperCase(),
+          eventAt: new Date(event.created * 1000),
+          webhookReceiptId: receiptId,
+        }, null);
+        return true;
+      }
+      case 'payment_intent.processing': {
+        const own = await this.pendingPayment(o.metadata?.payment_id, 'STRIPE');
+        if (!own) return false;
+        await this.markProcessing(own.id);
+        return true;
+      }
+      case 'payment_intent.payment_failed':
+      case 'payment_intent.canceled': {
+        const own = await this.pendingPayment(o.metadata?.payment_id, 'STRIPE');
+        // A declined card leaves the intent open for another attempt; only a delayed payment that failed, or a cancelled intent, ends it.
+        if (!own || (event.type === 'payment_intent.payment_failed' && own.status !== 'PROCESSING')) return false;
+        if (!['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD', 'PROCESSING', 'AUTHORIZED'].includes(own.status)) return false;
+        await this.cancelLocally(own, event.type === 'payment_intent.canceled' ? 'PROVIDER_CANCELLED' : 'PROVIDER_DECLINED');
+        await this.paymentFailedNotice(own.customer_id, own.id, 'tarjeta');
+        return true;
+      }
+      case 'charge.refunded': {
+        const refunds = await this.stripe.listRefunds(o.id);
+        let any = false;
+        for (const r of refunds) any = (await this.stripeRefund(r, env)) || any;
+        return any;
+      }
+      case 'charge.refund.updated':
+      case 'refund.created':
+      case 'refund.updated':
+        return this.stripeRefund(o, env);
+      case 'charge.dispute.created':
+      case 'charge.dispute.updated':
+      case 'charge.dispute.closed':
+      case 'charge.dispute.funds_withdrawn':
+      case 'charge.dispute.funds_reinstated':
+        return (await this.incidents.dispute(this.stripeDispute(o, env))) === 'RECORDED';
+      default:
+        return false;
+    }
+  }
+
+  private async stripeRefund(r: any, env: 'TEST' | 'LIVE') {
+    if (r?.object !== 'refund' || r.status !== 'succeeded' || typeof r.charge !== 'string') return false;
+    const res = await this.incidents.providerRefund({
+      provider: 'STRIPE', environment: env, kind: 'EXTERNAL_REFUND', chargeId: r.charge, refundId: r.id,
+      amount: fromStripeAmount(r.amount, r.currency), currency: String(r.currency).toUpperCase(),
+      nxRefundId: r.metadata?.refund_id ?? null, createdAt: r.created ? new Date(r.created * 1000) : null,
+    });
+    return res !== 'UNKNOWN';
+  }
+
+  private stripeDispute(d: any, env: 'TEST' | 'LIVE'): DisputeEvent {
+    const cur = String(d.currency).toUpperCase();
+    return {
+      provider: 'STRIPE', environment: env, disputeId: d.id, chargeId: typeof d.charge === 'string' ? d.charge : d.charge?.id,
+      amountMinor: String(d.amount), currency: cur, reason: d.reason ?? null, status: d.status, providerStatus: d.status,
+      balanceTransactions: (d.balance_transactions ?? []).filter((b: any) => b && typeof b === 'object').map((b: any) => ({
+        id: b.id, kind: b.amount < 0 ? 'FUNDS_WITHDRAWN' : 'FUNDS_REINSTATED', principalMinor: String(Math.abs(b.amount)), feeMinor: String(Math.abs(b.fee ?? 0)),
+        currencyCode: String(b.currency).toUpperCase(), createdAt: b.created ? new Date(b.created * 1000).toISOString() : null, reportingCategory: b.reporting_category ?? null,
+      })),
+      createdAt: d.created ? new Date(d.created * 1000) : null,
+      dueBy: d.evidence_details?.due_by ? new Date(d.evidence_details.due_by * 1000) : null,
+    };
+  }
+
+  /**
+   * PayPal events NEXOVAX acts on (subscribe the webhook to these):
+   *   CHECKOUT.ORDER.APPROVED, PAYMENT.CAPTURE.COMPLETED | PENDING | DENIED | DECLINED | REFUNDED | REVERSED,
+   *   CUSTOMER.DISPUTE.CREATED | UPDATED | RESOLVED.
+   */
   async handlePaypalWebhook(headers: Record<string, any>, event: any) {
     if (!(await this.paypal.verifyWebhook(headers, event)))
       throw new AppError('WEBHOOK_SIGNATURE_INVALID', 'Firma de webhook inválida.', HttpStatus.BAD_REQUEST);
+    return this.processPaypalEvent(event);
+  }
+
+  /** Signature already verified by the caller. */
+  async processPaypalEvent(event: any) {
     const rec = await this.receipt('PAYPAL', event.id, event.event_type, event);
     if (rec.status === 'PROCESSED') return { received: true, duplicate: true };
     try {
-      if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
-        const cap = event.resource;
-        const paymentId = cap?.custom_id;
-        const own = paymentId ? await this.db.one(`select id from public.payments where id = $1 and provider_code = 'PAYPAL'`, [paymentId]) : null;
-        if (own) {
-          await this.finalize(paymentId, { externalChargeId: cap.id, amount: Number(cap.amount.value).toFixed(2), currency: cap.amount.currency_code, eventAt: new Date(cap.create_time ?? Date.now()), webhookReceiptId: rec.id }, null);
-          await this.closeReceipt(rec.id, 'PROCESSED');
-          return { received: true };
-        }
-      }
-      await this.closeReceipt(rec.id, 'IGNORED');
-      return { received: true, ignored: true };
+      const done = await this.paypalEvent(event, rec.id);
+      await this.closeReceipt(rec.id, done ? 'PROCESSED' : 'IGNORED');
+      return done ? { received: true } : { received: true, ignored: true };
     } catch (e: any) {
       await this.closeReceipt(rec.id, 'FAILED', e?.message ?? String(e));
       throw e;
     }
+  }
+
+  private async paypalEvent(event: any, receiptId: string): Promise<boolean> {
+    const r = event.resource ?? {};
+    const env = this.paypal.environment;
+    switch (event.event_type) {
+      case 'CHECKOUT.ORDER.APPROVED': {
+        // The buyer approved but the browser never came back to capture: capture it here.
+        const p = await this.db.one(
+          `select p.id, p.status, p.customer_id, p.checkout_session_id from public.payments p join public.payment_provider_intents i on i.payment_id = p.id
+            where p.provider_code = 'PAYPAL' and i.external_intent_id = $1 order by i.sequence_number desc limit 1`,
+          [r.id],
+        );
+        if (!p || !['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD', 'AUTHORIZED'].includes(p.status)) return false;
+        await this.capturePaypal(p.checkout_session_id, p.customer_id);
+        return true;
+      }
+      case 'PAYMENT.CAPTURE.COMPLETED': {
+        const own = await this.pendingPayment(r.custom_id, 'PAYPAL');
+        if (!own) return false;
+        await this.finalize(own.id, { externalChargeId: r.id, amount: Number(r.amount.value).toFixed(2), currency: r.amount.currency_code, eventAt: new Date(r.create_time ?? Date.now()), webhookReceiptId: receiptId }, null);
+        return true;
+      }
+      case 'PAYMENT.CAPTURE.PENDING': {
+        const own = await this.pendingPayment(r.custom_id, 'PAYPAL');
+        if (!own) return false;
+        await this.markProcessing(own.id);
+        return true;
+      }
+      case 'PAYMENT.CAPTURE.DENIED':
+      case 'PAYMENT.CAPTURE.DECLINED': {
+        const own = await this.pendingPayment(r.custom_id, 'PAYPAL');
+        if (!own || !['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD', 'PROCESSING', 'AUTHORIZED'].includes(own.status)) return false;
+        await this.cancelLocally(own, 'PROVIDER_DECLINED');
+        await this.paymentFailedNotice(own.customer_id, own.id, 'PayPal');
+        return true;
+      }
+      case 'PAYMENT.CAPTURE.REFUNDED':
+      case 'PAYMENT.CAPTURE.REVERSED': {
+        if (r.status && r.status !== 'COMPLETED') return false;
+        const up = (r.links ?? []).find((l: any) => l.rel === 'up')?.href ?? '';
+        const captureId = /\/captures\/([A-Z0-9]+)/.exec(up)?.[1];
+        if (!captureId || !r.id || !r.amount) return false;
+        const res = await this.incidents.providerRefund({
+          provider: 'PAYPAL', environment: env, kind: event.event_type === 'PAYMENT.CAPTURE.REVERSED' ? 'PROVIDER_REVERSAL' : 'EXTERNAL_REFUND',
+          chargeId: captureId, refundId: r.id, amount: Number(r.amount.value).toFixed(2), currency: r.amount.currency_code,
+          nxRefundId: /^nx-refund-(.+)$/.exec(r.invoice_id ?? '')?.[1] ?? null, createdAt: r.create_time ? new Date(r.create_time) : null,
+        });
+        return res !== 'UNKNOWN';
+      }
+      case 'CUSTOMER.DISPUTE.CREATED':
+      case 'CUSTOMER.DISPUTE.UPDATED':
+      case 'CUSTOMER.DISPUTE.RESOLVED': {
+        const ev = await this.paypalDispute(r, env);
+        return ev ? (await this.incidents.dispute(ev)) === 'RECORDED' : false;
+      }
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * PayPal dispute → dispute-engine evidence. PayPal reports no balance movements, so they are
+   * derived (stable ids): the disputed amount is held once the case leaves the inquiry stage
+   * (claim / chargeback) and comes back if the store wins.
+   */
+  private async paypalDispute(r: any, env: 'TEST' | 'LIVE'): Promise<DisputeEvent | null> {
+    const captureId = r.disputed_transactions?.[0]?.seller_transaction_id;
+    if (!r.dispute_id || !captureId || !r.dispute_amount?.value) return null;
+    const cur = String(r.dispute_amount.currency_code).toUpperCase();
+    const minor = toMinor(r.dispute_amount.value).toString();
+    const key = String(r.dispute_id).replace(/[^A-Za-z0-9]/g, '');
+    const at = r.create_time ?? null;
+    const W = { id: `txn_pp${key}w`, kind: 'FUNDS_WITHDRAWN' as const, principalMinor: minor, feeMinor: '0', currencyCode: cur, createdAt: at, reportingCategory: 'paypal_dispute_hold' };
+    const R = { ...W, id: `txn_pp${key}r`, kind: 'FUNDS_REINSTATED' as const, createdAt: r.update_time ?? at, reportingCategory: 'paypal_dispute_release' };
+    const inquiry = (r.dispute_life_cycle_stage ?? 'INQUIRY') === 'INQUIRY';
+    const outcome = r.dispute_outcome?.outcome_code as string | undefined;
+    let status: string;
+    let txns: DisputeEvent['balanceTransactions'] = [];
+    if (r.status !== 'RESOLVED') {
+      status = inquiry ? (r.status === 'UNDER_REVIEW' ? 'warning_under_review' : 'warning_needs_response') : r.status === 'UNDER_REVIEW' ? 'under_review' : 'needs_response';
+      if (!inquiry) txns = [W];
+    } else if (['RESOLVED_BUYER_FAVOUR', 'ACCEPTED'].includes(outcome ?? '')) {
+      // Settled in the inquiry with a refund the store issued: that refund carries the money, not the dispute.
+      const p = inquiry ? await this.db.one(
+        `select p.refunded_amount::text as refunded,
+                (select coalesce(sum(i.amount),0)::text from public.nx_payment_incidents i where i.payment_id = p.id and i.kind = 'EXTERNAL_REFUND') as external
+           from public.payment_charges c join public.payments p on p.id = c.payment_id where c.provider_code = 'PAYPAL' and c.external_charge_id = $1`, [captureId]) : null;
+      if (p && toMinor(p.refunded) + toMinor(p.external) >= BigInt(minor)) status = 'warning_closed';
+      else { status = 'lost'; txns = [W]; }
+    } else if (inquiry) status = 'warning_closed';
+    else { status = 'won'; txns = [W, R]; }
+    return {
+      provider: 'PAYPAL', environment: env, disputeId: r.dispute_id, chargeId: captureId, amountMinor: minor, currency: cur,
+      reason: r.reason ? String(r.reason).toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 64) : null,
+      status, providerStatus: [r.dispute_life_cycle_stage, r.status, outcome].filter(Boolean).join(' · '),
+      balanceTransactions: txns, createdAt: at ? new Date(at) : null, dueBy: r.seller_response_due_date ? new Date(r.seller_response_due_date) : null,
+    };
+  }
+
+  private async paymentFailedNotice(userId: string, paymentId: string, via: string) {
+    await this.notifications.notify(userId, {
+      category: 'PAYMENTS', eventType: 'PAYMENT_DECLINED', title: 'No se pudo completar tu pago',
+      body: `El pago con ${via} fue rechazado y no se te cobró. Tus productos siguen en el carrito: puedes intentar de nuevo con otro medio de pago.`,
+      url: '/carrito', entityType: 'PAYMENT', entityId: paymentId, dedupeKey: `payment-declined:${paymentId}`,
+    });
   }
 
   orderNumber(n: unknown) {
