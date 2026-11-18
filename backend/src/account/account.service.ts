@@ -67,6 +67,11 @@ export class AccountService {
   }
 
   /** Re-sends the verification link. Always answers OK (no account discovery). */
+  /** Password sign-in on behalf of the browser (see AccountController.login). */
+  login(email: string, password: string, captchaToken?: string | null) {
+    return this.supa.signInWithPassword(email.trim().toLowerCase(), password, captchaToken);
+  }
+
   async resendVerification(email: string) {
     const normalized = email.trim().toLowerCase();
     const u = await this.db.one<{ id: string }>(

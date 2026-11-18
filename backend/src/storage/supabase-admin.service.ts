@@ -76,6 +76,37 @@ export class SupabaseAdminService {
     return this.client;
   }
 
+  /**
+   * Password sign-in on behalf of the browser, so the visitor talks only to our domain.
+   * Uses a publishable-key client (no admin bypass): Supabase still applies CAPTCHA, rate limits
+   * (per visitor IP via Sb-Forwarded-For) and e-mail confirmation. Returns the session tokens.
+   */
+  async signInWithPassword(email: string, password: string, captchaToken?: string | null) {
+    if (!config.supabaseUrl || !config.supabasePublishableKey)
+      throw new AppError('SERVICE_NOT_CONFIGURED', 'El inicio de sesión no está configurado.', HttpStatus.SERVICE_UNAVAILABLE);
+    const client = createClient(config.supabaseUrl, config.supabasePublishableKey, {
+      auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+      global: { fetch: forwardClientIp },
+    });
+    const { data, error } = await client.auth.signInWithPassword({ email, password, options: captchaToken ? { captchaToken } : undefined });
+    if (error || !data.session) {
+      const code = (error as { code?: string } | null)?.code ?? '';
+      const msg = error?.message ?? '';
+      if (code === 'invalid_credentials' || /invalid login/i.test(msg))
+        throw new AppError('INVALID_CREDENTIALS', 'Correo o contraseña incorrectos.', HttpStatus.UNAUTHORIZED);
+      if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg))
+        throw new AppError('EMAIL_NOT_CONFIRMED', 'Debes confirmar tu correo antes de iniciar sesión.', HttpStatus.FORBIDDEN);
+      if (code === 'captcha_failed' || /captcha/i.test(msg))
+        throw new AppError('CAPTCHA_FAILED', 'No pudimos verificar que eres una persona. Completa la verificación e inténtalo de nuevo.', HttpStatus.BAD_REQUEST);
+      if (error?.status === 429 || /rate limit/i.test(msg))
+        throw new AppError('TOO_MANY_ATTEMPTS', 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.', HttpStatus.TOO_MANY_REQUESTS);
+      this.logger.warn(`sign-in failed: ${code || msg}`);
+      throw new AppError('AUTH_PROVIDER_ERROR', 'No se pudo iniciar sesión. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
+    const { access_token, refresh_token, expires_in, expires_at, token_type } = data.session;
+    return { access_token, refresh_token, expires_in, expires_at, token_type };
+  }
+
   /** Creates a Supabase Auth identity; the DB trigger provisions public.users + CUSTOMER role. */
   /** Status page: lists one object of the avatars bucket (proves credentials and storage answer). */
   async ping() {

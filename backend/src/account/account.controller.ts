@@ -38,6 +38,11 @@ export class RecoveryDto {
   @IsEmailAddress() email: string;
 }
 
+export class LoginDto {
+  @IsEmailAddress() email: string;
+  @IsString() @MinLength(1) @MaxLength(128) password: string;
+}
+
 export class ProfileDto {
   @IsOptional() @IsOptionalPersonName(80) firstName?: string;
   @IsOptional() @IsOptionalPersonName(80) lastName?: string;
@@ -98,6 +103,18 @@ export class AccountController {
   async acceptPolicies(@CurrentUser() user: RequestUser, @Body() dto: AcceptPoliciesDto, @Req() req: Request) {
     await this.policies_.acceptPending(user.id, dto.versionIds, { method: 'LOGIN_GATE', locale: requestLocale(req), ip: req.ip ?? null, userAgent: String(req.headers['user-agent'] ?? '') || null });
     return { pending: await this.policies_.pending(user.id, requestLocale(req)) };
+  }
+
+  /**
+   * Password sign-in through the API, so browsers only see our domain. The Turnstile token
+   * (cf-turnstile-response) is passed on to Supabase Auth, which verifies it: tokens are single-use,
+   * so TurnstileGuard is not applied here. The web stores the returned session itself.
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('auth/login')
+  login(@Body() dto: LoginDto, @Headers('cf-turnstile-response') captchaToken?: string) {
+    return this.account.login(dto.email, dto.password, captchaToken);
   }
 
   @Public()

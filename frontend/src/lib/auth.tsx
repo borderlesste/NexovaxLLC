@@ -4,8 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { ApiError, get, setSellerContext } from './api';
+import { ApiError, get, postWithCaptcha, setSellerContext } from './api';
 import { can as canRole, type Permission } from './permissions';
+
+
+/** The API did not handle the request (down, asleep or not configured), so nothing was consumed. */
+function apiUnavailable(e: ApiError) {
+  return e.code === 'SERVICE_NOT_CONFIGURED' || (e.status >= 500 && !['AUTH_PROVIDER_ERROR', 'CAPTCHA_UNAVAILABLE'].includes(e.code));
+}
 
 export type Role = 'CUSTOMER' | 'SELLER' | 'SUPPORT' | 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
 export interface Me {
@@ -86,8 +92,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [me]);
 
   const signIn = useCallback(async (email: string, password: string, captchaToken?: string | null) => {
+    const mail = email.trim().toLowerCase();
+    // Sign in through our API so the browser only talks to our domain; the web keeps the session.
+    try {
+      const s = await postWithCaptcha<{ access_token: string; refresh_token: string }>('/auth/login', { email: mail, password }, captchaToken ?? null);
+      const { error } = await supabase().auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token });
+      if (error) throw new Error(error.message);
+      return;
+    } catch (e) {
+      if (e instanceof ApiError && !apiUnavailable(e)) {
+        if (e.code === 'EMAIL_NOT_CONFIRMED') throw Object.assign(new Error(e.message), { code: 'EMAIL_NOT_CONFIRMED' });
+        throw new Error(e.message);
+      }
+      if (!(e instanceof ApiError) && !(e instanceof TypeError)) throw e;
+      // API unreachable (asleep, deploying): the Turnstile token was not used, sign in with Supabase directly.
+    }
     const { error } = await supabase().auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: mail,
       password,
       // Required once CAPTCHA protection (Turnstile) is enabled in Supabase Auth.
       options: captchaToken ? { captchaToken } : undefined,
