@@ -6,17 +6,17 @@ const dev = process.env.NODE_ENV !== 'production';
 
 /**
  * Content-Security-Policy (defense in depth against injected scripts/navigation).
- * Allows only the app itself, Supabase, Stripe (Payment Element / 3-D Secure) and PayPal.
+ * Allows only the app itself, Supabase, Stripe (Payment Element / 3-D Secure), PayPal and Cloudflare Turnstile.
  * 'unsafe-inline' scripts are required by Next.js hydration without nonces.
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://*.js.stripe.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com`,
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://*.js.stripe.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com https://challenges.cloudflare.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' ${SUPABASE} ${SUPABASE.replace('https://', 'wss://')} https://api.stripe.com https://*.stripe.com https://*.paypal.com https://www.sandbox.paypal.com https://api-m.paypal.com https://api-m.sandbox.paypal.com`,
-  'frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.stripe.com https://www.paypal.com https://*.paypal.com https://www.sandbox.paypal.com',
+  'frame-src https://challenges.cloudflare.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.stripe.com https://www.paypal.com https://*.paypal.com https://www.sandbox.paypal.com',
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

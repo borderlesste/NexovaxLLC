@@ -698,5 +698,8 @@
 "Ofrecer cupón": "Offer coupon",
 "Lo agregan al carrito pero no lo compran: envíales un cupón o mejora el envío.": "People add it to the cart but don’t buy it: send them a coupon or improve shipping.",
 "{n} personas lo tienen en favoritos: envíales un cupón para convertirlas en compras.": "{n} people have it in favorites: send them a coupon to turn them into purchases.",
-"Vuelta a stock, bajadas de precio y ofertas de tus favoritos y tu carrito.": "Back in stock, price drops and offers on your favorites and cart."
+"Vuelta a stock, bajadas de precio y ofertas de tus favoritos y tu carrito.": "Back in stock, price drops and offers on your favorites and cart.",
+"Completa la verificación de seguridad.": "Complete the security check.",
+"No pudimos verificar que eres una persona. Completa la verificación e inténtalo de nuevo.": "We couldn’t verify that you’re a person. Complete the check and try again.",
+"Demasiados intentos. Espera unos minutos.": "Too many attempts. Please wait a few minutes."
 }

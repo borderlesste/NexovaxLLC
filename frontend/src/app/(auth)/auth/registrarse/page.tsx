@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { safeNextPath } from '@/lib/safe-redirect';
 import { BarChart3, Check, Eye, EyeOff, Lock, Mail, Store, User, Users } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { errorMessage, post } from '@/lib/api';
+import { errorMessage, postWithCaptcha } from '@/lib/api';
+import { useCaptcha } from '@/components/ui/turnstile';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { StorefrontIllustration } from '@/components/layout/auth-illustration';
@@ -21,6 +22,7 @@ function RegisterForm() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const captcha = useCaptcha('register');
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const strong = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(f.password);
   const submit = async (e: React.FormEvent) => {
@@ -29,10 +31,12 @@ function RegisterForm() {
     if (!strong) return setError(t('La contraseña debe tener al menos 8 caracteres, con letras y números.'));
     if (f.password !== f.confirm) return setError(t('Las contraseñas no coinciden.'));
     if (!terms) return setError(t('Debes aceptar los términos y la política de privacidad.'));
+    if (!captcha.ready) return setError(t('Completa la verificación de seguridad.'));
     setBusy(true);
     try {
-      const r = await post('/auth/register', { fullName: f.fullName, email: f.email, password: f.password });
-      if (r.confirmed) {
+      const r = await postWithCaptcha('/auth/register', { fullName: f.fullName, email: f.email, password: f.password }, captcha.token);
+      // Each Turnstile token is single-use: with the check on, sign in from the login page with a fresh one.
+      if (r.confirmed && !captcha.required) {
         await signIn(f.email, f.password);
         router.replace(next);
       } else {
@@ -40,6 +44,7 @@ function RegisterForm() {
       }
     } catch (err) {
       setError(errorMessage(err));
+      captcha.reset();
     } finally {
       setBusy(false);
     }
@@ -74,6 +79,7 @@ function RegisterForm() {
             <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" />
             <span>{t('Acepto los')}{' '}<Link href="/ayuda#terminos" className="font-semibold text-brand-700 underline">{t('Términos y condiciones')}</Link> {t('y la')}{' '}<Link href="/ayuda#privacidad" className="font-semibold text-brand-700 underline">{t('Política de privacidad')}</Link>.</span>
           </label>
+          {captcha.widget}
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <Button type="submit" size="lg" className="w-full" loading={busy}><Check /> {t('Crear cuenta')}</Button>
           <p className="border-t border-line pt-4 text-center text-sm">{t('¿Ya tienes una cuenta?')}{' '}<Link href="/auth/iniciar-sesion" className="font-semibold text-brand-700">{t('Inicia sesión')}</Link></p>

@@ -2,7 +2,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Mail, MailCheck } from 'lucide-react';
-import { ApiError, post } from '@/lib/api';
+import { ApiError, errorMessage, postWithCaptcha } from '@/lib/api';
+import { useCaptcha } from '@/components/ui/turnstile';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { t } from '@/lib/i18n';
@@ -12,15 +13,24 @@ export default function RecoverPage() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const captcha = useCaptcha('password_recovery');
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true);
     setError('');
+    if (!captcha.ready) return setError(t('Completa la verificación de seguridad.'));
+    setBusy(true);
     try {
-      await post('/auth/password-recovery', { email: email.trim().toLowerCase() });
+      await postWithCaptcha('/auth/password-recovery', { email: email.trim().toLowerCase() }, captcha.token);
       setSent(true);
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 429 ? 'Demasiados intentos. Espera unos minutos.' : t('No pudimos enviar el correo. Inténtalo más tarde.'));
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? t('Demasiados intentos. Espera unos minutos.')
+          : err instanceof ApiError && err.code.startsWith('CAPTCHA_')
+            ? errorMessage(err)
+            : t('No pudimos enviar el correo. Inténtalo más tarde.'),
+      );
+      captcha.reset();
     } finally {
       setBusy(false);
     }
@@ -39,6 +49,7 @@ export default function RecoverPage() {
           <h1 className="text-3xl font-extrabold">{t('Recuperar contraseña')}</h1>
           <p className="mt-1 text-muted">{t('Te enviaremos un enlace para crear una nueva contraseña.')}</p>
           <Field label={t('Correo electrónico')} required className="mt-6"><Input rule="email" type="email" required icon={<Mail />} value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('usuario@correo.com')} className="h-11" /></Field>
+          {captcha.widget && <div className="mt-4">{captcha.widget}</div>}
           {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <Button type="submit" size="lg" className="mt-6 w-full" loading={busy}>{t('Enviar enlace')}</Button>
           <p className="mt-4 text-center text-sm"><Link href="/auth/iniciar-sesion" className="font-semibold text-brand-700">{t('Volver a iniciar sesión')}</Link></p>

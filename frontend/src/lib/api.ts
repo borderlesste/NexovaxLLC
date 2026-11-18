@@ -52,6 +52,9 @@ export async function api<T = any>(path: string, init: RequestInit & { json?: un
 
 export const get = <T = any>(p: string) => api<T>(p);
 export const post = <T = any>(p: string, json?: unknown) => api<T>(p, { method: 'POST', json: json ?? {} });
+/** POST to a Turnstile-protected endpoint (register, password recovery, resend verification). */
+export const postWithCaptcha = <T = any>(p: string, json: unknown, captchaToken: string | null) =>
+  api<T>(p, { method: 'POST', json, headers: captchaToken ? { 'cf-turnstile-response': captchaToken } : undefined });
 export const put = <T = any>(p: string, json?: unknown) => api<T>(p, { method: 'PUT', json: json ?? {} });
 export const del = <T = any>(p: string) => api<T>(p, { method: 'DELETE' });
 export const upload = <T = any>(p: string, form: FormData) => api<T>(p, { method: 'POST', body: form });

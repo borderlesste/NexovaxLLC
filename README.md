@@ -104,6 +104,23 @@ País, estado, ciudad, código postal y teléfono se validan juntos según el pa
 - Endpoints públicos: `GET /api/geo/countries/:code`, `GET /api/geo/cities?country=&region=&q=`, `GET /api/geo/postal?country=&code=` (sugerencias).
 - Reimportar: descargar los archivos en `scripts/data/geonames/` (ver cabecera de `scripts/geo-import.mjs`), conceder temporalmente los permisos de la migración `20261114140000_nexovax_geo_reference.sql` y ejecutar `node ../scripts/geo-import.mjs` desde `backend/`.
 
+## Protección anti-bots (Cloudflare Turnstile)
+
+Turnstile protege los formularios públicos de autenticación en dos capas, porque no todos llegan al mismo sitio:
+
+| Formulario | Destino | Quién valida el token |
+|---|---|---|
+| Iniciar sesión | Supabase Auth (navegador) | Supabase (CAPTCHA activado en Auth) |
+| Registro, recuperar contraseña, reenviar verificación | API NestJS (`/api/auth/*`) | `TurnstileGuard` contra `siteverify` de Cloudflare |
+
+La API usa la clave de administrador de Supabase en esos tres endpoints, que se salta el CAPTCHA de Supabase; por eso valida el token por su cuenta.
+
+1. **Cloudflare → Turnstile:** crea un widget (modo *Managed*) con tus dominios y `localhost`.
+2. **API:** `.secrets/turnstile_site_key` y `.secrets/turnstile_secret_key` (o `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`). La web recibe la *site key* desde `/api/config/public`; sin claves los formularios funcionan como antes, salvo en producción, donde los tres endpoints responden 503 (`CAPTCHA_UNAVAILABLE`).
+3. **Supabase → Authentication → Attack Protection:** activa *CAPTCHA protection* con Turnstile y la misma *secret key*. Así también quedan protegidas las llamadas directas a `/auth/v1/signup`, `/recover`, `/resend` y `/token`.
+4. **Supabase → Sign In / Providers:** desactiva *Allow new users to sign up*. El registro de NEXOVAX sigue funcionando (la API crea las cuentas con la clave de administrador), pero nadie puede crear cuentas llamando a Supabase directamente. Consecuencia: Google/Apple solo sirven para cuentas ya existentes.
+5. **Desarrollo y seed:** usa las claves de prueba de Cloudflare (site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`) en la API y en Supabase; el seed envía el token de prueba `XXXX.DUMMY.TOKEN.XXXX` (`TURNSTILE_TEST_TOKEN` para cambiarlo).
+
 ## Seguridad operativa
 
 - **Base de datos:** TLS con verificación de certificado contra la CA raíz de Supabase incluida en `backend/certs/supabase-root-2021.crt` (`DATABASE_CA_FILE` para otra CA). `DATABASE_SSL_INSECURE=true` solo en desarrollo local; en producción la API no arranca sin verificación.

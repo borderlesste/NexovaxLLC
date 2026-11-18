@@ -68,6 +68,17 @@ export const config = {
     return secret('PAYPAL_WEBHOOK_ID', 'paypal_webhook_id');
   },
   paypalEnv: (process.env.PAYPAL_ENV ?? 'sandbox') as 'sandbox' | 'live',
+  /**
+   * Cloudflare Turnstile (anti-bot on register, password recovery and resend verification).
+   * The site key is public and served to the web through /api/config/public; the secret never leaves the API.
+   * Without a secret the check is skipped outside production; in production those endpoints refuse requests.
+   */
+  get turnstileSiteKey() {
+    return secret('TURNSTILE_SITE_KEY', 'turnstile_site_key');
+  },
+  get turnstileSecretKey() {
+    return secret('TURNSTILE_SECRET_KEY', 'turnstile_secret_key');
+  },
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',

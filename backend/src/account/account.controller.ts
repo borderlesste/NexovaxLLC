@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AlertsService } from '../analytics/alerts.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -7,6 +7,7 @@ import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
+import { TurnstileGuard } from '../auth/turnstile.guard';
 import { IsAddressLine, IsBusinessName, IsCleanText, IsCountryCode, IsEmailAddress, IsOptionalPersonName, IsPersonName, IsPhone, IsPlaceName, IsPostalCode } from '../common/validators';
 import { AccountService } from './account.service';
 import { SettingsService } from '../settings/settings.service';
@@ -64,6 +65,7 @@ export class AccountController {
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(TurnstileGuard)
   @Post('auth/register')
   register(@Body() dto: RegisterDto) {
     return this.account.register(dto);
@@ -71,6 +73,7 @@ export class AccountController {
 
   @Public()
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @UseGuards(TurnstileGuard)
   @Post('auth/resend-verification')
   resendVerification(@Body() dto: RecoveryDto) {
     return this.account.resendVerification(dto.email);
@@ -78,6 +81,7 @@ export class AccountController {
 
   @Public()
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @UseGuards(TurnstileGuard)
   @Post('auth/password-recovery')
   passwordRecovery(@Body() dto: RecoveryDto) {
     return this.account.requestPasswordRecovery(dto.email);

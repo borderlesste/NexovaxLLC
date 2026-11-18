@@ -38,8 +38,11 @@ const log = (...a) => console.log(`\x1b[35m[${String(++step).padStart(2, '0')}]\
 const ok = (...a) => console.log('     \x1b[32m✔\x1b[0m', ...a);
 const warn = (...a) => console.log('     \x1b[33m!\x1b[0m', ...a);
 
+// Cloudflare Turnstile: the dummy token only passes with Cloudflare's test secret keys (use them where you seed).
+const CAPTCHA_TOKEN = process.env.TURNSTILE_TEST_TOKEN ?? 'XXXX.DUMMY.TOKEN.XXXX';
+
 async function call(token, method, path, body, { form, expect } = {}) {
-  const headers = {};
+  const headers = { 'cf-turnstile-response': CAPTCHA_TOKEN };
   if (token) headers.Authorization = `Bearer ${token}`;
   let payload;
   if (form) payload = form;
@@ -72,7 +75,7 @@ async function login(email) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: { apikey: PUBLISHABLE, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: PASSWORD }),
+    body: JSON.stringify({ email, password: PASSWORD, gotrue_meta_security: { captcha_token: CAPTCHA_TOKEN } }),
   });
   const d = await res.json();
   return res.ok ? d.access_token : null;
