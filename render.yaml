@@ -13,7 +13,7 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@rd/backend..." && pnpm --filter @rd/backend build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false --filter "@rd/backend..." && pnpm --filter @rd/backend build
     # Started from backend/ so the API finds ../scripts/data (catalog translations).
     startCommand: cd backend && node dist/main.js
     healthCheckPath: /api/health
