@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ClientIpThrottlerGuard } from './common/client-ip';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { DbService } from './db/db.service';
@@ -67,10 +68,10 @@ import { AccountDeletionController } from './account/account-deletion.controller
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
         transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty', options: { singleLine: true } },
-        redact: ['req.headers.authorization', 'req.headers.cookie'],
+        redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-nx-proxy-secret"]'],
         // Query strings can carry secrets (e.g. the Shippo webhook token) and personal data: never log them.
         serializers: {
-          req: (req: any) => ({ id: req.id, method: req.method, url: String(req.url ?? '').split('?')[0], remoteAddress: req.remoteAddress }),
+          req: (req: any) => ({ id: req.id, method: req.method, url: String(req.url ?? '').split('?')[0], remoteAddress: req.raw?.clientIp ?? req.remoteAddress }),
         },
         autoLogging: { ignore: (req) => (req.url ?? '').startsWith('/api/media/') },
       },
@@ -114,7 +115,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     PayoutSchedulesService,
     ShippingSettlementService,
     AccountDeletionService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

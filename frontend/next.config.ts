@@ -26,6 +26,11 @@ const csp = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    // src/middleware.ts runs on /api/* (visitor IP for rate limits); uploads must reach the API whole:
+    // up to 8 product images × 8 MB and 4 message attachments × 10 MB per request.
+    middlewareClientMaxBodySize: '80mb',
+  },
   // Browser calls /api/* on the same origin; Next proxies to the NestJS API.
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${API}/api/:path*` }];

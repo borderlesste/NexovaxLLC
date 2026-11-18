@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { currentClientIp } from '../common/client-ip';
 import sharp, { Metadata, OutputInfo, Sharp } from 'sharp';
 
 type UploadFile = { buffer: Buffer; mimetype: string; originalname?: string; size: number };
@@ -31,6 +32,14 @@ async function withImageSlot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+function forwardClientIp(input: RequestInfo | URL, init?: RequestInit) {
+  const client = currentClientIp();
+  if (!client?.trusted) return fetch(input, init);
+  const headers = new Headers(init?.headers);
+  headers.set('Sb-Forwarded-For', client.ip);
+  return fetch(input, { ...init, headers });
+}
+
 /**
  * Server-only Supabase client using the project secret key.
  * Used for: admin user provisioning and private Storage objects.
@@ -44,6 +53,9 @@ export class SupabaseAdminService {
     if (config.supabaseSecretKey) {
       this.client = createClient(config.supabaseUrl, config.supabaseSecretKey, {
         auth: { autoRefreshToken: false, persistSession: false },
+        // Supabase Auth applies its rate limits to the end user's IP (Sb-Forwarded-For) instead of the
+        // API's when "IP address forwarding" is enabled in Auth settings. Only real visitor IPs are sent.
+        global: { fetch: forwardClientIp },
       });
     } else {
       this.logger.warn('SUPABASE_SECRET_KEY not configured: user provisioning and uploads are disabled.');

@@ -79,6 +79,11 @@ export const config = {
   get turnstileSecretKey() {
     return secret('TURNSTILE_SECRET_KEY', 'turnstile_secret_key');
   },
+  /**
+   * Shared secret between the Next.js web proxy and the API (PROXY_SHARED_SECRET on both).
+   * Lets the API trust the visitor IP the web forwards in `x-nx-client-ip`.
+   */
+  proxySharedSecret: secret('PROXY_SHARED_SECRET', 'proxy_shared_secret'),
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',

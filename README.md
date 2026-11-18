@@ -121,6 +121,17 @@ La API usa la clave de administrador de Supabase en esos tres endpoints, que se 
 4. **Supabase → Sign In / Providers:** desactiva *Allow new users to sign up*. El registro de NEXOVAX sigue funcionando (la API crea las cuentas con la clave de administrador), pero nadie puede crear cuentas llamando a Supabase directamente. Consecuencia: Google/Apple solo sirven para cuentas ya existentes.
 5. **Desarrollo y seed:** usa las claves de prueba de Cloudflare (site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`) en la API y en Supabase; el seed envía el token de prueba `XXXX.DUMMY.TOKEN.XXXX` (`TURNSTILE_TEST_TOKEN` para cambiarlo).
 
+## IP real del visitante y límites de frecuencia
+
+El navegador llama a la API a través del proxy `/api` de Next.js, así que sin ayuda la API solo ve la IP del servidor web y **todos los visitantes compartirían el mismo límite** (p. ej. 5 registros por minuto para todo el sitio).
+
+- **Web (`frontend/src/middleware.ts`):** en cada `/api/*` toma la IP del visitante **solo** de la cabecera que pone tu borde (`CLIENT_IP_HEADER`: `cf-connecting-ip` detrás de Cloudflare, `x-real-ip` en Vercel o detrás de nginx; en Vercel se usa `x-real-ip` por defecto) y la envía a la API en `x-nx-client-ip` junto con `x-nx-proxy-secret`. Lo que mande el navegador en esas cabeceras se descarta.
+- **API (`backend/src/common/client-ip.ts`):** solo confía en `x-nx-client-ip` si el secreto coincide; nunca en `X-Forwarded-For`. Con esa IP: límites de frecuencia por visitante, logs, y la cabecera `Sb-Forwarded-For` en las llamadas de administración a Supabase Auth.
+- **Configuración:** el mismo valor aleatorio en `PROXY_SHARED_SECRET` en la web y en la API (`.secrets/proxy_shared_secret`; `openssl rand -hex 32`) y `CLIENT_IP_HEADER` en la web. Sin ellas todo funciona, pero los límites de la API se aplican a la IP del servidor web.
+- **Supabase → Authentication → Attack Protection:** activa *Enable IP address forwarding* para que Supabase respete `Sb-Forwarded-For` (solo con claves `sb_secret_…`). El inicio de sesión va directo del navegador a Supabase, así que ahí Supabase ya ve la IP real.
+- **Supabase → Authentication → Rate Limits:** ajusta los límites por IP (inicio de sesión/registro, verificación, renovación de tokens). Los correos de NEXOVAX salen por Resend desde la API, no por el SMTP de Supabase.
+- El middleware procesa el cuerpo de las peticiones `/api/*`: `experimental.middlewareClientMaxBodySize` está en 80 MB para que las subidas (8 imágenes × 8 MB, 4 adjuntos × 10 MB) lleguen completas.
+
 ## Contraseñas filtradas
 
 Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been Pwned, por *k-anonymity*: solo salen los 5 primeros caracteres del SHA-1, nunca la contraseña).

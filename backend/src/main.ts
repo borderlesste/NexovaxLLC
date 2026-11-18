@@ -7,10 +7,13 @@ import { AppModule } from './app.module';
 import { assertConfig, config } from './config';
 import { LocalizedExceptionFilter } from './common/i18n-errors';
 import { CatalogLocaleInterceptor } from './common/i18n-catalog';
+import { clientIpMiddleware } from './common/client-ip';
 
 async function bootstrap() {
   assertConfig();
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  // First middleware: the visitor's real IP for rate limits (ours and Supabase Auth's) and logs.
+  app.use(clientIpMiddleware);
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.enableCors({ origin: config.corsOrigins, credentials: true });
