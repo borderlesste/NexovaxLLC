@@ -138,7 +138,7 @@ El navegador llama a la API a través del proxy `/api` de Next.js, así que sin 
 
 - **Borde:** el DDoS volumétrico se frena antes de llegar a los servidores: Vercel (mitigación automática, *Attack Challenge Mode*) y Cloudflare delante de la API (`api.nexovax.com` con proxy activado y reglas de WAF/límite de frecuencia).
 - **API:** límite por IP real (300/min global y límites propios en autenticación, subidas, pagos…), Turnstile, contraseñas filtradas, tamaño de subidas acotado.
-- **Base de datos:** el rol `nexovax_api_runtime` tiene `statement_timeout = 15s`, `idle_in_transaction_session_timeout = 30s` y `lock_timeout = 10s` (migración `20261118132319_nexovax_api_runtime_timeouts.sql`): una consulta lenta no puede acaparar las conexiones del pool (`DB_POOL_MAX`, 8 por defecto). `scripts/geo-import.mjs` amplía su propio límite.
+- **Base de datos:** el rol de conexión de la API `rd_api_runtime` (miembro de `nexovax_api_runtime`, que tiene los permisos) tiene `statement_timeout = 15s`, `idle_in_transaction_session_timeout = 30s` y `lock_timeout = 10s` (migración `20261118163000_rd_api_runtime_timeouts.sql`; los ajustes de rol no se heredan): una consulta lenta no puede acaparar las conexiones del pool (`DB_POOL_MAX`, 8 por defecto). `scripts/geo-import.mjs` amplía su propio límite.
 - **Paginación:** como máximo 200 páginas (`backend/src/common/paging.ts`); valores no numéricos vuelven a la página 1.
 - **HTTP:** una petición completa debe llegar en 120 s (`HTTP_REQUEST_TIMEOUT_MS`), frente a clientes lentos (slowloris).
 - **Límites en memoria:** el contador de peticiones vive en el proceso. Con más de una instancia en Render habría que moverlo a un almacenamiento compartido.
