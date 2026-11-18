@@ -2375,5 +2375,18 @@
 "No coincide": "Pa koresponn",
 "Se registra como reembolso sin devolución con la referencia del procesador: no se devuelve dinero otra vez, el monto se descuenta de la ganancia de la tienda y se revierte la comisión.": "Li anrejistre kòm ranbousman san retou ak referans processeur a: pa gen lajan ki ranbouse ankò, montan an retire sou benefis boutik la epi komisyon an anile.",
 "Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.": "Se yon ranbousman pasyèl oswa kòmand lan deja avanse. Anrejistre l sou inite li kouvri yo pou retire l sou boutik la; si se te yon rabè lib, regle l ak boutik la epi make l revize.",
-"Reembolso descontado a la tienda": "Ranbousman retire sou boutik la"
+"Reembolso descontado a la tienda": "Ranbousman retire sou boutik la",
+"Compartido: tienda {s} % · plataforma {p} %": "Pataje: boutik {s} % · platfòm {p} %",
+"Política de disputas actualizada. Aplica a los pedidos pagados desde ahora.": "Règ diskisyon yo mete ajou. Li aplike pou kòmand ki peye apati kounye a.",
+"Parte de la tienda": "Pati boutik la",
+"plataforma": "platfòm",
+"Disputas perdidas": "Diskisyon ki pèdi",
+"Quién asume el dinero cuando el cliente gana una disputa o contracargo.": "Kiyès ki pran pèt la lè kliyan an genyen yon diskisyon oswa yon chargeback.",
+"Monto de la disputa": "Montan diskisyon an",
+"El dinero que el banco o PayPal devuelve al cliente. Si lo paga la tienda, se descuenta de su saldo y se revierte la comisión.": "Lajan bank lan oswa PayPal remèt kliyan an. Si se boutik la ki peye l, li retire sou balans li epi komisyon an anile.",
+"Comisión del procesador por disputa": "Frè processeur a pou diskisyon",
+"El cargo fijo que cobra Stripe o PayPal por cada disputa (por ejemplo, 15 US$).": "Frè fiks Stripe oswa PayPal pran pou chak diskisyon (egzanp, 15 US$).",
+"El cambio aplica a los pedidos pagados desde ahora. Los pedidos anteriores conservan la política con la que se vendieron.": "Chanjman an aplike pou kòmand ki peye apati kounye a. Ansyen kòmand yo kenbe règ yo te vann ak li a.",
+"Hay {n} disputas abiertas: se resolverán con su política original.": "Gen {n} diskisyon ki louvri: y ap rezoud ak règ orijinal yo.",
+"Disputas": "Diskisyon"
 }

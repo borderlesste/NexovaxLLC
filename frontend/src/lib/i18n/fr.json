@@ -2375,5 +2375,18 @@
 "No coincide": "Ne correspond pas",
 "Se registra como reembolso sin devolución con la referencia del procesador: no se devuelve dinero otra vez, el monto se descuenta de la ganancia de la tienda y se revierte la comisión.": "Il est enregistré comme remboursement sans retour avec la référence du processeur : aucun argent n’est remboursé à nouveau, le montant est déduit des gains de la boutique et la commission est annulée.",
 "Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.": "C’est un remboursement partiel ou la commande a déjà avancé. Enregistrez-le contre les unités couvertes pour le déduire à la boutique ; s’il s’agit d’une remise libre, réglez-le avec la boutique et marquez-le comme examiné.",
-"Reembolso descontado a la tienda": "Remboursement déduit à la boutique"
+"Reembolso descontado a la tienda": "Remboursement déduit à la boutique",
+"Compartido: tienda {s} % · plataforma {p} %": "Partagé : boutique {s} % · plateforme {p} %",
+"Política de disputas actualizada. Aplica a los pedidos pagados desde ahora.": "Politique des litiges mise à jour. Elle s’applique aux commandes payées à partir de maintenant.",
+"Parte de la tienda": "Part de la boutique",
+"plataforma": "plateforme",
+"Disputas perdidas": "Litiges perdus",
+"Quién asume el dinero cuando el cliente gana una disputa o contracargo.": "Qui assume l’argent quand le client gagne un litige ou une rétrofacturation.",
+"Monto de la disputa": "Montant du litige",
+"El dinero que el banco o PayPal devuelve al cliente. Si lo paga la tienda, se descuenta de su saldo y se revierte la comisión.": "L’argent que la banque ou PayPal rend au client. Si la boutique le paie, il est déduit de son solde et la commission est annulée.",
+"Comisión del procesador por disputa": "Frais de litige du processeur",
+"El cargo fijo que cobra Stripe o PayPal por cada disputa (por ejemplo, 15 US$).": "Les frais fixes que Stripe ou PayPal facture par litige (par exemple 15 US$).",
+"El cambio aplica a los pedidos pagados desde ahora. Los pedidos anteriores conservan la política con la que se vendieron.": "Le changement s’applique aux commandes payées à partir de maintenant. Les commandes antérieures conservent la politique de leur vente.",
+"Hay {n} disputas abiertas: se resolverán con su política original.": "Il y a {n} litiges ouverts : ils seront résolus selon leur politique d’origine.",
+"Disputas": "Litiges"
 }

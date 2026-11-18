@@ -1,3 +1,5 @@
+import { ChargebackPolicyController } from './payments/chargeback-policy.controller';
+import { ChargebackPolicyService } from './payments/chargeback-policy.service';
 import { DisputeResponseService } from './payments/dispute-response.service';
 import { PoliciesAdminController } from './account/policies.controller';
 import { PoliciesService } from './account/policies.service';
@@ -83,7 +85,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
   providers: [
     DbService,
     SettingsService,
@@ -108,6 +110,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     PoliciesService,
     PaymentIncidentsService,
     DisputeResponseService,
+    ChargebackPolicyService,
     NotificationsService,
     ReturnsService,
     ReturnPolicyService,

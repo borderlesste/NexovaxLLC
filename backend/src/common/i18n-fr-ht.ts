@@ -1,5 +1,9 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"La política de disputas no está configurada.": "La politique des litiges n’est pas configurée.",
+"Elige quién paga.": "Choisissez qui paie.",
+"En el reparto compartido, la parte de la tienda va de 1 % a 99 % (hasta 2 decimales).": "En partage, la part de la boutique va de 1 % à 99 % (2 décimales max).",
+"No hay cambios respecto a la política vigente.": "Aucun changement par rapport à la politique en vigueur.",
 "Esta disputa ya no espera respuesta de la tienda.": "Ce litige n’attend plus de réponse de la boutique.",
 "Explica lo ocurrido en 20 a 5000 caracteres.": "Expliquez ce qui s’est passé en 20 à 5000 caractères.",
 "Indica el motivo (mínimo 5 caracteres).": "Indiquez le motif (au moins 5 caractères).",
@@ -305,6 +309,10 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"La política de disputas no está configurada.": "Règ diskisyon yo pa konfigire.",
+"Elige quién paga.": "Chwazi kiyès ki peye.",
+"En el reparto compartido, la parte de la tienda va de 1 % a 99 % (hasta 2 decimales).": "Nan pataj la, pati boutik la soti 1 % rive 99 % (2 desimal maksimòm).",
+"No hay cambios respecto a la política vigente.": "Pa gen chanjman konpare ak règ ki an vigè a.",
 "Esta disputa ya no espera respuesta de la tienda.": "Diskisyon sa a pa tann repons boutik la ankò.",
 "Explica lo ocurrido en 20 a 5000 caracteres.": "Esplike sa k te pase nan 20 a 5000 karaktè.",
 "Indica el motivo (mínimo 5 caracteres).": "Bay rezon an (omwen 5 karaktè).",

@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen,
-} from 'lucide-react';
+  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
 import { cn, fmtDate, money } from '@/lib/utils';
 import { countryName, t } from '@/lib/i18n';
+import { ChargebackPolicyCard } from '@/components/admin/chargeback-policy';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ const TABS = [
   ['shipping', 'Envíos', Truck],
   ['payments', 'Pagos', Landmark],
   ['notifications', 'Notificaciones', Bell],
+  ['disputes', 'Disputas', Scale],
   ['help', 'Ayuda y redes', BookOpen],
   ['roles', 'Roles y permisos', Users],
 ] as const;
@@ -177,6 +178,7 @@ export default function SettingsPage() {
               </Card>
             </>
           )}
+          {tab === 'disputes' && <ChargebackPolicyCard />}
           {tab === 'taxes' && <TaxRatesCard rates={d.taxRates} onChanged={() => qc.invalidateQueries({ queryKey: ['admin-settings'] })} />}
           {tab === 'commissions' && (
             <Card>

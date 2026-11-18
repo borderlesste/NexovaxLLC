@@ -4,6 +4,10 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "La política de disputas no está configurada.": "The dispute policy isn’t configured.",
+  "Elige quién paga.": "Choose who pays.",
+  "En el reparto compartido, la parte de la tienda va de 1 % a 99 % (hasta 2 decimales).": "In a shared split, the store’s part goes from 1 % to 99 % (up to 2 decimals).",
+  "No hay cambios respecto a la política vigente.": "There are no changes compared to the current policy.",
   "Esta disputa ya no espera respuesta de la tienda.": "This dispute no longer awaits the store’s answer.",
   "Explica lo ocurrido en 20 a 5000 caracteres.": "Explain what happened in 20 to 5000 characters.",
   "Indica el motivo (mínimo 5 caracteres).": "Give the reason (at least 5 characters).",

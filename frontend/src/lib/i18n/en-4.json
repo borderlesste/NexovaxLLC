@@ -859,5 +859,18 @@
 "No coincide": "Doesn’t match",
 "Se registra como reembolso sin devolución con la referencia del procesador: no se devuelve dinero otra vez, el monto se descuenta de la ganancia de la tienda y se revierte la comisión.": "It’s recorded as a refund without return with the processor’s reference: no money is refunded again, the amount is deducted from the store’s earnings and the commission is reversed.",
 "Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.": "It’s a partial refund or the order has already moved on. Record it against the units it covered to deduct it from the store; if it was a free-form discount, settle it with the store and mark it as reviewed.",
-"Reembolso descontado a la tienda": "Refund deducted from the store"
+"Reembolso descontado a la tienda": "Refund deducted from the store",
+"Compartido: tienda {s} % · plataforma {p} %": "Shared: store {s} % · platform {p} %",
+"Política de disputas actualizada. Aplica a los pedidos pagados desde ahora.": "Dispute policy updated. It applies to orders paid from now on.",
+"Parte de la tienda": "Store’s share",
+"plataforma": "platform",
+"Disputas perdidas": "Lost disputes",
+"Quién asume el dinero cuando el cliente gana una disputa o contracargo.": "Who bears the money when the customer wins a dispute or chargeback.",
+"Monto de la disputa": "Disputed amount",
+"El dinero que el banco o PayPal devuelve al cliente. Si lo paga la tienda, se descuenta de su saldo y se revierte la comisión.": "The money the bank or PayPal returns to the customer. If the store pays it, it’s deducted from its balance and the commission is reversed.",
+"Comisión del procesador por disputa": "Processor dispute fee",
+"El cargo fijo que cobra Stripe o PayPal por cada disputa (por ejemplo, 15 US$).": "The fixed fee Stripe or PayPal charges per dispute (e.g. US$ 15).",
+"El cambio aplica a los pedidos pagados desde ahora. Los pedidos anteriores conservan la política con la que se vendieron.": "The change applies to orders paid from now on. Earlier orders keep the policy they were sold under.",
+"Hay {n} disputas abiertas: se resolverán con su política original.": "There are {n} open disputes: they’ll be resolved under their original policy.",
+"Disputas": "Disputes"
 }
