@@ -84,6 +84,8 @@ export class SupabaseAdminService {
 
   async updateUserPassword(userId: string, password: string) {
     const { error } = await this.admin.auth.admin.updateUserById(userId, { password });
+    if (error && /password/i.test(error.message))
+      throw new AppError('WEAK_PASSWORD', 'La contraseña no cumple los requisitos de seguridad.', HttpStatus.BAD_REQUEST);
     if (error) throw new AppError('AUTH_PROVIDER_ERROR', error.message, HttpStatus.BAD_GATEWAY);
   }
 

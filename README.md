@@ -121,6 +121,14 @@ La API usa la clave de administrador de Supabase en esos tres endpoints, que se 
 4. **Supabase → Sign In / Providers:** desactiva *Allow new users to sign up*. El registro de NEXOVAX sigue funcionando (la API crea las cuentas con la clave de administrador), pero nadie puede crear cuentas llamando a Supabase directamente. Consecuencia: Google/Apple solo sirven para cuentas ya existentes.
 5. **Desarrollo y seed:** usa las claves de prueba de Cloudflare (site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`) en la API y en Supabase; el seed envía el token de prueba `XXXX.DUMMY.TOKEN.XXXX` (`TURNSTILE_TEST_TOKEN` para cambiarlo).
 
+## Contraseñas filtradas
+
+Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been Pwned, por *k-anonymity*: solo salen los 5 primeros caracteres del SHA-1, nunca la contraseña).
+
+- **Registro y cambio de contraseña en Seguridad** pasan por la API, que usa la clave de administrador de Supabase y por eso no recibe esa protección de Supabase: la API la aplica por su cuenta (`backend/src/common/password.ts`, error `PASSWORD_LEAKED`). Si el servicio no responde, la contraseña se acepta y queda en el log. `PASSWORD_LEAK_CHECK=false` la desactiva.
+- **Restablecer contraseña** (`/auth/restablecer`) va directo a Supabase: activa *Prevent use of leaked passwords* en Supabase → Authentication → Attack Protection (requiere plan Pro).
+- La contraseña del seed (`.secrets/seed_password`) también debe ser única, o el seed no podrá crear las cuentas demo.
+
 ## Seguridad operativa
 
 - **Base de datos:** TLS con verificación de certificado contra la CA raíz de Supabase incluida en `backend/certs/supabase-root-2021.crt` (`DATABASE_CA_FILE` para otra CA). `DATABASE_SSL_INSECURE=true` solo en desarrollo local; en producción la API no arranca sin verificación.

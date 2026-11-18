@@ -6,6 +6,7 @@ import { RequestUser, invalidateUserCache } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { MailService } from '../mail/mail.service';
 import { config } from '../config';
+import { assertPasswordAcceptable } from '../common/password';
 import { normalizeAddress, REAL_COUNTRY, resolveCityId } from '../common/geo';
 
 export interface AddressInput {
@@ -36,8 +37,7 @@ export class AccountService {
 
   /** Creates the Supabase identity; DB trigger provisions marketplace user + CUSTOMER role. */
   async register(input: { fullName: string; email: string; password: string; locale?: string }) {
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(input.password))
-      throw badRequest('WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, con letras y números.');
+    await assertPasswordAcceptable(input.password);
     const user = await this.supa.createUser(input.email.trim().toLowerCase(), input.password, input.fullName.trim());
     const [first, ...rest] = input.fullName.trim().split(/\s+/);
     await this.db.exec(
@@ -161,8 +161,7 @@ export class AccountService {
   }
 
   async changePassword(user: RequestUser, password: string) {
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password))
-      throw badRequest('WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, con letras y números.');
+    await assertPasswordAcceptable(password);
     await this.supa.updateUserPassword(user.id, password);
     return { ok: true };
   }
