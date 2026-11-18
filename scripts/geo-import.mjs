@@ -40,7 +40,7 @@ async function batchInsert(sql, cols, data, size = 1000) {
 }
 
 await db.connect();
-// The API role has statement_timeout = 15s (migration 20261118120000); bulk imports need longer.
+// The API role has statement_timeout = 15s (migration 20261118132319); bulk imports need longer.
 await db.query("set statement_timeout = '10min'");
 const known = new Set((await db.query('select alpha2 from public.countries')).rows.map((r) => r.alpha2));
 
