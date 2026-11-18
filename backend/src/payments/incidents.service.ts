@@ -8,6 +8,8 @@ import { RequestUser } from '../auth/auth';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
 import { CancellationsService } from '../orders/cancellations.service';
+import { ReturnsService } from '../returns/returns.service';
+import { fromMinor } from '../common/money';
 
 type Provider = 'STRIPE' | 'PAYPAL';
 type Env = 'TEST' | 'LIVE';
@@ -64,6 +66,7 @@ export class PaymentIncidentsService {
     private readonly notifications: NotificationsService,
     private readonly mail: MailService,
     private readonly cancellations: CancellationsService,
+    private readonly returns: ReturnsService,
   ) {}
 
   // ------------------------------------------------------------------ provider refunds
@@ -229,6 +232,62 @@ export class PaymentIncidentsService {
     });
     if (!ok) throw conflict('ORDER_NOT_CANCELLABLE', 'El pedido ya se envió o tiene devoluciones: no se puede registrar como cancelación. Resuélvelo con la tienda y márcalo como revisado.');
     await this.close(id, 'ORDER_CANCELLED', user.id, 'Registrado como cancelación del pedido con el reembolso del procesador.');
+    return { ok: true };
+  }
+
+  /**
+   * Partial refund made at the processor: the delivered units still refundable, with an estimate per
+   * unit (price after discounts + tax) and the combination that adds up exactly to the refund.
+   */
+  async partialOptions(id: string) {
+    const inc = await this.openIncident(id);
+    if (inc.kind === 'DISPUTE') throw badRequest('INCIDENT_ACTION_INVALID', 'Las disputas se resuelven con el procesador.');
+    const rows = await this.db.many(
+      `select oi.id, oi.seller_order_id, p.title, coalesce(ssp.display_name, s.slug) as store,
+              (oi.delivered_quantity - oi.returned_quantity - coalesce((select sum(ri.requested_quantity) from public.return_items ri join public.return_requests r on r.id = ri.return_request_id
+                 where ri.order_item_id = oi.id and r.status not in ('CLOSED','REJECTED','CANCELLED')), 0))::int as left,
+              ((f.product_net_amount + f.tax_amount) / nullif(f.quantity, 0))::numeric(18,2)::text as unit
+         from public.order_items oi join public.products p on p.id = oi.product_id join public.order_item_financial_snapshots f on f.order_item_id = oi.id
+         join public.sellers s on s.id = oi.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+        where oi.order_id = $1 order by oi.created_at`,
+      [inc.order_id],
+    );
+    const items = rows.filter((r: any) => r.left > 0).map((r: any) => ({ orderItemId: r.id, sellerOrderId: r.seller_order_id, title: r.title, store: r.store, available: r.left, unitAmount: r.unit }));
+    // Smallest exact combination of units (cents) — bounded search, small orders only.
+    const target = Math.round(Number(inc.amount) * 100);
+    const units = items.flatMap((it) => Array.from({ length: Math.min(it.available, 20) }, () => ({ id: it.orderItemId, c: Math.round(Number(it.unitAmount) * 100) })));
+    let best: Record<string, number> | null = null;
+    if (units.length <= 40) {
+      const reach = new Map<number, number[]>([[0, []]]);
+      units.forEach((u, idx) => {
+        for (const [sum, path] of [...reach]) {
+          const ns = sum + u.c;
+          if (ns <= target && !reach.has(ns)) reach.set(ns, [...path, idx]);
+        }
+      });
+      const hit = reach.get(target);
+      if (hit && target > 0) { best = {}; for (const i of hit) best[units[i].id] = (best[units[i].id] ?? 0) + 1; }
+    }
+    return { amount: inc.amount, currency: inc.currency_code, items, suggestion: best };
+  }
+
+  /** Books the partial refund against the chosen units: the store's share is deducted, no money moves again. */
+  async bookPartial(user: RequestUser, id: string, items: { orderItemId: string; quantity: number }[]) {
+    const inc = await this.openIncident(id);
+    if (inc.kind === 'DISPUTE') throw badRequest('INCIDENT_ACTION_INVALID', 'Las disputas se resuelven con el procesador.');
+    const opts = await this.partialOptions(id);
+    const bySo = new Map<string, { orderItemId: string; quantity: number }[]>();
+    for (const w of items.filter((x) => x.quantity > 0)) {
+      const it = opts.items.find((x) => x.orderItemId === w.orderItemId);
+      if (!it) throw badRequest('RETURN_ITEM_INVALID', 'Uno de los productos no pertenece a esta venta.');
+      bySo.set(it.sellerOrderId, [...(bySo.get(it.sellerOrderId) ?? []), w]);
+    }
+    await this.returns.bookExternalRefund(user, {
+      orderId: inc.order_id, groups: [...bySo].map(([sellerOrderId, its]) => ({ sellerOrderId, items: its })),
+      providerRefundId: inc.external_id, providerStatus: 'COMPLETED', amount: fromMinor(BigInt(Math.round(Number(inc.amount) * 100))),
+      note: `Reembolso de ${PROVIDER_LABEL[inc.provider_code as Provider]} ${inc.external_id}`,
+    });
+    await this.close(id, 'REFUND_BOOKED', user.id, 'Reembolso registrado contra las unidades que cubrió; descontado a la tienda.');
     return { ok: true };
   }
 

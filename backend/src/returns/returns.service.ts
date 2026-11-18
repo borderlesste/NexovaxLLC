@@ -765,6 +765,88 @@ export class ReturnsService {
     return this.refund(staff, id, { manualReference: input.manualReference });
   }
 
+  /**
+   * Books a refund the processor already paid (made in its dashboard) against the delivered units it
+   * covered: same records as a refund without return (the store's share and commission are reversed),
+   * but no money moves again. All in one transaction: if the engine's amount differs from what the
+   * processor refunded, nothing is saved.
+   */
+  async bookExternalRefund(staff: RequestUser, input: {
+    orderId: string; groups: { sellerOrderId: string; items: { orderItemId: string; quantity: number }[] }[];
+    providerRefundId: string; providerStatus: string; amount: string; note: string;
+  }) {
+    if (!isStaff(staff)) throw forbidden();
+    const reason = await this.db.one(`select id from public.return_reason_definitions where seller_id is null and code = 'OTHER' and status = 'ACTIVE'`);
+    if (!reason) throw badRequest('RETURN_REASON_REQUIRED', 'Selecciona el motivo del reembolso.');
+    const pay = await this.db.one(
+      `select p.id from public.payments p where p.order_id = $1 and p.status in ('PAID','PARTIALLY_REFUNDED') order by p.created_at desc limit 1`,
+      [input.orderId],
+    );
+    if (!pay) throw conflict('PAYMENT_NOT_FOUND', 'No se encontró el pago original del pedido.');
+    const groups = input.groups.map((g) => ({ ...g, items: g.items.filter((i) => i.quantity > 0) })).filter((g) => g.items.length);
+    if (!groups.length) throw badRequest('RETURN_ITEMS_REQUIRED', 'Selecciona al menos una unidad a reembolsar.');
+    const pol = new Map<string, any>();
+    const returnIds: string[] = [];
+    await this.db.tx(async (c) => {
+      let total = 0n;
+      let n = 0;
+      for (const g of groups) {
+        const so = await this.db.one(`select so.id, so.seller_id, o.customer_id from public.seller_orders so join public.orders o on o.id = so.order_id where so.id = $1 and so.order_id = $2`, [g.sellerOrderId, input.orderId], c);
+        if (!so) throw notFound('Pedido');
+        for (const w of g.items) {
+          const it = await this.db.one(
+            `select oi.delivered_quantity::int - oi.returned_quantity::int - coalesce((select sum(ri.requested_quantity) from public.return_items ri join public.return_requests r on r.id = ri.return_request_id
+                     where ri.order_item_id = oi.id and r.status = any($3::text[]))::int, 0) as left
+               from public.order_items oi where oi.id = $1 and oi.seller_order_id = $2`,
+            [w.orderItemId, so.id, OPEN_STATES],
+            c,
+          );
+          if (!it) throw badRequest('RETURN_ITEM_INVALID', 'Uno de los productos no pertenece a esta venta.');
+          if (!Number.isInteger(w.quantity) || w.quantity > it.left) throw badRequest('RETURN_QUANTITY_INVALID', `Solo hay ${Math.max(it.left, 0)} unidad(es) entregadas sin reembolsar de ese producto.`);
+        }
+        if (!pol.has(so.seller_id)) pol.set(so.seller_id, await this.policies.resolve(so.seller_id));
+        const p = pol.get(so.seller_id);
+        const rid = (await this.db.one(
+          `select public.create_return_request($1,$2,$3,$4,$5::jsonb,$6,'ADMIN',$7,$8) as id`,
+          [input.orderId, so.id, so.customer_id, p.versionId, JSON.stringify({ windowDays: p.windowDays, version: p.versionId, noReturn: true, externalRefund: input.providerRefundId }), `external-refund:${input.providerRefundId}:${so.id}`, input.note.trim(), randomUUID()],
+          c,
+        ))!.id;
+        returnIds.push(rid);
+        await this.db.exec(`update public.return_requests set internal_note = 'EXTERNAL_REFUND' where id = $1`, [rid], c);
+        for (const w of g.items) await this.db.exec(`select public.add_return_item($1,$2,$3,$4,$5,null,'{}'::jsonb)`, [rid, w.orderItemId, w.quantity, reason.id, input.note.trim()], c);
+        const ris = await this.db.many(`select id, requested_quantity::int as q from public.return_items where return_request_id = $1`, [rid], c);
+        await this.db.exec(`select public.approve_return_request($1,$2,$3::jsonb,$4)`, [rid, staff.id, JSON.stringify(ris.map((r: any) => ({ return_item_id: r.id, approved_quantity: r.q }))), 'Reembolso hecho desde el procesador'], c);
+        for (const r of ris) await this.db.exec(`select public.record_return_item_receipt($1,$2)`, [r.id, r.q], c);
+        const insp = await this.db.one(`insert into public.return_inspections (return_request_id, status, inspected_by, started_at, notes) values ($1,'OPEN',$2,now(),$3) returning id`, [rid, staff.id, 'Sin devolución física: reembolso hecho desde el procesador.'], c);
+        for (const r of ris)
+          await this.db.exec(
+            `insert into public.return_inspection_items (inspection_id, return_item_id, inspected_quantity, accepted_quantity, rejected_quantity, restock_quantity, condition_code, disposition_code)
+             values ($1,$2,$3,$3,0,0,'NOT_RETURNED','KEPT_BY_CUSTOMER')`,
+            [insp!.id, r.id, r.q],
+            c,
+          );
+        await this.db.exec(`select public.complete_return_inspection($1,$2)`, [insp!.id, staff.id], c);
+        const selection = ris.map((r: any) => ({ returnItemId: r.id, quantity: r.q }));
+        const corr = randomUUID();
+        const refId = (await this.db.one(`select public.create_historical_return_refund($1,$2,$3::jsonb,$4,$5,$6) as id`, [rid, pay.id, JSON.stringify(selection), staff.id, `external-refund:${input.providerRefundId}:${rid}`, corr], c))!.id;
+        const st = (await this.db.one(`select status, refund_amount::text as amount from public.refunds where id = $1`, [refId], c))!;
+        total += toMinor(st.amount);
+        if (['REQUESTED', 'APPROVAL_REQUIRED'].includes(st.status)) await this.db.exec(`select public.approve_refund($1,$2)`, [refId, staff.id], c);
+        const st2 = (await this.db.one(`select status from public.refunds where id = $1`, [refId], c))!.status;
+        if (st2 === 'APPROVED') await this.db.exec(`select public.start_refund_processing($1)`, [refId], c);
+        n += 1;
+        await this.db.exec(`select public.execute_referral_refund($1,$2,$3,$4,$5,null)`, [refId, staff.id, corr, n === 1 ? input.providerRefundId : `${input.providerRefundId}#${n}`, input.providerStatus], c);
+        const now = await this.db.one(`select status from public.return_requests where id = $1`, [rid], c);
+        if (now!.status === 'REFUND_PENDING') await this.setStatus(c, rid, 'CLOSED');
+        await this.summary(c, { order_id: input.orderId, seller_order_id: so.id });
+      }
+      if (total !== toMinor(input.amount))
+        throw conflict('EXTERNAL_REFUND_AMOUNT_MISMATCH', `Esas unidades suman ${fromMinor(total)} y el procesador reembolsó ${input.amount}. Elige las unidades que cubren exactamente el reembolso.`);
+    });
+    for (const rid of returnIds) this.mail.fire(() => this.mail.returnEvent(rid, 'REFUNDED'));
+    return { returnIds };
+  }
+
   // ------------------------------------------------------------------ helpers
   private async lock(c: PoolClient, id: string) {
     const rr = await this.db.one(`select * from public.return_requests where id = $1 for update`, [id], c);

@@ -2358,5 +2358,22 @@
 "Prueba de envío o entrega": "Prèv livrezon",
 "Factura o recibo": "Fakti oswa resi",
 "Conversación con el cliente": "Konvèsasyon ak kliyan an",
-"Otro documento": "Lòt dokiman"
+"Otro documento": "Lòt dokiman",
+"Reembolso registrado y descontado a la tienda.": "Ranbousman anrejistre epi retire sou boutik la.",
+"Registrar reembolso parcial": "Anrejistre ranbousman pasyèl",
+"El procesador reembolsó {a}. Indica qué unidades entregadas cubrió.": "Processeur a ranbouse {a}. Di ki inite livre li kouvri.",
+"Registrar y descontar a la tienda": "Anrejistre epi retire sou boutik la",
+"No hay unidades entregadas pendientes de reembolso en este pedido. Resuélvelo con la tienda y márcalo como revisado.": "Pa gen inite livre ki rete pou ranbouse nan kòmand sa a. Regle l ak boutik la epi make l revize.",
+"NEXOVAX encontró las unidades que suman exactamente el reembolso; revisa la selección.": "NEXOVAX jwenn inite ki fè egzakteman montan ranbousman an; verifye seleksyon an.",
+"Ninguna combinación de unidades suma exactamente el reembolso (precio + impuestos por unidad). Si fue un descuento libre, márcalo como revisado y acuérdalo con la tienda.": "Okenn konbinezon inite pa fè egzakteman montan ranbousman an (pri + taks pa inite). Si se te yon rabè lib, make l revize epi regle l ak boutik la.",
+"Por unidad": "Pa inite",
+"Disponibles": "Disponib",
+"Unidades": "Inite",
+"Seleccionado": "Chwazi",
+"Reembolsado por el procesador": "Processeur a ranbouse",
+"Coincide": "Koresponn",
+"No coincide": "Pa koresponn",
+"Se registra como reembolso sin devolución con la referencia del procesador: no se devuelve dinero otra vez, el monto se descuenta de la ganancia de la tienda y se revierte la comisión.": "Li anrejistre kòm ranbousman san retou ak referans processeur a: pa gen lajan ki ranbouse ankò, montan an retire sou benefis boutik la epi komisyon an anile.",
+"Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.": "Se yon ranbousman pasyèl oswa kòmand lan deja avanse. Anrejistre l sou inite li kouvri yo pou retire l sou boutik la; si se te yon rabè lib, regle l ak boutik la epi make l revize.",
+"Reembolso descontado a la tienda": "Ranbousman retire sou boutik la"
 }

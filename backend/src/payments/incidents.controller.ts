@@ -2,7 +2,8 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UploadedFiles
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { DisputeResponseService, EvidenceFileKind } from './dispute-response.service';
 import { ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsString, Length } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsString, IsUUID, Length, Max, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
 import { PaymentIncidentsService } from './incidents.service';
 
@@ -17,6 +18,14 @@ export class DisputeAnswerDto {
 }
 export class AcceptDisputeDto {
   @IsString() @Length(5, 2000) note: string;
+}
+
+class BookItemDto {
+  @IsUUID() orderItemId: string;
+  @Type(() => Number) @IsInt() @Min(0) @Max(1000) quantity: number;
+}
+export class BookPartialDto {
+  @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => BookItemDto) items: BookItemDto[];
 }
 
 export class ReviewIncidentDto {
@@ -70,6 +79,16 @@ export class PaymentIncidentsController {
   @Post(':id/cancel-order')
   cancelOrder(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.incidents.cancelOrder(u, id);
+  }
+
+  @Get(':id/partial-options')
+  partialOptions(@Param('id', ParseUUIDPipe) id: string) {
+    return this.incidents.partialOptions(id);
+  }
+
+  @Post(':id/book-partial')
+  bookPartial(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: BookPartialDto) {
+    return this.incidents.bookPartial(u, id, dto.items);
   }
 
   @Post(':id/review')

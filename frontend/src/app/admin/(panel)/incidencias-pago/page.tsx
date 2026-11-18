@@ -12,9 +12,10 @@ import { Field, Textarea } from '@/components/ui/input';
 import { Dialog, Empty, PageLoader } from '@/components/ui/misc';
 import { t } from '@/lib/i18n';
 import { DisputeResponseDialog } from '@/components/admin/dispute-response';
+import { PartialRefundDialog } from '@/components/admin/partial-refund';
 
 const KIND: Record<string, string> = { DISPUTE: 'Disputa', EXTERNAL_REFUND: 'Reembolso hecho fuera de NEXOVAX', PROVIDER_REVERSAL: 'Reversión del procesador' };
-const OUTCOME: Record<string, string> = { WON: 'Disputa ganada', LOST: 'Disputa perdida', INQUIRY_CLOSED: 'Consulta cerrada sin cargo', ORDER_CANCELLED: 'Registrado como cancelación', REVIEWED: 'Revisado' };
+const OUTCOME: Record<string, string> = { WON: 'Disputa ganada', LOST: 'Disputa perdida', INQUIRY_CLOSED: 'Consulta cerrada sin cargo', ORDER_CANCELLED: 'Registrado como cancelación', REFUND_BOOKED: 'Reembolso descontado a la tienda', REVIEWED: 'Revisado' };
 const DISPUTE: Record<string, string> = { INQUIRY_OPEN: 'Consulta abierta', INQUIRY_CLOSED: 'Consulta cerrada', OPEN: 'Abierta: hay que responder', UNDER_REVIEW: 'En revisión del banco / PayPal', WON: 'Ganada', LOST: 'Perdida' };
 
 /** Admin: disputes and refunds made outside NEXOVAX. Each open one holds the store's payout for that order. */
@@ -25,6 +26,7 @@ export default function PaymentIncidentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [review, setReview] = useState<any>(null);
   const [respond, setRespond] = useState<string | null>(null);
+  const [partial, setPartial] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const refresh = () => { q.refetch(); qc.invalidateQueries({ queryKey: ['payment-incidents-count'] }); };
   const act = async (id: string, path: string, ok: string, body?: unknown) => {
@@ -73,7 +75,7 @@ export default function PaymentIncidentsPage() {
               {i.status === 'OPEN' && i.kind !== 'DISPUTE' && (
                 <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{i.canCancelOrder
                   ? t('Se devolvió todo el pedido desde {p}. Si el pedido aún no salió, regístralo como cancelación: se cancela, vuelve el stock y se anula la ganancia de la tienda, sin devolver el dinero otra vez.', { p: i.provider === 'PAYPAL' ? 'PayPal' : 'Stripe' })
-                  : t('Es un reembolso parcial o el pedido ya avanzó. Acuerda con la tienda cómo se cubre (devolución o ajuste) y márcalo como revisado.')}</p>
+                  : t('Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.')}</p>
               )}
               {i.status === 'RESOLVED' && i.kind === 'DISPUTE' && <Button size="sm" variant="ghost" className="mt-2" onClick={() => setRespond(i.id)}>{t('Ver respuesta enviada')}</Button>}
               {i.status === 'RESOLVED' && (
@@ -84,6 +86,7 @@ export default function PaymentIncidentsPage() {
                   {i.kind === 'DISPUTE' && <Button size="sm" onClick={() => setRespond(i.id)} data-dispute-respond><Send /> {t('Responder disputa')}</Button>}
                   {i.kind === 'DISPUTE' && i.lastError && <Button size="sm" loading={busy === `${i.id}:retry`} onClick={() => act(i.id, 'retry', 'Resultado de la disputa contabilizado.')}><RefreshCw /> {t('Reintentar')}</Button>}
                   {i.kind !== 'DISPUTE' && i.canCancelOrder && <Button size="sm" loading={busy === `${i.id}:cancel-order`} onClick={() => cancelOrder(i)} data-incident-cancel><Undo2 /> {t('Registrar como cancelación')}</Button>}
+                  {i.kind !== 'DISPUTE' && !i.canCancelOrder && <Button size="sm" onClick={() => setPartial(i.id)} data-incident-partial><Undo2 /> {t('Registrar reembolso parcial')}</Button>}
                   {i.kind !== 'DISPUTE' && <Button size="sm" variant="outline" onClick={() => { setReview(i); setNote(''); }} data-incident-review><CheckCircle2 /> {t('Marcar como revisado')}</Button>}
                 </div>
               )}
@@ -91,6 +94,7 @@ export default function PaymentIncidentsPage() {
           ))}
         </div>
       )}
+      {partial && <PartialRefundDialog incidentId={partial} onClose={() => setPartial(null)} onDone={refresh} />}
       {respond && <DisputeResponseDialog incidentId={respond} onClose={() => setRespond(null)} onDone={refresh} />}
       {review && (
         <Dialog open onOpenChange={(o) => !o && setReview(null)} title={t('Marcar como revisado')} description={`${t(KIND[review.kind])} · ${money(review.amount, review.currency)} · ${review.orderNumber}`}

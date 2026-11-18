@@ -842,5 +842,22 @@
 "Prueba de envío o entrega": "Proof of shipping or delivery",
 "Factura o recibo": "Invoice or receipt",
 "Conversación con el cliente": "Conversation with the customer",
-"Otro documento": "Other document"
+"Otro documento": "Other document",
+"Reembolso registrado y descontado a la tienda.": "Refund recorded and deducted from the store.",
+"Registrar reembolso parcial": "Record partial refund",
+"El procesador reembolsó {a}. Indica qué unidades entregadas cubrió.": "The processor refunded {a}. Choose which delivered units it covered.",
+"Registrar y descontar a la tienda": "Record and deduct from the store",
+"No hay unidades entregadas pendientes de reembolso en este pedido. Resuélvelo con la tienda y márcalo como revisado.": "There are no delivered units left to refund in this order. Settle it with the store and mark it as reviewed.",
+"NEXOVAX encontró las unidades que suman exactamente el reembolso; revisa la selección.": "NEXOVAX found the units that add up exactly to the refund; check the selection.",
+"Ninguna combinación de unidades suma exactamente el reembolso (precio + impuestos por unidad). Si fue un descuento libre, márcalo como revisado y acuérdalo con la tienda.": "No combination of units adds up exactly to the refund (price + tax per unit). If it was a free-form discount, mark it as reviewed and settle it with the store.",
+"Por unidad": "Per unit",
+"Disponibles": "Available",
+"Unidades": "Units",
+"Seleccionado": "Selected",
+"Reembolsado por el procesador": "Refunded by the processor",
+"Coincide": "Matches",
+"No coincide": "Doesn’t match",
+"Se registra como reembolso sin devolución con la referencia del procesador: no se devuelve dinero otra vez, el monto se descuenta de la ganancia de la tienda y se revierte la comisión.": "It’s recorded as a refund without return with the processor’s reference: no money is refunded again, the amount is deducted from the store’s earnings and the commission is reversed.",
+"Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.": "It’s a partial refund or the order has already moved on. Record it against the units it covered to deduct it from the store; if it was a free-form discount, settle it with the store and mark it as reviewed.",
+"Reembolso descontado a la tienda": "Refund deducted from the store"
 }

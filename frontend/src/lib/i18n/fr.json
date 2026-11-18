@@ -2358,5 +2358,22 @@
 "Prueba de envío o entrega": "Preuve d’expédition ou de livraison",
 "Factura o recibo": "Facture ou reçu",
 "Conversación con el cliente": "Conversation avec le client",
-"Otro documento": "Autre document"
+"Otro documento": "Autre document",
+"Reembolso registrado y descontado a la tienda.": "Remboursement enregistré et déduit à la boutique.",
+"Registrar reembolso parcial": "Enregistrer le remboursement partiel",
+"El procesador reembolsó {a}. Indica qué unidades entregadas cubrió.": "Le processeur a remboursé {a}. Indiquez quelles unités livrées il couvre.",
+"Registrar y descontar a la tienda": "Enregistrer et déduire à la boutique",
+"No hay unidades entregadas pendientes de reembolso en este pedido. Resuélvelo con la tienda y márcalo como revisado.": "Il n’y a aucune unité livrée à rembourser dans cette commande. Réglez-le avec la boutique et marquez-le comme examiné.",
+"NEXOVAX encontró las unidades que suman exactamente el reembolso; revisa la selección.": "NEXOVAX a trouvé les unités qui correspondent exactement au remboursement ; vérifiez la sélection.",
+"Ninguna combinación de unidades suma exactamente el reembolso (precio + impuestos por unidad). Si fue un descuento libre, márcalo como revisado y acuérdalo con la tienda.": "Aucune combinaison d’unités ne correspond exactement au remboursement (prix + taxes par unité). S’il s’agit d’une remise libre, marquez-le comme examiné et réglez-le avec la boutique.",
+"Por unidad": "Par unité",
+"Disponibles": "Disponibles",
+"Unidades": "Unités",
+"Seleccionado": "Sélectionné",
+"Reembolsado por el procesador": "Remboursé par le processeur",
+"Coincide": "Correspond",
+"No coincide": "Ne correspond pas",
+"Se registra como reembolso sin devolución con la referencia del procesador: no se devuelve dinero otra vez, el monto se descuenta de la ganancia de la tienda y se revierte la comisión.": "Il est enregistré comme remboursement sans retour avec la référence du processeur : aucun argent n’est remboursé à nouveau, le montant est déduit des gains de la boutique et la commission est annulée.",
+"Es un reembolso parcial o el pedido ya avanzó. Regístralo contra las unidades que cubrió para descontarlo a la tienda; si fue un descuento libre, acuérdalo con la tienda y márcalo como revisado.": "C’est un remboursement partiel ou la commande a déjà avancé. Enregistrez-le contre les unités couvertes pour le déduire à la boutique ; s’il s’agit d’une remise libre, réglez-le avec la boutique et marquez-le comme examiné.",
+"Reembolso descontado a la tienda": "Remboursement déduit à la boutique"
 }

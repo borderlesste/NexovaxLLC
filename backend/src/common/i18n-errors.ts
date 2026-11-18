@@ -380,6 +380,8 @@ export function localizeMessage(msg: string, l: ApiLocale): string {
 
 export function translateMessage(msg: string): string {
   if (EN[msg]) return EN[msg];
+  const xm = /^Esas unidades suman ([\d.]+) y el procesador reembolsó ([\d.]+)\. Elige las unidades que cubren exactamente el reembolso\.$/.exec(msg);
+  if (xm) return `Those units add up to ${xm[1]} and the processor refunded ${xm[2]}. Choose the units that cover the refund exactly.`;
   const dm = /^El procesador no aceptó la respuesta: (.*)$/.exec(msg);
   if (dm) return `The processor didn’t accept the answer: ${dm[1]}`;
   const pm = /^Revisa el texto en ([A-Z]{2}): título de 3 a 120 caracteres y texto de 30 a 20 000, sin etiquetas HTML\.$/.exec(msg);
