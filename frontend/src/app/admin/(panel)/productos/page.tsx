@@ -15,6 +15,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Empty, Pagination, Segmented, Skeleton } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { t } from '@/lib/i18n';
+import { FeaturedOrder } from '@/components/admin/featured-order';
 
 function AdminProducts() {
   const sp = useSearchParams();
@@ -26,11 +27,13 @@ function AdminProducts() {
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
   const q = useQuery({ queryKey: ['admin-products', status, search, categoryId, page], queryFn: () => get(`/admin/products?status=${status}&search=${encodeURIComponent(search)}&categoryId=${categoryId}&page=${page}`) });
   const c = q.data?.counts;
+  const [featKey, setFeatKey] = useState(0);
   const toggleFeatured = async (p: any) => {
     try {
       await post(`/admin/products/${p.id}/featured`, { featured: !p.featured });
       toast.success(p.featured ? t('Producto quitado de destacados.') : t('Producto destacado en la portada.'));
       q.refetch();
+      setFeatKey((k) => k + 1);
     } catch (e) {
       toast.error(errorMessage(e));
     }
@@ -61,6 +64,7 @@ function AdminProducts() {
         <StatCard label={t('En revisión')} value={c?.pending ?? '—'} icon={<Clock />} hint={t('pendientes de moderación')} />
         <StatCard label={t('Borradores')} value={c?.draft ?? '—'} icon={<FileText />} tone="amber" hint={t('sin publicar')} />
       </div>
+      {q.data?.featuredEnabled && <div className="mt-5"><FeaturedOrder refreshKey={featKey} /></div>}
       <Card className="mt-5">
         <Segmented className="px-3" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[
           { value: '', label: t('Todos'), count: c?.total }, { value: 'ACTIVE', label: t('Publicados') }, { value: 'PENDING_REVIEW', label: t('En revisión') }, { value: 'DRAFT', label: t('Borradores') }, { value: 'REJECTED', label: t('Rechazados') }, { value: 'SUSPENDED', label: t('Suspendidos') },

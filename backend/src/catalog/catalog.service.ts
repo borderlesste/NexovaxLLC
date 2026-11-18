@@ -16,7 +16,7 @@ export interface ProductQuery {
   onSale?: boolean;
   /** Only products the team featured (home page). */
   featured?: boolean;
-  sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling';
+  sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling' | 'featured';
   page?: number;
   pageSize?: number;
   /** Attribute filters: attribute code -> accepted values (option codes, free text or true/false). */
@@ -83,6 +83,7 @@ export class CatalogService {
         rating: 'coalesce(rv.avg_rating,0) desc, coalesce(rv.review_count,0) desc',
         best_selling: 'coalesce(sold.qty,0) desc',
         relevance: 'coalesce(sold.qty,0) desc, coalesce(rv.avg_rating,0) desc, p.published_at desc',
+        featured: '(select fp.sort_order from public.nx_featured_products fp where fp.product_id = p.id) asc nulls last, p.published_at desc',
       }[query.sort ?? 'relevance'] ?? 'p.published_at desc';
 
     const pageSize = Math.min(Math.max(query.pageSize ?? 24, 1), 60);
@@ -401,7 +402,7 @@ export class CatalogService {
     const [categories, popular, curated, newest, deals, sellers] = await Promise.all([
       this.categories(),
       this.listProducts({ sort: 'relevance', pageSize: 12 }),
-      featuredOn ? this.listProducts({ featured: true, sort: 'newest', pageSize: 12 }) : Promise.resolve(null),
+      featuredOn ? this.listProducts({ featured: true, sort: 'featured', pageSize: 12 }) : Promise.resolve(null),
       this.listProducts({ sort: 'newest', pageSize: 6 }),
       this.listProducts({ onSale: true, sort: 'relevance', pageSize: 6 }),
       this.sellers(),

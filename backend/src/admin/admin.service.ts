@@ -909,7 +909,8 @@ export class AdminService {
     if (n >= MAX_FEATURED && !(await this.db.one(`select 1 from public.nx_featured_products where product_id = $1`, [productId])))
       throw conflict('FEATURED_LIMIT', `Puedes destacar hasta ${MAX_FEATURED} productos. Quita alguno antes de agregar otro.`);
     await this.db.exec(
-      `insert into public.nx_featured_products (product_id, featured_by) values ($1,$2) on conflict (product_id) do update set featured_at = now(), featured_by = excluded.featured_by`,
+      `insert into public.nx_featured_products (product_id, featured_by, sort_order)
+       values ($1,$2,(select coalesce(max(sort_order), 0) + 1 from public.nx_featured_products)) on conflict (product_id) do update set featured_at = now(), featured_by = excluded.featured_by`,
       [productId, user.id],
     );
     return { featured: true };
@@ -919,6 +920,30 @@ export class AdminService {
    * "Estado del sistema": every service is actually checked (not just "configured").
    * Statuses: Operativo, Modo prueba, Con retraso, Desactivado, Sin configurar, Caído.
    */
+  /** Featured products in home-page order. */
+  async featuredList() {
+    const rows = await this.db.many(
+      `select p.id, p.title, p.slug, p.status, coalesce(ssp.display_name, s.slug) as store, fp.sort_order, fp.featured_at,
+              (select pm.asset_id from public.product_media pm where pm.product_id = p.id order by pm.is_primary desc, pm.sort_order limit 1) as image_id
+         from public.nx_featured_products fp join public.products p on p.id = fp.product_id join public.sellers s on s.id = p.seller_id
+         left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+        order by fp.sort_order, fp.featured_at`,
+    );
+    return rows.map((r: any) => ({ id: r.id, title: r.title, slug: r.slug, status: r.status, store: r.store, imageUrl: r.image_id ? mediaUrl(r.image_id) : null, position: r.sort_order }));
+  }
+
+  /** Saves the home-page order (the list must contain exactly the featured products). */
+  async reorderFeatured(productIds: string[]) {
+    const cur = await this.db.many<{ product_id: string }>(`select product_id from public.nx_featured_products`);
+    const set = new Set(cur.map((c) => c.product_id));
+    if (productIds.length !== set.size || new Set(productIds).size !== productIds.length || productIds.some((id) => !set.has(id)))
+      throw badRequest('FEATURED_ORDER_INVALID', 'La lista de destacados cambió. Recarga la página e inténtalo de nuevo.');
+    await this.db.tx(async (c) => {
+      for (const [i, id] of productIds.entries()) await this.db.exec(`update public.nx_featured_products set sort_order = $2 where product_id = $1`, [id, i + 1], c);
+    });
+    return this.featuredList();
+  }
+
   async systemStatus() {
     const timed = async (fn: () => Promise<unknown>, ms = 6000) => {
       const t0 = Date.now();

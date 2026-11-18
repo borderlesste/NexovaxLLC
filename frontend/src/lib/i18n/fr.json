@@ -2398,5 +2398,10 @@
 "Programar nueva versión": "Programmer une nouvelle version",
 "Programada: {d}": "Programmée : {d}",
 "Cancelar programación": "Annuler la programmation",
-"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "Elle est programmée : le {d}, elle remplace la version en vigueur et s’affiche dans le centre d’aide."
+"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "Elle est programmée : le {d}, elle remplace la version en vigueur et s’affiche dans le centre d’aide.",
+"Orden de destacados guardado.": "Ordre des produits en vedette enregistré.",
+"Orden en la portada": "Ordre sur la page d’accueil",
+"Los productos destacados se muestran en este orden. Usa las flechas y guarda.": "Les produits en vedette s’affichent dans cet ordre. Utilisez les flèches et enregistrez.",
+"No publicado: no se muestra": "Non publié : non affiché",
+"Guardar orden": "Enregistrer l’ordre"
 }

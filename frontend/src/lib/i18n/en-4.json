@@ -882,5 +882,10 @@
 "Programar nueva versión": "Schedule new version",
 "Programada: {d}": "Scheduled: {d}",
 "Cancelar programación": "Cancel schedule",
-"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "It’s scheduled: on {d} it replaces the current version and is shown in the help center."
+"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "It’s scheduled: on {d} it replaces the current version and is shown in the help center.",
+"Orden de destacados guardado.": "Featured order saved.",
+"Orden en la portada": "Order on the home page",
+"Los productos destacados se muestran en este orden. Usa las flechas y guarda.": "Featured products are shown in this order. Use the arrows and save.",
+"No publicado: no se muestra": "Not published: not shown",
+"Guardar orden": "Save order"
 }

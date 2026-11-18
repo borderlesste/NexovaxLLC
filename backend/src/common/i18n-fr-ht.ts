@@ -1,5 +1,6 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "La liste des produits en vedette a changé. Rechargez la page et réessayez.",
 "La fecha de entrada en vigor no es válida (como máximo un año).": "La date d’entrée en vigueur n’est pas valable (un an maximum).",
 "Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "Une version est déjà programmée pour cette politique. Annulez-la avant d’en programmer une autre.",
 "Esa versión ya no está programada.": "Cette version n’est plus programmée.",
@@ -312,6 +313,7 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "Lis pwodwi an vedèt yo chanje. Rechaje paj la epi eseye ankò.",
 "La fecha de entrada en vigor no es válida (como máximo un año).": "Dat antre an vigè a pa valab (yon ane maksimòm).",
 "Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "Gen yon vèsyon ki deja pwograme pou règ sa a. Anile l anvan ou pwograme yon lòt.",
 "Esa versión ya no está programada.": "Vèsyon sa a pa pwograme ankò.",

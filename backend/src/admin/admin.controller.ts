@@ -82,6 +82,10 @@ export class AdminTrackingDto {
   @IsOptional() @IsCleanText(0, 200) detail?: string;
 }
 
+export class FeaturedOrderDto {
+  @IsArray() @ArrayMaxSize(12) @IsUUID('all', { each: true }) productIds: string[];
+}
+
 export class FeaturedDto {
   @IsBoolean() featured: boolean;
 }
@@ -132,6 +136,18 @@ export class AdminController {
   @Post('products/:id/moderate')
   moderate(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ModerateDto) {
     return this.admin.moderate(user, id, dto.decision, dto.note);
+  }
+
+  @Roles('MODERATOR')
+  @Get('featured')
+  featuredList() {
+    return this.admin.featuredList();
+  }
+
+  @Roles('MODERATOR')
+  @Post('featured/order')
+  reorderFeatured(@Body() dto: FeaturedOrderDto) {
+    return this.admin.reorderFeatured(dto.productIds);
   }
 
   @Roles('MODERATOR')

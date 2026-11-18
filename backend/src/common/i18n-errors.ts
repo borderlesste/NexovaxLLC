@@ -4,6 +4,7 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "The featured list changed. Reload the page and try again.",
   "La fecha de entrada en vigor no es válida (como máximo un año).": "The effective date isn’t valid (up to one year ahead).",
   "Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "There’s already a scheduled version of this policy. Cancel it before scheduling another.",
   "Esa versión ya no está programada.": "That version is no longer scheduled.",
