@@ -166,3 +166,15 @@ export function requireSeller(user: RequestUser, sellerId?: string) {
   if (!s) throw new AppError('NO_SELLER', 'Aún no tienes una tienda. Crea tu tienda para continuar.', HttpStatus.FORBIDDEN);
   return s;
 }
+
+/**
+ * Like requireSeller, but only the store owner passes. Team members can sell and ship,
+ * but money destinations and withdrawals stay with the owner (a member must not be able
+ * to add their own bank account and withdraw the store's balance).
+ */
+export function requireSellerOwner(user: RequestUser, sellerId?: string) {
+  const s = requireSeller(user, sellerId);
+  if (!s.isOwner)
+    throw new AppError('SELLER_OWNER_REQUIRED', 'Solo el propietario de la tienda puede gestionar los métodos de cobro y los retiros.', HttpStatus.FORBIDDEN);
+  return s;
+}

@@ -1078,6 +1078,9 @@ export class SellerService {
 
   async requestPayout(user: RequestUser, sellerId: string, input: { accountId: string; amount: number | string; idempotencyKey: string; currency?: string }) {
     const currency = (input.currency ?? (await this.settings.currency())).toUpperCase();
+    // A suspended, rejected or closed store keeps its balance frozen (scheduled payouts skip it too).
+    const store = await this.db.one<{ status: string }>(`select status from public.sellers where id = $1`, [sellerId]);
+    if (store?.status !== 'ACTIVE') throw conflict('SELLER_NOT_ACTIVE', 'Tu tienda no está activa: los retiros están en pausa. Contacta a soporte.');
     const acc = await this.db.one(`select status, verification_status from public.seller_payout_accounts where id = $1 and seller_id = $2`, [input.accountId, sellerId]);
     if (!acc) throw notFound('Método de cobro');
     if (acc.status !== 'ACTIVE' || acc.verification_status !== 'VERIFIED')

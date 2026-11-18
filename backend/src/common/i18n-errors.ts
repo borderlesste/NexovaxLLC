@@ -166,6 +166,8 @@ const EN: Record<string, string> = {
   'Selecciona al menos una imagen.': 'Select at least one image.',
   'Configura tu almacén antes de crear productos.': 'Set up your warehouse before creating products.',
   'Aún no tienes una tienda. Crea tu tienda para continuar.': 'You don’t have a store yet. Create your store to continue.',
+  'Solo el propietario de la tienda puede gestionar los métodos de cobro y los retiros.': 'Only the store owner can manage payout methods and withdrawals.',
+  'Tu tienda no está activa: los retiros están en pausa. Contacta a soporte.': 'Your store isn’t active: withdrawals are paused. Contact support.',
   'El pedido está cerrado o cancelado.': 'The order is closed or cancelled.',
   'Categoría padre inválida.': 'Invalid parent category.',
   'Método de pago no disponible.': 'Payment method not available.',

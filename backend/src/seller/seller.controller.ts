@@ -11,7 +11,7 @@ import {
   ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
   ValidateNested,
 } from 'class-validator';
-import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
+import { CurrentUser, RequestUser, requireSeller, requireSellerOwner } from '../auth/auth';
 import { SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
@@ -163,6 +163,11 @@ export class SellerController {
 
   private sid(user: RequestUser, header?: string) {
     return requireSeller(user, header).id;
+  }
+
+  /** Owner-only: payout accounts and withdrawals. */
+  private ownerSid(user: RequestUser, header?: string) {
+    return requireSellerOwner(user, header).id;
   }
 
   @Post('onboarding')
@@ -324,12 +329,12 @@ export class SellerController {
 
   @Post('payout-accounts')
   addPayoutAccount(@CurrentUser() user: RequestUser, @Body() dto: PayoutAccountDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.addPayoutAccount(user, this.sid(user, h), dto);
+    return this.seller.addPayoutAccount(user, this.ownerSid(user, h), dto);
   }
 
   @Put('payout-accounts/:id')
   updatePayoutAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PayoutAccountActionDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.updatePayoutAccount(this.sid(user, h), id, dto.action);
+    return this.seller.updatePayoutAccount(this.ownerSid(user, h), id, dto.action);
   }
 
   @Get('payouts')
@@ -339,11 +344,11 @@ export class SellerController {
 
   @Post('payouts')
   requestPayout(@CurrentUser() user: RequestUser, @Body() dto: PayoutRequestDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.requestPayout(user, this.sid(user, h), dto);
+    return this.seller.requestPayout(user, this.ownerSid(user, h), dto);
   }
 
   @Post('payouts/:id/cancel')
   cancelPayout(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.cancelPayout(user, this.sid(user, h), id);
+    return this.seller.cancelPayout(user, this.ownerSid(user, h), id);
   }
 }

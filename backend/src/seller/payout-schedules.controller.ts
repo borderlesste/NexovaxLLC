@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsUUID, Max, Min, ValidateIf } from 'class-validator';
-import { CurrentUser, RequestUser, Roles, requireSeller } from '../auth/auth';
+import { CurrentUser, RequestUser, Roles, requireSeller, requireSellerOwner } from '../auth/auth';
 import { IsMoney, ToNumber } from '../common/validators';
 import { PayoutSchedulesService } from './payout-schedules.service';
 
@@ -26,7 +26,7 @@ export class PayoutSchedulesController {
 
   @Put('seller/payouts/schedule')
   set(@CurrentUser() u: RequestUser, @Body() dto: PayoutScheduleDto, @Headers('x-seller-id') h?: string) {
-    return this.schedules.set(u, requireSeller(u, h).id, dto);
+    return this.schedules.set(u, requireSellerOwner(u, h).id, dto);
   }
 
   @Roles('ADMIN')
