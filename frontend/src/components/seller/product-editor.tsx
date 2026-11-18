@@ -20,6 +20,16 @@ interface Opt { name: string; values: { label: string; swatch?: string | null }[
 interface Var { id?: string; key: string; optionValues: Record<string, string>; sku: string; price: string; compareAtPrice: string; stock: string; active: boolean }
 
 const COLOR_SWATCH: Record<string, string> = { negro: '#111111', blanco: '#ffffff', azul: '#2563eb', rojo: '#dc2626', verde: '#16a34a', gris: '#9ca3af', morado: '#6d28d9', rosado: '#ec4899', amarillo: '#facc15', naranja: '#f97316', marrón: '#7c4a1d', beige: '#e7d9c4' };
+const isColor = (name: string) => /colou?r/i.test(name);
+const swatchFor = (label: string) => COLOR_SWATCH[label.trim().toLowerCase()] ?? '#9ca3af';
+/** Quick options: a click adds the option with no values (or the preset values) ready to complete. */
+const QUICK_OPTIONS: { name: string; presets: string[] }[] = [
+  { name: 'Color', presets: ['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde', 'Gris', 'Morado', 'Rosado', 'Amarillo', 'Naranja', 'Marrón', 'Beige'] },
+  { name: 'Talla', presets: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
+  { name: 'Tamaño', presets: ['Pequeño', 'Mediano', 'Grande', 'Extra grande'] },
+];
+const presetsFor = (name: string) =>
+  isColor(name) ? QUICK_OPTIONS[0].presets : /talla|size/i.test(name) ? QUICK_OPTIONS[1].presets : /tama[ñn]o/i.test(name) ? QUICK_OPTIONS[2].presets : [];
 
 function combos(options: Opt[]): Record<string, string>[] {
   const valid = options.filter((o) => o.name.trim() && o.values.length);
@@ -207,11 +217,16 @@ export function ProductEditor({ productId }: { productId?: string }) {
             <div className="space-y-4 p-5">
               {options.map((o, i) => (
                 <div key={i} className="grid gap-2 sm:grid-cols-[180px_1fr_auto]">
-                  <Input value={o.name} placeholder={t('Ej. Talla')} onChange={(e) => { const n = [...options]; n[i] = { ...o, name: e.target.value }; setOpts(n); }} />
+                  <Input value={o.name} placeholder={t('Ej. Talla')} onChange={(e) => { const name = e.target.value; const n = [...options]; n[i] = { ...o, name, values: o.values.map((v) => ({ ...v, swatch: isColor(name) ? v.swatch ?? swatchFor(v.label) : null })) }; setOpts(n); }} />
                   <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-line bg-white px-2 py-1">
                     {o.values.map((v, j) => (
                       <span key={j} className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-800">
-                        {v.swatch && <span className="size-3 rounded-full border border-black/10" style={{ background: v.swatch }} />} {v.label}
+                        {isColor(o.name) ? (
+                          <label className="relative size-4 cursor-pointer overflow-hidden rounded-full border border-black/15" style={{ background: v.swatch ?? '#9ca3af' }} title={t('Elegir color')}>
+                            <input type="color" className="absolute inset-0 cursor-pointer opacity-0" value={v.swatch && /^#[0-9a-f]{6}$/i.test(v.swatch) ? v.swatch : '#9ca3af'}
+                              onChange={(e) => { const n = [...options]; n[i] = { ...o, values: o.values.map((x, k) => (k === j ? { ...x, swatch: e.target.value } : x)) }; setOptions(n); }} />
+                          </label>
+                        ) : v.swatch ? <span className="size-3 rounded-full border border-black/10" style={{ background: v.swatch }} /> : null} {v.label}
                         <button onClick={() => { const n = [...options]; n[i] = { ...o, values: o.values.filter((_, k) => k !== j) }; setOpts(n); }} aria-label={t('Quitar')}><X className="size-3" /></button>
                       </span>
                     ))}
@@ -222,7 +237,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
                         e.preventDefault();
                         const label = (newValue[i] ?? '').trim();
                         if (!label || o.values.some((v) => v.label.toLowerCase() === label.toLowerCase())) return;
-                        const swatch = /color/i.test(o.name) ? COLOR_SWATCH[label.toLowerCase()] ?? null : null;
+                        const swatch = isColor(o.name) ? swatchFor(label) : null;
                         const n = [...options];
                         n[i] = { ...o, values: [...o.values, { label, swatch }] };
                         setOpts(n);
@@ -230,9 +245,23 @@ export function ProductEditor({ productId }: { productId?: string }) {
                       }} />
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setOpts(options.filter((_, k) => k !== i))} aria-label={t('Eliminar opción')}><Trash2 /></Button>
+                  {presetsFor(o.name).some((pv) => !o.values.some((v) => v.label.toLowerCase() === pv.toLowerCase())) && (
+                    <div className="flex flex-wrap items-center gap-1.5 sm:col-start-2">
+                      <span className="text-xs text-muted">{t('Sugerencias:')}</span>
+                      {presetsFor(o.name).filter((pv) => !o.values.some((v) => v.label.toLowerCase() === pv.toLowerCase())).map((pv) => (
+                        <button key={pv} type="button" className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2 py-0.5 text-xs hover:border-brand-400"
+                          onClick={() => { const n = [...options]; n[i] = { ...o, values: [...o.values, { label: pv, swatch: isColor(o.name) ? swatchFor(pv) : null }] }; setOpts(n); }}>
+                          {isColor(o.name) && <span className="size-3 rounded-full border border-black/10" style={{ background: swatchFor(pv) }} />}<Plus className="size-3" /> {pv}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="flex flex-wrap gap-2">
+                {options.length < 3 && QUICK_OPTIONS.filter((qo) => !options.some((o) => o.name.trim().toLowerCase() === qo.name.toLowerCase())).map((qo) => (
+                  <Button key={qo.name} variant="soft" size="sm" onClick={() => setOptions([...options, { name: qo.name, values: [] }])} data-quick-option={qo.name}><Plus /> {t(qo.name)}</Button>
+                ))}
                 {options.length < 3 && <Button variant="outline" size="sm" onClick={() => setOptions([...options, { name: '', values: [] }])}><Plus /> {t('Agregar opción de variante')}</Button>}
                 {templates.data?.map((lbl: any) => (
                   <Button key={lbl.code} variant="soft" size="sm" onClick={() => !options.some((o) => o.name === lbl.name) && setOpts([...options, { name: lbl.name, values: (lbl.values ?? []).map((v: any) => ({ label: typeof v === 'string' ? v : v.label ?? v.value, swatch: v.swatch ?? null })) }])}>
@@ -247,7 +276,15 @@ export function ProductEditor({ productId }: { productId?: string }) {
                   <tbody className="divide-y divide-line">
                     {variants.map((v, i) => (
                       <tr key={v.key} className={cn(!v.active && 'opacity-50')}>
-                        <td className="px-3 py-2 font-semibold">{Object.values(v.optionValues).join(' / ') || t('Única')}</td>
+                        <td className="px-3 py-2 font-semibold">
+                          <span className="inline-flex items-center gap-1.5">
+                            {Object.entries(v.optionValues).map(([on, ov]) => {
+                              const sw = options.find((o) => o.name === on)?.values.find((x) => x.label === ov)?.swatch;
+                              return sw ? <span key={on} className="size-3 rounded-full border border-black/15" style={{ background: sw }} /> : null;
+                            })}
+                            {Object.values(v.optionValues).join(' / ') || t('Única')}
+                          </span>
+                        </td>
                         <td className="py-2 pr-2"><Input rule="sku" className="h-9" value={v.sku} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, sku: e.target.value.toUpperCase() } : x))} /></td>
                         <td className="py-2 pr-2"><Input rule="money" className="h-9" value={v.price} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder="0.00" /></td>
                         <td className="py-2 pr-2"><Input rule="money" className="h-9" value={v.compareAtPrice} onChange={(e) => setVariants(variants.map((x, k) => k === i ? { ...x, compareAtPrice: e.target.value.replace(/[^\d.]/g, '') } : x))} placeholder={t('Opcional')} /></td>

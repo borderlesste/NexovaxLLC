@@ -10,6 +10,7 @@ import {
 import { get } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { EarnBox } from '@/components/affiliates/earn-box';
+import { ShareButton } from '@/components/shop/share-button';
 import { StockAlertButton } from '@/components/shop/stock-alert';
 import { Recommendations } from '@/components/shop/recommendations';
 import { trackProductView } from '@/lib/analytics';
@@ -56,6 +57,11 @@ export function ProductDetail({ initial }: { initial: any }) {
   const discount = price && compare && Number(compare) > Number(price) ? Math.round((1 - Number(price) / Number(compare)) * 100) : null;
   const stock = variant?.stock ?? 0;
   const images = p.images.length ? p.images : [{ url: null, alt: p.title }];
+  // show the photo of the chosen variant (e.g. the selected color) when the seller linked one
+  useEffect(() => {
+    const i = variant ? p.images.findIndex((im: any) => im.variantId === variant.id) : -1;
+    if (i >= 0) setImg(i);
+  }, [variant, p.images]);
 
   const isAvailable = (optionId: string, valueId: string) =>
     p.variants.some((v: any) => v.optionValues?.[optionId] === valueId && v.stock > 0 && p.options.every((o: any) => o.id === optionId || !selected[o.id] || v.optionValues?.[o.id] === selected[o.id]));
@@ -102,6 +108,7 @@ export function ProductDetail({ initial }: { initial: any }) {
                 <button onClick={() => fav.toggle(p.id)} className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-white shadow" aria-label={t('Favorito')}>
                   <Heart className={cn('size-5', p.isFavorite && 'fill-brand-600 text-brand-600')} />
                 </button>
+                <ShareButton product={p} iconOnly className="absolute right-4 top-[68px]" />
                 {images[img]?.url && (
                   <button onClick={() => setZoom(true)} className="absolute bottom-4 right-4 grid size-10 place-items-center rounded-full bg-white shadow" aria-label={t('Ampliar')}>
                     <Maximize2 className="size-4" />
@@ -115,9 +122,10 @@ export function ProductDetail({ initial }: { initial: any }) {
           </div>
           {/* info */}
           <div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {p.brand && <Badge tone="violet"><Store className="size-3" /> {p.brand.name}</Badge>}
               <Badge tone="green"><Check className="size-3" /> {t('Producto publicado')}</Badge>
+              <ShareButton product={p} className="ml-auto" />
             </div>
             <h1 className="mt-3 text-3xl font-extrabold leading-tight">{p.title}</h1>
             {p.shortDescription && <p className="mt-2 text-muted">{p.shortDescription}</p>}
@@ -143,7 +151,6 @@ export function ProductDetail({ initial }: { initial: any }) {
             )}
             {p.options.map((o: any) => {
               const cur = o.values.find((v: any) => v.id === selected[o.id]);
-              const swatch = o.displayType === 'SWATCH';
               return (
                 <div key={o.id} className="mt-5">
                   <p className="mb-2 text-sm font-semibold">{o.name}: <span className="font-normal">{cur?.label ?? t('Selecciona')}</span></p>
@@ -151,7 +158,7 @@ export function ProductDetail({ initial }: { initial: any }) {
                     {o.values.map((v: any) => {
                       const avail = isAvailable(o.id, v.id);
                       const active = selected[o.id] === v.id;
-                      return swatch && v.swatch ? (
+                      return v.swatch ? (
                         <button key={v.id} title={v.label} onClick={() => setSelected((s) => ({ ...s, [o.id]: v.id }))} className={cn('grid size-10 place-items-center rounded-full border-2 p-0.5', active ? 'border-brand-600' : 'border-line', !avail && 'opacity-40')}>
                           <span className="size-full rounded-full border border-black/10" style={{ background: v.swatch }} />
                         </button>

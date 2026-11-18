@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AlertCircle, Bell, CreditCard, Heart, MapPin, MessageSquare, Package, RotateCcw, Shield, Store, User, Users, LayoutDashboard , Handshake } from 'lucide-react';
+import { AlertCircle, Bell, CreditCard, Heart, MapPin, MessageSquare, Package, RotateCcw, Shield, Store, User, Users, LayoutDashboard, Handshake, Share2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { PageLoader } from '@/components/ui/misc';
@@ -12,6 +12,7 @@ const LINKS = [
   ['/cuenta/perfil', 'Mi perfil', User],
   ['/cuenta/pedidos', 'Mis pedidos', Package],
   ['/cuenta/devoluciones', 'Devoluciones', RotateCcw],
+  ['/cuenta/enlaces', 'Enlaces compartidos', Share2],
   ['/cuenta/afiliados', 'Afiliados', Handshake],
   ['/cuenta/notificaciones', 'Notificaciones', Bell],
   ['/cuenta/favoritos', 'Mis favoritos', Heart],

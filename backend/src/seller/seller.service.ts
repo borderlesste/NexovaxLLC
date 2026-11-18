@@ -322,8 +322,11 @@ export class SellerService {
       this.db.many(
         `select o.id, o.name, coalesce(json_agg(json_build_object('id', v.id, 'label', v.label, 'swatch', v.swatch_value) order by v.sort_order)
                   filter (where v.id is not null), '[]') as values
-           from public.product_options o left join public.product_option_values v on v.option_id = o.id
-          where o.product_id = $1 group by o.id order by o.sort_order`,
+           from public.product_options o join public.product_option_values v on v.option_id = o.id
+          -- only values still used by a live variant (removed options/values stay in the table for history)
+          where o.product_id = $1 and exists (select 1 from public.variant_option_assignments a join public.product_variants pv on pv.id = a.variant_id
+                                                where a.option_value_id = v.id and pv.status <> 'ARCHIVED')
+          group by o.id order by o.sort_order`,
         [productId],
       ),
       this.db.many(
@@ -422,7 +425,7 @@ export class SellerService {
         const code = slugify(o.name, 40);
         const opt = await this.db.one(
           `insert into public.product_options (product_id, code, name, display_type, sort_order) values ($1,$2,$3,$4,$5)
-           on conflict (product_id, code) do update set name = excluded.name, sort_order = excluded.sort_order returning id`,
+           on conflict (product_id, code) do update set name = excluded.name, display_type = excluded.display_type, sort_order = excluded.sort_order returning id`,
           [product.id, code, o.name.trim(), o.values.some((v) => v.swatch) ? 'SWATCH' : 'BUTTON', i],
           c,
         );

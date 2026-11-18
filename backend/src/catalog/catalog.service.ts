@@ -174,8 +174,11 @@ export class CatalogService {
         `select o.id, o.code, o.name, o.display_type,
                 coalesce(json_agg(json_build_object('id', v.id, 'code', v.code, 'label', v.label, 'swatch', v.swatch_value)
                          order by v.sort_order, v.label) filter (where v.id is not null), '[]') as values
-           from public.product_options o left join public.product_option_values v on v.option_id = o.id
-          where o.product_id = $1 group by o.id order by o.sort_order, o.name`,
+           from public.product_options o join public.product_option_values v on v.option_id = o.id
+          -- only values of ACTIVE variants: options/values the seller removed are not offered
+          where o.product_id = $1 and exists (select 1 from public.variant_option_assignments a join public.product_variants pv on pv.id = a.variant_id
+                                                where a.option_value_id = v.id and pv.status = 'ACTIVE')
+          group by o.id order by o.sort_order, o.name`,
         [productId],
       ),
       this.db.many(

@@ -58,6 +58,7 @@ import { AlertsService } from './analytics/alerts.service';
 import { RecommendationsService } from './analytics/recommendations.service';
 import { CouponsService } from './promotions/coupons.service';
 import { AffiliatesService } from './promotions/affiliates.service';
+import { SharesService } from './promotions/shares.service';
 import { OffersService } from './promotions/offers.service';
 import { CancellationsService } from './orders/cancellations.service';
 import { ReturnPolicyService } from './returns/return-policy.service';
@@ -118,6 +119,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     CancellationsService,
     CouponsService,
     AffiliatesService,
+    SharesService,
     OffersService,
     AnalyticsService,
     AlertsService,

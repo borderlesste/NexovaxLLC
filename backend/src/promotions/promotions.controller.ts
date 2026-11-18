@@ -7,6 +7,7 @@ import { CurrentUser, Public, RequestUser, Roles, requireSeller } from '../auth/
 import { CouponsService } from './coupons.service';
 import { AffiliatesService } from './affiliates.service';
 import { OffersService } from './offers.service';
+import { SharesService } from './shares.service';
 
 export class CouponDto {
   @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]{2,23}$/, { message: 'El código debe tener de 3 a 24 caracteres: letras, números, guion o guion bajo.' }) code: string;
@@ -57,6 +58,12 @@ export class OfferDto {
   @IsOptional() @ValidateNested() @Type(() => NewCouponDto) newCoupon?: NewCouponDto;
   @IsOptional() @IsString() @Length(0, 280) message?: string;
 }
+export class ShareLinkDto {
+  @IsUUID() productId: string;
+}
+export class ShareVisitDto {
+  @IsString() @Length(6, 16) code: string;
+}
 export class PayAffiliateDto {
   @IsString() @Length(3, 80) reference: string;
 }
@@ -68,6 +75,7 @@ export class PromotionsController {
     private readonly coupons: CouponsService,
     private readonly affiliates: AffiliatesService,
     private readonly offers: OffersService,
+    private readonly shares: SharesService,
   ) {}
 
   // ---- seller: coupon offers to interested buyers (counts only, never identities)
@@ -141,6 +149,31 @@ export class PromotionsController {
   @Post('affiliates/track')
   track(@CurrentUser() u: RequestUser, @Body() dto: TrackDto) {
     return this.affiliates.track(u, dto.codes);
+  }
+
+  // ---- shared product links (any signed-in user)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('shares')
+  shareLink(@CurrentUser() u: RequestUser, @Body() dto: ShareLinkDto) {
+    return this.shares.link(u, dto.productId);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('shares/visit')
+  shareVisit(@CurrentUser() u: RequestUser | null, @Body() dto: ShareVisitDto) {
+    return this.shares.visit(dto.code, u);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('shares/track')
+  shareTrack(@CurrentUser() u: RequestUser, @Body() dto: TrackDto) {
+    return this.shares.track(u, dto.codes);
+  }
+
+  @Get('me/shares')
+  myShares(@CurrentUser() u: RequestUser) {
+    return this.shares.mine(u);
   }
 
   @Get('me/affiliates')
