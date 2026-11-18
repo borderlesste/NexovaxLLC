@@ -68,6 +68,28 @@ export const config = {
     return secret('PAYPAL_WEBHOOK_ID', 'paypal_webhook_id');
   },
   paypalEnv: (process.env.PAYPAL_ENV ?? 'sandbox') as 'sandbox' | 'live',
+  /**
+   * Cloudflare Turnstile (anti-bot on register, password recovery and resend verification).
+   * The site key is public and served to the web through /api/config/public; the secret never leaves the API.
+   * Without a secret the check is skipped outside production; in production those endpoints refuse requests.
+   */
+  get turnstileSiteKey() {
+    return secret('TURNSTILE_SITE_KEY', 'turnstile_site_key');
+  },
+  get turnstileSecretKey() {
+    return secret('TURNSTILE_SECRET_KEY', 'turnstile_secret_key');
+  },
+  /**
+   * Shared secret between the Next.js web proxy and the API (PROXY_SHARED_SECRET on both).
+   * Lets the API trust the visitor IP the web forwards in `x-nx-client-ip`.
+   */
+  proxySharedSecret: secret('PROXY_SHARED_SECRET', 'proxy_shared_secret'),
+  /**
+   * Header the API host's load balancer sets with the visitor IP, for requests that reach the API
+   * directly (uploads and private downloads): e.g. `x-forwarded-for` (last entry is used),
+   * `cf-connecting-ip` or `true-client-ip`. Only read when the socket peer is a private address.
+   */
+  clientIpHeader: (process.env.CLIENT_IP_HEADER ?? '').trim().toLowerCase(),
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',

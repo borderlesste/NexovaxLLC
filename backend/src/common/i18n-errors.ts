@@ -314,6 +314,9 @@ const EN: Record<string, string> = {
   'El teléfono debe tener 10 dígitos (código de área + número).': 'The phone number must have 10 digits (area code + number).',
   'El teléfono tiene demasiados dígitos para el país seleccionado.': 'The phone number has too many digits for the selected country.',
   'Búsqueda inválida.': 'Invalid search.',
+  'Esta contraseña apareció en filtraciones de datos y es fácil de adivinar. Elige una diferente.': 'This password has appeared in data breaches and is easy to guess. Choose a different one.',
+  'No pudimos verificar que eres una persona. Completa la verificación e inténtalo de nuevo.': 'We couldn’t verify that you’re a person. Complete the check and try again.',
+  'La verificación de seguridad no está disponible. Inténtalo más tarde.': 'The security check isn’t available. Please try again later.',
   'Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.': 'International shipments over US$ 2,500 from the US require an export ITN (AES). Record this shipment with a manual tracking number.',
 };
 

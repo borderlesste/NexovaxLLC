@@ -32,7 +32,7 @@ interface AuthCtx {
   /** Whether the user's staff roles allow an admin-panel permission (see lib/permissions). */
   can: (perm: Permission) => boolean;
   seller: Me['sellers'][number] | undefined;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, captchaToken?: string | null) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => void;
 }
@@ -85,10 +85,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (saved && saved !== getLocale() && !document.cookie.split('; ').some((c) => c.startsWith('nx_locale='))) switchLocale(saved);
   }, [me]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+  const signIn = useCallback(async (email: string, password: string, captchaToken?: string | null) => {
+    const { error } = await supabase().auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+      // Required once CAPTCHA protection (Turnstile) is enabled in Supabase Auth.
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error) {
       if (/invalid login/i.test(error.message)) throw new Error(t('Correo o contraseña incorrectos.'));
+      if (/captcha/i.test(error.message)) throw new Error(t('No pudimos verificar que eres una persona. Completa la verificación e inténtalo de nuevo.'));
       if (/email not confirmed/i.test(error.message)) throw Object.assign(new Error(t('Debes confirmar tu correo antes de iniciar sesión.')), { code: 'EMAIL_NOT_CONFIRMED' });
       throw new Error(error.message);
     }

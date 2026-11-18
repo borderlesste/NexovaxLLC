@@ -13,6 +13,8 @@ export interface PublicConfig {
   bankTransfer: boolean;
   sellerRegistration: boolean;
   stripePublishableKey?: string | null;
+  /** Cloudflare Turnstile site key; null when the anti-bot check is off. */
+  turnstileSiteKey?: string | null;
   social?: { network: string; url: string }[];
 }
 

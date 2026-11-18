@@ -35,6 +35,9 @@ export default function ResetPage() {
     setBusy(true);
     const { error } = await supabase().auth.updateUser({ password: pw });
     setBusy(false);
+    // With "Prevent use of leaked passwords" on, Supabase answers weak_password (reasons: pwned).
+    if (error && ((error as any).code === 'weak_password' || /pwned|weak|leaked/i.test(error.message)))
+      return setError(t('Esta contraseña apareció en filtraciones de datos y es fácil de adivinar. Elige una diferente.'));
     if (error) return setError(t('El enlace expiró o no es válido. Solicita uno nuevo.'));
     toast.success(t('Contraseña actualizada.'));
     router.replace('/');

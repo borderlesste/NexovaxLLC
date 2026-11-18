@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../common/errors';
+import { clampPage } from '../common/paging';
 import { isStaff, RequestUser } from '../auth/auth';
 import { orderRef, refundRef, returnRef } from '../common/refs';
 import { mediaUrl } from '../catalog/catalog.sql';
@@ -431,7 +432,7 @@ export class ReturnsService {
       params.push(q.status);
       where.push(`rr.status = $${params.length}`);
     }
-    const page = Math.max(q.page ?? 1, 1);
+    const page = clampPage(q.page);
     const rows = await this.db.many(
       `select rr.id, rr.public_number, rr.status, rr.requested_at, rr.updated_at, rr.currency_code, o.id as order_id, o.public_number as order_number,
               coalesce(ssp.display_name, s.slug) as store, coalesce(nullif(up.display_name,''), u.email::text) as customer,

@@ -39,6 +39,7 @@ export class CatalogController {
       bankTransfer: !!s['payments.bank_transfer']?.enabled,
       stripePublishableKey: config.stripePublishableKey && config.stripeSecretKey ? config.stripePublishableKey : null,
       paypalClientId: config.paypalClientId && config.paypalClientSecret ? config.paypalClientId : null,
+      turnstileSiteKey: config.turnstileSiteKey && config.turnstileSecretKey ? config.turnstileSiteKey : null,
       sellerRegistration: s['features.seller_registration'],
       social: s['social.links'] ?? [],
     };

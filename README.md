@@ -104,6 +104,53 @@ País, estado, ciudad, código postal y teléfono se validan juntos según el pa
 - Endpoints públicos: `GET /api/geo/countries/:code`, `GET /api/geo/cities?country=&region=&q=`, `GET /api/geo/postal?country=&code=` (sugerencias).
 - Reimportar: descargar los archivos en `scripts/data/geonames/` (ver cabecera de `scripts/geo-import.mjs`), conceder temporalmente los permisos de la migración `20261114140000_nexovax_geo_reference.sql` y ejecutar `node ../scripts/geo-import.mjs` desde `backend/`.
 
+## Protección anti-bots (Cloudflare Turnstile)
+
+Turnstile protege los formularios públicos de autenticación en dos capas, porque no todos llegan al mismo sitio:
+
+| Formulario | Destino | Quién valida el token |
+|---|---|---|
+| Iniciar sesión | Supabase Auth (navegador) | Supabase (CAPTCHA activado en Auth) |
+| Registro, recuperar contraseña, reenviar verificación | API NestJS (`/api/auth/*`) | `TurnstileGuard` contra `siteverify` de Cloudflare |
+
+La API usa la clave de administrador de Supabase en esos tres endpoints, que se salta el CAPTCHA de Supabase; por eso valida el token por su cuenta.
+
+1. **Cloudflare → Turnstile:** crea un widget (modo *Managed*) con tus dominios y `localhost`.
+2. **API:** `.secrets/turnstile_site_key` y `.secrets/turnstile_secret_key` (o `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`). La web recibe la *site key* desde `/api/config/public`; sin claves los formularios funcionan como antes, salvo en producción, donde los tres endpoints responden 503 (`CAPTCHA_UNAVAILABLE`).
+3. **Supabase → Authentication → Attack Protection:** activa *CAPTCHA protection* con Turnstile y la misma *secret key*. Así también quedan protegidas las llamadas directas a `/auth/v1/signup`, `/recover`, `/resend` y `/token`.
+4. **Supabase → Sign In / Providers:** desactiva *Allow new users to sign up*. El registro de NEXOVAX sigue funcionando (la API crea las cuentas con la clave de administrador), pero nadie puede crear cuentas llamando a Supabase directamente. Consecuencia: Google/Apple solo sirven para cuentas ya existentes.
+5. **Desarrollo y seed:** usa las claves de prueba de Cloudflare (site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`) en la API y en Supabase; el seed envía el token de prueba `XXXX.DUMMY.TOKEN.XXXX` (`TURNSTILE_TEST_TOKEN` para cambiarlo).
+
+## IP real del visitante y límites de frecuencia
+
+El navegador llama a la API a través del proxy `/api` de Next.js, así que sin ayuda la API solo ve la IP del servidor web y **todos los visitantes compartirían el mismo límite** (p. ej. 5 registros por minuto para todo el sitio).
+
+- **Web (`frontend/src/middleware.ts`):** en cada `/api/*` toma la IP del visitante **solo** de la cabecera que pone tu borde (`CLIENT_IP_HEADER`: `cf-connecting-ip` detrás de Cloudflare, `x-real-ip` en Vercel o detrás de nginx; en Vercel se usa `x-real-ip` por defecto) y la envía a la API en `x-nx-client-ip` junto con `x-nx-proxy-secret`. Lo que mande el navegador en esas cabeceras se descarta.
+- **API (`backend/src/common/client-ip.ts`):** solo confía en `x-nx-client-ip` si el secreto coincide; nunca en `X-Forwarded-For`. Con esa IP: límites de frecuencia por visitante, logs, y la cabecera `Sb-Forwarded-For` en las llamadas de administración a Supabase Auth.
+- **Configuración:** el mismo valor aleatorio en `PROXY_SHARED_SECRET` en la web y en la API (`.secrets/proxy_shared_secret`; `openssl rand -hex 32`) y `CLIENT_IP_HEADER` en la web. Sin ellas todo funciona, pero los límites de la API se aplican a la IP del servidor web.
+- **Supabase → Authentication → Attack Protection:** activa *Enable IP address forwarding* para que Supabase respete `Sb-Forwarded-For` (solo con claves `sb_secret_…`). El inicio de sesión va directo del navegador a Supabase, así que ahí Supabase ya ve la IP real.
+- **Supabase → Authentication → Rate Limits:** ajusta los límites por IP (inicio de sesión/registro, verificación, renovación de tokens). Los correos de NEXOVAX salen por Resend desde la API, no por el SMTP de Supabase.
+- **Subidas y descargas privadas van directo a la API** (no por Vercel, cuyo límite de ~4,5 MB por petición las cortaría): con `NEXT_PUBLIC_API_URL` (origen público de la API, p. ej. `https://api.nexovax.com`) el helper `upload()` y `fetchBlobUrl()` llaman a la API sin pasar por `/api`. Requiere `CORS_ORIGINS` en la API con el dominio de la web (p. ej. `https://nexovax.com,https://www.nexovax.com`). Sin `NEXT_PUBLIC_API_URL` todo pasa por `/api` (desarrollo local).
+- **IP en peticiones directas:** llegan por el balanceador del hosting de la API; `CLIENT_IP_HEADER` en la API indica la cabecera que pone ese balanceador (`x-forwarded-for` → se usa la última entrada, `cf-connecting-ip`, `true-client-ip`…). Solo se lee cuando la conexión viene de una dirección privada (el balanceador).
+- `experimental.middlewareClientMaxBodySize` está en 80 MB por si alguna subida pasa por el middleware (sin `NEXT_PUBLIC_API_URL`).
+
+## Protección contra abuso y DDoS
+
+- **Borde:** el DDoS volumétrico se frena antes de llegar a los servidores: Vercel (mitigación automática, *Attack Challenge Mode*) y Cloudflare delante de la API (`api.nexovax.com` con proxy activado y reglas de WAF/límite de frecuencia).
+- **API:** límite por IP real (300/min global y límites propios en autenticación, subidas, pagos…), Turnstile, contraseñas filtradas, tamaño de subidas acotado.
+- **Base de datos:** el rol `nexovax_api_runtime` tiene `statement_timeout = 15s`, `idle_in_transaction_session_timeout = 30s` y `lock_timeout = 10s` (migración `20261118132319_nexovax_api_runtime_timeouts.sql`): una consulta lenta no puede acaparar las conexiones del pool (`DB_POOL_MAX`, 8 por defecto). `scripts/geo-import.mjs` amplía su propio límite.
+- **Paginación:** como máximo 200 páginas (`backend/src/common/paging.ts`); valores no numéricos vuelven a la página 1.
+- **HTTP:** una petición completa debe llegar en 120 s (`HTTP_REQUEST_TIMEOUT_MS`), frente a clientes lentos (slowloris).
+- **Límites en memoria:** el contador de peticiones vive en el proceso. Con más de una instancia en Render habría que moverlo a un almacenamiento compartido.
+
+## Contraseñas filtradas
+
+Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been Pwned, por *k-anonymity*: solo salen los 5 primeros caracteres del SHA-1, nunca la contraseña).
+
+- **Registro y cambio de contraseña en Seguridad** pasan por la API, que usa la clave de administrador de Supabase y por eso no recibe esa protección de Supabase: la API la aplica por su cuenta (`backend/src/common/password.ts`, error `PASSWORD_LEAKED`). Si el servicio no responde, la contraseña se acepta y queda en el log. `PASSWORD_LEAK_CHECK=false` la desactiva.
+- **Restablecer contraseña** (`/auth/restablecer`) va directo a Supabase: activa *Prevent use of leaked passwords* en Supabase → Authentication → Attack Protection (requiere plan Pro).
+- La contraseña del seed (`.secrets/seed_password`) también debe ser única, o el seed no podrá crear las cuentas demo.
+
 ## Seguridad operativa
 
 - **Base de datos:** TLS con verificación de certificado contra la CA raíz de Supabase incluida en `backend/certs/supabase-root-2021.crt` (`DATABASE_CA_FILE` para otra CA). `DATABASE_SSL_INSECURE=true` solo en desarrollo local; en producción la API no arranca sin verificación.

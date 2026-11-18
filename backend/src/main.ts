@@ -7,10 +7,13 @@ import { AppModule } from './app.module';
 import { assertConfig, config } from './config';
 import { LocalizedExceptionFilter } from './common/i18n-errors';
 import { CatalogLocaleInterceptor } from './common/i18n-catalog';
+import { clientIpMiddleware } from './common/client-ip';
 
 async function bootstrap() {
   assertConfig();
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  // First middleware: the visitor's real IP for rate limits (ours and Supabase Auth's) and logs.
+  app.use(clientIpMiddleware);
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.enableCors({ origin: config.corsOrigins, credentials: true });
@@ -51,5 +54,12 @@ async function bootstrap() {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, doc));
   await app.listen(config.port);
+  // Slow-client protection (slowloris): a whole request (headers + body) must arrive within
+  // requestTimeout (Node's default is 5 min). keepAliveTimeout stays above the load balancer's idle
+  // timeout, and headersTimeout above keepAliveTimeout, so the balancer never reuses a closed socket.
+  const server = app.getHttpServer();
+  server.requestTimeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS ?? 120_000); // uploads up to 64 MB
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
 }
 bootstrap();

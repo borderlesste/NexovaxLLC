@@ -7,7 +7,8 @@ import { Eye, EyeOff, Lock, Mail, ShieldCheck, ShoppingCart, Store } from 'lucid
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
-import { errorMessage, post } from '@/lib/api';
+import { errorMessage, postWithCaptcha } from '@/lib/api';
+import { useCaptcha } from '@/components/ui/turnstile';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
@@ -27,16 +28,24 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [unverified, setUnverified] = useState(sp.get('registered') === '1');
   const [resending, setResending] = useState(false);
+  const captcha = useCaptcha('login');
+  const needCaptcha = () => {
+    if (captcha.ready) return false;
+    setError(t('Completa la verificación de seguridad.'));
+    return true;
+  };
   const resend = async () => {
     if (!email.trim()) return setError(t('Escribe tu correo para reenviar el enlace.'));
+    if (needCaptcha()) return;
     setResending(true);
     try {
-      await post('/auth/resend-verification', { email: email.trim() });
+      await postWithCaptcha('/auth/resend-verification', { email: email.trim() }, captcha.token);
       toast.success(t('Si la cuenta existe y no está confirmada, te enviamos un nuevo enlace.'));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setResending(false);
+      captcha.reset();
     }
   };
   const providers = useQuery({
@@ -53,13 +62,15 @@ function LoginForm() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (needCaptcha()) return;
     setBusy(true);
     try {
-      await signIn(email, password);
+      await signIn(email, password, captcha.token);
       router.replace(next);
     } catch (err: any) {
       setError(err.message);
       if (err?.code === 'EMAIL_NOT_CONFIRMED') setUnverified(true);
+      captcha.reset();
     } finally {
       setBusy(false);
     }
@@ -101,6 +112,7 @@ function LoginForm() {
               <button type="button" onClick={resend} disabled={resending} className="mt-1 font-semibold text-brand-700 hover:underline disabled:opacity-60">{t('Reenviar enlace de confirmación')}</button>
             </div>
           )}
+          {captcha.widget}
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Iniciar sesión')}</Button>
           {social.length > 0 && (

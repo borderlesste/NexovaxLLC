@@ -12,6 +12,7 @@ import { config } from '../config';
 
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'MXN', 'DOP', 'COP', 'CLP', 'PEN', 'ARS', 'BRL'];
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
+import { clampPage } from '../common/paging';
 import { fromMinor, toMinor } from '../common/money';
 import { slugify } from '../common/slug';
 import { invalidateUserCache, RequestUser, RoleCode } from '../auth/auth';
@@ -142,7 +143,7 @@ export class AdminService {
       const t = add(`%${q.search.trim()}%`);
       where.push(`(p.title ilike ${t} or coalesce(ssp.display_name, s.slug) ilike ${t} or exists (select 1 from public.product_variants v where v.product_id = p.id and v.sku ilike ${t}))`);
     }
-    const page = Math.max(q.page ?? 1, 1);
+    const page = clampPage(q.page);
     const rows = await this.db.many(
       `select p.id, p.slug, p.title, p.status, p.updated_at, c.name as category, pc.name as parent_category,
               s.id as seller_id, coalesce(ssp.display_name, s.slug) as seller,
@@ -258,7 +259,7 @@ export class AdminService {
       params.push(`%${q.search.trim()}%`);
       where.push(`(coalesce(ssp.display_name, s.slug) ilike $${params.length} or u.email::text ilike $${params.length} or coalesce(up.display_name,'') ilike $${params.length})`);
     }
-    const page = Math.max(q.page ?? 1, 1);
+    const page = clampPage(q.page);
     const rows = await this.db.many(
       `select s.id, s.slug, s.status, s.verification_status, s.created_at, coalesce(ssp.display_name, s.slug) as name, ssp.logo_asset_id,
               coalesce(ssp.support_email::text, u.email::text) as email, coalesce(up.display_name, u.email::text) as owner,
@@ -1008,7 +1009,7 @@ export class AdminService {
       params.push(q.role);
       where.push(`exists (select 1 from public.user_roles ur join public.roles r on r.id = ur.role_id where ur.user_id = u.id and ur.revoked_at is null and r.code = $${params.length})`);
     }
-    const page = Math.max(q.page ?? 1, 1);
+    const page = clampPage(q.page);
     const rows = await this.db.many(
       `select u.id, u.email::text as email, u.status, u.created_at, u.last_login_at, coalesce(up.display_name, u.email::text) as name,
               coalesce((select json_agg(r.code order by r.code) from public.user_roles ur join public.roles r on r.id = ur.role_id

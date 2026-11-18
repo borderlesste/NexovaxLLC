@@ -898,5 +898,9 @@
 "{n} ms": "{n} ms",
 "{a} enviados · {b} fallidos (24 h)": "{a} sent · {b} failed (24 h)",
 "{n} en cola": "{n} in queue",
-"el más antiguo hace {h} h": "oldest {h} h ago"
+"el más antiguo hace {h} h": "oldest {h} h ago",
+"Completa la verificación de seguridad.": "Complete the security check.",
+"No pudimos verificar que eres una persona. Completa la verificación e inténtalo de nuevo.": "We couldn’t verify that you’re a person. Complete the check and try again.",
+"Demasiados intentos. Espera unos minutos.": "Too many attempts. Please wait a few minutes.",
+"Esta contraseña apareció en filtraciones de datos y es fácil de adivinar. Elige una diferente.": "This password has appeared in data breaches and is easy to guess. Choose a different one."
 }
