@@ -4,6 +4,9 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "La fecha de entrada en vigor no es válida (como máximo un año).": "The effective date isn’t valid (up to one year ahead).",
+  "Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "There’s already a scheduled version of this policy. Cancel it before scheduling another.",
+  "Esa versión ya no está programada.": "That version is no longer scheduled.",
   "La política de disputas no está configurada.": "The dispute policy isn’t configured.",
   "Elige quién paga.": "Choose who pays.",
   "En el reparto compartido, la parte de la tienda va de 1 % a 99 % (hasta 2 decimales).": "In a shared split, the store’s part goes from 1 % to 99 % (up to 2 decimals).",

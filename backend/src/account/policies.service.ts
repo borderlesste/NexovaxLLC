@@ -50,7 +50,8 @@ export class PoliciesService {
     const cur = await this.current(locale);
     const stores = await this.db.many<{ id: string; name: string }>(
       `select s.id, coalesce(ssp.display_name, s.slug) as name from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
-        where s.owner_user_id = $1 and s.status not in ('CLOSED','DELETED')`,
+        where s.status not in ('CLOSED','DELETED')
+          and (s.owner_user_id = $1 or exists (select 1 from public.seller_members m where m.seller_id = s.id and m.user_id = $1 and m.status = 'ACTIVE'))`,
       [userId],
     ).catch(() => []);
     const rows = await this.db.many<{ policy_id_code: string; version_id: string; seller_id: string | null }>(
@@ -59,6 +60,14 @@ export class PoliciesService {
         where a.user_id = $1`,
       [userId],
     );
+    // Seller terms are accepted once per store (by the owner or any active member).
+    if (stores.length)
+      rows.push(...(await this.db.many<{ policy_id_code: string; version_id: string; seller_id: string }>(
+        `select p.code as policy_id_code, a.policy_version_id as version_id, a.seller_id
+           from public.policy_acceptances a join public.policy_versions v on v.id = a.policy_version_id join public.policies p on p.id = v.policy_id
+          where a.acceptance_scope = 'SELLER' and a.seller_id = any($1::uuid[]) and a.user_id <> $2`,
+        [stores.map((x) => x.id), userId],
+      )));
     const reaccept = new Map((await this.db.many<{ id: string; r: boolean }>(
       `select id, requires_reacceptance as r from public.policy_versions where id = any($1::uuid[])`, [cur.map((c) => c.versionId)],
     )).map((x) => [x.id, x.r]));
@@ -98,7 +107,7 @@ export class PoliciesService {
         [p.current_id],
       );
       const versions = await this.db.many(
-        `select v.id, v.version_number, v.status, v.requires_reacceptance, v.effective_at, v.published_at,
+        `select v.id, v.version_number, v.status, v.requires_reacceptance, v.effective_at, v.published_at, v.scheduled_at, v.withdrawn_at,
                 coalesce(up.display_name, u.email::text) as published_by,
                 (select count(*)::int from public.policy_acceptances a where a.policy_version_id = v.id) as acceptances
            from public.policy_versions v left join public.users u on u.id = v.published_by_user_id left join public.user_profiles up on up.user_id = u.id
@@ -108,14 +117,18 @@ export class PoliciesService {
       out.push({
         code: p.code, slug: p.slug, name: p.type_name, audience: p.audience, defaultLocale: p.default_locale,
         localizations: Object.fromEntries(locs.map((l: any) => [l.locale, { title: l.title, text: l.text }])),
-        versions: versions.map((v: any) => ({ id: v.id, version: v.version_number, status: v.status, requiresReacceptance: v.requires_reacceptance, effectiveAt: v.effective_at, publishedAt: v.published_at, publishedBy: v.published_by, acceptances: v.acceptances, current: v.id === p.current_id })),
+        versions: versions.map((v: any) => ({ id: v.id, version: v.version_number, status: v.status, scheduledAt: v.scheduled_at, requiresReacceptance: v.requires_reacceptance, effectiveAt: v.effective_at, publishedAt: v.published_at, publishedBy: v.published_by, acceptances: v.acceptances, current: v.id === p.current_id })),
       });
     }
     return out;
   }
 
   /** Publishes a new version (Spanish required; other languages optional) and makes it current. */
-  async publishVersion(adminId: string, code: string, input: { localizations: Record<string, { title?: string; text?: string } | undefined>; requiresReacceptance: boolean; note?: string }) {
+  async publishVersion(adminId: string, code: string, input: { localizations: Record<string, { title?: string; text?: string } | undefined>; requiresReacceptance: boolean; effectiveAt?: string | null; note?: string }) {
+    // Scheduled: kept aside until its date; the current version stays in force meanwhile.
+    const at = input.effectiveAt ? new Date(input.effectiveAt) : null;
+    if (at && (isNaN(at.getTime()) || at.getTime() > Date.now() + 366 * 86400_000)) throw badRequest('POLICY_DATE_INVALID', 'La fecha de entrada en vigor no es válida (como máximo un año).');
+    const scheduled = !!at && at.getTime() > Date.now() + 60_000;
     const pol = await this.db.one(`select id, default_locale from public.policies where code = $1 and status = 'ACTIVE'`, [code]);
     if (!pol) throw badRequest('POLICY_NOT_FOUND', 'Política no encontrada.');
     const locs = Object.entries(input.localizations ?? {})
@@ -132,6 +145,8 @@ export class PoliciesService {
     );
     const same = cur.length === locs.length && locs.every(([l, v]) => cur.some((c) => c.locale === l && c.title === v.title && c.text === v.text));
     if (same) throw badRequest('POLICY_UNCHANGED', 'No hay cambios respecto a la versión vigente.');
+    if (scheduled && (await this.db.one(`select 1 from public.policy_versions where policy_id = $1 and status = 'SCHEDULED'`, [pol.id])))
+      throw badRequest('POLICY_ALREADY_SCHEDULED', 'Ya hay una versión programada para esta política. Cancélala antes de programar otra.');
     return this.db.tx(async (c) => {
       const v = (await this.db.one<{ id: string; n: number }>(
         `insert into public.policy_versions (policy_id, version_number, requires_reacceptance, created_by_user_id)
@@ -145,9 +160,33 @@ export class PoliciesService {
           [v.id, l, t.title, JSON.stringify({ text: t.text })],
           c,
         );
+      if (scheduled) {
+        await this.db.exec(`update public.policy_versions set status = 'SCHEDULED', scheduled_at = $2 where id = $1`, [v.id, at], c);
+        return { versionId: v.id, version: v.n, scheduledAt: at!.toISOString() };
+      }
       await this.db.exec(`select public.publish_policy_version($1,$2,now())`, [v.id, adminId], c);
       return { versionId: v.id, version: v.n };
     });
+  }
+
+  /** Cancels a scheduled version (it never takes effect; kept as WITHDRAWN). */
+  async cancelScheduled(code: string, versionId: string) {
+    const r = await this.db.one(
+      `update public.policy_versions v set status = 'WITHDRAWN', withdrawn_at = now()
+         from public.policies p where p.id = v.policy_id and p.code = $1 and v.id = $2 and v.status = 'SCHEDULED' returning v.id`,
+      [code, versionId],
+    );
+    if (!r) throw badRequest('POLICY_NOT_SCHEDULED', 'Esa versión ya no está programada.');
+    return { ok: true };
+  }
+
+  /** Job: publishes the scheduled versions whose date has come (on behalf of who scheduled them). */
+  async publishDue() {
+    const due = await this.db.many<{ id: string; by: string; at: Date }>(
+      `select id, created_by_user_id as by, scheduled_at as at from public.policy_versions where status = 'SCHEDULED' and scheduled_at <= now() order by scheduled_at limit 20`,
+    );
+    for (const d of due) await this.db.tx((c) => this.db.exec(`select public.publish_policy_version($1,$2,$3)`, [d.id, d.by, d.at], c));
+    return due.length;
   }
 
   /** Records acceptance of the given versions (they must be the current ones). */

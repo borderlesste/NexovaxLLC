@@ -9,6 +9,7 @@ import { AffiliatesService } from './promotions/affiliates.service';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AlertsService } from './analytics/alerts.service';
 import { RecommendationsService } from './analytics/recommendations.service';
+import { PoliciesService } from './account/policies.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -26,6 +27,7 @@ export class JobsService {
     private readonly analytics: AnalyticsService,
     private readonly alerts: AlertsService,
     private readonly recommendations: RecommendationsService,
+    private readonly policies: PoliciesService,
   ) {}
 
   /** Shipping settlements that failed at dispatch time (retry). */
@@ -49,6 +51,18 @@ export class JobsService {
       if (n) this.logger.log(`Scheduled payouts requested: ${n}`);
     } catch (e: any) {
       this.logger.warn(`scheduledPayouts: ${e.message}`);
+    }
+  }
+
+  /** Legal policies scheduled for a date take effect (every 5 minutes). */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async scheduledPolicies() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const n = await this.policies.publishDue();
+      if (n) this.logger.log(`Scheduled policies published: ${n}`);
+    } catch (e: any) {
+      this.logger.warn(`scheduled policies: ${e.message}`);
     }
   }
 

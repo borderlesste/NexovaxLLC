@@ -1,5 +1,8 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"La fecha de entrada en vigor no es válida (como máximo un año).": "La date d’entrée en vigueur n’est pas valable (un an maximum).",
+"Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "Une version est déjà programmée pour cette politique. Annulez-la avant d’en programmer une autre.",
+"Esa versión ya no está programada.": "Cette version n’est plus programmée.",
 "La política de disputas no está configurada.": "La politique des litiges n’est pas configurée.",
 "Elige quién paga.": "Choisissez qui paie.",
 "En el reparto compartido, la parte de la tienda va de 1 % a 99 % (hasta 2 decimales).": "En partage, la part de la boutique va de 1 % à 99 % (2 décimales max).",
@@ -309,6 +312,9 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"La fecha de entrada en vigor no es válida (como máximo un año).": "Dat antre an vigè a pa valab (yon ane maksimòm).",
+"Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "Gen yon vèsyon ki deja pwograme pou règ sa a. Anile l anvan ou pwograme yon lòt.",
+"Esa versión ya no está programada.": "Vèsyon sa a pa pwograme ankò.",
 "La política de disputas no está configurada.": "Règ diskisyon yo pa konfigire.",
 "Elige quién paga.": "Chwazi kiyès ki peye.",
 "En el reparto compartido, la parte de la tienda va de 1 % a 99 % (hasta 2 decimales).": "Nan pataj la, pati boutik la soti 1 % rive 99 % (2 desimal maksimòm).",

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
@@ -18,6 +18,8 @@ class PolicyLocalizationsDto {
 export class PublishPolicyDto {
   @ValidateNested() @Type(() => PolicyLocalizationsDto) localizations: PolicyLocalizationsDto;
   @IsBoolean() requiresReacceptance: boolean;
+  /** Empty = now; a future date schedules the version. */
+  @IsOptional() @IsString() @MaxLength(40) effectiveAt?: string;
 }
 
 /** Legal texts: versioned and audited; publishing a version replaces the current one at once. */
@@ -36,5 +38,10 @@ export class PoliciesAdminController {
   publish(@CurrentUser() u: RequestUser, @Param('code') code: string, @Body() dto: PublishPolicyDto) {
     if (!['TERMS_OF_SERVICE', 'PRIVACY_POLICY', 'SELLER_TERMS'].includes(code)) return this.policies.publishVersion(u.id, '__invalid__', dto as any);
     return this.policies.publishVersion(u.id, code, dto as any);
+  }
+
+  @Delete(':code/versions/:id')
+  cancel(@Param('code') code: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.policies.cancelScheduled(code, id);
   }
 }

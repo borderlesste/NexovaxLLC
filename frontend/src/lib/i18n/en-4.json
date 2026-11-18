@@ -872,5 +872,15 @@
 "El cargo fijo que cobra Stripe o PayPal por cada disputa (por ejemplo, 15 US$).": "The fixed fee Stripe or PayPal charges per dispute (e.g. US$ 15).",
 "El cambio aplica a los pedidos pagados desde ahora. Los pedidos anteriores conservan la política con la que se vendieron.": "The change applies to orders paid from now on. Earlier orders keep the policy they were sold under.",
 "Hay {n} disputas abiertas: se resolverán con su política original.": "There are {n} open disputes: they’ll be resolved under their original policy.",
-"Disputas": "Disputes"
+"Disputas": "Disputes",
+"Versión {n} programada para el {d}.": "Version {n} scheduled for {d}.",
+"¿Cancelar la versión programada? No entrará en vigor.": "Cancel the scheduled version? It won’t take effect.",
+"Programación cancelada.": "Schedule cancelled.",
+"Entra en vigor": "Takes effect",
+"Se publicará sola en esa fecha; hasta entonces sigue la versión vigente.": "It will publish itself on that date; until then the current version stays in force.",
+"Vacío: se publica de inmediato.": "Empty: published right away.",
+"Programar nueva versión": "Schedule new version",
+"Programada: {d}": "Scheduled: {d}",
+"Cancelar programación": "Cancel schedule",
+"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "It’s scheduled: on {d} it replaces the current version and is shown in the help center."
 }

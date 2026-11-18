@@ -2388,5 +2388,15 @@
 "El cargo fijo que cobra Stripe o PayPal por cada disputa (por ejemplo, 15 US$).": "Les frais fixes que Stripe ou PayPal facture par litige (par exemple 15 US$).",
 "El cambio aplica a los pedidos pagados desde ahora. Los pedidos anteriores conservan la política con la que se vendieron.": "Le changement s’applique aux commandes payées à partir de maintenant. Les commandes antérieures conservent la politique de leur vente.",
 "Hay {n} disputas abiertas: se resolverán con su política original.": "Il y a {n} litiges ouverts : ils seront résolus selon leur politique d’origine.",
-"Disputas": "Litiges"
+"Disputas": "Litiges",
+"Versión {n} programada para el {d}.": "Version {n} programmée pour le {d}.",
+"¿Cancelar la versión programada? No entrará en vigor.": "Annuler la version programmée ? Elle n’entrera pas en vigueur.",
+"Programación cancelada.": "Programmation annulée.",
+"Entra en vigor": "Entre en vigueur",
+"Se publicará sola en esa fecha; hasta entonces sigue la versión vigente.": "Elle sera publiée automatiquement à cette date ; d’ici là, la version en vigueur reste applicable.",
+"Vacío: se publica de inmediato.": "Vide : publiée immédiatement.",
+"Programar nueva versión": "Programmer une nouvelle version",
+"Programada: {d}": "Programmée : {d}",
+"Cancelar programación": "Annuler la programmation",
+"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "Elle est programmée : le {d}, elle remplace la version en vigueur et s’affiche dans le centre d’aide."
 }

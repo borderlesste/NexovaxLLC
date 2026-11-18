@@ -2388,5 +2388,15 @@
 "El cargo fijo que cobra Stripe o PayPal por cada disputa (por ejemplo, 15 US$).": "Frè fiks Stripe oswa PayPal pran pou chak diskisyon (egzanp, 15 US$).",
 "El cambio aplica a los pedidos pagados desde ahora. Los pedidos anteriores conservan la política con la que se vendieron.": "Chanjman an aplike pou kòmand ki peye apati kounye a. Ansyen kòmand yo kenbe règ yo te vann ak li a.",
 "Hay {n} disputas abiertas: se resolverán con su política original.": "Gen {n} diskisyon ki louvri: y ap rezoud ak règ orijinal yo.",
-"Disputas": "Diskisyon"
+"Disputas": "Diskisyon",
+"Versión {n} programada para el {d}.": "Vèsyon {n} pwograme pou {d}.",
+"¿Cancelar la versión programada? No entrará en vigor.": "Anile vèsyon ki pwograme a? Li p ap antre an vigè.",
+"Programación cancelada.": "Pwogramasyon an anile.",
+"Entra en vigor": "Antre an vigè",
+"Se publicará sola en esa fecha; hasta entonces sigue la versión vigente.": "L ap pibliye poukont li nan dat sa a; jiska lè sa a vèsyon an vigè a rete.",
+"Vacío: se publica de inmediato.": "Vid: li pibliye touswit.",
+"Programar nueva versión": "Pwograme nouvo vèsyon",
+"Programada: {d}": "Pwograme: {d}",
+"Cancelar programación": "Anile pwogramasyon an",
+"Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.": "Li pwograme: {d} li ranplase vèsyon an vigè a epi li parèt nan sant èd la."
 }

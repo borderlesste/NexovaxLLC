@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, FileText, History, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, post } from '@/lib/api';
+import { del, errorMessage, get, post } from '@/lib/api';
 import { cn, fmtDateTime } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -28,6 +28,7 @@ export default function PoliciesPage() {
   const [lang, setLang] = useState<Loc>('es');
   const [texts, setTexts] = useState<Texts>(empty());
   const [reaccept, setReaccept] = useState(false);
+  const [when, setWhen] = useState('');
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const pol = q.data?.find((p) => p.code === code);
@@ -47,8 +48,9 @@ export default function PoliciesPage() {
     try {
       const localizations: any = {};
       for (const [l] of LANGS) if (filled(l)) localizations[l] = { title: texts[l].title.trim(), text: texts[l].text.trim() };
-      const r = await post<any>(`/admin/policies/${code}/versions`, { localizations, requiresReacceptance: reaccept });
-      toast.success(t('Versión {n} publicada.', { n: r.version }));
+      const r = await post<any>(`/admin/policies/${code}/versions`, { localizations, requiresReacceptance: reaccept, ...(when ? { effectiveAt: new Date(when).toISOString() } : {}) });
+      toast.success(r.scheduledAt ? t('Versión {n} programada para el {d}.', { n: r.version, d: fmtDateTime(r.scheduledAt) }) : t('Versión {n} publicada.', { n: r.version }));
+      setWhen('');
       setConfirm(false);
       await qc.invalidateQueries({ queryKey: ['admin-policies'] });
     } catch (e) {
@@ -56,6 +58,10 @@ export default function PoliciesPage() {
     } finally {
       setBusy(false);
     }
+  };
+  const cancelScheduled = async (id: string) => {
+    if (!window.confirm(t('¿Cancelar la versión programada? No entrará en vigor.'))) return;
+    try { await del(`/admin/policies/${code}/versions/${id}`); toast.success(t('Programación cancelada.')); await qc.invalidateQueries({ queryKey: ['admin-policies'] }); } catch (e) { toast.error(errorMessage(e)); }
   };
   if (q.isLoading) return <PageLoader />;
   return (
@@ -99,9 +105,16 @@ export default function PoliciesPage() {
                     ? t('Cada tienda verá un aviso para aceptar la nueva versión la próxima vez que entre. Úsalo para cambios importantes (comisión, obligaciones).')
                     : t('Cada cuenta verá un aviso para aceptar la nueva versión la próxima vez que entre. Úsalo para cambios importantes; para correcciones menores déjalo sin marcar.')}</span></span>
               </label>
+              <div className="mt-4 grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
+                <span className="text-sm font-semibold">{t('Entra en vigor')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input type="datetime-local" value={when} min={new Date(Date.now() + 5 * 60_000).toISOString().slice(0, 16)} onChange={(e) => setWhen(e.target.value)} className="w-56" data-policy-when />
+                  <span className="text-xs text-muted">{when ? t('Se publicará sola en esa fecha; hasta entonces sigue la versión vigente.') : t('Vacío: se publica de inmediato.')}</span>
+                </div>
+              </div>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
                 <Button variant="secondary" disabled={!changed} onClick={() => load(pol)}>{t('Descartar cambios')}</Button>
-                <Button disabled={!changed || !filled('es')} onClick={() => setConfirm(true)} data-policy-publish><Send /> {t('Publicar nueva versión')}</Button>
+                <Button disabled={!changed || !filled('es')} onClick={() => setConfirm(true)} data-policy-publish><Send /> {when ? t('Programar nueva versión') : t('Publicar nueva versión')}</Button>
               </div>
             </div>
           </Card>
@@ -112,10 +125,14 @@ export default function PoliciesPage() {
                 <li key={v.id} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
                   <span>
                     <b>{t('Versión {n}', { n: v.version })}</b>{v.current && <Badge tone="green" className="ml-2">{t('Vigente')}</Badge>}
+                    {v.status === 'SCHEDULED' && <Badge tone="blue" className="ml-2" data-policy-scheduled>{t('Programada: {d}', { d: fmtDateTime(v.scheduledAt) })}</Badge>}
+                    {v.status === 'WITHDRAWN' && <Badge tone="gray" className="ml-2">{t('Cancelada')}</Badge>}
                     {v.requiresReacceptance && <Badge tone="amber" className="ml-2">{t('Pide aceptar de nuevo')}</Badge>}
                     <span className="block text-xs text-muted">{fmtDateTime(v.publishedAt)}{v.publishedBy ? ` · ${v.publishedBy}` : ''}</span>
                   </span>
-                  <span className="text-right text-xs text-muted"><b className="block text-base text-ink">{v.acceptances}</b>{t('aceptaciones')}</span>
+                  {v.status === 'SCHEDULED'
+                    ? <Button size="sm" variant="ghost" onClick={() => cancelScheduled(v.id)} data-policy-cancel>{t('Cancelar programación')}</Button>
+                    : <span className="text-right text-xs text-muted"><b className="block text-base text-ink">{v.acceptances}</b>{t('aceptaciones')}</span>}
                 </li>
               ))}
             </ul>
@@ -130,7 +147,7 @@ export default function PoliciesPage() {
           description={t(pol.name)}
           footer={<><Button variant="secondary" onClick={() => setConfirm(false)}>{t('Cancelar')}</Button><Button loading={busy} onClick={publish} data-policy-confirm><Send /> {t('Publicar')}</Button></>}>
           <ul className="space-y-2 text-sm text-muted">
-            <li>{t('Reemplaza la versión vigente de inmediato y se muestra en el centro de ayuda.')}</li>
+            <li>{when ? t('Queda programada: el {d} reemplaza a la versión vigente y se muestra en el centro de ayuda.', { d: fmtDateTime(new Date(when).toISOString()) }) : t('Reemplaza la versión vigente de inmediato y se muestra en el centro de ayuda.')}</li>
             <li>{t('Idiomas incluidos: {a}.', { a: LANGS.filter(([l]) => filled(l)).map(([, n]) => n).join(', ') })}</li>
             <li className={reaccept ? 'font-semibold text-amber-700' : ''}>{reaccept
               ? t('Todas las cuentas que aceptaron la versión anterior deberán aceptarla de nuevo.')
