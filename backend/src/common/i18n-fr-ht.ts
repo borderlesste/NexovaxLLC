@@ -1,5 +1,13 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"Esta disputa ya no espera respuesta de la tienda.": "Ce litige n’attend plus de réponse de la boutique.",
+"Explica lo ocurrido en 20 a 5000 caracteres.": "Expliquez ce qui s’est passé en 20 à 5000 caractères.",
+"Indica el motivo (mínimo 5 caracteres).": "Indiquez le motif (au moins 5 caractères).",
+"Adjunta como máximo 4 archivos.": "Joignez au maximum 4 fichiers.",
+"Solo se aceptan PDF, JPG o PNG.": "Seuls les PDF, JPG ou PNG sont acceptés.",
+"Cada archivo puede pesar hasta 4 MB.": "Chaque fichier peut peser jusqu’à 4 Mo.",
+"Entre todos los archivos no pueden pasar de 4,5 MB.": "L’ensemble des fichiers ne peut pas dépasser 4,5 Mo.",
+"PayPal no aceptó las pruebas.": "PayPal n’a pas accepté les preuves.",
 "Política no encontrada.": "Politique introuvable.",
 "El texto en español es obligatorio.": "Le texte en espagnol est obligatoire.",
 "No hay cambios respecto a la versión vigente.": "Aucun changement par rapport à la version en vigueur.",
@@ -297,6 +305,14 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"Esta disputa ya no espera respuesta de la tienda.": "Diskisyon sa a pa tann repons boutik la ankò.",
+"Explica lo ocurrido en 20 a 5000 caracteres.": "Esplike sa k te pase nan 20 a 5000 karaktè.",
+"Indica el motivo (mínimo 5 caracteres).": "Bay rezon an (omwen 5 karaktè).",
+"Adjunta como máximo 4 archivos.": "Mete 4 fichye maksimòm.",
+"Solo se aceptan PDF, JPG o PNG.": "Se sèlman PDF, JPG oswa PNG ki aksepte.",
+"Cada archivo puede pesar hasta 4 MB.": "Chak fichye ka peze jiska 4 MB.",
+"Entre todos los archivos no pueden pasar de 4,5 MB.": "Tout fichye yo ansanm pa ka depase 4,5 MB.",
+"PayPal no aceptó las pruebas.": "PayPal pa t aksepte prèv yo.",
 "Política no encontrada.": "Nou pa jwenn règ la.",
 "El texto en español es obligatorio.": "Tèks an panyòl la obligatwa.",
 "No hay cambios respecto a la versión vigente.": "Pa gen chanjman konpare ak vèsyon an vigè a.",

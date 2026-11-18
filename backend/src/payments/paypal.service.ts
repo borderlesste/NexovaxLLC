@@ -66,6 +66,25 @@ export class PaypalService {
     );
   }
 
+  // ---- disputes
+  /** Sends proof (tracking, notes, files) for a dispute waiting on the seller. */
+  async provideDisputeEvidence(disputeId: string, input: unknown, files: { data: Buffer; name: string; type: string }[]) {
+    const form = new FormData();
+    form.append('input', new Blob([JSON.stringify(input)], { type: 'application/json' }), 'input.json');
+    for (const f of files) form.append('evidence-file', new Blob([f.data], { type: f.type }), f.name);
+    const res = await fetch(`${this.base}/v1/customer/disputes/${encodeURIComponent(disputeId)}/provide-evidence`, {
+      method: 'POST', headers: { Authorization: `Bearer ${await this.accessToken()}` }, body: form, signal: AbortSignal.timeout(30_000),
+    });
+    const data: any = await res.json().catch(() => ({}));
+    if (!res.ok) throw new AppError('PAYMENT_PROVIDER_ERROR', 'PayPal no aceptó las pruebas.', HttpStatus.BAD_GATEWAY, { issue: data?.details?.[0]?.issue ?? data?.name });
+    return data;
+  }
+
+  /** Accepts the customer's claim (PayPal refunds them). */
+  acceptClaim(disputeId: string, note: string) {
+    return this.call<any>('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/accept-claim`, { note: note.slice(0, 2000) });
+  }
+
   /** OAuth round-trip used by the status page (no money moves). */
   async ping() {
     this.token = undefined;

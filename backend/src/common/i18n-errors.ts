@@ -4,6 +4,14 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Esta disputa ya no espera respuesta de la tienda.": "This dispute no longer awaits the store’s answer.",
+  "Explica lo ocurrido en 20 a 5000 caracteres.": "Explain what happened in 20 to 5000 characters.",
+  "Indica el motivo (mínimo 5 caracteres).": "Give the reason (at least 5 characters).",
+  "Adjunta como máximo 4 archivos.": "Attach up to 4 files.",
+  "Solo se aceptan PDF, JPG o PNG.": "Only PDF, JPG or PNG are accepted.",
+  "Cada archivo puede pesar hasta 4 MB.": "Each file can be up to 4 MB.",
+  "Entre todos los archivos no pueden pasar de 4,5 MB.": "All files together can’t exceed 4.5 MB.",
+  "PayPal no aceptó las pruebas.": "PayPal didn’t accept the evidence.",
   "Política no encontrada.": "Policy not found.",
   "El texto en español es obligatorio.": "The Spanish text is required.",
   "No hay cambios respecto a la versión vigente.": "There are no changes compared to the current version.",
@@ -372,6 +380,8 @@ export function localizeMessage(msg: string, l: ApiLocale): string {
 
 export function translateMessage(msg: string): string {
   if (EN[msg]) return EN[msg];
+  const dm = /^El procesador no aceptó la respuesta: (.*)$/.exec(msg);
+  if (dm) return `The processor didn’t accept the answer: ${dm[1]}`;
   const pm = /^Revisa el texto en ([A-Z]{2}): título de 3 a 120 caracteres y texto de 30 a 20 000, sin etiquetas HTML\.$/.exec(msg);
   if (pm) return `Check the ${pm[1]} text: title of 3 to 120 characters and text of 30 to 20,000, no HTML tags.`;
   let m = /^(.+) no encontrado\.$/.exec(msg);

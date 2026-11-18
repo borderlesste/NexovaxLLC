@@ -114,6 +114,20 @@ export class StripeService {
     );
   }
 
+  // ---- disputes: evidence and acceptance (the card network decides; Stripe relays)
+  uploadDisputeFile(data: Buffer, name: string, type: string) {
+    return this.stripe.files.create({ purpose: 'dispute_evidence', file: { data, name, type } });
+  }
+
+  submitDisputeEvidence(disputeId: string, evidence: Stripe.DisputeUpdateParams.Evidence) {
+    return this.stripe.disputes.update(disputeId, { evidence, submit: true }, { idempotencyKey: `nx-dispute-evidence-${disputeId}-${Date.now()}` });
+  }
+
+  /** Accepts the dispute (the customer keeps the money). */
+  closeDispute(disputeId: string) {
+    return this.stripe.disputes.close(disputeId);
+  }
+
   /** Cheap authenticated call used by the status page (no money moves). */
   async ping() {
     await this.stripe.balance.retrieve(undefined, { timeout: 5000, maxNetworkRetries: 0 });

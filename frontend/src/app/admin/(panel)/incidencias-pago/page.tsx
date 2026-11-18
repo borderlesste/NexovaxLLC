@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, RefreshCw, Scale, Undo2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw, Scale, Send, Undo2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { fmtDateTime, money } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Textarea } from '@/components/ui/input';
 import { Dialog, Empty, PageLoader } from '@/components/ui/misc';
 import { t } from '@/lib/i18n';
+import { DisputeResponseDialog } from '@/components/admin/dispute-response';
 
 const KIND: Record<string, string> = { DISPUTE: 'Disputa', EXTERNAL_REFUND: 'Reembolso hecho fuera de NEXOVAX', PROVIDER_REVERSAL: 'Reversión del procesador' };
 const OUTCOME: Record<string, string> = { WON: 'Disputa ganada', LOST: 'Disputa perdida', INQUIRY_CLOSED: 'Consulta cerrada sin cargo', ORDER_CANCELLED: 'Registrado como cancelación', REVIEWED: 'Revisado' };
@@ -23,6 +24,7 @@ export default function PaymentIncidentsPage() {
   const q = useQuery({ queryKey: ['payment-incidents', status], queryFn: () => get<any[]>(`/admin/payment-incidents?status=${status}`) });
   const [busy, setBusy] = useState<string | null>(null);
   const [review, setReview] = useState<any>(null);
+  const [respond, setRespond] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const refresh = () => { q.refetch(); qc.invalidateQueries({ queryKey: ['payment-incidents-count'] }); };
   const act = async (id: string, path: string, ok: string, body?: unknown) => {
@@ -73,11 +75,13 @@ export default function PaymentIncidentsPage() {
                   ? t('Se devolvió todo el pedido desde {p}. Si el pedido aún no salió, regístralo como cancelación: se cancela, vuelve el stock y se anula la ganancia de la tienda, sin devolver el dinero otra vez.', { p: i.provider === 'PAYPAL' ? 'PayPal' : 'Stripe' })
                   : t('Es un reembolso parcial o el pedido ya avanzó. Acuerda con la tienda cómo se cubre (devolución o ajuste) y márcalo como revisado.')}</p>
               )}
+              {i.status === 'RESOLVED' && i.kind === 'DISPUTE' && <Button size="sm" variant="ghost" className="mt-2" onClick={() => setRespond(i.id)}>{t('Ver respuesta enviada')}</Button>}
               {i.status === 'RESOLVED' && (
                 <p className="mt-3 text-sm"><span className="font-semibold">{t(OUTCOME[i.outcome] ?? i.outcome)}</span>{i.note && i.outcome === 'REVIEWED' ? ` · ${i.note}` : ''}<span className="text-muted"> · {fmtDateTime(i.resolvedAt)}{i.resolvedBy ? ` · ${i.resolvedBy}` : ''}</span></p>
               )}
               {i.status === 'OPEN' && (
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {i.kind === 'DISPUTE' && <Button size="sm" onClick={() => setRespond(i.id)} data-dispute-respond><Send /> {t('Responder disputa')}</Button>}
                   {i.kind === 'DISPUTE' && i.lastError && <Button size="sm" loading={busy === `${i.id}:retry`} onClick={() => act(i.id, 'retry', 'Resultado de la disputa contabilizado.')}><RefreshCw /> {t('Reintentar')}</Button>}
                   {i.kind !== 'DISPUTE' && i.canCancelOrder && <Button size="sm" loading={busy === `${i.id}:cancel-order`} onClick={() => cancelOrder(i)} data-incident-cancel><Undo2 /> {t('Registrar como cancelación')}</Button>}
                   {i.kind !== 'DISPUTE' && <Button size="sm" variant="outline" onClick={() => { setReview(i); setNote(''); }} data-incident-review><CheckCircle2 /> {t('Marcar como revisado')}</Button>}
@@ -87,6 +91,7 @@ export default function PaymentIncidentsPage() {
           ))}
         </div>
       )}
+      {respond && <DisputeResponseDialog incidentId={respond} onClose={() => setRespond(null)} onDone={refresh} />}
       {review && (
         <Dialog open onOpenChange={(o) => !o && setReview(null)} title={t('Marcar como revisado')} description={`${t(KIND[review.kind])} · ${money(review.amount, review.currency)} · ${review.orderNumber}`}
           footer={<><Button variant="secondary" onClick={() => setReview(null)}>{t('Cancelar')}</Button><Button loading={busy === `${review.id}:review`} disabled={note.trim().length < 5} onClick={async () => { if (await act(review.id, 'review', 'Incidencia cerrada.', { note: note.trim() })) setReview(null); }}>{t('Cerrar incidencia')}</Button></>}>

@@ -1,3 +1,4 @@
+import { DisputeResponseService } from './payments/dispute-response.service';
 import { PoliciesAdminController } from './account/policies.controller';
 import { PoliciesService } from './account/policies.service';
 import { Module } from '@nestjs/common';
@@ -106,6 +107,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     PaymentsService,
     PoliciesService,
     PaymentIncidentsService,
+    DisputeResponseService,
     NotificationsService,
     ReturnsService,
     ReturnPolicyService,
