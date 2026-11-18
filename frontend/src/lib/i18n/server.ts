@@ -7,7 +7,7 @@ const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 /** Marketplace default language ("Idioma predeterminado" in Configuración), cached a minute. */
 async function marketplaceLocale(): Promise<Locale> {
   try {
-    const r = await fetch(`${API}/api/config/public`, { next: { revalidate: 60 } });
+    const r = await fetch(`${API}/api/config/public`, { next: { revalidate: 60 }, signal: AbortSignal.timeout(5000) });
     const l = r.ok ? (await r.json())?.locale : null;
     return isLocale(l) ? l : 'es';
   } catch {
