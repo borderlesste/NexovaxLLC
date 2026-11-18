@@ -307,25 +307,42 @@ export class PaymentIncidentsService {
       [incidentId],
     );
     if (!inc) return;
-    const what = inc.kind === 'DISPUTE' ? 'Disputa' : inc.kind === 'PROVIDER_REVERSAL' ? 'Reversión' : 'Reembolso externo';
+    const p = PROVIDER_LABEL[inc.provider_code as Provider];
     const amt = `${Number(inc.amount).toFixed(2)} ${inc.currency_code}`;
     const ref = orderRef(inc.public_number);
-    const title = event === 'OPENED' ? `${what} en ${PROVIDER_LABEL[inc.provider_code as Provider]}: ${ref}` : event === 'CLOSED' ? `${what} cerrada (${inc.outcome === 'WON' ? 'ganada' : 'perdida'}): ${ref}` : `${what}: no se pudo contabilizar (${ref})`;
-    const body = event === 'OPENED'
-      ? inc.kind === 'DISPUTE'
-        ? `El cliente abrió una disputa por ${amt}. El pago a la tienda de este pedido queda retenido. Responde la disputa en ${PROVIDER_LABEL[inc.provider_code as Provider]} con la prueba de entrega.`
-        : `Se devolvieron ${amt} desde ${PROVIDER_LABEL[inc.provider_code as Provider]}, fuera de NEXOVAX. El pago a la tienda queda retenido hasta que lo registres.`
-      : event === 'CLOSED' ? `Resultado contabilizado por ${amt}.` : 'Revisa el detalle y reintenta.';
-    const admins = await this.db.many<{ id: string }>(
-      `select distinct u.id from public.users u join public.user_roles ur on ur.user_id = u.id and ur.revoked_at is null and (ur.expires_at is null or ur.expires_at > now())
+    const won = inc.outcome === 'WON';
+    const W: Record<string, Record<string, string>> = {
+      es: { DISPUTE: 'Disputa', PROVIDER_REVERSAL: 'Reversión', EXTERNAL_REFUND: 'Reembolso externo' },
+      en: { DISPUTE: 'Dispute', PROVIDER_REVERSAL: 'Reversal', EXTERNAL_REFUND: 'External refund' },
+      fr: { DISPUTE: 'Litige', PROVIDER_REVERSAL: 'Annulation', EXTERNAL_REFUND: 'Remboursement externe' },
+      ht: { DISPUTE: 'Diskisyon', PROVIDER_REVERSAL: 'Ranvèsman', EXTERNAL_REFUND: 'Ranbousman deyò' },
+    };
+    const text = (l: 'es' | 'en' | 'fr' | 'ht') => {
+      const what = W[l][inc.kind];
+      const T = {
+        es: { OPENED: [`${what} en ${p}: ${ref}`, inc.kind === 'DISPUTE' ? `El cliente abrió una disputa por ${amt}. El pago a la tienda de este pedido queda retenido. Responde la disputa desde NEXOVAX o en ${p} con la prueba de entrega.` : `Se devolvieron ${amt} desde ${p}, fuera de NEXOVAX. El pago a la tienda queda retenido hasta que lo registres.`],
+              CLOSED: [`${what} cerrada (${won ? 'ganada' : 'perdida'}): ${ref}`, `Resultado contabilizado por ${amt}.`], FAILED: [`${what}: no se pudo contabilizar (${ref})`, 'Revisa el detalle y reintenta.'] },
+        en: { OPENED: [`${what} at ${p}: ${ref}`, inc.kind === 'DISPUTE' ? `The customer opened a dispute for ${amt}. The store’s payout for this order is on hold. Answer the dispute from NEXOVAX or in ${p} with proof of delivery.` : `${amt} was refunded from ${p}, outside NEXOVAX. The store’s payout is on hold until you record it.`],
+              CLOSED: [`${what} closed (${won ? 'won' : 'lost'}): ${ref}`, `Outcome booked for ${amt}.`], FAILED: [`${what}: couldn’t be booked (${ref})`, 'Check the details and retry.'] },
+        fr: { OPENED: [`${what} chez ${p} : ${ref}`, inc.kind === 'DISPUTE' ? `Le client a ouvert un litige de ${amt}. Le versement à la boutique pour cette commande est suspendu. Répondez au litige depuis NEXOVAX ou dans ${p} avec la preuve de livraison.` : `${amt} ont été remboursés depuis ${p}, hors de NEXOVAX. Le versement à la boutique est suspendu jusqu’à ce que vous l’enregistriez.`],
+              CLOSED: [`${what} clôturé (${won ? 'gagné' : 'perdu'}) : ${ref}`, `Résultat comptabilisé pour ${amt}.`], FAILED: [`${what} : comptabilisation impossible (${ref})`, 'Consultez le détail et réessayez.'] },
+        ht: { OPENED: [`${what} nan ${p}: ${ref}`, inc.kind === 'DISPUTE' ? `Kliyan an louvri yon diskisyon pou ${amt}. Peman boutik la pou kòmand sa a bloke. Reponn diskisyon an depi NEXOVAX oswa nan ${p} ak prèv livrezon.` : `Yo ranbouse ${amt} depi ${p}, andeyò NEXOVAX. Peman boutik la bloke jiskaske w anrejistre l.`],
+              CLOSED: [`${what} fèmen (${won ? 'genyen' : 'pèdi'}): ${ref}`, `Rezilta a anrejistre pou ${amt}.`], FAILED: [`${what}: nou pa t ka anrejistre l (${ref})`, 'Gade detay la epi eseye ankò.'] },
+      }[l][event];
+      return { title: T[0], body: T[1] };
+    };
+    const localized = { es: text('es'), en: text('en'), fr: text('fr'), ht: text('ht') };
+    const admins = await this.db.many<{ id: string; locale: string | null }>(
+      `select distinct u.id, u.locale from public.users u join public.user_roles ur on ur.user_id = u.id and ur.revoked_at is null and (ur.expires_at is null or ur.expires_at > now())
          join public.roles r on r.id = ur.role_id where r.code in ('ADMIN','SUPER_ADMIN') and u.status = 'ACTIVE'`,
     );
     for (const a of admins) {
       await this.notifications.notify(a.id, {
-        category: 'PAYMENTS', eventType: `PAYMENT_INCIDENT_${event}`, title, body, url: '/admin/incidencias-pago',
+        category: 'PAYMENTS', eventType: `PAYMENT_INCIDENT_${event}`, title: localized.es.title, body: localized.es.body, url: '/admin/incidencias-pago', localized,
         entityType: 'PAYMENT_INCIDENT', entityId: inc.id, dedupeKey: `payment-incident:${inc.id}:${event}:${event === 'FAILED' ? Date.now() : ''}`,
       });
-      if (event !== 'CLOSED') this.mail.fire(() => this.mail.paymentIncidentAdmin(a.id, { title, body, dedupeKey: `payment-incident:${inc.id}:${event}:${a.id}` }));
+      const mine = localized[(['es', 'en', 'fr', 'ht'].includes(a.locale ?? '') ? a.locale : 'es') as 'es'];
+      if (event !== 'CLOSED') this.mail.fire(() => this.mail.paymentIncidentAdmin(a.id, { title: mine.title, body: mine.body, dedupeKey: `payment-incident:${inc.id}:${event}:${a.id}` }));
     }
   }
 
@@ -336,13 +353,29 @@ export class PaymentIncidentsService {
     );
     for (const r of rows) {
       const ref = orderRef(r.public_number);
-      const [title, body] = event === 'DISPUTE_OPENED'
-        ? [`Disputa abierta en el pedido ${ref}`, 'El cliente abrió una disputa con su banco o PayPal. El pago de este pedido queda retenido hasta que se resuelva; NEXOVAX te contactará si necesita la prueba de entrega.']
-        : event === 'DISPUTE_WON'
-          ? [`Disputa ganada en el pedido ${ref}`, 'La disputa se resolvió a favor de la tienda. El pago de este pedido sigue su curso normal.']
-          : [`Disputa perdida en el pedido ${ref}`, 'La disputa se resolvió a favor del cliente. El monto disputado se descontó de tu saldo de este pedido.'];
+      const M = {
+        DISPUTE_OPENED: {
+          es: [`Disputa abierta en el pedido ${ref}`, 'El cliente abrió una disputa con su banco o PayPal. El pago de este pedido queda retenido hasta que se resuelva; NEXOVAX te contactará si necesita la prueba de entrega.'],
+          en: [`Dispute opened on order ${ref}`, 'The customer opened a dispute with their bank or PayPal. The payout for this order is on hold until it’s resolved; NEXOVAX will contact you if it needs proof of delivery.'],
+          fr: [`Litige ouvert sur la commande ${ref}`, 'Le client a ouvert un litige auprès de sa banque ou de PayPal. Le versement de cette commande est suspendu jusqu’à sa résolution ; NEXOVAX vous contactera s’il faut une preuve de livraison.'],
+          ht: [`Diskisyon louvri sou kòmand ${ref}`, 'Kliyan an louvri yon diskisyon ak bank li oswa PayPal. Peman kòmand sa a bloke jiskaske l rezoud; NEXOVAX ap kontakte w si l bezwen prèv livrezon.'],
+        },
+        DISPUTE_WON: {
+          es: [`Disputa ganada en el pedido ${ref}`, 'La disputa se resolvió a favor de la tienda. El pago de este pedido sigue su curso normal.'],
+          en: [`Dispute won on order ${ref}`, 'The dispute was resolved in the store’s favor. The payout for this order continues as usual.'],
+          fr: [`Litige gagné sur la commande ${ref}`, 'Le litige a été résolu en faveur de la boutique. Le versement de cette commande suit son cours normal.'],
+          ht: [`Diskisyon genyen sou kòmand ${ref}`, 'Diskisyon an rezoud an favè boutik la. Peman kòmand sa a kontinye nòmalman.'],
+        },
+        DISPUTE_LOST: {
+          es: [`Disputa perdida en el pedido ${ref}`, 'La disputa se resolvió a favor del cliente. La pérdida se aplicó a tu saldo según la política de disputas.'],
+          en: [`Dispute lost on order ${ref}`, 'The dispute was resolved in the customer’s favor. The loss was applied to your balance under the dispute policy.'],
+          fr: [`Litige perdu sur la commande ${ref}`, 'Le litige a été résolu en faveur du client. La perte a été appliquée à votre solde selon la politique des litiges.'],
+          ht: [`Diskisyon pèdi sou kòmand ${ref}`, 'Diskisyon an rezoud an favè kliyan an. Pèt la aplike sou balans ou selon règ diskisyon yo.'],
+        },
+      }[event];
+      const localized = Object.fromEntries(Object.entries(M).map(([l, [title, body]]) => [l, { title, body }]));
       await this.notifications.notify(r.owner_user_id, {
-        category: 'PAYMENTS', eventType: event, title, body, url: `/vendedor/pedidos/${orderId}`, entityType: 'ORDER', entityId: orderId,
+        category: 'PAYMENTS', eventType: event, title: M.es[0], body: M.es[1], localized, url: `/vendedor/pedidos/${orderId}`, entityType: 'ORDER', entityId: orderId,
         dedupeKey: `${event.toLowerCase()}:${incidentId}`,
       });
     }

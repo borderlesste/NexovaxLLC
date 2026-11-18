@@ -2406,5 +2406,13 @@
 "Guardar orden": "Enregistrer l’ordre",
 "Traducción que editas": "Traduction que vous modifiez",
 "Si dejas una traducción vacía, se usa la traducción automática (cuando el texto es el original) o el inglés.": "Si vous laissez une traduction vide, la traduction automatique (quand le texte est l’original) ou l’anglais est utilisé.",
-"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Affichées sur /ayuda#faq. Les traductions sont facultatives."
+"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Affichées sur /ayuda#faq. Les traductions sont facultatives.",
+"{p}: prueba": "{p} : test",
+"{p}: ok": "{p} : ok",
+"{p}: sin respuesta": "{p} : aucune réponse",
+"{n} webhooks fallidos (24 h)": "{n} webhooks en échec (24 h)",
+"{n} ms": "{n} ms",
+"{a} enviados · {b} fallidos (24 h)": "{a} envoyés · {b} en échec (24 h)",
+"{n} en cola": "{n} en attente",
+"el más antiguo hace {h} h": "le plus ancien il y a {h} h"
 }

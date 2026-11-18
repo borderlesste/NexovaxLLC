@@ -79,6 +79,11 @@ export class AnalyticsService {
     await this.notifications.notify(owner.owner_user_id, {
       category: 'STORE', eventType: 'PRODUCT_FAVORITED', title: 'A alguien le gustó tu producto',
       body: `«${title}» se agregó a favoritos. Revisa sus estadísticas: una oferta o un cupón puede convertir ese interés en venta.`,
+      localized: {
+        en: { title: 'Someone liked your product', body: `“${title}” was added to favorites. Check its statistics: a deal or a coupon can turn that interest into a sale.` },
+        fr: { title: 'Quelqu’un a aimé votre produit', body: `« ${title} » a été ajouté aux favoris. Consultez ses statistiques : une offre ou un coupon peut transformer cet intérêt en vente.` },
+        ht: { title: 'Yon moun renmen pwodwi ou', body: `«${title}» ajoute nan favori. Gade estatistik li: yon òf oswa yon koupon ka fè enterè sa a tounen yon vant.` },
+      },
       url: '/vendedor/estadisticas', entityType: 'PRODUCT', entityId: productId, dedupeKey: `favorite:${productId}:${day}`,
     });
   }

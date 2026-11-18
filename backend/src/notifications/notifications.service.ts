@@ -1,3 +1,4 @@
+import { mailRuntime } from '../mail/mail.templates';
 import { Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { badRequest } from '../common/errors';
@@ -15,6 +16,8 @@ export interface NoticeInput {
   entityType?: string | null;
   entityId?: string | null;
   dedupeKey?: string | null;
+  /** Same notice in each language; the recipient's language is used (title/body above = fallback). */
+  localized?: Partial<Record<'es' | 'en' | 'fr' | 'ht', { title: string; body?: string | null }>>;
 }
 
 /** E-mail template → notification category (anything not listed is ACCOUNT, always delivered). */
@@ -56,6 +59,12 @@ export class NotificationsService {
     if (!userId) return;
     try {
       if (!(await this.enabled(userId, n.category, 'IN_APP'))) return;
+      if (n.localized) {
+        const u = await this.db.one<{ locale: string | null }>(`select locale from public.users where id = $1`, [userId]);
+        const l = (['es', 'en', 'fr', 'ht'].includes(u?.locale ?? '') ? u!.locale : mailRuntime.locale) as 'es' | 'en' | 'fr' | 'ht';
+        const pick = n.localized[l] ?? n.localized.es;
+        if (pick) n = { ...n, title: pick.title, body: pick.body ?? n.body };
+      }
       const url = n.url ? n.url.replace(/^https?:\/\/[^/]+/, '') || '/' : null;
       await this.db.exec(
         `insert into public.notifications (user_id, category_code, event_type, entity_type, entity_id, deduplication_key, title, body, payload, status, visible_at)

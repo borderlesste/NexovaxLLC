@@ -389,7 +389,12 @@ export class AffiliatesService {
     }
     await this.notifications.notify(userId, {
       category: 'PAYMENTS', eventType: 'AFFILIATE_PAID', title: 'Te pagamos tus comisiones de afiliado',
-      body: `Enviamos ${total.toFixed(2)} a tu método de cobro (referencia ${ref}).`, url: '/cuenta/afiliados', entityType: 'USER', entityId: userId, dedupeKey: `affiliate-paid:${corr}`,
+      body: `Enviamos ${total.toFixed(2)} a tu método de cobro (referencia ${ref}).`,
+      localized: {
+        en: { title: 'We paid your affiliate commissions', body: `We sent ${total.toFixed(2)} to your payout method (reference ${ref}).` },
+        fr: { title: 'Nous avons versé vos commissions d’affiliation', body: `Nous avons envoyé ${total.toFixed(2)} sur votre moyen de versement (référence ${ref}).` },
+        ht: { title: 'Nou peye komisyon afilye ou yo', body: `Nou voye ${total.toFixed(2)} sou metòd peman ou (referans ${ref}).` },
+      }, url: '/cuenta/afiliados', entityType: 'USER', entityId: userId, dedupeKey: `affiliate-paid:${corr}`,
     });
     return { paid: total.toFixed(2), earnings: earnings.length };
   }
@@ -408,6 +413,11 @@ export class AffiliatesService {
       await this.notifications.notify(e.referrer_id, {
         category: 'PAYMENTS', eventType: 'AFFILIATE_EARNING', title: 'Ganaste una comisión de afiliado',
         body: `Una compra en ${e.store} con tu enlace te generó ${Number(e.amount).toFixed(2)}. Estará disponible tras la entrega y el plazo de devolución.`,
+        localized: {
+          en: { title: 'You earned an affiliate commission', body: `A purchase at ${e.store} through your link earned you ${Number(e.amount).toFixed(2)}. It becomes available after delivery and the return window.` },
+          fr: { title: 'Vous avez gagné une commission d’affiliation', body: `Un achat chez ${e.store} via votre lien vous a rapporté ${Number(e.amount).toFixed(2)}. Elle sera disponible après la livraison et le délai de retour.` },
+          ht: { title: 'Ou touche yon komisyon afilye', body: `Yon acha nan ${e.store} ak lyen ou ba ou ${Number(e.amount).toFixed(2)}. L ap disponib apre livrezon ak delè retou a.` },
+        },
         url: '/cuenta/afiliados', entityType: 'REFERRAL_COMMISSION', entityId: e.id, dedupeKey: `affiliate-earning:${e.id}`,
       });
     const due = await this.db.many(
@@ -427,6 +437,11 @@ export class AffiliatesService {
           await this.notifications.notify(d.referrer_id, {
             category: 'PAYMENTS', eventType: 'AFFILIATE_AVAILABLE', title: 'Tu comisión de afiliado ya está disponible',
             body: 'La compra se entregó y pasó el plazo de devolución. Te la pagaremos al método de cobro que registraste.', url: '/cuenta/afiliados',
+            localized: {
+              en: { title: 'Your affiliate commission is available', body: 'The purchase was delivered and the return window passed. We’ll pay it to the payout method you registered.' },
+              fr: { title: 'Votre commission d’affiliation est disponible', body: 'L’achat a été livré et le délai de retour est passé. Nous la verserons sur le moyen que vous avez enregistré.' },
+              ht: { title: 'Komisyon afilye ou disponib', body: 'Acha a livre epi delè retou a pase. N ap peye l sou metòd peman ou anrejistre a.' },
+            },
             entityType: 'REFERRAL_COMMISSION', entityId: d.earning_id, dedupeKey: `affiliate-available:${d.earning_id}`,
           });
         }

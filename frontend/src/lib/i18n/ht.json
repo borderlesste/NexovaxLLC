@@ -2406,5 +2406,13 @@
 "Guardar orden": "Sere lòd la",
 "Traducción que editas": "Tradiksyon w ap modifye",
 "Si dejas una traducción vacía, se usa la traducción automática (cuando el texto es el original) o el inglés.": "Si w kite yon tradiksyon vid, n ap itilize tradiksyon otomatik la (lè tèks la se orijinal la) oswa anglè a.",
-"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Yo parèt nan /ayuda#faq. Tradiksyon yo opsyonèl."
+"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Yo parèt nan /ayuda#faq. Tradiksyon yo opsyonèl.",
+"{p}: prueba": "{p}: tès",
+"{p}: ok": "{p}: ok",
+"{p}: sin respuesta": "{p}: pa gen repons",
+"{n} webhooks fallidos (24 h)": "{n} webhook ki echwe (24 h)",
+"{n} ms": "{n} ms",
+"{a} enviados · {b} fallidos (24 h)": "{a} voye · {b} echwe (24 h)",
+"{n} en cola": "{n} nan liy",
+"el más antiguo hace {h} h": "pi ansyen an gen {h} è"
 }

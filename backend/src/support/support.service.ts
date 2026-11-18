@@ -112,6 +112,11 @@ export class SupportService {
       await this.notifications.notify(s.id, {
         category: 'SUPPORT', eventType: `SUPPORT_TICKET_${priority}`,
         title: `${priority === 'CRITICAL' ? 'Reporte crítico' : 'Reporte de prioridad alta'}: ${code}`,
+        localized: {
+          en: { title: `${priority === 'CRITICAL' ? 'Critical report' : 'High-priority report'}: ${code}`, body: subject },
+          fr: { title: `${priority === 'CRITICAL' ? 'Signalement critique' : 'Signalement de priorité haute'} : ${code}`, body: subject },
+          ht: { title: `${priority === 'CRITICAL' ? 'Rapò kritik' : 'Rapò priyorite wo'}: ${code}`, body: subject },
+        },
         body: subject, url: `/admin/reportes?ticket=${id}`, entityType: 'SUPPORT_TICKET', entityId: id, dedupeKey: `ticket-priority:${id}`,
       });
   }

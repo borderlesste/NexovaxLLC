@@ -75,7 +75,12 @@ export class AccountDeletionService {
     for (const s of staff)
       await this.notifications.notify(s.user_id, {
         category: 'ACCOUNT', eventType: 'ACCOUNT_DELETION_REQUESTED', title: 'Solicitud de eliminación de cuenta',
-        body: `${u!.name || u!.email} pidió eliminar su cuenta.`, url: `${config.webUrl}/admin/usuarios?eliminaciones=1`,
+        body: `${u!.name || u!.email} pidió eliminar su cuenta.`,
+        localized: {
+          en: { title: 'Account deletion request', body: `${u!.name || u!.email} asked to delete their account.` },
+          fr: { title: 'Demande de suppression de compte', body: `${u!.name || u!.email} a demandé la suppression de son compte.` },
+          ht: { title: 'Demann pou efase kont', body: `${u!.name || u!.email} mande efase kont li.` },
+        }, url: `${config.webUrl}/admin/usuarios?eliminaciones=1`,
         entityType: 'ACCOUNT_DELETION', entityId: r!.id, dedupeKey: `account-deletion:${r!.id}`,
       });
     return this.status(user);

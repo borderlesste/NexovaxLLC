@@ -241,7 +241,7 @@ export default function CheckoutPage() {
                 const Icon = PAY_ICONS[m.code] ?? CreditCard;
                 const sel = method === m.code;
                 return (
-                  <button key={m.code} disabled={!m.available} title={m.reason} onClick={() => setMethod(m.code)}
+                  <button key={m.code} disabled={!m.available} title={m.reason ? t(m.reason) : undefined} onClick={() => setMethod(m.code)}
                     className={cn('flex items-center gap-3 rounded-xl border p-3 text-left text-sm font-semibold', sel ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200' : 'border-line', !m.available && 'cursor-not-allowed opacity-50')}>
                     <span className={cn('grid size-4 place-items-center rounded-full border', sel ? 'border-brand-600' : 'border-gray-300')}>{sel && <span className="size-2 rounded-full bg-brand-600" />}</span>
                     <Icon className="size-5 shrink-0" /> <span className="leading-tight">{t(m.name)}{!m.available && <span className="block text-[11px] font-normal text-muted">{t('No disponible')}</span>}</span>

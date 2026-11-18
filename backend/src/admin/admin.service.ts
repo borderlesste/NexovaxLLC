@@ -27,6 +27,8 @@ const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.ro
 /** Products shown in the home page's featured section. */
 const MAX_FEATURED = 12;
 
+type Part = { text: string; vars: Record<string, string | number> };
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -967,7 +969,9 @@ export class AdminService {
     const procs = [stripe && { name: 'Stripe', ...stripe, test: this.stripe.environment === 'TEST' }, paypal && { name: 'PayPal', ...paypal, test: this.paypal.environment === 'TEST' }].filter(Boolean) as any[];
     const failedHooks = (await q(`select count(*)::int as n from public.integration_webhook_receipts where status = 'FAILED' and provider_code in ('STRIPE','PAYPAL') and received_at > now() - interval '24 hours'`, { n: 0 })).n;
     const payStatus = !procs.length ? 'Sin configurar' : procs.every((p) => !p.ok) ? 'Caído' : procs.some((p) => !p.ok) || failedHooks ? 'Con fallas' : procs.some((p) => p.test) ? 'Modo prueba' : 'Operativo';
-    const payDetail = procs.map((p) => `${p.name}: ${p.ok ? (p.test ? 'prueba' : 'ok') : 'sin respuesta'}`).join(' · ') + (failedHooks ? ` · ${failedHooks} webhooks fallidos (24 h)` : '');
+    // Details go as translatable pieces ({text, vars}); `detail` keeps the Spanish string.
+    const payParts: Part[] = procs.map((p) => ({ text: p.ok ? (p.test ? '{p}: prueba' : '{p}: ok') : '{p}: sin respuesta', vars: { p: p.name } }));
+    if (failedHooks) payParts.push({ text: '{n} webhooks fallidos (24 h)', vars: { n: failedHooks } });
 
     // E-mail: key configured, switch on, and how the last day's deliveries went.
     const mail = await q(`select count(*) filter (where status = 'SENT')::int as sent, count(*) filter (where status = 'FAILED')::int as failed from public.email_deliveries where created_at > now() - interval '24 hours'`, { sent: 0, failed: 0 });
@@ -978,14 +982,17 @@ export class AdminService {
     const modStatus = s['features.mandatory_moderation'] === false ? 'Desactivado' : mod.n && mod.oldest > 48 * 3600 ? 'Con retraso' : 'Operativo';
 
     const ship = config.shippoApiKey ? (config.shippoApiKey.startsWith('shippo_test_') ? 'Modo prueba' : 'Operativo') : 'Sin configurar';
+    const modParts: Part[] = [{ text: '{n} en cola', vars: { n: mod.n } }];
+    if (mod.n && mod.oldest) modParts.push({ text: 'el más antiguo hace {h} h', vars: { h: Math.round(mod.oldest / 3600) } });
+    const ms = (n: number): Part[] => [{ text: '{n} ms', vars: { n } }];
     return [
-      { code: 'API', name: 'API', description: 'Servicios de integración y acceso.', status: !db.ok ? 'Caído' : db.ms > 1500 ? 'Con retraso' : 'Operativo', detail: `${db.ms} ms`, latencyMs: db.ms },
-      { code: 'PAYMENTS', name: 'Pagos', description: 'Procesamiento de transacciones.', status: payStatus, detail: payDetail || null },
-      { code: 'STORAGE', name: 'Almacenamiento', description: 'Archivos, imágenes y recursos.', status: !storage ? 'Sin configurar' : storage.ok ? 'Operativo' : 'Caído', detail: storage ? `${storage.ms} ms` : null },
-      { code: 'SHIPPING', name: 'Envíos (Shippo)', description: 'Tarifas en vivo, etiquetas y rastreo.', status: s['shipping.shippo_enabled'] === false && ship !== 'Sin configurar' ? 'Desactivado' : ship, detail: null },
-      { code: 'EMAIL', name: 'Correo (Resend)', description: 'Notificaciones transaccionales.', status: mailStatus, detail: `${mail.sent} enviados · ${mail.failed} fallidos (24 h)` },
-      { code: 'MODERATION', name: 'Moderación', description: 'Cola de revisión y aprobaciones.', status: modStatus, detail: `${mod.n} en cola${mod.n && mod.oldest ? ` · el más antiguo hace ${Math.round(mod.oldest / 3600)} h` : ''}` },
-    ];
+      { code: 'API', name: 'API', description: 'Servicios de integración y acceso.', status: !db.ok ? 'Caído' : db.ms > 1500 ? 'Con retraso' : 'Operativo', details: ms(db.ms), latencyMs: db.ms },
+      { code: 'PAYMENTS', name: 'Pagos', description: 'Procesamiento de transacciones.', status: payStatus, details: payParts },
+      { code: 'STORAGE', name: 'Almacenamiento', description: 'Archivos, imágenes y recursos.', status: !storage ? 'Sin configurar' : storage.ok ? 'Operativo' : 'Caído', details: storage ? ms(storage.ms) : [] },
+      { code: 'SHIPPING', name: 'Envíos (Shippo)', description: 'Tarifas en vivo, etiquetas y rastreo.', status: s['shipping.shippo_enabled'] === false && ship !== 'Sin configurar' ? 'Desactivado' : ship, details: [] as Part[] },
+      { code: 'EMAIL', name: 'Correo (Resend)', description: 'Notificaciones transaccionales.', status: mailStatus, details: <Part[]>[{ text: '{a} enviados · {b} fallidos (24 h)', vars: { a: mail.sent, b: mail.failed } }] },
+      { code: 'MODERATION', name: 'Moderación', description: 'Cola de revisión y aprobaciones.', status: modStatus, details: modParts },
+    ].map((x) => ({ ...x, detail: x.details.length ? x.details.map((d) => d.text.replace(/\{(\w+)\}/g, (_, k) => String(d.vars[k]))).join(' · ') : null }));
   }
 
 

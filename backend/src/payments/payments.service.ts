@@ -522,6 +522,11 @@ export class PaymentsService {
     await this.notifications.notify(userId, {
       category: 'PAYMENTS', eventType: 'PAYMENT_DECLINED', title: 'No se pudo completar tu pago',
       body: `El pago con ${via} fue rechazado y no se te cobró. Tus productos siguen en el carrito: puedes intentar de nuevo con otro medio de pago.`,
+      localized: {
+        en: { title: 'Your payment couldn’t be completed', body: `The ${via === 'tarjeta' ? 'card' : via} payment was declined and you weren’t charged. Your items are still in your cart: you can try again with another payment method.` },
+        fr: { title: 'Votre paiement n’a pas pu être finalisé', body: `Le paiement par ${via === 'tarjeta' ? 'carte' : via} a été refusé et vous n’avez pas été débité. Vos articles sont toujours dans votre panier : vous pouvez réessayer avec un autre moyen de paiement.` },
+        ht: { title: 'Peman ou pa t ka fini', body: `Peman ak ${via === 'tarjeta' ? 'kat' : via} la refize epi yo pa t retire lajan sou ou. Atik ou yo toujou nan panye ou: ou ka eseye ankò ak yon lòt metòd peman.` },
+      },
       url: '/carrito', entityType: 'PAYMENT', entityId: paymentId, dedupeKey: `payment-declined:${paymentId}`,
     });
   }

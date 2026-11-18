@@ -890,5 +890,13 @@
 "Guardar orden": "Save order",
 "Traducción que editas": "Translation you’re editing",
 "Si dejas una traducción vacía, se usa la traducción automática (cuando el texto es el original) o el inglés.": "If you leave a translation empty, the automatic translation (when the text is the original one) or the English text is used.",
-"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Shown at /ayuda#faq. Translations are optional."
+"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Shown at /ayuda#faq. Translations are optional.",
+"{p}: prueba": "{p}: test",
+"{p}: ok": "{p}: ok",
+"{p}: sin respuesta": "{p}: no response",
+"{n} webhooks fallidos (24 h)": "{n} failed webhooks (24 h)",
+"{n} ms": "{n} ms",
+"{a} enviados · {b} fallidos (24 h)": "{a} sent · {b} failed (24 h)",
+"{n} en cola": "{n} in queue",
+"el más antiguo hace {h} h": "oldest {h} h ago"
 }
