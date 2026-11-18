@@ -46,9 +46,9 @@ export interface BankTransferSettings {
   instructions: string;
 }
 
-export interface HelpFaq { q: string; a: string; qEn?: string; aEn?: string }
-export interface HelpSection { title: string; body: string; titleEn?: string; bodyEn?: string }
-export interface HelpCommissions { body: string; bodyEn?: string; showRate: boolean; showPayoutMinimum: boolean }
+export interface HelpFaq { q: string; a: string; qEn?: string; aEn?: string; qFr?: string; aFr?: string; qHt?: string; aHt?: string }
+export interface HelpSection { title: string; body: string; titleEn?: string; bodyEn?: string; titleFr?: string; bodyFr?: string; titleHt?: string; bodyHt?: string }
+export interface HelpCommissions { body: string; bodyEn?: string; bodyFr?: string; bodyHt?: string; showRate: boolean; showPayoutMinimum: boolean }
 export type SocialNetwork = 'facebook' | 'instagram' | 'youtube' | 'x' | 'tiktok' | 'linkedin' | 'whatsapp' | 'pinterest';
 export interface SocialLink { network: SocialNetwork; url: string }
 

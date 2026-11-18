@@ -11,9 +11,11 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Switch } from '@/components/ui/misc';
 import { SOCIAL_ICONS, SOCIAL_NAMES } from '@/components/layout/social-icons';
 
-type Faq = { q: string; a: string; qEn?: string; aEn?: string };
-type Section = { title: string; body: string; titleEn?: string; bodyEn?: string };
-type Commissions = { body: string; bodyEn?: string; showRate: boolean; showPayoutMinimum: boolean };
+type Faq = { q: string; a: string; [k: string]: string | undefined };
+type Section = { title: string; body: string; [k: string]: string | undefined };
+type Commissions = { body: string; bodyEn?: string; bodyFr?: string; bodyHt?: string; showRate: boolean; showPayoutMinimum: boolean };
+type Lang = 'En' | 'Fr' | 'Ht';
+const LANGS: [Lang, string][] = [['En', 'English'], ['Fr', 'Français'], ['Ht', 'Kreyòl ayisyen']];
 type Social = { network: string; url: string };
 
 const move = <T,>(list: T[], i: number, d: number) => {
@@ -42,6 +44,8 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
   const [com, setCom] = useState<Commissions>(settings['help.commissions'] ?? { body: '', showRate: true, showPayoutMinimum: true });
   const [social, setSocial] = useState<Social[]>(settings['social.links'] ?? []);
   const [busy, setBusy] = useState<string | null>(null);
+  const [lang, setLang] = useState<Lang>('En');
+  const langName = LANGS.find((x) => x[0] === lang)![1];
   useEffect(() => {
     setFaq(settings['help.faq'] ?? []);
     setSections(settings['help.sellers']?.sections ?? []);
@@ -64,17 +68,22 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
   const used = new Set(social.map((s) => s.network));
   return (
     <>
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-3 text-sm" data-help-lang>
+        <span className="font-semibold">{t('Traducción que editas')}:</span>
+        {LANGS.map(([l, n]) => <Button key={l} size="sm" variant={lang === l ? 'primary' : 'outline'} onClick={() => setLang(l)} data-help-lang-btn={l}>{n}</Button>)}
+        <span className="text-xs text-muted">{t('Si dejas una traducción vacía, se usa la traducción automática (cuando el texto es el original) o el inglés.')}</span>
+      </div>
       <Card data-help-faq>
-        <CardHeader icon={<BookOpen />} title={t('Preguntas frecuentes')} subtitle={t('Se muestran en /ayuda#faq. El inglés es opcional: si lo dejas vacío se usa la traducción automática.')} />
+        <CardHeader icon={<BookOpen />} title={t('Preguntas frecuentes')} subtitle={t('Se muestran en /ayuda#faq. Las traducciones son opcionales.')} />
         <div className="space-y-3 p-5">
           {faq.map((f, i) => (
             <div key={i} className="rounded-xl border border-line p-4" data-faq-row>
               <div className="flex items-start gap-2">
                 <div className="grid flex-1 gap-3 lg:grid-cols-2">
                   <Field label={`${t('Pregunta')} ${i + 1}`} required><Input value={f.q} maxLength={200} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, q: e.target.value } : x)))} /></Field>
-                  <Field label={t('Pregunta (inglés)')}><Input value={f.qEn ?? ''} maxLength={200} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, qEn: e.target.value } : x)))} /></Field>
+                  <Field label={`${t('Pregunta')} (${langName})`}><Input value={f[`q${lang}`] ?? ''} maxLength={200} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, [`q${lang}`]: e.target.value } : x)))} data-faq-tr-q /></Field>
                   <Field label={t('Respuesta')} required><Textarea rows={3} value={f.a} maxLength={2000} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /></Field>
-                  <Field label={t('Respuesta (inglés)')}><Textarea rows={3} value={f.aEn ?? ''} maxLength={2000} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, aEn: e.target.value } : x)))} /></Field>
+                  <Field label={`${t('Respuesta')} (${langName})`}><Textarea rows={3} value={f[`a${lang}`] ?? ''} maxLength={2000} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, [`a${lang}`]: e.target.value } : x)))} data-faq-tr-a /></Field>
                 </div>
                 <RowTools i={i} n={faq.length} onMove={(d) => setFaq(move(faq, i, d))} onRemove={() => setFaq(faq.filter((_, j) => j !== i))} />
               </div>
@@ -95,9 +104,9 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
               <div className="flex items-start gap-2">
                 <div className="grid flex-1 gap-3 lg:grid-cols-2">
                   <Field label={`${t('Título')} ${i + 1}`} required><Input value={x.title} maxLength={120} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)))} /></Field>
-                  <Field label={t('Título (inglés)')}><Input value={x.titleEn ?? ''} maxLength={120} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, titleEn: e.target.value } : s)))} /></Field>
+                  <Field label={`${t('Título')} (${langName})`}><Input value={x[`title${lang}`] ?? ''} maxLength={120} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, [`title${lang}`]: e.target.value } : s)))} /></Field>
                   <Field label={t('Texto')} required><Textarea rows={3} value={x.body} maxLength={3000} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, body: e.target.value } : s)))} /></Field>
-                  <Field label={t('Texto (inglés)')}><Textarea rows={3} value={x.bodyEn ?? ''} maxLength={3000} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, bodyEn: e.target.value } : s)))} /></Field>
+                  <Field label={`${t('Texto')} (${langName})`}><Textarea rows={3} value={x[`body${lang}`] ?? ''} maxLength={3000} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, [`body${lang}`]: e.target.value } : s)))} /></Field>
                 </div>
                 <RowTools i={i} n={sections.length} onMove={(d) => setSections(move(sections, i, d))} onRemove={() => setSections(sections.filter((_, j) => j !== i))} />
               </div>
@@ -115,7 +124,7 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
         <div className="space-y-4 p-5">
           <div className="grid gap-3 lg:grid-cols-2">
             <Field label={t('Texto')} required><Textarea rows={4} value={com.body} maxLength={3000} onChange={(e) => setCom({ ...com, body: e.target.value })} data-commissions-body /></Field>
-            <Field label={t('Texto (inglés)')}><Textarea rows={4} value={com.bodyEn ?? ''} maxLength={3000} onChange={(e) => setCom({ ...com, bodyEn: e.target.value })} /></Field>
+            <Field label={`${t('Texto')} (${langName})`}><Textarea rows={4} value={(com as any)[`body${lang}`] ?? ''} maxLength={3000} onChange={(e) => setCom({ ...com, [`body${lang}`]: e.target.value })} /></Field>
           </div>
           <div className="flex flex-wrap gap-6 text-sm">
             <label className="flex items-center gap-2"><Switch checked={com.showRate} onCheckedChange={(v) => setCom({ ...com, showRate: v })} /> {t('Mostrar la comisión vigente')}</label>

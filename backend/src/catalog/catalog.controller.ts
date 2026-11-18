@@ -70,6 +70,8 @@ export class CatalogController {
       commissions: {
         body: c.body,
         bodyEn: c.bodyEn ?? null,
+        bodyFr: c.bodyFr ?? null,
+        bodyHt: c.bodyHt ?? null,
         rate: c.showRate && rate ? Number(rate.rate) : null,
         payoutMinimum: c.showPayoutMinimum && payout ? payout.minimum : null,
         holdDays: payout ? Math.round(Number(payout.hold) / 86400) : null,

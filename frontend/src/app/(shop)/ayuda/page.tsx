@@ -20,9 +20,9 @@ const TOPICS = [
 ] as const;
 
 type Help = {
-  faq: { q: string; a: string; qEn?: string; aEn?: string }[];
-  sellers: { title: string; body: string; titleEn?: string; bodyEn?: string }[];
-  commissions: { body: string; bodyEn?: string | null; rate: number | null; payoutMinimum: string | null; holdDays: number | null; currency: string };
+  faq: { q: string; a: string; qEn?: string; aEn?: string; qFr?: string; aFr?: string; qHt?: string; aHt?: string }[];
+  sellers: { title: string; body: string; titleEn?: string; bodyEn?: string; titleFr?: string; bodyFr?: string; titleHt?: string; bodyHt?: string }[];
+  commissions: { body: string; bodyEn?: string | null; bodyFr?: string | null; bodyHt?: string | null; rate: number | null; payoutMinimum: string | null; holdDays: number | null; currency: string };
 };
 
 export default async function HelpPage() {
@@ -34,7 +34,8 @@ export default async function HelpPage() {
   const policies = await serverGet<any[]>('/policies', 300);
   // English: the admin's own translation, else the automatic one.
   // French / Creole: our translation when the text is the stock one, else the English version, else Spanish.
-  const tr = (es: string, eng?: string | null) => (locale === 'es' ? es : en ? eng || t(es) : has(es) ? t(es) : eng || es);
+  const tr = (es: string, eng?: string | null, own?: string | null) => (locale === 'es' ? es : en ? eng || t(es) : own || (has(es) ? t(es) : eng || es));
+  const L = locale === 'fr' ? 'Fr' : locale === 'ht' ? 'Ht' : 'En';
   const numLocale = ({ es: 'es-US', en: 'en-US', fr: 'fr-FR', ht: 'fr-HT' } as const)[locale];
   const fmt = (v: string, cur: string) => new Intl.NumberFormat(numLocale, { style: 'currency', currency: cur }).format(Number(v));
   return (
@@ -58,8 +59,8 @@ export default async function HelpPage() {
         <div className="mt-4 divide-y divide-line">
           {(help?.faq ?? []).map((f, i) => (
             <details key={i} className="group py-4" data-faq-item>
-              <summary className="cursor-pointer list-none font-semibold group-open:text-brand-700">{tr(f.q, f.qEn)}</summary>
-              <p className="mt-2 whitespace-pre-line text-sm text-muted">{tr(f.a, f.aEn)}</p>
+              <summary className="cursor-pointer list-none font-semibold group-open:text-brand-700">{tr(f.q, f.qEn, (f as any)[`q${L}`])}</summary>
+              <p className="mt-2 whitespace-pre-line text-sm text-muted">{tr(f.a, f.aEn, (f as any)[`a${L}`])}</p>
             </details>
           ))}
         </div>
@@ -69,8 +70,8 @@ export default async function HelpPage() {
         <div className="mt-4 grid gap-4 sm:grid-cols-2" data-seller-help>
           {(help?.sellers ?? []).map((x, i) => (
             <div key={i} className="rounded-xl bg-surface p-4">
-              <p className="font-bold">{tr(x.title, x.titleEn)}</p>
-              <p className="mt-1 whitespace-pre-line text-sm text-muted">{tr(x.body, x.bodyEn)}</p>
+              <p className="font-bold">{tr(x.title, x.titleEn, (x as any)[`title${L}`])}</p>
+              <p className="mt-1 whitespace-pre-line text-sm text-muted">{tr(x.body, x.bodyEn, (x as any)[`body${L}`])}</p>
             </div>
           ))}
         </div>
@@ -85,7 +86,7 @@ export default async function HelpPage() {
               {help.commissions.payoutMinimum != null && <div className="rounded-xl bg-brand-50 px-4 py-3"><p className="text-xs text-muted">{t('Retiro mínimo')}</p><p className="text-2xl font-extrabold text-brand-700">{fmt(help.commissions.payoutMinimum, help.commissions.currency)}</p></div>}
             </div>
           )}
-          <p className="mt-3 whitespace-pre-line text-muted">{tr(help.commissions.body, help.commissions.bodyEn)}</p>
+          <p className="mt-3 whitespace-pre-line text-muted">{tr(help.commissions.body, help.commissions.bodyEn, (help.commissions as any)[`body${L}`])}</p>
         </section>
       )}
       {/* Legal texts: the exact published versions people accept at sign-up and store registration. */}

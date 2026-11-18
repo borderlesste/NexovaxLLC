@@ -887,5 +887,8 @@
 "Orden en la portada": "Order on the home page",
 "Los productos destacados se muestran en este orden. Usa las flechas y guarda.": "Featured products are shown in this order. Use the arrows and save.",
 "No publicado: no se muestra": "Not published: not shown",
-"Guardar orden": "Save order"
+"Guardar orden": "Save order",
+"Traducción que editas": "Translation you’re editing",
+"Si dejas una traducción vacía, se usa la traducción automática (cuando el texto es el original) o el inglés.": "If you leave a translation empty, the automatic translation (when the text is the original one) or the English text is used.",
+"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Shown at /ayuda#faq. Translations are optional."
 }

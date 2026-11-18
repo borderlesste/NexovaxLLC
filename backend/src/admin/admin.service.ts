@@ -1100,25 +1100,25 @@ function validateHelpAndSocial(s: Record<string, any>) {
   if (faq != null) {
     if (!Array.isArray(faq) || faq.length > 40) throw badRequest('HELP_INVALID', 'Máximo 40 preguntas frecuentes.');
     faq.forEach((f: any, i: number) => {
-      if (!f || !multi(f.q, 5, 200) || !multi(f.a, 5, 2000) || !optional(f.qEn, 5, 200) || !optional(f.aEn, 5, 2000))
+      if (!f || !multi(f.q, 5, 200) || !multi(f.a, 5, 2000) || ['En', 'Fr', 'Ht'].some((l) => !optional(f[`q${l}`], 5, 200) || !optional(f[`a${l}`], 5, 2000)))
         throw badRequest('HELP_INVALID', `Revisa la pregunta ${i + 1}: pregunta de 5 a 200 caracteres y respuesta de 5 a 2.000, sin etiquetas.`);
     });
-    s['help.faq'] = faq.map((f: any) => clean(f, ['q', 'a', 'qEn', 'aEn']));
+    s['help.faq'] = faq.map((f: any) => clean(f, ['q', 'a', 'qEn', 'aEn', 'qFr', 'aFr', 'qHt', 'aHt']));
   }
   const sellers = s['help.sellers'];
   if (sellers != null) {
     if (typeof sellers !== 'object' || !Array.isArray(sellers.sections) || sellers.sections.length > 12) throw badRequest('HELP_INVALID', 'Máximo 12 secciones de ayuda para vendedores.');
     sellers.sections.forEach((x: any, i: number) => {
-      if (!x || !multi(x.title, 3, 120) || !multi(x.body, 5, 3000) || !optional(x.titleEn, 3, 120) || !optional(x.bodyEn, 5, 3000))
+      if (!x || !multi(x.title, 3, 120) || !multi(x.body, 5, 3000) || ['En', 'Fr', 'Ht'].some((l) => !optional(x[`title${l}`], 3, 120) || !optional(x[`body${l}`], 5, 3000)))
         throw badRequest('HELP_INVALID', `Revisa la sección ${i + 1} de vendedores: título de 3 a 120 caracteres y texto de 5 a 3.000.`);
     });
-    s['help.sellers'] = { sections: sellers.sections.map((x: any) => clean(x, ['title', 'body', 'titleEn', 'bodyEn'])) };
+    s['help.sellers'] = { sections: sellers.sections.map((x: any) => clean(x, ['title', 'body', 'titleEn', 'bodyEn', 'titleFr', 'bodyFr', 'titleHt', 'bodyHt'])) };
   }
   const com = s['help.commissions'];
   if (com != null) {
-    if (typeof com !== 'object' || !multi(com.body, 5, 3000) || !optional(com.bodyEn, 5, 3000) || typeof com.showRate !== 'boolean' || typeof com.showPayoutMinimum !== 'boolean')
+    if (typeof com !== 'object' || !multi(com.body, 5, 3000) || ['En', 'Fr', 'Ht'].some((l) => !optional(com[`body${l}`], 5, 3000)) || typeof com.showRate !== 'boolean' || typeof com.showPayoutMinimum !== 'boolean')
       throw badRequest('HELP_INVALID', 'Revisa el texto de comisiones (5 a 3.000 caracteres).');
-    s['help.commissions'] = { ...clean(com, ['body', 'bodyEn']), showRate: com.showRate, showPayoutMinimum: com.showPayoutMinimum };
+    s['help.commissions'] = { ...clean(com, ['body', 'bodyEn', 'bodyFr', 'bodyHt']), showRate: com.showRate, showPayoutMinimum: com.showPayoutMinimum };
   }
   const social = s['social.links'];
   if (social != null) {

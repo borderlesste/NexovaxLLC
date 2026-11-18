@@ -2403,5 +2403,8 @@
 "Orden en la portada": "Ordre sur la page d’accueil",
 "Los productos destacados se muestran en este orden. Usa las flechas y guarda.": "Les produits en vedette s’affichent dans cet ordre. Utilisez les flèches et enregistrez.",
 "No publicado: no se muestra": "Non publié : non affiché",
-"Guardar orden": "Enregistrer l’ordre"
+"Guardar orden": "Enregistrer l’ordre",
+"Traducción que editas": "Traduction que vous modifiez",
+"Si dejas una traducción vacía, se usa la traducción automática (cuando el texto es el original) o el inglés.": "Si vous laissez une traduction vide, la traduction automatique (quand le texte est l’original) ou l’anglais est utilisé.",
+"Se muestran en /ayuda#faq. Las traducciones son opcionales.": "Affichées sur /ayuda#faq. Les traductions sont facultatives."
 }
