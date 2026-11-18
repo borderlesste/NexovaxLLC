@@ -84,6 +84,12 @@ export const config = {
    * Lets the API trust the visitor IP the web forwards in `x-nx-client-ip`.
    */
   proxySharedSecret: secret('PROXY_SHARED_SECRET', 'proxy_shared_secret'),
+  /**
+   * Header the API host's load balancer sets with the visitor IP, for requests that reach the API
+   * directly (uploads and private downloads): e.g. `x-forwarded-for` (last entry is used),
+   * `cf-connecting-ip` or `true-client-ip`. Only read when the socket peer is a private address.
+   */
+  clientIpHeader: (process.env.CLIENT_IP_HEADER ?? '').trim().toLowerCase(),
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',

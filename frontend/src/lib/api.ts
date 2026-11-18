@@ -24,20 +24,29 @@ async function token() {
   return data.session?.access_token ?? null;
 }
 
-/** Calls the NestJS API through the same-origin /api proxy, attaching the Supabase JWT. */
-export async function api<T = any>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
+/**
+ * Public origin of the NestJS API (e.g. https://api.nexovax.com). File uploads and private
+ * downloads go straight there instead of through the /api proxy of the web host, whose
+ * request/response size limits (≈4.5 MB on Vercel) would cut them. Unset: everything uses /api.
+ */
+const DIRECT_API = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '').replace(/\/api$/, '');
+const apiUrl = (path: string, direct?: boolean) => `${direct && DIRECT_API ? DIRECT_API : ''}/api${path}`;
+
+/** Calls the NestJS API through the same-origin /api proxy (or directly, see DIRECT_API), attaching the Supabase JWT. */
+export async function api<T = any>(path: string, init: RequestInit & { json?: unknown; direct?: boolean } = {}): Promise<T> {
+  const { direct, json, ...rest } = init;
   const headers = new Headers(init.headers);
   const t = await token();
   if (t) headers.set('Authorization', `Bearer ${t}`);
   if (sellerContext) headers.set('x-seller-id', sellerContext);
   headers.set('x-locale', getLocale());
   if (analyticsAllowed()) headers.set('x-nx-consent', 'analytics');
-  let body = init.body;
-  if (init.json !== undefined) {
+  let body = rest.body;
+  if (json !== undefined) {
     headers.set('Content-Type', 'application/json');
-    body = JSON.stringify(init.json);
+    body = JSON.stringify(json);
   }
-  const res = await fetch(`/api${path}`, { ...init, headers, body, cache: 'no-store' });
+  const res = await fetch(apiUrl(path, direct), { ...rest, headers, body, cache: 'no-store' });
   if (res.status === 204) return undefined as T;
   const ct = res.headers.get('content-type') ?? '';
   const data = ct.includes('application/json') ? await res.json() : await res.text();
@@ -57,7 +66,7 @@ export const postWithCaptcha = <T = any>(p: string, json: unknown, captchaToken:
   api<T>(p, { method: 'POST', json, headers: captchaToken ? { 'cf-turnstile-response': captchaToken } : undefined });
 export const put = <T = any>(p: string, json?: unknown) => api<T>(p, { method: 'PUT', json: json ?? {} });
 export const del = <T = any>(p: string) => api<T>(p, { method: 'DELETE' });
-export const upload = <T = any>(p: string, form: FormData) => api<T>(p, { method: 'POST', body: form });
+export const upload = <T = any>(p: string, form: FormData) => api<T>(p, { method: 'POST', body: form, direct: true });
 
 export function errorMessage(e: unknown) {
   if (e instanceof ApiError) {
@@ -73,7 +82,7 @@ export async function fetchBlobUrl(path: string): Promise<string> {
   const t = await token();
   if (t) headers.set('Authorization', `Bearer ${t}`);
   if (sellerContext) headers.set('x-seller-id', sellerContext);
-  const res = await fetch(`/api${path}`, { headers, cache: 'no-store' });
+  const res = await fetch(apiUrl(path, true), { headers, cache: 'no-store' });
   if (!res.ok) throw new ApiError(res.status, 'FILE_ERROR', tr('No se pudo abrir el archivo.'));
   return URL.createObjectURL(await res.blob());
 }

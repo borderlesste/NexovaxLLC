@@ -8,10 +8,11 @@ import { config } from '../config';
 /**
  * Real end-user IP, used for rate limiting (our throttler and Supabase Auth).
  *
- * The browser reaches the API through the Next.js /api proxy, so the socket address is
+ * Most browser calls reach the API through the Next.js /api proxy, so the socket address is
  * the web server's. The web middleware forwards the visitor's IP in `x-nx-client-ip`
- * together with a shared secret (`x-nx-proxy-secret`); any other forwarded header is
- * ignored, because a client could forge it.
+ * together with a shared secret (`x-nx-proxy-secret`). Uploads and private downloads come
+ * straight from the browser through the host's load balancer (CLIENT_IP_HEADER). Any other
+ * forwarded header is ignored, because a client could forge it.
  */
 export const PROXY_SECRET_HEADER = 'x-nx-proxy-secret';
 export const CLIENT_IP_HEADER = 'x-nx-client-ip';
@@ -53,6 +54,13 @@ export function resolveClientIp(req: any): ClientIp {
     if (ip && isIP(ip)) return { ip, trusted: true };
   }
   const socket = String(req.socket?.remoteAddress ?? 'unknown').replace(/^::ffff:/, '');
+  // Direct requests (uploads, downloads) arrive through the host's load balancer, on a private address:
+  // read the visitor IP it sets. A public socket peer is the visitor itself and headers are ignored.
+  if (config.clientIpHeader && isPrivate(socket)) {
+    const raw = header(config.clientIpHeader);
+    const value = (config.clientIpHeader === 'x-forwarded-for' ? raw?.split(',').pop() : raw)?.trim().replace(/^::ffff:/, '');
+    if (value && isIP(value)) return { ip: value, trusted: true };
+  }
   return { ip: socket, trusted: isIP(socket) > 0 && !isPrivate(socket) };
 }
 

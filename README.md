@@ -130,7 +130,9 @@ El navegador llama a la API a través del proxy `/api` de Next.js, así que sin 
 - **Configuración:** el mismo valor aleatorio en `PROXY_SHARED_SECRET` en la web y en la API (`.secrets/proxy_shared_secret`; `openssl rand -hex 32`) y `CLIENT_IP_HEADER` en la web. Sin ellas todo funciona, pero los límites de la API se aplican a la IP del servidor web.
 - **Supabase → Authentication → Attack Protection:** activa *Enable IP address forwarding* para que Supabase respete `Sb-Forwarded-For` (solo con claves `sb_secret_…`). El inicio de sesión va directo del navegador a Supabase, así que ahí Supabase ya ve la IP real.
 - **Supabase → Authentication → Rate Limits:** ajusta los límites por IP (inicio de sesión/registro, verificación, renovación de tokens). Los correos de NEXOVAX salen por Resend desde la API, no por el SMTP de Supabase.
-- El middleware procesa el cuerpo de las peticiones `/api/*`: `experimental.middlewareClientMaxBodySize` está en 80 MB para que las subidas (8 imágenes × 8 MB, 4 adjuntos × 10 MB) lleguen completas.
+- **Subidas y descargas privadas van directo a la API** (no por Vercel, cuyo límite de ~4,5 MB por petición las cortaría): con `NEXT_PUBLIC_API_URL` (origen público de la API, p. ej. `https://api.nexovax.com`) el helper `upload()` y `fetchBlobUrl()` llaman a la API sin pasar por `/api`. Requiere `CORS_ORIGINS` en la API con el dominio de la web (p. ej. `https://nexovax.com,https://www.nexovax.com`). Sin `NEXT_PUBLIC_API_URL` todo pasa por `/api` (desarrollo local).
+- **IP en peticiones directas:** llegan por el balanceador del hosting de la API; `CLIENT_IP_HEADER` en la API indica la cabecera que pone ese balanceador (`x-forwarded-for` → se usa la última entrada, `cf-connecting-ip`, `true-client-ip`…). Solo se lee cuando la conexión viene de una dirección privada (el balanceador).
+- `experimental.middlewareClientMaxBodySize` está en 80 MB por si alguna subida pasa por el middleware (sin `NEXT_PUBLIC_API_URL`).
 
 ## Contraseñas filtradas
 

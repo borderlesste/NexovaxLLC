@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+// Uploads and private downloads go straight to the API (see src/lib/api.ts).
+const DIRECT_API = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '').replace(/\/api$/, '');
 const dev = process.env.NODE_ENV !== 'production';
 
 /**
@@ -15,7 +17,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace('https://', 'wss://')} https://api.stripe.com https://*.stripe.com https://*.paypal.com https://www.sandbox.paypal.com https://api-m.paypal.com https://api-m.sandbox.paypal.com`,
+  `connect-src 'self' ${DIRECT_API} ${SUPABASE} ${SUPABASE.replace('https://', 'wss://')} https://api.stripe.com https://*.stripe.com https://*.paypal.com https://www.sandbox.paypal.com https://api-m.paypal.com https://api-m.sandbox.paypal.com`,
   'frame-src https://challenges.cloudflare.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.stripe.com https://www.paypal.com https://*.paypal.com https://www.sandbox.paypal.com',
   "object-src 'none'",
   "base-uri 'self'",
@@ -27,8 +29,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
-    // src/middleware.ts runs on /api/* (visitor IP for rate limits); uploads must reach the API whole:
-    // up to 8 product images × 8 MB and 4 message attachments × 10 MB per request.
+    // src/middleware.ts runs on /api/* (visitor IP for rate limits). Uploads normally go straight to the
+    // API (NEXT_PUBLIC_API_URL); without it they pass here and must arrive whole: up to 8 images × 8 MB.
     middlewareClientMaxBodySize: '80mb',
   },
   // Browser calls /api/* on the same origin; Next proxies to the NestJS API.
