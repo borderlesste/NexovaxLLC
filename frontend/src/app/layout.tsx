@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { Analytics } from '@vercel/analytics/next';
 import { getServerLocale, getT } from '@/lib/i18n/server';
 import { serverGet } from '@/lib/server-api';
 
@@ -25,6 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={inter.variable}>
       <body className="font-sans">
         <Providers locale={locale} currency={cfg?.currency ?? 'USD'}>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
