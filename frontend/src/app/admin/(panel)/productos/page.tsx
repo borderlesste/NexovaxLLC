@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Check, Clock, Download, Eye, FileText, Search, ShieldOff } from 'lucide-react';
+import { Box, Check, Clock, Download, Eye, FileText, Search, ShieldOff, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { money } from '@/lib/utils';
@@ -26,6 +26,15 @@ function AdminProducts() {
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
   const q = useQuery({ queryKey: ['admin-products', status, search, categoryId, page], queryFn: () => get(`/admin/products?status=${status}&search=${encodeURIComponent(search)}&categoryId=${categoryId}&page=${page}`) });
   const c = q.data?.counts;
+  const toggleFeatured = async (p: any) => {
+    try {
+      await post(`/admin/products/${p.id}/featured`, { featured: !p.featured });
+      toast.success(p.featured ? t('Producto quitado de destacados.') : t('Producto destacado en la portada.'));
+      q.refetch();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
   const suspend = async (id: string) => {
     const reason = prompt(t('Motivo de la suspensión / reactivación:')) ?? '';
     try {
@@ -74,6 +83,7 @@ function AdminProducts() {
                       <div className="flex justify-end gap-1">
                         {p.status === 'PENDING_REVIEW' ? <Button size="sm" variant="soft" asChild><Link href={`/admin/moderacion?p=${p.id}`}>{t('Revisar')}</Link></Button>
                           : p.status === 'ACTIVE' ? <Button size="sm" variant="ghost" asChild><Link href={`/producto/${p.slug}`} target="_blank"><Eye /></Link></Button> : null}
+                        {q.data.featuredEnabled && p.status === 'ACTIVE' && <Button size="sm" variant="ghost" onClick={() => toggleFeatured(p)} title={p.featured ? t('Quitar de destacados') : t('Destacar en la portada')} aria-pressed={p.featured} data-featured={p.featured ? 'on' : 'off'}><Star className={p.featured ? 'fill-amber-400 text-amber-500' : ''} /></Button>}
                         {['ACTIVE', 'SUSPENDED'].includes(p.status) && <Button size="sm" variant="ghost" onClick={() => suspend(p.id)} title={p.status === 'SUSPENDED' ? t('Reactivar') : t('Suspender')}><ShieldOff /></Button>}
                       </div>
                     </td>

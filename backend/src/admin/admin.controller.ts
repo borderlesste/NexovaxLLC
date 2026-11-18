@@ -82,6 +82,10 @@ export class AdminTrackingDto {
   @IsOptional() @IsCleanText(0, 200) detail?: string;
 }
 
+export class FeaturedDto {
+  @IsBoolean() featured: boolean;
+}
+
 @ApiTags('admin')
 @Controller('admin')
 export class AdminController {
@@ -128,6 +132,12 @@ export class AdminController {
   @Post('products/:id/moderate')
   moderate(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ModerateDto) {
     return this.admin.moderate(user, id, dto.decision, dto.note);
+  }
+
+  @Roles('MODERATOR')
+  @Post('products/:id/featured')
+  featured(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: FeaturedDto) {
+    return this.admin.setFeatured(user, id, dto.featured);
   }
 
   @Roles('MODERATOR')

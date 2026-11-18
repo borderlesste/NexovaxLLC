@@ -1,3 +1,4 @@
+import { PoliciesService } from './account/policies.service';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -102,6 +103,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     StripeService,
     PaypalService,
     PaymentsService,
+    PoliciesService,
     PaymentIncidentsService,
     NotificationsService,
     ReturnsService,

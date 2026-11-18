@@ -47,7 +47,7 @@ export function ShopFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1400px] flex-wrap justify-between gap-2 px-4 py-4 text-xs text-brand-300 lg:px-8">
-          <span>© {new Date().getFullYear()} {t('NEXOVAX.')}{' '}{t('Todos los derechos reservados.')}</span>
+          <span>© {new Date().getFullYear()} {cfg?.name || 'NEXOVAX'}. {t('Todos los derechos reservados.')}{cfg?.supportEmail && <> · {t('Soporte:')}{' '}<a href={`mailto:${cfg.supportEmail}`} className="hover:text-white" data-support-email>{cfg.supportEmail}</a></>}</span>
           <span className="flex gap-4">
             <Link href="/ayuda#terminos">{t('Términos y condiciones')}</Link>
             <Link href="/ayuda#privacidad">{t('Privacidad')}</Link>

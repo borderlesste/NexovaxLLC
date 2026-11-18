@@ -31,6 +31,7 @@ export default async function HelpPage() {
   const en = locale === 'en';
   const has = await getHas();
   const help = await serverGet<Help>('/help', 30);
+  const policies = await serverGet<any[]>('/policies', 300);
   // English: the admin's own translation, else the automatic one.
   // French / Creole: our translation when the text is the stock one, else the English version, else Spanish.
   const tr = (es: string, eng?: string | null) => (locale === 'es' ? es : en ? eng || t(es) : has(es) ? t(es) : eng || es);
@@ -87,14 +88,17 @@ export default async function HelpPage() {
           <p className="mt-3 whitespace-pre-line text-muted">{tr(help.commissions.body, help.commissions.bodyEn)}</p>
         </section>
       )}
-      <section id="terminos" className="card mt-6 p-6">
-        <h2 className="text-2xl font-extrabold">{t('Términos y condiciones')}</h2>
-        <p className="mt-2 text-sm text-muted">{t('Al usar NEXOVAX aceptas comprar y vender de buena fe, cumplir las leyes aplicables en tu país y en el país de destino de cada envío, y las políticas de contenido del marketplace. Los vendedores son responsables de la veracidad de sus publicaciones, precios, inventario, del despacho de sus pedidos y del cumplimiento aduanero de sus envíos internacionales.')}</p>
-      </section>
-      <section id="privacidad" className="card mt-6 p-6">
-        <h2 className="text-2xl font-extrabold">{t('Política de privacidad')}</h2>
-        <p className="mt-2 text-sm text-muted">{t('Usamos tus datos únicamente para operar tu cuenta, procesar pedidos, pagos y envíos, y dar soporte. Compartimos con las transportadoras solo los datos necesarios para entregar tus pedidos. Los datos sensibles (identificación fiscal y cuentas bancarias de vendedores) se almacenan cifrados. No vendemos tus datos a terceros.')}</p>
-      </section>
+      {/* Legal texts: the exact published versions people accept at sign-up and store registration. */}
+      {(policies?.length ? policies : [
+        { code: 'TERMS_OF_SERVICE', slug: 'terminos', title: t('Términos y condiciones'), text: t('Al usar NEXOVAX aceptas comprar y vender de buena fe, cumplir las leyes aplicables en tu país y en el país de destino de cada envío, y las políticas de contenido del marketplace. Los vendedores son responsables de la veracidad de sus publicaciones, precios, inventario, del despacho de sus pedidos y del cumplimiento aduanero de sus envíos internacionales.'), version: null, effectiveAt: null },
+        { code: 'PRIVACY_POLICY', slug: 'privacidad', title: t('Política de privacidad'), text: t('Usamos tus datos únicamente para operar tu cuenta, procesar pedidos, pagos y envíos, y dar soporte. Compartimos con las transportadoras solo los datos necesarios para entregar tus pedidos. Los datos sensibles (identificación fiscal y cuentas bancarias de vendedores) se almacenan cifrados. No vendemos tus datos a terceros.'), version: null, effectiveAt: null },
+      ]).map((p: any) => (
+        <section key={p.code} id={p.slug} className="card mt-6 scroll-mt-24 p-6" data-policy={p.code}>
+          <h2 className="text-2xl font-extrabold">{p.title}</h2>
+          {p.version && <p className="mt-1 text-xs text-muted">{t('Versión {n} · vigente desde {d}', { n: p.version, d: new Date(p.effectiveAt).toLocaleDateString(numLocale) })}</p>}
+          <p className="mt-2 whitespace-pre-line text-sm text-muted">{p.text}</p>
+        </section>
+      ))}
       <section id="cookies" className="card mt-6 p-6">
         <h2 className="text-2xl font-extrabold">{t('Cookies')}</h2>
         <p className="mt-2 text-sm text-muted">{t('Usamos cookies esenciales para mantener tu sesión iniciada y tus preferencias (como el idioma y borradores de formularios). No usamos cookies de publicidad.')}</p>

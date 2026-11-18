@@ -10,6 +10,17 @@ export type Locale = 'es' | 'en' | 'fr' | 'ht';
 /** Number/date locale (Haitian Creole uses French formats, as in Haiti). */
 export const intlLocale = (l: Locale) => ({ es: 'es-419', en: 'en-US', fr: 'fr-FR', ht: 'fr-HT' })[l] ?? 'es-419';
 
+/**
+ * Values the admin sets in Configuración (refreshed by SettingsService): public site URL for
+ * links, marketplace name, support e-mail, default language and the e-mail notifications switch.
+ */
+export const mailRuntime = { baseUrl: '', name: 'NEXOVAX', supportEmail: '', locale: 'es' as Locale, emailsOn: true };
+export function setMailRuntime(p: Partial<typeof mailRuntime>) {
+  Object.assign(mailRuntime, p);
+}
+/** Public site URL for links in e-mails ("URL base" in Configuración). */
+export const webUrl = () => (mailRuntime.baseUrl || config.webUrl).replace(/\/+$/, '');
+
 export const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
@@ -52,19 +63,23 @@ export function layout(i: LayoutInput): Rendered {
   const cta = i.cta
     ? `<tr><td style="padding:8px 0 24px"><a href="${esc(i.cta.url)}" style="display:inline-block;background:${BLUE};color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">${esc(i.cta.label)}</a></td></tr>`
     : '';
-  const help = `${esc(config.webUrl)}/ayuda`;
+  const help = `${esc(webUrl())}/ayuda`;
+  const se = mailRuntime.supportEmail ? esc(mailRuntime.supportEmail) : '';
+  const contact = se
+    ? ({ en: ` Or write to <a href="mailto:${se}" style="color:${BLUE}">${se}</a>.`, fr: ` Ou écrivez à <a href="mailto:${se}" style="color:${BLUE}">${se}</a>.`, ht: ` Oswa ekri nan <a href="mailto:${se}" style="color:${BLUE}">${se}</a>.`, es: ` O escribe a <a href="mailto:${se}" style="color:${BLUE}">${se}</a>.` } as Record<string, string>)[i.locale] ?? ''
+    : '';
   const footer = {
-    en: `This is an automated message from NEXOVAX. Need help? Visit <a href="${help}" style="color:${BLUE}">our help center</a>.`,
-    fr: `Ceci est un message automatique de NEXOVAX. Besoin d’aide ? Consultez <a href="${help}" style="color:${BLUE}">notre centre d’aide</a>.`,
-    ht: `Sa a se yon mesaj otomatik NEXOVAX. Ou bezwen èd? Ale nan <a href="${help}" style="color:${BLUE}">sant èd nou an</a>.`,
-    es: `Este es un correo automático de NEXOVAX. ¿Necesitas ayuda? Visita <a href="${help}" style="color:${BLUE}">el centro de ayuda</a>.`,
-  }[i.locale] ?? '';
+    en: `This is an automated message from ${esc(mailRuntime.name)}. Need help? Visit <a href="${help}" style="color:${BLUE}">our help center</a>.`,
+    fr: `Ceci est un message automatique de ${esc(mailRuntime.name)}. Besoin d’aide ? Consultez <a href="${help}" style="color:${BLUE}">notre centre d’aide</a>.`,
+    ht: `Sa a se yon mesaj otomatik ${esc(mailRuntime.name)}. Ou bezwen èd? Ale nan <a href="${help}" style="color:${BLUE}">sant èd nou an</a>.`,
+    es: `Este es un correo automático de ${esc(mailRuntime.name)}. ¿Necesitas ayuda? Visita <a href="${help}" style="color:${BLUE}">el centro de ayuda</a>.`,
+  }[i.locale] + contact;
   const html = `<!doctype html><html lang="${i.locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(i.subject)}</title></head>
 <body style="margin:0;background:#f2f5fa;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a">
 <span style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(i.preheader)}</span>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f2f5fa;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e3e8f0">
-<tr><td style="background:#0b2450;padding:18px 28px;border-bottom:4px solid ${ORANGE}"><span style="color:#fff;font-size:20px;font-weight:900;letter-spacing:2px">NEXO<span style="color:${ORANGE}">VAX</span></span></td></tr>
+<tr><td style="background:#0b2450;padding:18px 28px;border-bottom:4px solid ${ORANGE}">${mailRuntime.name.toUpperCase() === 'NEXOVAX' ? `<span style="color:#fff;font-size:20px;font-weight:900;letter-spacing:2px">NEXO<span style="color:${ORANGE}">VAX</span></span>` : `<span style="color:#fff;font-size:20px;font-weight:900;letter-spacing:1px">${esc(mailRuntime.name)}</span>`}</td></tr>
 <tr><td style="padding:28px 28px 8px">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
 <tr><td style="font-size:22px;font-weight:800;padding-bottom:12px">${esc(i.title)}</td></tr>

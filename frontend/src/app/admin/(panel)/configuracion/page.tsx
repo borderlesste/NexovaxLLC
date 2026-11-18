@@ -135,6 +135,7 @@ export default function SettingsPage() {
   const setRateRow = (i: number, k: string, v: any) => set('shipping.rates', rates.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const SYS_ICON: Record<string, any> = { API: Code2, PAYMENTS: CreditCard, STORAGE: Database, MODERATION: Layers, SHIPPING: Truck, EMAIL: Send };
   const allOk = d.system.every((x: any) => x.status === 'Operativo');
+  const TONE: Record<string, any> = { Operativo: 'green', 'Modo prueba': 'amber', 'Con retraso': 'amber', 'Con fallas': 'amber', Desactivado: 'gray', 'Sin configurar': 'gray', Caído: 'red' };
   const cur = s['marketplace.currency'];
   return (
     <>
@@ -158,7 +159,7 @@ export default function SettingsPage() {
                     </Select>
                   </Field>
                   <Field label={t('Idioma predeterminado')} required>
-                    <Select value={s['marketplace.locale']} onChange={(e) => set('marketplace.locale', e.target.value)}><option value="es">{t('Español')}</option><option value="en">{t('English')}</option></Select>
+                    <Select value={s['marketplace.locale']} onChange={(e) => set('marketplace.locale', e.target.value)}><option value="es">Español</option><option value="en">English</option><option value="fr">Français</option><option value="ht">Kreyòl ayisyen</option></Select>
                   </Field>
                   <CountrySelect label={t('País predeterminado')} value={s['marketplace.default_country']} onChange={(v) => set('marketplace.default_country', v)} />
                   <Field label={t('Correo de soporte')} required><Input rule="email" icon={<Mail />} value={s['marketplace.support_email']} onChange={(e) => set('marketplace.support_email', e.target.value)} /></Field>
@@ -283,7 +284,7 @@ export default function SettingsPage() {
           <CardHeader icon={<Activity />} title={t('Estado del sistema')} subtitle={t('Monitorea la disponibilidad de los servicios principales.')} />
           <div className="space-y-3 p-5">
             {d.system.map((x: any) => { const I = SYS_ICON[x.code] ?? Activity; return (
-              <div key={x.code} className="flex items-center gap-3 rounded-xl border border-line p-3"><span className="grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600"><I className="size-5" /></span><span className="flex-1"><b className="block text-sm">{t(x.name)}</b><span className="text-xs text-muted">{t(x.description)}</span></span><Badge tone={x.status === 'Operativo' ? 'green' : 'amber'}>{t(x.status)}</Badge></div>
+              <div key={x.code} className="flex items-center gap-3 rounded-xl border border-line p-3"><span className="grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600"><I className="size-5" /></span><span className="flex-1"><b className="block text-sm">{t(x.name)}</b><span className="text-xs text-muted">{t(x.description)}</span>{x.detail && <span className="block text-xs text-muted" data-status-detail>{x.detail}</span>}</span><Badge tone={TONE[x.status] ?? 'amber'}>{t(x.status)}</Badge></div>
             ); })}
             <p className={cn('flex items-center gap-2 rounded-xl p-3 text-sm', allOk ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800')}>{allOk ? <CheckCircle2 className="size-4" /> : <ShieldCheck className="size-4" />} {allOk ? t('Todos los servicios están funcionando correctamente.') : t('Algunos servicios están en modo prueba o requieren configuración.')}</p>
           </div>

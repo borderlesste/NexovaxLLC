@@ -1,3 +1,4 @@
+import { PoliciesService } from '../account/policies.service';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
@@ -82,11 +83,13 @@ export class SellerService {
     private readonly settings: SettingsService,
     private readonly supa: SupabaseAdminService,
     private readonly mail: MailService,
+    private readonly policies: PoliciesService,
   ) {}
 
   // ------------------------------------------------------------------ onboarding
-  async onboard(user: RequestUser, input: OnboardingInput) {
+  async onboard(user: RequestUser, input: OnboardingInput & { acceptTerms?: boolean }, client: { ip?: string | null; userAgent?: string | null; locale?: string } = {}) {
     if (user.sellers.some((s) => s.isOwner)) throw conflict('SELLER_EXISTS', 'Ya tienes una tienda registrada.');
+    if (input.acceptTerms !== true) throw badRequest('SELLER_TERMS_REQUIRED', 'Debes aceptar los términos para vendedores.');
     if (!(await this.settings.get('features.seller_registration')))
       throw new AppError('SELLER_REGISTRATION_CLOSED', 'El registro de vendedores está cerrado temporalmente.', HttpStatus.FORBIDDEN);
     if (!ENTITY_TYPES.includes(input.entityType)) throw badRequest('ENTITY_TYPE_INVALID', 'Tipo de entidad inválido.');
@@ -154,6 +157,14 @@ export class SellerService {
         [id, user.id],
         c,
       );
+      // Seller terms, accepted for this store, with the commission in force as evidence.
+      const rate = await this.db.one(
+        `select d.percentage_rate::text as rate from public.business_rule_groups g join public.business_rule_versions v on v.rule_group_id = g.id and v.status = 'ACTIVE'
+           join public.commission_rule_definitions d on d.rule_version_id = v.id where g.rule_type_code = 'PLATFORM_COMMISSION' and g.scope_type_code = 'GLOBAL' limit 1`,
+        [],
+        c,
+      ).catch(() => null);
+      await this.policies.acceptSellerTerms(user.id, id, { method: 'SELLER_ONBOARDING', locale: client.locale ?? me?.locale ?? 'es', ip: client.ip, userAgent: client.userAgent, evidence: { commissionRate: rate?.rate ?? null } }, c);
       return id;
     });
     invalidateUserCache(user.id);

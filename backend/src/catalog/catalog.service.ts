@@ -14,6 +14,8 @@ export interface ProductQuery {
   maxPrice?: number;
   inStock?: boolean;
   onSale?: boolean;
+  /** Only products the team featured (home page). */
+  featured?: boolean;
   sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling';
   page?: number;
   pageSize?: number;
@@ -38,6 +40,7 @@ export class CatalogService {
       params.push(v);
       return `$${params.length}`;
     };
+    if (query.featured) where.push(`exists (select 1 from public.nx_featured_products fp where fp.product_id = p.id)`);
     if (query.q?.trim()) {
       const term = add(`%${query.q.trim()}%`);
       where.push(`(p.title ilike ${term} or p.short_description ilike ${term} or coalesce(ssp.display_name, s.slug) ilike ${term}
@@ -393,20 +396,26 @@ export class CatalogService {
   }
 
   async home() {
-    const [categories, featured, newest, deals, sellers] = await Promise.all([
+    // "Producto destacado" on: the products the team featured (best sellers until it picks some); off: no featured section.
+    const featuredOn = !!(await this.settings.get('features.featured_products'));
+    const [categories, popular, curated, newest, deals, sellers] = await Promise.all([
       this.categories(),
       this.listProducts({ sort: 'relevance', pageSize: 12 }),
+      featuredOn ? this.listProducts({ featured: true, sort: 'newest', pageSize: 12 }) : Promise.resolve(null),
       this.listProducts({ sort: 'newest', pageSize: 6 }),
       this.listProducts({ onSale: true, sort: 'relevance', pageSize: 6 }),
       this.sellers(),
     ]);
     return {
       categories: categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, productCount: c.productCount })),
-      featured: featured.items,
+      featured: !featuredOn ? [] : curated?.items.length ? curated.items : popular.items,
+      featuredEnabled: featuredOn,
+      featuredCurated: !!curated?.items.length,
+      popular: popular.items,
       newest: newest.items,
       deals: deals.items,
       sellers: sellers.slice(0, 8),
-      currency: featured.currency,
+      currency: popular.currency,
     };
   }
 

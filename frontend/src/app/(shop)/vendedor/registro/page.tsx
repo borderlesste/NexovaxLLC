@@ -42,6 +42,7 @@ export default function SellerOnboardingPage() {
     setBusy(true);
     try {
       await post('/seller/onboarding', {
+        acceptTerms: accept,
         storeName: f.storeName, shortDescription: f.shortDescription || undefined, supportEmail: f.supportEmail || undefined, supportPhone: f.supportPhone || undefined,
         legalName: f.legalName, entityType: f.entityType, countryCode: f.countryCode, taxId: f.taxId,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -89,7 +90,7 @@ export default function SellerOnboardingPage() {
             <Field label={t('Apartamento, suite o referencia')} className="sm:col-span-2"><Input value={f.line2} onChange={set('line2')} /></Field>
             <GeoFields value={geo} onChange={(p) => { if (p.countryCode !== undefined) setShipCountry(p.countryCode); setF((s) => ({ ...s, ...('city' in p ? { city: p.city! } : {}), ...('region' in p ? { region: p.region! } : {}), ...('postalCode' in p ? { postalCode: p.postalCode! } : {}) })); }} />
           </div>
-          <label className="mt-6 flex items-start gap-2 text-sm"><input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" /> {t('Acepto los términos para vendedores, la comisión vigente del marketplace y las políticas de contenido.')}</label>
+          <label className="mt-6 flex items-start gap-2 text-sm"><input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" data-seller-terms /> <span>{t('Acepto los términos para vendedores, la comisión vigente del marketplace y las políticas de contenido.')}{' '}<Link href="/ayuda#terminos-vendedores" target="_blank" className="font-semibold text-brand-700 underline">{t('Leer los términos para vendedores')}</Link></span></label>
           <Button size="lg" className="mt-6 w-full sm:w-auto" onClick={submit} loading={busy} disabled={!f.storeName || !f.legalName || !f.taxId || !f.countryCode || !f.line1 || !f.city || !geo.countryCode || !f.phone}><Check /> {t('Enviar solicitud')}</Button>
         </div>
         <aside className="space-y-4">

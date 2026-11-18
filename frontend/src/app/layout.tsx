@@ -9,8 +9,9 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
+  const name = (await serverGet<{ name?: string }>('/config/public', 60))?.name?.trim() || 'NEXOVAX';
   return {
-    title: { default: t('NEXOVAX · Marketplace multivendedor'), template: '%s · NEXOVAX' },
+    title: { default: `${name} · ${t('Marketplace multivendedor')}`, template: `%s · ${name}` },
     description: t('Compra en tiendas de todo el mundo con un solo carrito. Miles de productos, múltiples vendedores y una plataforma segura.'),
   };
 }

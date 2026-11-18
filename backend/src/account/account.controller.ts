@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import type { Request } from 'express';
+import { requestLocale } from '../common/i18n-errors';
+import { PoliciesService } from './policies.service';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors, Req } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AlertsService } from '../analytics/alerts.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength, IsArray, ArrayMinSize, ArrayMaxSize, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
 import { IsAddressLine, IsBusinessName, IsCleanText, IsCountryCode, IsEmailAddress, IsOptionalPersonName, IsPersonName, IsPhone, IsPlaceName, IsPostalCode } from '../common/validators';
@@ -18,6 +21,12 @@ export class RegisterDto {
   @IsEmailAddress() email: string;
   @IsString() @MinLength(8) @MaxLength(72) password: string;
   @IsOptional() @IsIn(['es', 'en', 'fr', 'ht']) locale?: string;
+  /** The Terms and the Privacy policy shown next to the checkbox (current versions). */
+  @IsBoolean() acceptTerms: boolean;
+}
+
+export class AcceptPoliciesDto {
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsUUID('all', { each: true }) versionIds: string[];
 }
 
 export class LocaleDto {
@@ -60,13 +69,35 @@ export class AccountController {
     private readonly settings: SettingsService,
     private readonly analytics: AnalyticsService,
     private readonly alerts: AlertsService,
+    private readonly policies_: PoliciesService,
   ) {}
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('auth/register')
-  register(@Body() dto: RegisterDto) {
-    return this.account.register(dto);
+  register(@Body() dto: RegisterDto, @Req() req: Request) {
+    return this.account.register(dto, { ip: req.ip ?? null, userAgent: String(req.headers['user-agent'] ?? '') || null });
+  }
+
+  /** Current legal policies (terms, privacy, seller terms) in the request language. */
+  @Public()
+  @Get('policies')
+  policies(@Req() req: Request) {
+    return this.policies_.current(requestLocale(req));
+  }
+
+  /** Policies this account still has to accept (new versions or accounts created elsewhere). */
+  @Get('me/policies/pending')
+  pendingPolicies(@CurrentUser() user: RequestUser, @Req() req: Request) {
+    return this.policies_.pending(user.id, requestLocale(req));
+  }
+
+  @Post('me/policies/accept')
+  async acceptPolicies(@CurrentUser() user: RequestUser, @Body() dto: AcceptPoliciesDto, @Req() req: Request) {
+    const pending = await this.policies_.pending(user.id, requestLocale(req));
+    const ids = dto.versionIds.filter((v) => pending.some((p) => p.versionId === v));
+    await this.policies_.accept(user.id, ids, { method: 'LOGIN_GATE', locale: requestLocale(req), ip: req.ip ?? null, userAgent: String(req.headers['user-agent'] ?? '') || null });
+    return { pending: await this.policies_.pending(user.id, requestLocale(req)) };
   }
 
   @Public()

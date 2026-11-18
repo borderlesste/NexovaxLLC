@@ -1,5 +1,11 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"Debes aceptar los términos y la política de privacidad.": "Vous devez accepter les conditions et la politique de confidentialité.",
+"Debes aceptar los términos para vendedores.": "Vous devez accepter les conditions vendeur.",
+"Las políticas cambiaron. Vuelve a cargar la página y acéptalas de nuevo.": "Les politiques ont changé. Rechargez la page et acceptez-les à nouveau.",
+"Activa «Producto destacado» en Configuración para destacar productos.": "Activez « Produit en vedette » dans la configuration pour mettre des produits en vedette.",
+"Solo se pueden destacar productos publicados.": "Seuls les produits publiés peuvent être mis en vedette.",
+"Puedes destacar hasta 12 productos. Quita alguno antes de agregar otro.": "Vous pouvez mettre en vedette jusqu’à 12 produits. Retirez-en un avant d’en ajouter un autre.",
 "La contraseña debe tener al menos 8 caracteres, con letras y números.": "Le mot de passe doit contenir au moins 8 caractères, avec des lettres et des chiffres.",
 "Debes iniciar sesión.": "Vous devez vous connecter.",
 "Ocurrió un error inesperado.": "Une erreur inattendue s’est produite.",
@@ -288,6 +294,12 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"Debes aceptar los términos y la política de privacidad.": "Ou dwe aksepte kondisyon yo ak règ konfidansyalite a.",
+"Debes aceptar los términos para vendedores.": "Ou dwe aksepte kondisyon pou machann yo.",
+"Las políticas cambiaron. Vuelve a cargar la página y acéptalas de nuevo.": "Règ yo chanje. Rechaje paj la epi aksepte yo ankò.",
+"Activa «Producto destacado» en Configuración para destacar productos.": "Aktive «Pwodwi an vedèt» nan Konfigirasyon pou mete pwodwi an vedèt.",
+"Solo se pueden destacar productos publicados.": "Se sèlman pwodwi ki pibliye ki ka an vedèt.",
+"Puedes destacar hasta 12 productos. Quita alguno antes de agregar otro.": "Ou ka mete jiska 12 pwodwi an vedèt. Retire youn anvan ou ajoute yon lòt.",
 "La contraseña debe tener al menos 8 caracteres, con letras y números.": "Modpas la dwe gen omwen 8 karaktè, ak lèt ak chif.",
 "Debes iniciar sesión.": "Ou bezwen konekte.",
 "Ocurrió un error inesperado.": "Yon erè nou pa t prevwa rive.",

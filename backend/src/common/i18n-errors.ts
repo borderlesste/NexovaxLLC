@@ -4,6 +4,12 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Debes aceptar los términos y la política de privacidad.": "You must accept the terms and the privacy policy.",
+  "Debes aceptar los términos para vendedores.": "You must accept the seller terms.",
+  "Las políticas cambiaron. Vuelve a cargar la página y acéptalas de nuevo.": "The policies changed. Reload the page and accept them again.",
+  "Activa «Producto destacado» en Configuración para destacar productos.": "Turn on “Featured product” in Settings to feature products.",
+  "Solo se pueden destacar productos publicados.": "Only published products can be featured.",
+  "Puedes destacar hasta 12 productos. Quita alguno antes de agregar otro.": "You can feature up to 12 products. Remove one before adding another.",
   "El reembolso del procesador no coincide con el pago.": "The processor refund doesn’t match the payment.",
   "Esta incidencia ya está resuelta.": "This incident is already resolved.",
   "Solo las disputas se pueden reintentar.": "Only disputes can be retried.",

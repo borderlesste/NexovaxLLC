@@ -2,12 +2,27 @@ import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { hasTranslation, isLocale, Locale, LOCALE_COOKIE, translate } from './core';
 
-/** Request locale: cookie → Accept-Language → Spanish. */
+const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
+
+/** Marketplace default language ("Idioma predeterminado" in Configuración), cached a minute. */
+async function marketplaceLocale(): Promise<Locale> {
+  try {
+    const r = await fetch(`${API}/api/config/public`, { next: { revalidate: 60 } });
+    const l = r.ok ? (await r.json())?.locale : null;
+    return isLocale(l) ? l : 'es';
+  } catch {
+    return 'es';
+  }
+}
+
+/** Request locale: the visitor's choice (cookie) → their browser language if we have it → the marketplace default. */
 export async function getServerLocale(): Promise<Locale> {
   const c = (await cookies()).get(LOCALE_COOKIE)?.value;
   if (isLocale(c)) return c;
   const al = (await headers()).get('accept-language') ?? '';
-  return /^ht\b/i.test(al) ? 'ht' : /^fr\b/i.test(al) ? 'fr' : /^en\b/i.test(al) ? 'en' : 'es';
+  const first = /^\s*([a-z]{2})/i.exec(al)?.[1]?.toLowerCase();
+  if (isLocale(first)) return first;
+  return marketplaceLocale();
 }
 
 export async function getT() {

@@ -1,3 +1,5 @@
+import { webUrl } from '../mail/mail.templates';
+import { PoliciesService } from './policies.service';
 import { Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
@@ -32,10 +34,13 @@ export class AccountService {
     private readonly db: DbService,
     private readonly supa: SupabaseAdminService,
     private readonly mail: MailService,
+    private readonly policies: PoliciesService,
   ) {}
 
   /** Creates the Supabase identity; DB trigger provisions marketplace user + CUSTOMER role. */
-  async register(input: { fullName: string; email: string; password: string; locale?: string }) {
+  async register(input: { fullName: string; email: string; password: string; locale?: string; acceptTerms?: boolean }, client: { ip?: string | null; userAgent?: string | null } = {}) {
+    // The checkbox is the legal consent: no account without it.
+    if (input.acceptTerms !== true) throw badRequest('TERMS_REQUIRED', 'Debes aceptar los términos y la política de privacidad.');
     if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(input.password))
       throw badRequest('WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, con letras y números.');
     const user = await this.supa.createUser(input.email.trim().toLowerCase(), input.password, input.fullName.trim());
@@ -48,6 +53,7 @@ export class AccountService {
     );
     if (input.locale && (LOCALES as readonly string[]).includes(input.locale))
       await this.db.exec(`update public.users set locale = $2 where id = $1`, [user.id, input.locale]);
+    await this.policies.acceptAccountPolicies(user.id, { method: 'REGISTRATION', locale: input.locale ?? 'es', ip: client.ip, userAgent: client.userAgent });
     const confirmed = !!user.email_confirmed_at;
     if (confirmed) this.mail.fire(() => this.mail.welcome(user.id));
     else this.mail.fire(() => this.sendVerification(user.id, user.email!));
@@ -57,7 +63,7 @@ export class AccountService {
   private async sendVerification(userId: string, email: string) {
     const tokenHash = await this.supa.emailVerificationTokenHash(email);
     if (!tokenHash) return;
-    await this.mail.emailVerification(userId, email, `${config.webUrl}/auth/confirmar?token_hash=${encodeURIComponent(tokenHash)}&type=email`);
+    await this.mail.emailVerification(userId, email, `${webUrl()}/auth/confirmar?token_hash=${encodeURIComponent(tokenHash)}&type=email`);
   }
 
   /** Re-sends the verification link. Always answers OK (no account discovery). */
@@ -83,7 +89,7 @@ export class AccountService {
       this.mail.fire(async () => {
         const tokenHash = await this.supa.recoveryTokenHash(normalized);
         if (!tokenHash) return;
-        await this.mail.passwordRecovery(userId, normalized, `${config.webUrl}/auth/restablecer?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`);
+        await this.mail.passwordRecovery(userId, normalized, `${webUrl()}/auth/restablecer?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`);
       });
     }
     return { ok: true };

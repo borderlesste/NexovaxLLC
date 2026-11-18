@@ -19,8 +19,13 @@ import { mediaUrl } from '../catalog/catalog.sql';
 import { postSaleAllocation } from '../checkout/sale-ledger';
 import { attributeInput, attributeOptions } from '../common/attributes';
 import { MailService } from '../mail/mail.service';
+import { StripeService } from '../payments/stripe.service';
+import { PaypalService } from '../payments/paypal.service';
 
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
+
+/** Products shown in the home page's featured section. */
+const MAX_FEATURED = 12;
 
 @Injectable()
 export class AdminService {
@@ -31,6 +36,8 @@ export class AdminService {
     private readonly sellers: SellerService,
     private readonly mail: MailService,
     private readonly tax: TaxService,
+    private readonly stripe: StripeService,
+    private readonly paypal: PaypalService,
   ) {}
 
   // ------------------------------------------------------------------ dashboard
@@ -143,6 +150,7 @@ export class AdminService {
               coalesce((select sum(ii.on_hand) from public.inventory_items ii join public.product_variants v on v.id = ii.variant_id where v.product_id = p.id),0)::int as stock,
               (select pm.asset_id from public.product_media pm where pm.product_id = p.id order by pm.is_primary desc, pm.sort_order limit 1) as image_id,
               (select r.submitted_at from public.product_moderation_reviews r where r.product_id = p.id and r.status = 'PENDING' order by r.submitted_at desc limit 1) as submitted_at,
+              exists (select 1 from public.nx_featured_products fp where fp.product_id = p.id) as featured,
               count(*) over() as total
          from public.products p join public.categories c on c.id = p.category_id left join public.categories pc on pc.id = c.parent_id
          join public.sellers s on s.id = p.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
@@ -161,8 +169,10 @@ export class AdminService {
       items: rows.map((r: any) => ({
         id: r.id, slug: r.slug, title: r.title, status: r.status, category: r.parent_category ? `${r.parent_category} · ${r.category}` : r.category,
         seller: { id: r.seller_id, name: r.seller }, sku: r.sku, price: r.price, stock: r.stock, imageUrl: r.image_id ? mediaUrl(r.image_id) : null,
-        submittedAt: r.submitted_at, updatedAt: r.updated_at,
+        submittedAt: r.submitted_at, updatedAt: r.updated_at, featured: r.featured,
       })),
+      featuredEnabled: !!(await this.settings.get('features.featured_products')),
+      featuredCount: (await this.db.one<{ n: number }>(`select count(*)::int as n from public.nx_featured_products`))!.n,
       total: rows[0] ? Number(rows[0].total) : 0,
       counts,
       page,
@@ -764,7 +774,7 @@ export class AdminService {
     const cur = s['marketplace.currency'];
     if (cur != null && !SUPPORTED_CURRENCIES.includes(cur)) throw badRequest('CURRENCY_INVALID', 'Moneda no soportada.');
     const loc = s['marketplace.locale'];
-    if (loc != null && !['es', 'en'].includes(loc)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
+    if (loc != null && !['es', 'en', 'fr', 'ht'].includes(loc)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications',
@@ -884,24 +894,75 @@ export class AdminService {
     return this.tax.remove(countryCode);
   }
 
-  async systemStatus() {
-    const started = Date.now();
-    let db = 'Operativo';
-    try {
-      await this.db.one('select 1');
-    } catch {
-      db = 'Caído';
+  /** Feature / unfeature a published product on the home page ("Producto destacado"). */
+  async setFeatured(user: RequestUser, productId: string, featured: boolean) {
+    if (!featured) {
+      await this.db.exec(`delete from public.nx_featured_products where product_id = $1`, [productId]);
+      return { featured: false };
     }
-    const pay = await this.db.one(`select count(*)::int as n from public.payment_provider_configurations where status = 'ACTIVE'`).catch(() => ({ n: 0 }));
+    if (!(await this.settings.get('features.featured_products')))
+      throw conflict('FEATURED_DISABLED', 'Activa «Producto destacado» en Configuración para destacar productos.');
+    const p = await this.db.one(`select status from public.products where id = $1`, [productId]);
+    if (!p) throw notFound('Producto');
+    if (p.status !== 'ACTIVE') throw conflict('PRODUCT_NOT_ACTIVE', 'Solo se pueden destacar productos publicados.');
+    const n = (await this.db.one<{ n: number }>(`select count(*)::int as n from public.nx_featured_products`))!.n;
+    if (n >= MAX_FEATURED && !(await this.db.one(`select 1 from public.nx_featured_products where product_id = $1`, [productId])))
+      throw conflict('FEATURED_LIMIT', `Puedes destacar hasta ${MAX_FEATURED} productos. Quita alguno antes de agregar otro.`);
+    await this.db.exec(
+      `insert into public.nx_featured_products (product_id, featured_by) values ($1,$2) on conflict (product_id) do update set featured_at = now(), featured_by = excluded.featured_by`,
+      [productId, user.id],
+    );
+    return { featured: true };
+  }
+
+  /**
+   * "Estado del sistema": every service is actually checked (not just "configured").
+   * Statuses: Operativo, Modo prueba, Con retraso, Desactivado, Sin configurar, Caído.
+   */
+  async systemStatus() {
+    const timed = async (fn: () => Promise<unknown>, ms = 6000) => {
+      const t0 = Date.now();
+      try {
+        await Promise.race([fn(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+        return { ok: true, ms: Date.now() - t0 };
+      } catch (e: any) {
+        return { ok: false, ms: Date.now() - t0, error: String(e?.message ?? e).slice(0, 120) };
+      }
+    };
+    const s = await this.settings.all();
+    const [db, stripe, paypal, storage] = await Promise.all([
+      timed(() => this.db.one('select 1')),
+      this.stripe.enabled ? timed(() => this.stripe.ping()) : Promise.resolve(null),
+      this.paypal.enabled ? timed(() => this.paypal.ping()) : Promise.resolve(null),
+      this.supa.enabled ? timed(() => this.supa.ping()) : Promise.resolve(null),
+    ]);
+    const q = async <T>(sql: string, fallback: T) => (await this.db.one<any>(sql).catch(() => null)) ?? fallback;
+
+    // Payments: every configured processor answers; test keys are reported as such.
+    const procs = [stripe && { name: 'Stripe', ...stripe, test: this.stripe.environment === 'TEST' }, paypal && { name: 'PayPal', ...paypal, test: this.paypal.environment === 'TEST' }].filter(Boolean) as any[];
+    const failedHooks = (await q(`select count(*)::int as n from public.integration_webhook_receipts where status = 'FAILED' and provider_code in ('STRIPE','PAYPAL') and received_at > now() - interval '24 hours'`, { n: 0 })).n;
+    const payStatus = !procs.length ? 'Sin configurar' : procs.every((p) => !p.ok) ? 'Caído' : procs.some((p) => !p.ok) || failedHooks ? 'Con fallas' : procs.some((p) => p.test) ? 'Modo prueba' : 'Operativo';
+    const payDetail = procs.map((p) => `${p.name}: ${p.ok ? (p.test ? 'prueba' : 'ok') : 'sin respuesta'}`).join(' · ') + (failedHooks ? ` · ${failedHooks} webhooks fallidos (24 h)` : '');
+
+    // E-mail: key configured, switch on, and how the last day's deliveries went.
+    const mail = await q(`select count(*) filter (where status = 'SENT')::int as sent, count(*) filter (where status = 'FAILED')::int as failed from public.email_deliveries where created_at > now() - interval '24 hours'`, { sent: 0, failed: 0 });
+    const mailStatus = !config.resendApiKey ? 'Sin configurar' : s['features.email_notifications'] === false ? 'Desactivado' : mail.failed && !mail.sent ? 'Caído' : mail.failed ? 'Con fallas' : 'Operativo';
+
+    // Moderation: switch on and how long the oldest product has been waiting.
+    const mod = await q(`select count(*)::int as n, extract(epoch from now() - min(submitted_at))::int as oldest from public.product_moderation_reviews where status = 'PENDING'`, { n: 0, oldest: null });
+    const modStatus = s['features.mandatory_moderation'] === false ? 'Desactivado' : mod.n && mod.oldest > 48 * 3600 ? 'Con retraso' : 'Operativo';
+
+    const ship = config.shippoApiKey ? (config.shippoApiKey.startsWith('shippo_test_') ? 'Modo prueba' : 'Operativo') : 'Sin configurar';
     return [
-      { code: 'API', name: 'API', description: 'Servicios de integración y acceso.', status: db === 'Operativo' ? 'Operativo' : 'Degradado', latencyMs: Date.now() - started },
-      { code: 'PAYMENTS', name: 'Pagos', description: 'Procesamiento de transacciones.', status: pay!.n > 0 ? 'Operativo' : 'Sin configurar' },
-      { code: 'STORAGE', name: 'Almacenamiento', description: 'Archivos, imágenes y recursos.', status: this.supa.enabled ? 'Operativo' : 'Sin configurar' },
-      { code: 'SHIPPING', name: 'Envíos (Shippo)', description: 'Tarifas en vivo, etiquetas y rastreo.', status: config.shippoApiKey ? (config.shippoApiKey.startsWith('shippo_test_') ? 'Modo prueba' : 'Operativo') : 'Sin configurar' },
-      { code: 'EMAIL', name: 'Correo (Resend)', description: 'Notificaciones transaccionales.', status: config.resendApiKey ? 'Operativo' : 'Sin configurar' },
-      { code: 'MODERATION', name: 'Moderación', description: 'Cola de revisión y aprobaciones.', status: 'Operativo' },
+      { code: 'API', name: 'API', description: 'Servicios de integración y acceso.', status: !db.ok ? 'Caído' : db.ms > 1500 ? 'Con retraso' : 'Operativo', detail: `${db.ms} ms`, latencyMs: db.ms },
+      { code: 'PAYMENTS', name: 'Pagos', description: 'Procesamiento de transacciones.', status: payStatus, detail: payDetail || null },
+      { code: 'STORAGE', name: 'Almacenamiento', description: 'Archivos, imágenes y recursos.', status: !storage ? 'Sin configurar' : storage.ok ? 'Operativo' : 'Caído', detail: storage ? `${storage.ms} ms` : null },
+      { code: 'SHIPPING', name: 'Envíos (Shippo)', description: 'Tarifas en vivo, etiquetas y rastreo.', status: s['shipping.shippo_enabled'] === false && ship !== 'Sin configurar' ? 'Desactivado' : ship, detail: null },
+      { code: 'EMAIL', name: 'Correo (Resend)', description: 'Notificaciones transaccionales.', status: mailStatus, detail: `${mail.sent} enviados · ${mail.failed} fallidos (24 h)` },
+      { code: 'MODERATION', name: 'Moderación', description: 'Cola de revisión y aprobaciones.', status: modStatus, detail: `${mod.n} en cola${mod.n && mod.oldest ? ` · el más antiguo hace ${Math.round(mod.oldest / 3600)} h` : ''}` },
     ];
   }
+
 
   // ------------------------------------------------------------------ users & roles
   async users(q: { search?: string; role?: string; page?: number }) {

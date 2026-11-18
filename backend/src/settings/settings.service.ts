@@ -1,3 +1,4 @@
+import { Locale, setMailRuntime } from '../mail/mail.templates';
 import { Injectable } from '@nestjs/common';
 import { DbService, Queryable } from '../db/db.service';
 import { badRequest } from '../common/errors';
@@ -118,6 +119,11 @@ export class SettingsService {
 
   constructor(private readonly db: DbService) {}
 
+  /** Loads the settings at start-up so e-mails use them from the first one. */
+  async onModuleInit() {
+    await this.all().catch(() => undefined);
+  }
+
   async all(client?: Queryable): Promise<PlatformSettings> {
     if (!client && this.cache && Date.now() - this.cache.at < 30_000) return this.cache.value;
     const rows = await this.db.many<{ setting_key: string; value: any }>(
@@ -132,7 +138,14 @@ export class SettingsService {
     );
     const out: any = { ...DEFAULTS };
     for (const r of rows) out[r.setting_key] = r.value;
-    if (!client) this.cache = { at: Date.now(), value: out };
+    if (!client) {
+      this.cache = { at: Date.now(), value: out };
+      setMailRuntime({
+        baseUrl: out['marketplace.base_url'] || '', name: out['marketplace.name'] || 'NEXOVAX', supportEmail: out['marketplace.support_email'] || '',
+        locale: (['es', 'en', 'fr', 'ht'].includes(out['marketplace.locale']) ? out['marketplace.locale'] : 'es') as Locale,
+        emailsOn: out['features.email_notifications'] !== false,
+      });
+    }
     return out;
   }
 

@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { requestLocale } from '../common/i18n-errors';
+import type { Request } from 'express';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UploadedFiles, UseInterceptors, Req } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { IsAddressLine, IsBankAccountNumber, IsBusinessName, IsCleanMultiline, IsCleanText, IsCountryCode, IsCurrencyCode, IsDocumentId, IsEmailAddress, IsHexColor, IsMeasure, IsMoney, IsPersonName, IsPersonNameOrBusiness, IsPhone, IsPlaceName, IsPostalCode, IsSku, IsSlug, IsSwiftOrRouting, IsTaxId, IsTimeZone, IsTrackingNumber, IsWebUrl, ToNumber } from '../common/validators';
@@ -40,6 +42,8 @@ export class ShipFromDto {
 }
 
 export class OnboardingDto {
+  /** Seller terms (current version), the marketplace commission and the content policies. */
+  @IsBoolean() acceptTerms: boolean;
   @IsBusinessName(3, 80) storeName: string;
   @IsOptional() @IsCleanText(0, 200) shortDescription?: string;
   @IsOptional() @IsEmailAddress() supportEmail?: string;
@@ -162,8 +166,8 @@ export class SellerController {
   }
 
   @Post('onboarding')
-  onboard(@CurrentUser() user: RequestUser, @Body() dto: OnboardingDto) {
-    return this.seller.onboard(user, dto);
+  onboard(@CurrentUser() user: RequestUser, @Body() dto: OnboardingDto, @Req() req: Request) {
+    return this.seller.onboard(user, dto, { ip: req.ip ?? null, userAgent: String(req.headers['user-agent'] ?? '') || null, locale: requestLocale(req) });
   }
 
   @Get('store')

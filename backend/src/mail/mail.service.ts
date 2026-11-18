@@ -5,7 +5,7 @@ import { trackingLink } from '../common/tracking-links';
 import { DbService } from '../db/db.service';
 import { categoryForTemplate, NotificationsService } from '../notifications/notifications.service';
 import { orderRef, paymentRef, payoutRef, refundRef, returnRef, ticketRef } from '../common/refs';
-import { esc, intlLocale, ItemLine, itemsTable, itemsText, layout, Locale, money, p, Rendered, rows } from './mail.templates';
+import { esc, intlLocale, mailRuntime, webUrl, ItemLine, itemsTable, itemsText, layout, Locale, money, p, Rendered, rows } from './mail.templates';
 
 interface SendInput {
   template: string;
@@ -25,8 +25,17 @@ interface Contact {
 
 const RESEND_URL = 'https://api.resend.com/emails';
 /** E-mails are written in Spanish, English, French and Haitian Creole. */
-const loc = (v: unknown): Locale => (v === 'en' || v === 'fr' || v === 'ht' ? v : 'es');
+/** User language; users who never chose one get the marketplace default language. */
+const loc = (v: unknown): Locale => (v === 'es' || v === 'en' || v === 'fr' || v === 'ht' ? v : mailRuntime.locale);
 /** Picks the Spanish or English variant. */
+/** Sent even with "Notificaciones por email" off: account access, bank details to pay, account deletion. */
+const ESSENTIAL = /^(EMAIL_VERIFICATION|PASSWORD_RECOVERY|BANK_TRANSFER_PENDING|ACCOUNT_DELET)/;
+/** Sender shows the marketplace name from Configuración, keeping the verified address. */
+const senderFrom = () => {
+  const addr = /<([^>]+)>/.exec(config.mailFrom)?.[1] ?? config.mailFrom;
+  const name = mailRuntime.name.replace(/["<>\r\n]/g, '').trim() || 'NEXOVAX';
+  return `${name} <${addr}>`;
+};
 const tr = (l: Locale) => (es: string, en: string, fr?: string, ht?: string) =>
   l === 'en' ? en : l === 'fr' ? fr ?? en : l === 'ht' ? ht ?? fr ?? en : es;
 
@@ -62,6 +71,8 @@ export class MailService {
     if (i.userId && i.message.notice)
       await this.notifications.fromEmail(i.userId, i.template, i.dedupeKey, i.message.notice, { type: i.entityType, id: i.entityId });
     if (i.userId && !(await this.notifications.enabled(i.userId, categoryForTemplate(i.template), 'EMAIL').catch(() => true))) return 'SKIPPED';
+    // "Notificaciones por email" off: only e-mails people need to use or protect their account still go out.
+    if (!mailRuntime.emailsOn && !ESSENTIAL.test(i.template)) return 'SKIPPED';
     const to = (config.mailRedirectTo ?? i.to).trim().toLowerCase();
     const domain = to.split('@')[1] ?? '';
     const status = !this.enabled ? 'SKIPPED' : config.mailSuppressDomains.includes(domain) ? 'SUPPRESSED' : 'PENDING';
@@ -81,12 +92,12 @@ export class MailService {
           method: 'POST',
           headers: { Authorization: `Bearer ${config.resendApiKey}`, 'Content-Type': 'application/json', 'Idempotency-Key': i.dedupeKey.slice(0, 256) },
           body: JSON.stringify({
-            from: config.mailFrom,
+            from: senderFrom(),
             to: [to],
             subject: i.message.subject,
             html: i.message.html,
             text: i.message.text,
-            reply_to: config.mailReplyTo,
+            reply_to: mailRuntime.supportEmail || config.mailReplyTo,
             tags: [{ name: 'template', value: i.template.replace(/[^A-Za-z0-9_-]/g, '_') }],
           }),
           signal: AbortSignal.timeout(15_000),
@@ -169,7 +180,7 @@ export class MailService {
           p(t('Tu cuenta en <b>NEXOVAX</b> fue creada con éxito. Ya puedes comprar en múltiples tiendas con un solo carrito, guardar favoritos y seguir tus pedidos.',
               'Your <b>NEXOVAX</b> account is ready. Shop from multiple stores with a single cart, save favorites and track your orders.', 'Votre compte <b>NEXOVAX</b> est prêt. Achetez dans plusieurs boutiques avec un seul panier, enregistrez vos favoris et suivez vos commandes.', 'Kont <b>NEXOVAX</b> ou pare. Achte nan plizyè boutik ak yon sèl panye, sere favori ou epi swiv kòmand ou yo.')) +
           p(t('¿Tienes un negocio? También puedes abrir tu tienda y vender a clientes de todo el mundo.', 'Own a business? Open your store and sell to customers worldwide.', 'Vous avez une entreprise ? Ouvrez votre boutique et vendez à des clients du monde entier.', 'Ou gen yon biznis? Louvri boutik ou epi vann bay kliyan toupatou nan mond lan.')),
-        cta: { label: t('Explorar productos', 'Browse products', 'Parcourir les produits', 'Gade pwodwi yo'), url: `${config.webUrl}/catalogo` },
+        cta: { label: t('Explorar productos', 'Browse products', 'Parcourir les produits', 'Gade pwodwi yo'), url: `${webUrl()}/catalogo` },
         text: t('Tu cuenta en NEXOVAX fue creada con éxito.', 'Your NEXOVAX account is ready.', 'Votre compte NEXOVAX est prêt.', 'Kont NEXOVAX ou pare.'),
       }),
     });
@@ -177,7 +188,7 @@ export class MailService {
 
   async emailVerification(userId: string, email: string, link: string) {
     const u = await this.userContact(userId);
-    const l = u?.locale ?? 'es';
+    const l = loc(u?.locale);
     const t = tr(l);
     await this.send({
       template: 'EMAIL_VERIFICATION',
@@ -203,7 +214,7 @@ export class MailService {
 
   async passwordRecovery(userId: string | null, email: string, link: string) {
     const u = userId ? await this.userContact(userId) : null;
-    const l = u?.locale ?? 'es';
+    const l = loc(u?.locale);
     const t = tr(l);
     await this.send({
       template: 'PASSWORD_RECOVERY',
@@ -276,7 +287,7 @@ export class MailService {
               { boldLast: true },
             ) +
             (address.length ? p(`<b>${t('Dirección de entrega', 'Shipping address', 'Adresse de livraison', 'Adrès livrezon')}</b><br>${address.map(esc).join('<br>')}`) : ''),
-          cta: { label: t('Ver mi pedido', 'View my order', 'Voir ma commande', 'Wè kòmand mwen'), url: `${config.webUrl}/cuenta/pedidos/${orderId}` },
+          cta: { label: t('Ver mi pedido', 'View my order', 'Voir ma commande', 'Wè kòmand mwen'), url: `${webUrl()}/cuenta/pedidos/${orderId}` },
           text: `${t('Pedido', 'Order', 'Commande', 'Kòmand')} ${ref}\n\n${itemsText(items, cur, l)}\n\n${t('Total pagado', 'Total paid', 'Total payé', 'Total peye')}: ${money(o.total, cur, l)}`,
         }),
       });
@@ -319,7 +330,7 @@ export class MailService {
               { boldLast: true },
             ) +
             p(t('El dinero queda disponible para retiro cuando el pedido sea entregado.', 'Funds become available for payout once the order is delivered.', 'Les fonds deviennent disponibles pour versement une fois la commande livrée.', 'Lajan an vin disponib pou peman lè kòmand lan livre.')),
-          cta: { label: t('Gestionar pedido', 'Manage order', 'Gérer la commande', 'Jere kòmand lan'), url: `${config.webUrl}/vendedor/pedidos/${orderId}` },
+          cta: { label: t('Gestionar pedido', 'Manage order', 'Gérer la commande', 'Jere kòmand lan'), url: `${webUrl()}/vendedor/pedidos/${orderId}` },
           text: `${t('Pedido', 'Order', 'Commande', 'Kòmand')} ${ref}\n\n${itemsText(soItems, cur, l)}\n\n${t('Ingreso estimado', 'Estimated earnings', 'Gains estimés', 'Benefis estime')}: ${money(so.net, cur, l)}`,
         }),
       });
@@ -361,7 +372,7 @@ export class MailService {
               `Hi ${esc(u.name)}, to confirm your purchase send a bank transfer for the exact amount and include the reference.`, `Bonjour ${esc(u.name)}, pour confirmer votre achat, effectuez un virement bancaire du montant exact en indiquant la référence.`, `Bonjou ${esc(u.name)}, pou konfime acha ou fè yon transfè labank pou montan egzak la epi mete referans lan.`)) +
           rows(details) +
           p(esc(bt.instructions)),
-        cta: { label: t('Ver mis pedidos', 'View my orders', 'Voir mes commandes', 'Wè kòmand mwen yo'), url: `${config.webUrl}/cuenta/pedidos` },
+        cta: { label: t('Ver mis pedidos', 'View my orders', 'Voir mes commandes', 'Wè kòmand mwen yo'), url: `${webUrl()}/cuenta/pedidos` },
         text: `${t('Transfiere', 'Transfer', 'Virement', 'Transfè')} ${amount} → ${bt.bank}, ${bt.accountNumber} (${bt.accountName}). ${t('Referencia', 'Reference', 'Référence', 'Referans')}: ${bt.reference}. ${bt.instructions}`,
       }),
     });
@@ -391,7 +402,7 @@ export class MailService {
           p(t(`Hola ${esc(u.name)}, no pudimos validar la transferencia de <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (referencia ${ref}), por lo que la compra fue cancelada.`,
               `Hi ${esc(u.name)}, we couldn’t verify the transfer of <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (reference ${ref}), so the purchase was cancelled.`, `Bonjour ${esc(u.name)}, nous n’avons pas pu vérifier le virement de <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (référence ${ref}), l’achat a donc été annulé.`, `Bonjou ${esc(u.name)}, nou pa t ka verifye transfè <b>${esc(money(pay.amount, pay.currency_code, l))}</b> (referans ${ref}), kidonk acha a anile.`)) +
           p(`<b>${t('Motivo', 'Reason', 'Motif', 'Rezon')}:</b> ${esc(reason || t('No especificado', 'Not specified', 'Non précisé', 'Pa presize'))}`),
-        cta: { label: t('Contactar soporte', 'Contact support', 'Contacter le support', 'Kontakte sipò'), url: `${config.webUrl}/ayuda/reportar` },
+        cta: { label: t('Contactar soporte', 'Contact support', 'Contacter le support', 'Kontakte sipò'), url: `${webUrl()}/ayuda/reportar` },
         text: `${ref}: ${reason || ''}`,
       }),
     });
@@ -438,7 +449,7 @@ export class MailService {
               [t('Número de rastreo', 'Tracking number', 'Numéro de suivi', 'Nimewo swivi'), tracking],
             ]) +
             itemsTable(items, r.currency_code, l),
-          cta: { label: t('Seguir mi pedido', 'Track my order', 'Suivre ma commande', 'Swiv kòmand mwen'), url: `${config.webUrl}/cuenta/pedidos/${r.order_id}` },
+          cta: { label: t('Seguir mi pedido', 'Track my order', 'Suivre ma commande', 'Swiv kòmand mwen'), url: `${webUrl()}/cuenta/pedidos/${r.order_id}` },
           text: `${ref}: ${r.carrier} ${r.tracking_number ?? ''}`,
         }),
       });
@@ -473,7 +484,7 @@ export class MailService {
           body:
             p(t(`Hola ${esc(u.name)}, tu paquete de <b>${esc(r.store)}</b> (pedido ${ref}) fue entregado.`, `Hi ${esc(u.name)}, your package from <b>${esc(r.store)}</b> (order ${ref}) was delivered.`, `Bonjour ${esc(u.name)}, votre colis de <b>${esc(r.store)}</b> (commande ${ref}) a été livré.`, `Bonjou ${esc(u.name)}, koli ou soti nan <b>${esc(r.store)}</b> (kòmand ${ref}) livre.`)) +
             p(t('Tu opinión ayuda a otros compradores: deja una reseña de los productos que recibiste.', 'Your feedback helps other shoppers: leave a review of the products you received.', 'Votre avis aide les autres acheteurs : laissez un avis sur les produits reçus.', 'Avi ou ede lòt achtè: kite yon avi sou pwodwi ou resevwa yo.')),
-          cta: { label: t('Calificar productos', 'Review products', 'Donner mon avis', 'Bay avi sou pwodwi yo'), url: `${config.webUrl}/cuenta/pedidos/${r.order_id}` },
+          cta: { label: t('Calificar productos', 'Review products', 'Donner mon avis', 'Bay avi sou pwodwi yo'), url: `${webUrl()}/cuenta/pedidos/${r.order_id}` },
           text: `${ref}: ${t('entregado', 'delivered', 'livré', 'livre')}`,
         }),
       });
@@ -495,7 +506,7 @@ export class MailService {
           title: t('Pedido entregado', 'Order delivered', 'Commande livrée', 'Kòmand livre'),
           body: p(t(`El pedido <b>${ref}</b> fue entregado al cliente. Los fondos de esta venta pasan a tu balance disponible según la política de pagos.`,
                     `Order <b>${ref}</b> was delivered to the customer. Funds from this sale move to your available balance according to the payout policy.`, `La commande <b>${ref}</b> a été livrée au client. Les fonds de cette vente passent sur votre solde disponible selon la politique de versement.`, `Kòmand <b>${ref}</b> livre bay kliyan an. Lajan vant sa a pase sou balans disponib ou selon règ peman an.`)),
-          cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${config.webUrl}/vendedor/finanzas` },
+          cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${webUrl()}/vendedor/finanzas` },
           text: `${ref}: ${t('entregado', 'delivered', 'livré', 'livre')}`,
         }),
       });
@@ -522,7 +533,7 @@ export class MailService {
         title: t('Solicitud recibida', 'Application received', 'Demande reçue', 'Demann resevwa'),
         body: p(t(`Hola ${esc(s.name)}, recibimos la solicitud para abrir <b>${esc(s.store)}</b>. Nuestro equipo verificará los datos y te avisaremos por este medio. Mientras tanto ya puedes preparar tus productos.`,
                   `Hi ${esc(s.name)}, we received the application to open <b>${esc(s.store)}</b>. Our team will verify the details and let you know by e-mail. Meanwhile you can start preparing your products.`, `Bonjour ${esc(s.name)}, nous avons reçu la demande d’ouverture de <b>${esc(s.store)}</b>. Notre équipe vérifiera les informations et vous préviendra par e-mail. En attendant, vous pouvez préparer vos produits.`, `Bonjou ${esc(s.name)}, nou resevwa demann pou louvri <b>${esc(s.store)}</b>. Ekip nou an ap verifye enfòmasyon yo epi n ap fè w konnen pa imèl. Pandan tan sa a ou ka kòmanse prepare pwodwi ou yo.`)),
-        cta: { label: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen'), url: `${config.webUrl}/vendedor/dashboard` },
+        cta: { label: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen'), url: `${webUrl()}/vendedor/dashboard` },
         text: t(`Recibimos la solicitud para abrir ${s.store}.`, `We received the application to open ${s.store}.`, `Nous avons reçu la demande d’ouverture de ${s.store}.`, `Nou resevwa demann pou louvri ${s.store}.`),
       }),
     });
@@ -555,7 +566,7 @@ export class MailService {
         preheader: copy.body,
         title: copy.title,
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(copy.body.charAt(0).toLowerCase() + copy.body.slice(1))}`) + (reason?.trim() ? p(`<b>${t('Motivo', 'Reason', 'Motif', 'Rezon')}:</b> ${esc(reason.trim())}`) : ''),
-        cta: { label: copy.cta, url: action === 'SUSPEND' ? `${config.webUrl}/ayuda/reportar` : `${config.webUrl}/vendedor/dashboard` },
+        cta: { label: copy.cta, url: action === 'SUSPEND' ? `${webUrl()}/ayuda/reportar` : `${webUrl()}/vendedor/dashboard` },
         text: `${copy.body}${reason?.trim() ? `\n${t('Motivo', 'Reason', 'Motif', 'Rezon')}: ${reason.trim()}` : ''}`,
       }),
     });
@@ -585,7 +596,7 @@ export class MailService {
         preheader: copy[1],
         title: copy[0],
         body: p(esc(copy[1])) + (note?.trim() ? p(`<b>${t('Nota del moderador', 'Moderator note', 'Note du modérateur', 'Nòt moderatè a')}:</b> ${esc(note.trim())}`) : ''),
-        cta: { label: t('Ver mis productos', 'View my products', 'Voir mes produits', 'Wè pwodwi mwen yo'), url: `${config.webUrl}/vendedor/productos` },
+        cta: { label: t('Ver mis productos', 'View my products', 'Voir mes produits', 'Wè pwodwi mwen yo'), url: `${webUrl()}/vendedor/productos` },
         text: `${copy[1]}${note?.trim() ? `\n${note.trim()}` : ''}`,
       }),
     });
@@ -615,7 +626,7 @@ export class MailService {
         preheader: line,
         title: t('Retiro programado solicitado', 'Scheduled payout requested', 'Versement programmé demandé', 'Peman pwograme mande'),
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-        cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${config.webUrl}/vendedor/finanzas` },
+        cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${webUrl()}/vendedor/finanzas` },
         text: line,
       }),
     });
@@ -647,7 +658,7 @@ export class MailService {
         preheader: copy[1],
         title: copy[0],
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(copy[1].charAt(0).toLowerCase() + copy[1].slice(1))}`) + (detail?.trim() ? p(`<b>${label}:</b> ${esc(detail.trim())}`) : ''),
-        cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${config.webUrl}/vendedor/finanzas` },
+        cta: { label: t('Ver mis finanzas', 'View my finances', 'Voir mes finances', 'Wè finans mwen'), url: `${webUrl()}/vendedor/finanzas` },
         text: `${copy[1]}${detail?.trim() ? `\n${label}: ${detail.trim()}` : ''}`,
       }),
     });
@@ -671,7 +682,7 @@ export class MailService {
       dedupeKey, to: u.email, userId, entityType: 'PRODUCT', entityId: prod.id,
       message: layout({ locale: u.locale, subject: `${title}: ${prod.title}`, preheader: line, title,
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-        cta: { label: t('Ver producto', 'View product', 'Voir le produit', 'Wè pwodwi a'), url: `${config.webUrl}/producto/${prod.slug}` }, text: line }),
+        cta: { label: t('Ver producto', 'View product', 'Voir le produit', 'Wè pwodwi a'), url: `${webUrl()}/producto/${prod.slug}` }, text: line }),
     });
   }
 
@@ -693,7 +704,7 @@ export class MailService {
           + rows([[t('Cupón', 'Coupon', 'Coupon', 'Koupon'), `<b>${esc(o.code)}</b>`], [t('Descuento', 'Discount', 'Remise', 'Rabè'), esc(discount)]])
           + p(t('Escribe el código al pagar. Recibes esta oferta porque tienes el producto en tus favoritos o en tu carrito; puedes desactivar estos avisos en tus preferencias de notificación.',
                 'Enter the code at checkout. You get this offer because the product is in your favorites or cart; you can turn these alerts off in your notification preferences.', 'Saisissez le code au paiement. Vous recevez cette offre car le produit est dans vos favoris ou votre panier ; vous pouvez désactiver ces alertes dans vos préférences de notification.', 'Antre kòd la lè w ap peye. Ou resevwa òf sa a paske pwodwi a nan favori oswa panye ou; ou ka dezaktive alèt sa yo nan preferans notifikasyon ou.')),
-        cta: { label: t('Ver producto', 'View product', 'Voir le produit', 'Wè pwodwi a'), url: `${config.webUrl}/producto/${o.slug}` }, text: line }),
+        cta: { label: t('Ver producto', 'View product', 'Voir le produit', 'Wè pwodwi a'), url: `${webUrl()}/producto/${o.slug}` }, text: line }),
     });
   }
 
@@ -706,7 +717,7 @@ export class MailService {
     await this.send({
       template: 'PAYMENT_INCIDENT_ADMIN', dedupeKey: n.dedupeKey, to: u.email, userId, entityType: 'PAYMENT_INCIDENT', entityId: null,
       message: layout({ locale: u.locale, subject: n.title, preheader: n.body, title: n.title, body: p(esc(n.body)),
-        cta: { label: t('Ver incidencias de pago', 'View payment incidents', 'Voir les incidents de paiement', 'Wè ensidan peman yo'), url: `${config.webUrl}/admin/incidencias-pago` }, text: n.body }),
+        cta: { label: t('Ver incidencias de pago', 'View payment incidents', 'Voir les incidents de paiement', 'Wè ensidan peman yo'), url: `${webUrl()}/admin/incidencias-pago` }, text: n.body }),
     });
   }
 
@@ -723,8 +734,8 @@ export class MailService {
     );
     if (!c) return;
     const oref = orderRef(c.order_number);
-    const sellerUrl = `${config.webUrl}/vendedor/pedidos/${c.order_id}`;
-    const customerUrl = `${config.webUrl}/cuenta/pedidos/${c.order_id}`;
+    const sellerUrl = `${webUrl()}/vendedor/pedidos/${c.order_id}`;
+    const customerUrl = `${webUrl()}/cuenta/pedidos/${c.order_id}`;
     const toSeller = async (title: [string, string, string, string], line: [string, string, string, string], key: string) => {
       const s = await this.sellerContact(c.seller_id);
       if (!s) return;
@@ -822,7 +833,7 @@ export class MailService {
           preheader: line,
           title,
           body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-          cta: { label: t('Ver devolución', 'View return', 'Voir le retour', 'Wè retou a'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
+          cta: { label: t('Ver devolución', 'View return', 'Voir le retour', 'Wè retou a'), url: `${webUrl()}/vendedor/devoluciones/${returnId}` },
           text: line,
         }),
       });
@@ -856,7 +867,7 @@ export class MailService {
         title,
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
           (event === 'REFUNDED' && r.refund_number ? rows([[t('Reembolso', 'Refund', 'Remboursement', 'Ranbousman'), esc(refundRef(r.refund_number))], [t('Monto', 'Amount', 'Montant', 'Montan'), esc(amount)], [t('Pedido', 'Order', 'Commande', 'Kòmand'), esc(oref)]]) : ''),
-        cta: { label: event === 'LABEL_READY' ? t('Descargar etiqueta', 'Download label', 'Télécharger l’étiquette', 'Telechaje etikèt') : t('Ver mi devolución', 'View my return', 'Voir mon retour', 'Wè retou mwen'), url: `${config.webUrl}/cuenta/devoluciones/${returnId}` },
+        cta: { label: event === 'LABEL_READY' ? t('Descargar etiqueta', 'Download label', 'Télécharger l’étiquette', 'Telechaje etikèt') : t('Ver mi devolución', 'View my return', 'Voir mon retour', 'Wè retou mwen'), url: `${webUrl()}/cuenta/devoluciones/${returnId}` },
         text: line,
       }),
     });
@@ -878,7 +889,7 @@ export class MailService {
             preheader: line2,
             title: ts('Reembolso de devolución', 'Return refund', 'Remboursement de retour', 'Ranbousman retou'),
             body: p(`${ts('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(line2.charAt(0).toLowerCase() + line2.slice(1))}`),
-            cta: { label: ts('Ver devolución', 'View return', 'Voir le retour', 'Wè retou a'), url: `${config.webUrl}/vendedor/devoluciones/${returnId}` },
+            cta: { label: ts('Ver devolución', 'View return', 'Voir le retour', 'Wè retou a'), url: `${webUrl()}/vendedor/devoluciones/${returnId}` },
             text: line2,
           }),
         });
@@ -913,7 +924,7 @@ export class MailService {
         preheader: line,
         title,
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
-        cta: { label: t('Ir a Seguridad', 'Go to Security', 'Aller à Sécurité', 'Ale nan Sekirite'), url: `${config.webUrl}/cuenta/seguridad` },
+        cta: { label: t('Ir a Seguridad', 'Go to Security', 'Aller à Sécurité', 'Ale nan Sekirite'), url: `${webUrl()}/cuenta/seguridad` },
         text: line,
       }),
     });
@@ -970,7 +981,7 @@ export class MailService {
         title: t('Reporte recibido', 'Report received', 'Signalement reçu', 'Rapò resevwa'),
         body: p(t(`Hola ${esc(x.u.name)}, recibimos tu reporte <b>«${esc(x.tk.subject)}»</b>. Tu código de seguimiento es <b>${x.code}</b>. Te escribiremos cuando tengamos novedades.`,
                   `Hi ${esc(x.u.name)}, we received your report <b>“${esc(x.tk.subject)}”</b>. Your tracking code is <b>${x.code}</b>. We’ll write back when we have news.`, `Bonjour ${esc(x.u.name)}, nous avons reçu votre signalement <b>« ${esc(x.tk.subject)} »</b>. Votre code de suivi est <b>${x.code}</b>. Nous vous écrirons dès que nous aurons du nouveau.`, `Bonjou ${esc(x.u.name)}, nou resevwa rapò ou <b>«${esc(x.tk.subject)}»</b>. Kòd swivi ou se <b>${x.code}</b>. N ap ekri w lè nou gen nouvèl.`)),
-        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${config.webUrl}/cuenta/reportes` },
+        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${webUrl()}/cuenta/reportes` },
         text: `${x.code}: ${x.tk.subject}`,
       }),
     });
@@ -995,7 +1006,7 @@ export class MailService {
         body:
           p(t(`Hola ${esc(x.u.name)}, nuestro equipo respondió tu reporte <b>«${esc(x.tk.subject)}»</b>:`, `Hi ${esc(x.u.name)}, our team replied to your report <b>“${esc(x.tk.subject)}”</b>:`, `Bonjour ${esc(x.u.name)}, notre équipe a répondu à votre signalement <b>« ${esc(x.tk.subject)} »</b> :`, `Bonjou ${esc(x.u.name)}, ekip nou an reponn rapò ou <b>«${esc(x.tk.subject)}»</b>:`)) +
           `<div style="margin:0 0 16px;padding:14px 16px;background:#f1f6ff;border-left:4px solid #0a6cf5;border-radius:8px;white-space:pre-wrap">${esc(body.trim())}</div>`,
-        cta: { label: t('Responder', 'Reply', 'Réponse', 'Repons'), url: `${config.webUrl}/cuenta/reportes` },
+        cta: { label: t('Responder', 'Reply', 'Réponse', 'Repons'), url: `${webUrl()}/cuenta/reportes` },
         text: `${x.code}:\n\n${body.trim()}`,
       }),
     });
@@ -1022,7 +1033,7 @@ export class MailService {
         title: resolved ? t('Reporte resuelto', 'Report resolved', 'Signalement résolu', 'Rapò rezoud') : t('Reporte cerrado', 'Report closed', 'Signalement clôturé', 'Rapò fèmen'),
         body: p(t(`Hola ${esc(x.u.name)}, marcamos tu reporte <b>«${esc(x.tk.subject)}»</b> (${x.code}) como ${word}. Si el problema continúa, puedes responder desde tus reportes.`,
                   `Hi ${esc(x.u.name)}, we marked your report <b>“${esc(x.tk.subject)}”</b> (${x.code}) as ${word}. If the problem continues, you can reply from your reports.`, `Bonjour ${esc(x.u.name)}, nous avons marqué votre signalement <b>« ${esc(x.tk.subject)} »</b> (${x.code}) comme ${word}. Si le problème persiste, vous pouvez répondre depuis vos signalements.`, `Bonjou ${esc(x.u.name)}, nou make rapò ou <b>«${esc(x.tk.subject)}»</b> (${x.code}) kòm ${word}. Si pwoblèm nan kontinye, ou ka reponn nan rapò ou yo.`)),
-        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${config.webUrl}/cuenta/reportes` },
+        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${webUrl()}/cuenta/reportes` },
         text: `${x.code}: ${word}`,
       }),
     });

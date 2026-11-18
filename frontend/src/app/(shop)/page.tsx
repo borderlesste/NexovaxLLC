@@ -67,9 +67,10 @@ export default async function HomePage() {
   const data = await serverGet<any>('/home', 30);
   const categories = data?.categories ?? [];
   const featured = data?.featured ?? [];
+  const featuredOn = data?.featuredEnabled !== false;
   return (
     <>
-      <Hero preview={featured} />
+      <Hero preview={featured.length ? featured : data?.popular ?? data?.newest ?? []} />
       <div className="mx-auto max-w-[1400px] px-4 lg:px-8">
         <section className="mt-12">
           <div className="mb-5 flex items-end justify-between">
@@ -92,7 +93,7 @@ export default async function HomePage() {
 
         <Recommendations context="home" limit={12} className="mt-12" />
 
-        <section className="mt-12">
+        {featuredOn && <section className="mt-12" data-featured-section>
           <div className="mb-5 flex items-end justify-between">
             <h2 className="text-2xl font-extrabold">{t('Productos destacados')}</h2>
             <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver más productos')} <ArrowRight className="size-4" /></Link>
@@ -102,7 +103,7 @@ export default async function HomePage() {
           ) : (
             <div className="card"><Empty title={t('Pronto verás productos aquí')} description={t('Los vendedores están preparando su catálogo.')} /></div>
           )}
-        </section>
+        </section>}
 
         {data?.deals?.length ? (
           <section className="mt-12">

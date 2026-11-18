@@ -65,6 +65,12 @@ export class SupabaseAdminService {
   }
 
   /** Creates a Supabase Auth identity; the DB trigger provisions public.users + CUSTOMER role. */
+  /** Status page: lists one object of the avatars bucket (proves credentials and storage answer). */
+  async ping() {
+    const { error } = await this.admin.storage.from(config.avatarBucket).list('', { limit: 1 });
+    if (error) throw new Error(error.message);
+  }
+
   async createUser(email: string, password: string, fullName?: string, opts: { confirmed?: boolean } = {}) {
     const { data, error } = await this.admin.auth.admin.createUser({
       email,

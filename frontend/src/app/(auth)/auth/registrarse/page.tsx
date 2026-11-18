@@ -9,7 +9,7 @@ import { errorMessage, post } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { StorefrontIllustration } from '@/components/layout/auth-illustration';
-import { t } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 function RegisterForm() {
   const { signIn } = useAuth();
@@ -31,7 +31,7 @@ function RegisterForm() {
     if (!terms) return setError(t('Debes aceptar los términos y la política de privacidad.'));
     setBusy(true);
     try {
-      const r = await post('/auth/register', { fullName: f.fullName, email: f.email, password: f.password });
+      const r = await post('/auth/register', { fullName: f.fullName, email: f.email, password: f.password, acceptTerms: terms, locale: getLocale() });
       if (r.confirmed) {
         await signIn(f.email, f.password);
         router.replace(next);

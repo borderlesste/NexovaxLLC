@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { useState } from 'react';
 import { AuthProvider } from '@/lib/auth';
+import { PolicyGate } from '@/components/layout/policy-gate';
 import { configureI18n, type Locale } from '@/lib/i18n';
 
 export function Providers({ children, locale, currency }: { children: React.ReactNode; locale: Locale; currency: string }) {
@@ -15,7 +16,7 @@ export function Providers({ children, locale, currency }: { children: React.Reac
   );
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>{children}<PolicyGate /></AuthProvider>
       <Toaster position="top-right" richColors closeButton />
     </QueryClientProvider>
   );
