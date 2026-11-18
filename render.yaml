@@ -6,7 +6,11 @@ services:
     name: nexovax-api
     runtime: node
     region: oregon # same region as the Supabase project (us-west-2)
-    plan: starter # the free plan sleeps after 15 min idle; webhooks and scheduled jobs need it awake
+    # Free plan: sleeps after 15 min without traffic (first request then takes ~1 min) and pauses the
+    # in-process scheduled jobs. Keep it awake with an external monitor hitting /api/health every
+    # 10 min (e.g. UptimeRobot); one always-on service fits the 750 free hours a month. Move to
+    # `starter` before real sales.
+    plan: free
     branch: main
     autoDeploy: true
     buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@rd/backend..." && pnpm --filter @rd/backend build
