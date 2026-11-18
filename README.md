@@ -143,6 +143,10 @@ El navegador llama a la API a través del proxy `/api` de Next.js, así que sin 
 - **HTTP:** una petición completa debe llegar en 120 s (`HTTP_REQUEST_TIMEOUT_MS`), frente a clientes lentos (slowloris).
 - **Límites en memoria:** el contador de peticiones vive en el proceso. Con más de una instancia en Render habría que moverlo a un almacenamiento compartido.
 
+## Pruebas de carga (k6)
+
+`tests/load/browse.js` simula visitantes navegando la tienda (solo lectura) con perfiles `smoke`, `load`, `stress` y `spike`. Se lanzan a mano desde GitHub Actions (*Load test (k6)*) o con `pnpm load` / `PROFILE=load k6 run tests/load/browse.js`. Detalles, umbrales y precauciones en [`tests/load/README.md`](tests/load/README.md).
+
 ## Contraseñas filtradas
 
 Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been Pwned, por *k-anonymity*: solo salen los 5 primeros caracteres del SHA-1, nunca la contraseña).

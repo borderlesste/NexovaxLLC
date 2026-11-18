@@ -1,0 +1,46 @@
+# Copy to .github/workflows/load-test.yml to enable (GitHub only lets you or an app with the
+# "workflows" permission add workflow files).
+# Manual k6 load test against the API. Actions → "Load test (k6)" → Run workflow.
+# Optional repository secret PROXY_SHARED_SECRET (same value as on Render) gives each virtual
+# user its own IP, so the per-IP rate limit (300/min) does not throttle the whole test.
+name: Load test (k6)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: smoke (1 VU, 30 s) · load (10 VUs, 4.5 min) · stress (up to 60 VUs) · spike (50 VUs at once)
+        type: choice
+        options: [smoke, load, stress, spike]
+        default: smoke
+      api_url:
+        description: API base URL, ending in /api
+        default: https://api.nexovax.com/api
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.3.0'
+      - name: Run ${{ inputs.profile }}
+        env:
+          PROFILE: ${{ inputs.profile }}
+          API_URL: ${{ inputs.api_url }}
+          PROXY_SHARED_SECRET: ${{ secrets.PROXY_SHARED_SECRET }}
+        run: k6 run --summary-export=summary.json tests/load/browse.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-summary-${{ inputs.profile }}
+          path: summary.json
