@@ -1,0 +1,79 @@
+# Render Blueprint: NEXOVAX API (NestJS). The web (Next.js) runs on Vercel.
+# Render → New → Blueprint → this repository. Values marked `sync: false` are asked for
+# when the Blueprint is created and are never stored in the repository.
+services:
+  - type: web
+    name: nexovax-api
+    runtime: node
+    region: oregon # same region as the Supabase project (us-west-2)
+    plan: starter # the free plan sleeps after 15 min idle; webhooks and scheduled jobs need it awake
+    branch: main
+    autoDeploy: true
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@rd/backend..." && pnpm --filter @rd/backend build
+    # Started from backend/ so the API finds ../scripts/data (catalog translations).
+    startCommand: cd backend && node dist/main.js
+    healthCheckPath: /api/health
+    buildFilter:
+      paths:
+        - backend/**
+        - scripts/data/**
+        - pnpm-lock.yaml
+        - package.json
+        - render.yaml
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: LOG_LEVEL
+        value: info
+      # Visitor IP behind Render's Cloudflare edge (X-Forwarded-For is client-forgeable on Render).
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
+      - key: PAYMENT_ENVIRONMENT
+        value: TEST # LIVE only with live Stripe/PayPal keys
+      - key: PAYPAL_ENV
+        value: sandbox # live in production with live PayPal keys
+      # Public URLs: web on Vercel and this API (custom domain or https://nexovax-api.onrender.com/api).
+      - key: WEB_URL
+        sync: false
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # Same value as PROXY_SHARED_SECRET on Vercel (openssl rand -hex 32).
+      - key: PROXY_SHARED_SECRET
+        sync: false
+      # Supabase (project BovedaNegra): pooler connection string of the nexovax_api_runtime role.
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: SHIPPO_API_KEY
+        sync: false
+      - key: SHIPPO_WEBHOOK_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
