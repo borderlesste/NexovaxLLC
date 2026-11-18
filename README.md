@@ -134,6 +134,15 @@ El navegador llama a la API a través del proxy `/api` de Next.js, así que sin 
 - **IP en peticiones directas:** llegan por el balanceador del hosting de la API; `CLIENT_IP_HEADER` en la API indica la cabecera que pone ese balanceador (`x-forwarded-for` → se usa la última entrada, `cf-connecting-ip`, `true-client-ip`…). Solo se lee cuando la conexión viene de una dirección privada (el balanceador).
 - `experimental.middlewareClientMaxBodySize` está en 80 MB por si alguna subida pasa por el middleware (sin `NEXT_PUBLIC_API_URL`).
 
+## Protección contra abuso y DDoS
+
+- **Borde:** el DDoS volumétrico se frena antes de llegar a los servidores: Vercel (mitigación automática, *Attack Challenge Mode*) y Cloudflare delante de la API (`api.nexovax.com` con proxy activado y reglas de WAF/límite de frecuencia).
+- **API:** límite por IP real (300/min global y límites propios en autenticación, subidas, pagos…), Turnstile, contraseñas filtradas, tamaño de subidas acotado.
+- **Base de datos:** el rol `nexovax_api_runtime` tiene `statement_timeout = 15s`, `idle_in_transaction_session_timeout = 30s` y `lock_timeout = 10s` (migración `20261118120000_nexovax_api_runtime_timeouts.sql`): una consulta lenta no puede acaparar las conexiones del pool (`DB_POOL_MAX`, 8 por defecto). `scripts/geo-import.mjs` amplía su propio límite.
+- **Paginación:** como máximo 200 páginas (`backend/src/common/paging.ts`); valores no numéricos vuelven a la página 1.
+- **HTTP:** una petición completa debe llegar en 120 s (`HTTP_REQUEST_TIMEOUT_MS`), frente a clientes lentos (slowloris).
+- **Límites en memoria:** el contador de peticiones vive en el proceso. Con más de una instancia en Render habría que moverlo a un almacenamiento compartido.
+
 ## Contraseñas filtradas
 
 Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been Pwned, por *k-anonymity*: solo salen los 5 primeros caracteres del SHA-1, nunca la contraseña).

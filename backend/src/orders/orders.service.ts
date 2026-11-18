@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
+import { clampPage, clampPageSize } from '../common/paging';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { CARRIERS, ShippingService } from '../shipping/shipping.service';
 import { orderRef, parseOrderRef, paymentRef } from '../common/refs';
@@ -53,8 +54,8 @@ export class OrdersService {
     }
     if (q.from) where.push(`o.placed_at >= ${add(q.from)}`);
     if (q.to) where.push(`o.placed_at < ${add(q.to)}`);
-    const pageSize = Math.min(Math.max(q.pageSize ?? 20, 1), 100);
-    const page = Math.max(q.page ?? 1, 1);
+    const pageSize = clampPageSize(q.pageSize, 20, 100);
+    const page = clampPage(q.page);
     // One row per seller order (customer view groups them back by order).
     const rows = await this.db.many(
       `select so.id as seller_order_id, so.public_number as seller_order_number, so.lifecycle_status, so.fulfillment_status,

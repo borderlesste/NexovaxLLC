@@ -5,6 +5,7 @@ import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
 import { orderRef, parseOrderRef, parseTicketRef, ticketRef } from '../common/refs';
 import { badRequest, notFound } from '../common/errors';
+import { clampPage } from '../common/paging';
 import { isStaff, RequestUser } from '../auth/auth';
 import { MessagingService, UploadedFile } from '../messaging/messaging.service';
 
@@ -145,7 +146,7 @@ export class SupportService {
       params.push(`%${parseTicketRef(q.search)}%`);
       where.push(`(t.public_number::text ilike $${params.length} or t.subject ilike $${params.length} or coalesce(up.display_name, u.email::text) ilike $${params.length})`);
     }
-    const page = Math.max(q.page ?? 1, 1);
+    const page = clampPage(q.page);
     const rows = await this.db.many(
       `select t.id, t.public_number, t.status, t.subject, t.priority_code, t.created_at, t.updated_at, c.name as category, c.code as category_code,
               coalesce(up.display_name, u.email::text) as requester,

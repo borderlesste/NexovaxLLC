@@ -8,6 +8,7 @@ import { attributeInput, attributeOptions, AttributeValueError, normalizeAttribu
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
+import { clampPage, clampPageSize } from '../common/paging';
 import { encrypt, KEY_VERSION, last4 } from '../common/crypto';
 import { slugify } from '../common/slug';
 import { fromMinor, toMinor } from '../common/money';
@@ -248,8 +249,8 @@ export class SellerService {
       params.push(`%${q.search.trim()}%`);
       where.push(`(p.title ilike $${params.length} or exists (select 1 from public.product_variants v where v.product_id = p.id and v.sku ilike $${params.length}))`);
     }
-    const pageSize = Math.min(q.pageSize ?? 20, 100);
-    const page = Math.max(q.page ?? 1, 1);
+    const pageSize = clampPageSize(q.pageSize, 20, 100);
+    const page = clampPage(q.page);
     const rows = await this.db.many(
       `select p.id, p.slug, p.title, p.status, p.updated_at, p.published_at, c.name as category,
               (select min(vpv.amount)::text from public.product_variants v join public.variant_price_versions vpv on vpv.variant_id = v.id

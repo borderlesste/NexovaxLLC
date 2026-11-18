@@ -54,5 +54,12 @@ async function bootstrap() {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, doc));
   await app.listen(config.port);
+  // Slow-client protection (slowloris): a whole request (headers + body) must arrive within
+  // requestTimeout (Node's default is 5 min). keepAliveTimeout stays above the load balancer's idle
+  // timeout, and headersTimeout above keepAliveTimeout, so the balancer never reuses a closed socket.
+  const server = app.getHttpServer();
+  server.requestTimeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS ?? 120_000); // uploads up to 64 MB
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
 }
 bootstrap();

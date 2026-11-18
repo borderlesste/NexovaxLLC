@@ -3,6 +3,7 @@ import { attributeLabel } from '../common/attributes';
 import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { notFound } from '../common/errors';
+import { clampPage, clampPageSize } from '../common/paging';
 import { mapProductCard, mediaUrl, PRODUCT_CARD_JOINS, PRODUCT_CARD_SELECT } from './catalog.sql';
 
 export interface ProductQuery {
@@ -82,8 +83,8 @@ export class CatalogService {
         relevance: 'coalesce(sold.qty,0) desc, coalesce(rv.avg_rating,0) desc, p.published_at desc',
       }[query.sort ?? 'relevance'] ?? 'p.published_at desc';
 
-    const pageSize = Math.min(Math.max(query.pageSize ?? 24, 1), 60);
-    const page = Math.max(query.page ?? 1, 1);
+    const pageSize = clampPageSize(query.pageSize, 24, 60);
+    const page = clampPage(query.page);
     const sql = `
       select ${PRODUCT_CARD_SELECT('$1')}, count(*) over() as total
         from public.products p
@@ -268,7 +269,7 @@ export class CatalogService {
          left join public.user_profiles up on up.user_id = r.user_id
         where (p.slug = $1 or p.id::text = $1) and r.status = 'PUBLISHED'
         order by r.created_at desc limit 10 offset $2`,
-      [slug, (Math.max(page, 1) - 1) * 10],
+      [slug, (clampPage(page) - 1) * 10],
     );
     return {
       items: rows.map((r: any) => ({ id: r.id, rating: r.rating, title: r.title, body: r.body, author: r.author, createdAt: r.created_at })),
