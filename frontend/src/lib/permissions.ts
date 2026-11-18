@@ -29,6 +29,7 @@ const RULES = {
   commissions: [],
   users: [],
   settings: [],
+  policies: [],
 } satisfies Record<string, Role[]>;
 
 export type Permission = keyof typeof RULES;
@@ -60,6 +61,7 @@ export const SECTIONS: { href: string; label: string; perm: Permission }[] = [
   { href: '/admin/comisiones', label: 'Comisiones y payouts', perm: 'commissions' },
   { href: '/admin/usuarios', label: 'Usuarios', perm: 'users' },
   { href: '/admin/configuracion', label: 'Configuración', perm: 'settings' },
+  { href: '/admin/politicas', label: 'Políticas legales', perm: 'policies' },
 ];
 
 export const sectionFor = (path: string) => SECTIONS.find((s) => path === s.href || path.startsWith(s.href + '/'));

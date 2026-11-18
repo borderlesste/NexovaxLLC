@@ -94,9 +94,7 @@ export class AccountController {
 
   @Post('me/policies/accept')
   async acceptPolicies(@CurrentUser() user: RequestUser, @Body() dto: AcceptPoliciesDto, @Req() req: Request) {
-    const pending = await this.policies_.pending(user.id, requestLocale(req));
-    const ids = dto.versionIds.filter((v) => pending.some((p) => p.versionId === v));
-    await this.policies_.accept(user.id, ids, { method: 'LOGIN_GATE', locale: requestLocale(req), ip: req.ip ?? null, userAgent: String(req.headers['user-agent'] ?? '') || null });
+    await this.policies_.acceptPending(user.id, dto.versionIds, { method: 'LOGIN_GATE', locale: requestLocale(req), ip: req.ip ?? null, userAgent: String(req.headers['user-agent'] ?? '') || null });
     return { pending: await this.policies_.pending(user.id, requestLocale(req)) };
   }
 

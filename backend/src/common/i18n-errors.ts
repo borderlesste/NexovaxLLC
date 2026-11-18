@@ -4,6 +4,9 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Política no encontrada.": "Policy not found.",
+  "El texto en español es obligatorio.": "The Spanish text is required.",
+  "No hay cambios respecto a la versión vigente.": "There are no changes compared to the current version.",
   "Debes aceptar los términos y la política de privacidad.": "You must accept the terms and the privacy policy.",
   "Debes aceptar los términos para vendedores.": "You must accept the seller terms.",
   "Las políticas cambiaron. Vuelve a cargar la página y acéptalas de nuevo.": "The policies changed. Reload the page and accept them again.",
@@ -369,6 +372,8 @@ export function localizeMessage(msg: string, l: ApiLocale): string {
 
 export function translateMessage(msg: string): string {
   if (EN[msg]) return EN[msg];
+  const pm = /^Revisa el texto en ([A-Z]{2}): título de 3 a 120 caracteres y texto de 30 a 20 000, sin etiquetas HTML\.$/.exec(msg);
+  if (pm) return `Check the ${pm[1]} text: title of 3 to 120 characters and text of 30 to 20,000, no HTML tags.`;
   let m = /^(.+) no encontrado\.$/.exec(msg);
   if (m) return `${NOUNS[m[1]] ?? m[1]} not found.`;
   m = /^(.+): (debe ser un número|elige Sí o No|elige una opción de la lista|el valor no es válido|es obligatorio)\.$/.exec(msg);

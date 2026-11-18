@@ -1,3 +1,4 @@
+import { PoliciesAdminController } from './account/policies.controller';
 import { PoliciesService } from './account/policies.service';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -81,7 +82,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
   providers: [
     DbService,
     SettingsService,

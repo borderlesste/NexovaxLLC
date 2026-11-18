@@ -41,15 +41,113 @@ export class PoliciesService {
     return rows.map((r: any) => ({ code: r.code as PolicyCode, slug: r.slug, versionId: r.version_id, version: r.version_number, effectiveAt: r.effective_at, title: r.title, text: r.text }));
   }
 
-  /** Account policies whose current version this user hasn't accepted yet (new account or new version). */
+  /**
+   * Policies this person still has to accept: account policies (terms, privacy) and, for each store
+   * they own, the seller terms. A new version needs acceptance only when it was published with
+   * "requires re-acceptance" or the person never accepted any version of that policy.
+   */
   async pending(userId: string, locale: string) {
-    const cur = await this.current(locale, USER_POLICIES);
-    const done = await this.db.many<{ policy_version_id: string }>(
-      `select distinct policy_version_id from public.policy_acceptances where user_id = $1 and acceptance_scope = 'USER' and policy_version_id = any($2::uuid[])`,
-      [userId, cur.map((c) => c.versionId)],
+    const cur = await this.current(locale);
+    const stores = await this.db.many<{ id: string; name: string }>(
+      `select s.id, coalesce(ssp.display_name, s.slug) as name from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+        where s.owner_user_id = $1 and s.status not in ('CLOSED','DELETED')`,
+      [userId],
+    ).catch(() => []);
+    const rows = await this.db.many<{ policy_id_code: string; version_id: string; seller_id: string | null }>(
+      `select p.code as policy_id_code, a.policy_version_id as version_id, a.seller_id
+         from public.policy_acceptances a join public.policy_versions v on v.id = a.policy_version_id join public.policies p on p.id = v.policy_id
+        where a.user_id = $1`,
+      [userId],
     );
-    const ok = new Set(done.map((d) => d.policy_version_id));
-    return cur.filter((c) => !ok.has(c.versionId));
+    const reaccept = new Map((await this.db.many<{ id: string; r: boolean }>(
+      `select id, requires_reacceptance as r from public.policy_versions where id = any($1::uuid[])`, [cur.map((c) => c.versionId)],
+    )).map((x) => [x.id, x.r]));
+    const needs = (code: string, versionId: string, sellerId: string | null) => {
+      const mine = rows.filter((r) => r.policy_id_code === code && (r.seller_id ?? null) === sellerId);
+      if (mine.some((r) => r.version_id === versionId)) return false;
+      return !mine.length || !!reaccept.get(versionId);
+    };
+    const out: (typeof cur[number] & { sellerId?: string; store?: string })[] = [];
+    for (const c of cur) {
+      if (c.code === 'SELLER_TERMS') {
+        for (const st of stores) if (needs(c.code, c.versionId, st.id)) out.push({ ...c, sellerId: st.id, store: st.name });
+      } else if (needs(c.code, c.versionId, null)) out.push(c);
+    }
+    return out;
+  }
+
+  /** Accepts what is pending among the given versions (account policies and the person's stores). */
+  async acceptPending(userId: string, versionIds: string[], ctx: AcceptanceContext) {
+    const pending = (await this.pending(userId, ctx.locale ?? 'es')).filter((p) => versionIds.includes(p.versionId));
+    for (const p of pending) await this.accept(userId, [p.versionId], ctx, { sellerId: p.sellerId });
+    return pending.length;
+  }
+
+  // ------------------------------------------------------------------ admin
+  /** Every policy with its current texts (all languages), version history and acceptances. */
+  async adminList() {
+    const pols = await this.db.many(
+      `select p.id, p.code, p.slug, p.default_locale, p.current_published_version_id as current_id, pt.name as type_name, pt.acceptance_mode, pt.audience
+         from public.policies p join public.policy_types pt on pt.code = p.policy_type_code where p.status = 'ACTIVE'
+        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS'], p.code::text)`,
+    );
+    const out = [];
+    for (const p of pols) {
+      const locs = await this.db.many(
+        `select locale, title, content->>'text' as text from public.policy_version_localizations where policy_version_id = $1 order by locale`,
+        [p.current_id],
+      );
+      const versions = await this.db.many(
+        `select v.id, v.version_number, v.status, v.requires_reacceptance, v.effective_at, v.published_at,
+                coalesce(up.display_name, u.email::text) as published_by,
+                (select count(*)::int from public.policy_acceptances a where a.policy_version_id = v.id) as acceptances
+           from public.policy_versions v left join public.users u on u.id = v.published_by_user_id left join public.user_profiles up on up.user_id = u.id
+          where v.policy_id = $1 order by v.version_number desc`,
+        [p.id],
+      );
+      out.push({
+        code: p.code, slug: p.slug, name: p.type_name, audience: p.audience, defaultLocale: p.default_locale,
+        localizations: Object.fromEntries(locs.map((l: any) => [l.locale, { title: l.title, text: l.text }])),
+        versions: versions.map((v: any) => ({ id: v.id, version: v.version_number, status: v.status, requiresReacceptance: v.requires_reacceptance, effectiveAt: v.effective_at, publishedAt: v.published_at, publishedBy: v.published_by, acceptances: v.acceptances, current: v.id === p.current_id })),
+      });
+    }
+    return out;
+  }
+
+  /** Publishes a new version (Spanish required; other languages optional) and makes it current. */
+  async publishVersion(adminId: string, code: string, input: { localizations: Record<string, { title?: string; text?: string } | undefined>; requiresReacceptance: boolean; note?: string }) {
+    const pol = await this.db.one(`select id, default_locale from public.policies where code = $1 and status = 'ACTIVE'`, [code]);
+    if (!pol) throw badRequest('POLICY_NOT_FOUND', 'Política no encontrada.');
+    const locs = Object.entries(input.localizations ?? {})
+      .filter(([l, v]) => ['es', 'en', 'fr', 'ht'].includes(l) && v && (v.title?.trim() || v.text?.trim()))
+      .map(([l, v]) => [l, { title: v!.title!.trim(), text: v!.text!.trim() }] as const);
+    for (const [l, v] of locs) {
+      if (!v.title || v.title.length < 3 || v.title.length > 120 || !v.text || v.text.length < 30 || v.text.length > 20000 || /[<>]/.test(v.title + v.text))
+        throw badRequest('POLICY_TEXT_INVALID', `Revisa el texto en ${l.toUpperCase()}: título de 3 a 120 caracteres y texto de 30 a 20 000, sin etiquetas HTML.`);
+    }
+    if (!locs.some(([l]) => l === pol.default_locale)) throw badRequest('POLICY_DEFAULT_LOCALE_REQUIRED', 'El texto en español es obligatorio.');
+    const cur = await this.db.many<{ locale: string; title: string; text: string }>(
+      `select l.locale, l.title, l.content->>'text' as text from public.policies p join public.policy_version_localizations l on l.policy_version_id = p.current_published_version_id where p.id = $1`,
+      [pol.id],
+    );
+    const same = cur.length === locs.length && locs.every(([l, v]) => cur.some((c) => c.locale === l && c.title === v.title && c.text === v.text));
+    if (same) throw badRequest('POLICY_UNCHANGED', 'No hay cambios respecto a la versión vigente.');
+    return this.db.tx(async (c) => {
+      const v = (await this.db.one<{ id: string; n: number }>(
+        `insert into public.policy_versions (policy_id, version_number, requires_reacceptance, created_by_user_id)
+         values ($1, (select coalesce(max(version_number),0)+1 from public.policy_versions where policy_id = $1), $2, $3) returning id, version_number as n`,
+        [pol.id, !!input.requiresReacceptance, adminId],
+        c,
+      ))!;
+      for (const [l, t] of locs)
+        await this.db.exec(
+          `insert into public.policy_version_localizations (policy_version_id, locale, title, content_format, content) values ($1,$2,$3,'PLAIN_TEXT',$4::jsonb)`,
+          [v.id, l, t.title, JSON.stringify({ text: t.text })],
+          c,
+        );
+      await this.db.exec(`select public.publish_policy_version($1,$2,now())`, [v.id, adminId], c);
+      return { versionId: v.id, version: v.n };
+    });
   }
 
   /** Records acceptance of the given versions (they must be the current ones). */

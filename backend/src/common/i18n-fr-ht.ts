@@ -1,5 +1,8 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"Política no encontrada.": "Politique introuvable.",
+"El texto en español es obligatorio.": "Le texte en espagnol est obligatoire.",
+"No hay cambios respecto a la versión vigente.": "Aucun changement par rapport à la version en vigueur.",
 "Debes aceptar los términos y la política de privacidad.": "Vous devez accepter les conditions et la politique de confidentialité.",
 "Debes aceptar los términos para vendedores.": "Vous devez accepter les conditions vendeur.",
 "Las políticas cambiaron. Vuelve a cargar la página y acéptalas de nuevo.": "Les politiques ont changé. Rechargez la page et acceptez-les à nouveau.",
@@ -294,6 +297,9 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"Política no encontrada.": "Nou pa jwenn règ la.",
+"El texto en español es obligatorio.": "Tèks an panyòl la obligatwa.",
+"No hay cambios respecto a la versión vigente.": "Pa gen chanjman konpare ak vèsyon an vigè a.",
 "Debes aceptar los términos y la política de privacidad.": "Ou dwe aksepte kondisyon yo ak règ konfidansyalite a.",
 "Debes aceptar los términos para vendedores.": "Ou dwe aksepte kondisyon pou machann yo.",
 "Las políticas cambiaron. Vuelve a cargar la página y acéptalas de nuevo.": "Règ yo chanje. Rechaje paj la epi aksepte yo ankò.",

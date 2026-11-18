@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Coins, Layers, LayoutGrid, Lock, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign, X, Scale } from 'lucide-react';
+import { AlertTriangle, Check, Coins, Layers, LayoutGrid, Lock, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign, X, Scale, FileText } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader, Empty } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { ROLE_SCOPE, SECTIONS, roleList, sectionFor } from '@/lib/permissions';
 const ICONS: Record<string, any> = {
   '/admin/dashboard': LayoutGrid, '/admin/productos': Package, '/admin/pedidos': ShoppingCart, '/admin/categorias': Layers,
   '/admin/vendedores': Users, '/admin/moderacion': Shield, '/admin/reportes': AlertTriangle, '/admin/devoluciones': RotateCcw,
-  '/admin/finanzas': DollarSign, '/admin/incidencias-pago': Scale, '/admin/comisiones': Coins, '/admin/usuarios': UserCog, '/admin/configuracion': Settings,
+  '/admin/finanzas': DollarSign, '/admin/incidencias-pago': Scale, '/admin/comisiones': Coins, '/admin/usuarios': UserCog, '/admin/configuracion': Settings, '/admin/politicas': FileText,
 };
 
 /** Shown instead of a section the user's role can't open: says why and what the role can do. */

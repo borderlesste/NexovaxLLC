@@ -11,7 +11,7 @@ import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/misc';
 
-type Pending = { code: string; slug: string; versionId: string; version: number; title: string; text: string };
+type Pending = { code: string; slug: string; versionId: string; version: number; title: string; text: string; sellerId?: string; store?: string };
 
 /**
  * Accounts that haven't accepted the current Terms / Privacy policy (a new version was published,
@@ -43,8 +43,8 @@ export function PolicyGate() {
       footer={<Button loading={busy} disabled={!checked} onClick={accept} data-policy-accept><ShieldCheck /> {t('Aceptar y continuar')}</Button>}>
       <div className="max-h-[50vh] space-y-4 overflow-y-auto pr-1" data-policy-gate>
         {pending.map((p) => (
-          <section key={p.versionId} className="rounded-xl border border-line p-4">
-            <p className="font-bold">{p.title} <span className="text-xs font-normal text-muted">· {t('versión {n}', { n: p.version })}</span></p>
+          <section key={`${p.versionId}:${p.sellerId ?? ''}`} className="rounded-xl border border-line p-4">
+            <p className="font-bold">{p.title}{p.store ? ` · ${p.store}` : ''} <span className="text-xs font-normal text-muted">· {t('versión {n}', { n: p.version })}</span></p>
             <p className="mt-2 whitespace-pre-line text-sm text-muted">{p.text}</p>
             <Link href={`/ayuda#${p.slug}`} className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline">{t('Ver en el centro de ayuda')}</Link>
           </section>
