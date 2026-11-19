@@ -46,14 +46,14 @@ export default function AdminFinancePage() {
       <PageHeader crumbs={[{ label: t('Panel de administración') }, { label: t('Finanzas') }]} title={t('Finanzas del marketplace')} description={t('Resumen financiero general de la plataforma.')}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option><option value={365}>{t('Último año')}</option></Select><Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar')}</Button></>} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label={t('Ventas totales (GMV)')} value={money(k.gmv)} icon={<Layers />} hint={t('{a} pedidos', { a: k.orders })} />
-        <StatCard label={t('Comisiones de la plataforma')} value={money(k.commission)} icon={<Percent />} hint={k.avgCommissionRate ? `(${(k.avgCommissionRate * 100).toFixed(1)} % promedio)` : ''} />
-        <StatCard label={t('Pagos a vendedores')} value={money(k.seller_payable)} icon={<Store />} hint={`Liquidado: ${money(k.payoutsPaid)}`} />
+        <StatCard label={t('Ventas totales (GMV)')} value={money(k.gmv)} icon={<Layers />} hint={[k.orders === 1 ? t('1 pedido pagado') : t('{a} pedidos pagados', { a: k.orders }), Number(k.refunded) > 0 ? t('Reembolsado: {a}', { a: money(k.refunded) }) : ''].filter(Boolean).join(' · ')} />
+        <StatCard label={t('Comisiones de la plataforma')} value={money(k.commission)} icon={<Percent />} hint={k.avgCommissionRate != null ? t('{a} % promedio sobre productos', { a: (k.avgCommissionRate * 100).toFixed(1) }) : ''} />
+        <StatCard label={t('Pagos a vendedores')} value={money(k.seller_payable)} icon={<Store />} hint={t('Liquidado en el período: {a}', { a: money(k.payoutsPaid) })} />
         <StatCard label={t('Impuestos recaudados')} value={money(k.tax)} icon={<BarChart3 />} hint={t('Envíos: {a}', { a: money(k.shipping) })} />
-        <StatCard label={t('Vendedores activos')} value={k.activeSellers} icon={<User />} />
+        <StatCard label={t('Vendedores activos')} value={k.activeSellers} icon={<User />} hint={t('{a} con ventas en el período', { a: k.sellersWithSales ?? 0 })} />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <Card><CardHeader title={t('Ventas del marketplace')} /><div className="p-4"><Bars data={d.series} xKey="day" stacked xFormatter={dayLabel} bars={[{ key: 'commission', name: 'Comisiones (plataforma)', color: '#0a6cf5' }, { key: 'sellers', name: t('Pagos a vendedores'), color: '#f5901a' }]} /></div></Card>
+        <Card><CardHeader title={t('Ventas del marketplace')} /><div className="p-4"><Bars data={d.series} xKey="day" stacked xFormatter={dayLabel} bars={[{ key: 'commission', name: t('Comisiones (plataforma)'), color: '#0a6cf5' }, { key: 'sellers', name: t('Pagos a vendedores'), color: '#f5901a' }]} /></div></Card>
         <Card>
           <CardHeader title={t('Retiros de vendedores (solicitudes)')} />
           {d.payouts.length ? (

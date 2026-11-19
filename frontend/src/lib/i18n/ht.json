@@ -2632,5 +2632,12 @@
 "Acceso para administradores": "Aksè pou administratè",
 "Modo mantenimiento": "Mòd antretyen",
 "Cierra el sitio temporalmente: solo los administradores pueden entrar y usarlo.": "Fèmen sit la pou yon ti tan: se sèlman administratè ki ka antre epi itilize l.",
-"Al activar el modo mantenimiento, compradores, vendedores y el resto del equipo verán una pantalla de mantenimiento y no podrán usar el sitio hasta que lo desactives. ¿Continuar?": "Lè mòd antretyen aktive, achtè, machann ak rès ekip la ap wè yon ekran antretyen epi yo p ap ka itilize sit la jiskaske ou dezaktive l. Kontinye?"
+"Al activar el modo mantenimiento, compradores, vendedores y el resto del equipo verán una pantalla de mantenimiento y no podrán usar el sitio hasta que lo desactives. ¿Continuar?": "Lè mòd antretyen aktive, achtè, machann ak rès ekip la ap wè yon ekran antretyen epi yo p ap ka itilize sit la jiskaske ou dezaktive l. Kontinye?",
+"1 pedido pagado": "1 kòmand peye",
+"{a} pedidos pagados": "{a} kòmand peye",
+"Reembolsado: {a}": "Ranbouse: {a}",
+"{a} % promedio sobre productos": "{a} % mwayèn sou pwodwi yo",
+"Liquidado en el período: {a}": "Peye nan peryòd la: {a}",
+"{a} con ventas en el período": "{a} ki fè vant nan peryòd la",
+"Comisiones (plataforma)": "Komisyon (platfòm)"
 }

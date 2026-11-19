@@ -750,29 +750,44 @@ export class AdminService {
   async finance(days = 30) {
     const period = `${days} days`;
     const currency = await this.settings.currency();
+    // Only orders whose payment was actually captured count as sales: unpaid, failed, cancelled
+    // and fully refunded orders are left out, and completed partial refunds are subtracted.
+    const SOLD = `o.payment_status in ('PAID','PARTIALLY_REFUNDED','DISPUTED') and o.lifecycle_status not in ('PENDING_PAYMENT','CANCELLED')`;
+    const REFUNDS = `left join lateral (
+             select coalesce(sum(f.refund_amount),0) as total, coalesce(sum(f.platform_commission_reversal_amount),0) as commission,
+                    coalesce(sum(f.seller_clawback_amount),0) as seller, coalesce(sum(f.tax_refund_amount),0) as tax,
+                    coalesce(sum(f.shipping_refund_amount),0) as shipping
+               from public.refunds f where f.order_id = o.id and f.status = 'COMPLETED') rf on true`;
     const [k, series, sellers] = await Promise.all([
       this.db.one(
-        `select coalesce(sum(ofs.grand_total),0)::text as gmv, coalesce(sum(ofs.platform_commission_total),0)::text as commission,
-                coalesce(sum(ofs.seller_entitlement_estimate_total),0)::text as seller_payable, coalesce(sum(ofs.tax_total),0)::text as tax,
-                coalesce(sum(ofs.shipping_total),0)::text as shipping, count(*)::int as orders
-           from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2`,
+        `select coalesce(sum(ofs.grand_total - rf.total),0)::text as gmv, coalesce(sum(ofs.platform_commission_total - rf.commission),0)::text as commission,
+                coalesce(sum(ofs.seller_entitlement_estimate_total - rf.seller),0)::text as seller_payable, coalesce(sum(ofs.tax_total - rf.tax),0)::text as tax,
+                coalesce(sum(ofs.shipping_total - rf.shipping),0)::text as shipping, coalesce(sum(rf.total),0)::text as refunded, count(*)::int as orders
+           from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id ${REFUNDS}
+          where o.placed_at >= now() - $1::interval and ${SOLD} and o.currency_code = $2`,
         [period, currency],
       ),
       this.db.many(
-        `select d::date as day, coalesce(sum(ofs.platform_commission_total),0)::text as commission,
-                coalesce(sum(ofs.seller_entitlement_estimate_total),0)::text as sellers
+        `select d::date as day, coalesce(sum(ofs.platform_commission_total - rf.commission),0)::text as commission,
+                coalesce(sum(ofs.seller_entitlement_estimate_total - rf.seller),0)::text as sellers
            from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
-           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2
-           left join public.order_financial_snapshots ofs on ofs.order_id = o.id group by d order by d`,
+           left join public.orders o on o.placed_at::date = d::date and ${SOLD} and o.currency_code = $2
+           left join public.order_financial_snapshots ofs on ofs.order_id = o.id ${REFUNDS} group by d order by d`,
         [days, currency],
       ),
-      this.db.one(`select count(*) filter (where status = 'ACTIVE')::int as active from public.sellers`),
+      this.db.one(
+        `select count(*) filter (where s.status = 'ACTIVE')::int as active,
+                count(*) filter (where s.status = 'ACTIVE' and exists (
+                  select 1 from public.seller_orders so join public.orders o on o.id = so.order_id
+                   where so.seller_id = s.id and o.placed_at >= now() - $1::interval and ${SOLD} and o.currency_code = $2))::int as with_sales
+           from public.sellers s`,
+        [period, currency],
+      ),
     ]);
     const paid = await this.db.one(`select coalesce(sum(requested_amount),0)::text as paid from public.payouts where status = 'PAID' and paid_at >= now() - $1::interval and currency_code = $2`, [period, currency]);
     return {
       currency,
-      kpis: { ...k, payoutsPaid: paid!.paid, activeSellers: sellers!.active, avgCommissionRate: Number(k!.gmv) > 0 ? Number(k!.commission) / Number(fromMinor(toMinor(k!.gmv) - toMinor(k!.tax) - toMinor(k!.shipping))) : null },
+      kpis: { ...k, payoutsPaid: paid!.paid, activeSellers: sellers!.active, sellersWithSales: sellers!.with_sales, avgCommissionRate: Number(k!.gmv) > 0 ? Number(k!.commission) / Number(fromMinor(toMinor(k!.gmv) - toMinor(k!.tax) - toMinor(k!.shipping))) : null },
       series,
       payouts: (await this.payouts({})).slice(0, 8),
       pendingTransfers: await this.pendingTransfers(),

@@ -1125,5 +1125,12 @@
 "Acceso para administradores": "Administrator access",
 "Modo mantenimiento": "Maintenance mode",
 "Cierra el sitio temporalmente: solo los administradores pueden entrar y usarlo.": "Temporarily closes the site: only administrators can sign in and use it.",
-"Al activar el modo mantenimiento, compradores, vendedores y el resto del equipo verán una pantalla de mantenimiento y no podrán usar el sitio hasta que lo desactives. ¿Continuar?": "When maintenance mode is on, buyers, sellers and the rest of the team will see a maintenance screen and won’t be able to use the site until you turn it off. Continue?"
+"Al activar el modo mantenimiento, compradores, vendedores y el resto del equipo verán una pantalla de mantenimiento y no podrán usar el sitio hasta que lo desactives. ¿Continuar?": "When maintenance mode is on, buyers, sellers and the rest of the team will see a maintenance screen and won’t be able to use the site until you turn it off. Continue?",
+"1 pedido pagado": "1 paid order",
+"{a} pedidos pagados": "{a} paid orders",
+"Reembolsado: {a}": "Refunded: {a}",
+"{a} % promedio sobre productos": "{a} % average on products",
+"Liquidado en el período: {a}": "Paid out in the period: {a}",
+"{a} con ventas en el período": "{a} with sales in the period",
+"Comisiones (plataforma)": "Commissions (platform)"
 }
