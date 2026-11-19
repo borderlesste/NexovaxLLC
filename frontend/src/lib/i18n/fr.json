@@ -2649,5 +2649,6 @@
 "aprobado": "approuvé",
 "en proceso": "en cours",
 "pagado": "payé",
-"{a} sobre el precio de los productos": "{a} du prix des produits"
+"{a} sobre el precio de los productos": "{a} du prix des produits",
+"Pendiente: {a} (se libera {b} días después de la entrega)": "En attente : {a} (libéré {b} jours après la livraison)"
 }

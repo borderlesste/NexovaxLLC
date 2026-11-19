@@ -1142,5 +1142,6 @@
 "aprobado": "approved",
 "en proceso": "processing",
 "pagado": "paid",
-"{a} sobre el precio de los productos": "{a} of the product price"
+"{a} sobre el precio de los productos": "{a} of the product price",
+"Pendiente: {a} (se libera {b} días después de la entrega)": "Pending: {a} (released {b} days after delivery)"
 }

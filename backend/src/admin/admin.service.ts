@@ -930,7 +930,7 @@ export class AdminService {
       const code = `NX-GLOBAL-PAYOUT-${currency}`;
       const g = await this.db.one(
         `insert into public.business_rule_groups (rule_type_code, code, name, description, scope_type_code, priority, application_mode)
-         values ('PAYOUT_POLICY',$1,$2,'Libera fondos al entregar el pedido; retiros bajo demanda con aprobación manual.','GLOBAL',0,'EXCLUSIVE')
+         values ('PAYOUT_POLICY',$1,$2,'Libera fondos 7 días después de la entrega; retiros bajo demanda con aprobación manual.','GLOBAL',0,'EXCLUSIVE')
          on conflict do nothing returning id`,
         [code, `Política de retiros ${currency}`],
         c,
@@ -945,7 +945,7 @@ export class AdminService {
         `insert into public.payout_policy_definitions (rule_version_id, currency_code, release_trigger_code, hold_period_seconds, reserve_rate,
                  reserve_hold_seconds, minimum_payout_amount, maximum_payout_amount, approval_mode, approval_threshold_amount, require_distinct_approver,
                  schedule_mode, automatic_submission, require_seller_active, block_open_return, block_open_dispute, provider_fee_funding_source_code)
-         values ($1,$2,'DELIVERED',0,0,0,$3,null,'MANUAL',null,false,'ON_DEMAND',false,true,true,true,'PLATFORM')`,
+         values ($1,$2,'DELIVERED',604800,0,0,$3,null,'MANUAL',null,false,'ON_DEMAND',false,true,true,true,'PLATFORM')`,
         [v!.id, currency, currency === 'USD' || currency === 'EUR' || currency === 'GBP' || currency === 'CAD' ? 25 : 500],
         c,
       );

@@ -76,7 +76,7 @@ export default function SellerFinancePage() {
         <StatCard label={t('Ventas (brutas)')} value={money(d.period.gross, d.currency)} icon={<ShoppingCart />} hint={[t('incluye envío e impuestos'), Number(d.period.refunded) > 0 ? t('Reembolsado: {a}', { a: money(d.period.refunded, d.currency) }) : ''].filter(Boolean).join(' · ')} />
         <StatCard label={t('Comisión de la plataforma')} value={`- ${money(d.period.commission, d.currency)}`} icon={<Box />} hint={rate != null ? t('{a} sobre el precio de los productos', { a: pct(rate) }) : ''} />
         <StatCard label={t('Ganancia neta')} value={money(d.period.net, d.currency)} icon={<Wallet />} tone="green" hint={t('productos menos comisión')} />
-        <StatCard label={t('Saldo disponible')} value={money(d.balances.available, d.currency)} icon={<Coins />} hint={t('Pendiente por entrega: {a}', { a: money(d.balances.pending, d.currency) })} />
+        <StatCard label={t('Saldo disponible')} value={money(d.balances.available, d.currency)} icon={<Coins />} hint={d.payoutPolicy?.holdDays ? t('Pendiente: {a} (se libera {b} días después de la entrega)', { a: money(d.balances.pending, d.currency), b: d.payoutPolicy.holdDays }) : t('Pendiente por entrega: {a}', { a: money(d.balances.pending, d.currency) })} />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card>

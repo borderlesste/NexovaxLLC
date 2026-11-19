@@ -1002,7 +1002,7 @@ export class SellerService {
       commissionRate: commissionRate ? Number(commissionRate.rate) : null,
       series,
       movements,
-      payoutPolicy: policy ? { minimum: policy.minimum, approvalMode: policy.approval_mode } : null,
+      payoutPolicy: policy ? { minimum: policy.minimum, approvalMode: policy.approval_mode, holdDays: Math.round(Number(policy.hold_period_seconds ?? 0) / 86400) } : null,
     };
   }
 
