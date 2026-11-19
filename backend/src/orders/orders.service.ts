@@ -692,7 +692,7 @@ export class OrdersService {
   /** On delivery, evaluates payout policy and releases seller funds from pending to available. */
   private async releaseDeliveredFunds(c: PoolClient, orderId: string) {
     const sos = await this.db.many(
-      `select id from public.seller_orders where order_id = $1 and fulfillment_status = 'DELIVERED'`,
+      `select id from public.seller_orders where order_id = $1 and fulfillment_status in ('DELIVERED','PARTIALLY_RETURNED')`,
       [orderId],
       c,
     );
@@ -711,12 +711,20 @@ export class OrdersService {
   }
 
   /** Retries fund release for delivered seller orders still pending (idempotent). */
-  async retryPendingReleases() {
+  async retryPendingReleases(sellerId?: string) {
+    // Only orders that can actually be released now: no record yet, or a record whose hold
+    // has ended (or that was blocked and must be re-checked), and that still has pending funds.
+    // Orders still inside their hold are skipped so they never starve the ones that are due.
     const rows = await this.db.many(
-      `select distinct so.order_id from public.seller_orders so
-        where so.fulfillment_status = 'DELIVERED'
-          and not exists (select 1 from public.payout_eligibility_records per where per.seller_order_id = so.id and per.status = 'RELEASED')
-        limit 50`,
+      `select so.order_id, max(per.evaluated_at) as evaluated_at from public.seller_orders so
+         left join public.payout_eligibility_records per on per.seller_order_id = so.id
+        where so.fulfillment_status in ('DELIVERED','PARTIALLY_RETURNED')
+          and ($1::uuid is null or so.seller_id = $1::uuid)
+          and (per.id is null or (per.status not in ('RELEASED','CANCELLED') and (per.status = 'BLOCKED' or per.hold_until is null or per.hold_until <= now())))
+          and public.seller_order_pending_ledger_balance(so.id) > 0
+        group by so.order_id order by max(per.evaluated_at) asc nulls first
+        limit 100`,
+      [sellerId ?? null],
     );
     for (const r of rows) await this.db.tx((c) => this.releaseDeliveredFunds(c, r.order_id)).catch(() => undefined);
     return rows.length;

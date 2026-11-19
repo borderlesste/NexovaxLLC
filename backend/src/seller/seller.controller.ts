@@ -319,8 +319,12 @@ export class SellerController {
 
   // finance
   @Get('finance')
-  finance(@CurrentUser() user: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.finance(this.sid(user, h), Math.min(Math.max(Number(days) || 30, 7), 365));
+  async finance(@CurrentUser() user: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
+    const sid = this.sid(user, h);
+    // Release any funds whose hold already ended, so the balance is current even if the
+    // 30-minute job did not run (the API sleeps on Render's free plan). Best effort.
+    await this.orders.retryPendingReleases(sid).catch(() => undefined);
+    return this.seller.finance(sid, Math.min(Math.max(Number(days) || 30, 7), 365));
   }
 
   @Get('payout-accounts')
