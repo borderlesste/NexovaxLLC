@@ -2,9 +2,10 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ExternalLink, ImageIcon, MapPin, Store, UploadCloud } from 'lucide-react';
+import { Check, ExternalLink, ImageIcon, MapPin, Store, UploadCloud, X } from 'lucide-react';
+import { LogoMark } from '@/components/layout/logo';
 import { toast } from 'sonner';
-import { errorMessage, get, put, upload } from '@/lib/api';
+import { del, errorMessage, get, put, upload } from '@/lib/api';
 import { fmtDate } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -71,13 +72,23 @@ export default function StoreSettingsPage() {
       setBusy(false);
     }
   };
+  const removeImg = async (kind: 'logo' | 'banner') => {
+    if (!window.confirm(kind === 'logo' ? t('¿Quitar el logo? Tu tienda mostrará el logo de NEXOVAX.') : t('¿Quitar la portada? Tu tienda mostrará la portada por defecto.'))) return;
+    try {
+      await del(`/seller/store/${kind}`);
+      toast.success(kind === 'logo' ? t('Logo eliminado.') : t('Portada eliminada.'));
+      q.refetch();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
   const uploadImg = async (kind: 'logo' | 'banner', file?: File) => {
     if (!file) return;
     const form = new FormData();
     form.append('file', file);
     try {
       await upload(`/seller/store/${kind}`, form);
-      toast.success(kind === 'logo' ? 'Logo actualizado.' : 'Portada actualizada.');
+      toast.success(kind === 'logo' ? t('Logo actualizado.') : t('Portada actualizada.'));
       q.refetch();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -101,15 +112,35 @@ export default function StoreSettingsPage() {
         <div className="space-y-5">
           <Card>
             <CardHeader icon={<ImageIcon />} title={t('Identidad visual')} subtitle={t('Logo y portada de tu tienda.')} />
-            <div className="grid gap-4 p-5 sm:grid-cols-2">
-              <input ref={logoRef} type="file" accept="image/*" hidden onChange={(e) => uploadImg('logo', e.target.files?.[0])} />
-              <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => uploadImg('banner', e.target.files?.[0])} />
-              <button onClick={() => logoRef.current?.click()} className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/40 text-sm">
-                {s.logoUrl ? <img src={s.logoUrl} alt={t('Logo')} className="size-full object-cover" /> : <><UploadCloud className="size-8 text-brand-600" /><b className="mt-2">{t('Sube tu logo')}</b></>}
-              </button>
-              <button onClick={() => bannerRef.current?.click()} className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/40 text-sm">
-                {s.bannerUrl ? <img src={s.bannerUrl} alt={t('Portada')} className="size-full object-cover" /> : <><UploadCloud className="size-8 text-brand-600" /><b className="mt-2">{t('Sube la portada')}</b></>}
-              </button>
+            <div className="space-y-5 p-5">
+              <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { uploadImg('logo', e.target.files?.[0]); e.target.value = ''; }} />
+              <input ref={bannerRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { uploadImg('banner', e.target.files?.[0]); e.target.value = ''; }} />
+              <div className="flex flex-wrap items-start gap-4">
+                <div className="relative size-36 shrink-0" data-store-logo>
+                  <button type="button" onClick={() => logoRef.current?.click()} aria-label={t('Cambiar logo')}
+                    className="grid size-full place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-brand-300 bg-white">
+                    {s.logoUrl ? <img src={s.logoUrl} alt={t('Logo')} className="size-full object-cover" /> : <LogoMark className="size-20" />}
+                  </button>
+                  {s.logoUrl && <RemoveImage label={t('Quitar logo')} onClick={() => removeImg('logo')} />}
+                </div>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="font-semibold">{t('Logo')}</p>
+                  <p className="mt-1 text-muted">{s.logoUrl ? t('Toca la imagen para cambiarla o la X para volver al logo de NEXOVAX.') : t('Sin logo propio: tu tienda muestra el logo de NEXOVAX. Toca la imagen para subir el tuyo.')}</p>
+                  <p className="mt-2 text-xs text-muted">{t('Recomendado: cuadrado de 512 × 512 px (mínimo 256 × 256), PNG o JPG, hasta 8 MB. Se muestra recortado en cuadrado.')}</p>
+                </div>
+              </div>
+              <div data-store-banner>
+                <p className="mb-2 text-sm font-semibold">{t('Portada')}</p>
+                <div className="relative">
+                  <button type="button" onClick={() => bannerRef.current?.click()} aria-label={t('Cambiar portada')}
+                    className="relative block aspect-[4/1] w-full overflow-hidden rounded-2xl border-2 border-dashed border-brand-300 bg-gradient-to-r from-brand-100 via-brand-200 to-brand-400">
+                    {s.bannerUrl ? <img src={s.bannerUrl} alt={t('Portada')} className="absolute inset-0 size-full object-cover" />
+                      : <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-brand-800"><span className="flex items-center gap-2"><UploadCloud className="size-5" /> {t('Portada por defecto de NEXOVAX · toca para subir la tuya')}</span></span>}
+                  </button>
+                  {s.bannerUrl && <RemoveImage label={t('Quitar portada')} onClick={() => removeImg('banner')} />}
+                </div>
+                <p className="mt-2 text-xs text-muted">{t('Recomendado: 1600 × 400 px (proporción 4:1), PNG o JPG, hasta 8 MB. Deja el centro libre de texto importante: en móvil se recortan los lados.')}</p>
+              </div>
             </div>
           </Card>
           <Card className="p-5 text-sm">
@@ -126,5 +157,14 @@ export default function StoreSettingsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function RemoveImage({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} title={label}
+      className="absolute -right-2 -top-2 grid size-7 place-items-center rounded-full bg-white text-ink shadow-md ring-1 ring-line hover:bg-red-50 hover:text-red-600">
+      <X className="size-4" />
+    </button>
   );
 }

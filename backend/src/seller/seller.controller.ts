@@ -199,6 +199,13 @@ export class SellerController {
     return this.seller.uploadStoreImage(user, this.sid(user, h), kind as any, file);
   }
 
+  /** Removes the store logo or cover; the storefront then shows the NEXOVAX defaults. */
+  @Delete('store/:kind')
+  removeStoreImage(@CurrentUser() user: RequestUser, @Param('kind') kind: string, @Headers('x-seller-id') h?: string) {
+    if (!['logo', 'banner'].includes(kind)) throw badRequest('INVALID_UPLOAD', 'Archivo inválido.');
+    return this.seller.removeStoreImage(this.sid(user, h), kind as 'logo' | 'banner');
+  }
+
   @Get('dashboard')
   dashboard(@CurrentUser() user: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
     return this.seller.dashboard(this.sid(user, h), Math.min(Math.max(Number(days) || 30, 7), 365));

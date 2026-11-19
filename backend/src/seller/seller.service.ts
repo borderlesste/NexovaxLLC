@@ -255,6 +255,11 @@ export class SellerService {
     return { url: mediaUrl(assetId) };
   }
 
+  async removeStoreImage(sellerId: string, kind: 'logo' | 'banner') {
+    await this.db.exec(`update public.seller_store_profiles set ${kind === 'logo' ? 'logo_asset_id' : 'banner_asset_id'} = null where seller_id = $1`, [sellerId]);
+    return { ok: true };
+  }
+
   // ------------------------------------------------------------------ products
   async listProducts(sellerId: string, q: { status?: string; search?: string; page?: number; pageSize?: number }) {
     const currency = await this.settings.currency();

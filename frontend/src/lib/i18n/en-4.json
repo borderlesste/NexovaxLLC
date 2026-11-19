@@ -1153,5 +1153,20 @@
 "Enviar a 1 persona": "Send to 1 person",
 "persona": "person",
 "1 espera": "1 waiting",
-"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 person is waiting for it to be back in stock: restock and we’ll let them know automatically."
+"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 person is waiting for it to be back in stock: restock and we’ll let them know automatically.",
+"Cambiar logo": "Change logo",
+"Quitar logo": "Remove logo",
+"Cambiar portada": "Change cover",
+"Quitar portada": "Remove cover",
+"Toca la imagen para cambiarla o la X para volver al logo de NEXOVAX.": "Tap the image to change it, or the X to go back to the NEXOVAX logo.",
+"Sin logo propio: tu tienda muestra el logo de NEXOVAX. Toca la imagen para subir el tuyo.": "No logo of your own: your store shows the NEXOVAX logo. Tap the image to upload yours.",
+"Recomendado: cuadrado de 512 × 512 px (mínimo 256 × 256), PNG o JPG, hasta 8 MB. Se muestra recortado en cuadrado.": "Recommended: 512 × 512 px square (at least 256 × 256), PNG or JPG, up to 8 MB. It is shown cropped to a square.",
+"Portada por defecto de NEXOVAX · toca para subir la tuya": "NEXOVAX default cover · tap to upload yours",
+"Recomendado: 1600 × 400 px (proporción 4:1), PNG o JPG, hasta 8 MB. Deja el centro libre de texto importante: en móvil se recortan los lados.": "Recommended: 1600 × 400 px (4:1 ratio), PNG or JPG, up to 8 MB. Keep important text in the center: the sides are cropped on mobile.",
+"¿Quitar el logo? Tu tienda mostrará el logo de NEXOVAX.": "Remove the logo? Your store will show the NEXOVAX logo.",
+"¿Quitar la portada? Tu tienda mostrará la portada por defecto.": "Remove the cover? Your store will show the default cover.",
+"Logo eliminado.": "Logo removed.",
+"Portada eliminada.": "Cover removed.",
+"Logo actualizado.": "Logo updated.",
+"Portada actualizada.": "Cover updated."
 }

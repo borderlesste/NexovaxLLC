@@ -2660,5 +2660,20 @@
 "Enviar a 1 persona": "Envoyer à 1 personne",
 "persona": "personne",
 "1 espera": "1 en attente",
-"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 personne attend qu’il soit de nouveau disponible : réapprovisionnez et nous la préviendrons automatiquement."
+"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 personne attend qu’il soit de nouveau disponible : réapprovisionnez et nous la préviendrons automatiquement.",
+"Cambiar logo": "Changer le logo",
+"Quitar logo": "Retirer le logo",
+"Cambiar portada": "Changer la couverture",
+"Quitar portada": "Retirer la couverture",
+"Toca la imagen para cambiarla o la X para volver al logo de NEXOVAX.": "Touchez l’image pour la changer, ou le X pour revenir au logo NEXOVAX.",
+"Sin logo propio: tu tienda muestra el logo de NEXOVAX. Toca la imagen para subir el tuyo.": "Pas de logo personnel : votre boutique affiche le logo NEXOVAX. Touchez l’image pour téléverser le vôtre.",
+"Recomendado: cuadrado de 512 × 512 px (mínimo 256 × 256), PNG o JPG, hasta 8 MB. Se muestra recortado en cuadrado.": "Recommandé : carré de 512 × 512 px (minimum 256 × 256), PNG ou JPG, jusqu’à 8 Mo. Il est affiché recadré en carré.",
+"Portada por defecto de NEXOVAX · toca para subir la tuya": "Couverture NEXOVAX par défaut · touchez pour téléverser la vôtre",
+"Recomendado: 1600 × 400 px (proporción 4:1), PNG o JPG, hasta 8 MB. Deja el centro libre de texto importante: en móvil se recortan los lados.": "Recommandé : 1600 × 400 px (format 4:1), PNG ou JPG, jusqu’à 8 Mo. Gardez le texte important au centre : les côtés sont rognés sur mobile.",
+"¿Quitar el logo? Tu tienda mostrará el logo de NEXOVAX.": "Retirer le logo ? Votre boutique affichera le logo NEXOVAX.",
+"¿Quitar la portada? Tu tienda mostrará la portada por defecto.": "Retirer la couverture ? Votre boutique affichera la couverture par défaut.",
+"Logo eliminado.": "Logo retiré.",
+"Portada eliminada.": "Couverture retirée.",
+"Logo actualizado.": "Logo mis à jour.",
+"Portada actualizada.": "Couverture mise à jour."
 }

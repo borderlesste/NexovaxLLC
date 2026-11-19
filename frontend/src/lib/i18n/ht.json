@@ -2660,5 +2660,20 @@
 "Enviar a 1 persona": "Voye bay 1 moun",
 "persona": "moun",
 "1 espera": "1 ap tann",
-"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 moun ap tann li disponib ankò: remete stòk e n ap avèti l otomatikman."
+"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 moun ap tann li disponib ankò: remete stòk e n ap avèti l otomatikman.",
+"Cambiar logo": "Chanje logo",
+"Quitar logo": "Retire logo",
+"Cambiar portada": "Chanje kouvèti",
+"Quitar portada": "Retire kouvèti",
+"Toca la imagen para cambiarla o la X para volver al logo de NEXOVAX.": "Tape imaj la pou chanje l, oswa X la pou retounen sou logo NEXOVAX.",
+"Sin logo propio: tu tienda muestra el logo de NEXOVAX. Toca la imagen para subir el tuyo.": "Pa gen logo pa w: boutik ou montre logo NEXOVAX. Tape imaj la pou mete pa w.",
+"Recomendado: cuadrado de 512 × 512 px (mínimo 256 × 256), PNG o JPG, hasta 8 MB. Se muestra recortado en cuadrado.": "Rekòmande: kare 512 × 512 px (omwen 256 × 256), PNG oswa JPG, jiska 8 MB. Li parèt koupe an kare.",
+"Portada por defecto de NEXOVAX · toca para subir la tuya": "Kouvèti NEXOVAX pa defo · tape pou mete pa w",
+"Recomendado: 1600 × 400 px (proporción 4:1), PNG o JPG, hasta 8 MB. Deja el centro libre de texto importante: en móvil se recortan los lados.": "Rekòmande: 1600 × 400 px (pwopòsyon 4:1), PNG oswa JPG, jiska 8 MB. Kenbe tèks enpòtan nan mitan: sou telefòn yo koupe kote yo.",
+"¿Quitar el logo? Tu tienda mostrará el logo de NEXOVAX.": "Retire logo a? Boutik ou ap montre logo NEXOVAX.",
+"¿Quitar la portada? Tu tienda mostrará la portada por defecto.": "Retire kouvèti a? Boutik ou ap montre kouvèti pa defo a.",
+"Logo eliminado.": "Logo retire.",
+"Portada eliminada.": "Kouvèti retire.",
+"Logo actualizado.": "Logo mete ajou.",
+"Portada actualizada.": "Kouvèti mete ajou."
 }
