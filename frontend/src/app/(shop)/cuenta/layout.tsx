@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AlertCircle, Bell, CreditCard, Heart, MapPin, MessageSquare, Package, RotateCcw, Shield, Store, User, Users, LayoutDashboard, Handshake, Share2 } from 'lucide-react';
+import { AlertCircle, Bell, CreditCard, Heart, MapPin, MessageSquare, Package, RotateCcw, Shield, Store, User, Users, LayoutDashboard, Handshake, Share2, BookOpen } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { PageLoader } from '@/components/ui/misc';
@@ -37,7 +37,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       <aside className="h-fit lg:sticky lg:top-24">
         <p className="mb-2 px-3 text-sm font-bold text-muted">{t('Mi cuenta')}</p>
         <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-          {LINKS.map(([href, label, Icon]) => (
+          {[...LINKS, ...(isStaff ? ([['/cuenta/guia', 'Guía del equipo', BookOpen]] as const) : [])].map(([href, label, Icon]) => (
             <Link key={href} href={href} className={cn('flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold', pathname.startsWith(href) ? 'bg-brand-50 text-brand-700' : 'text-ink hover:bg-white')}>
               <Icon className="size-[18px]" /> {t(label)}
             </Link>

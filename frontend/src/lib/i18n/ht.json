@@ -2455,5 +2455,10 @@
 "Escribir a {name}": "Ekri {name}",
 "Compartir tienda": "Pataje boutik",
 "{name} en NEXOVAX": "{name} sou NEXOVAX",
-"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Nou pa t ka kopye. Chwazi lyen an epi kopye l ou menm."
+"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Nou pa t ka kopye. Chwazi lyen an epi kopye l ou menm.",
+"Guía del equipo": "Gid ekip la",
+"Cómo usar el panel de NEXOVAX según tu rol.": "Kijan pou itilize panèl NEXOVAX la dapre wòl ou.",
+"No tienes acceso a esta guía": "Ou pa gen aksè nan gid sa a",
+"La guía del panel es solo para el equipo de Soporte, Moderación y Administración.": "Gid panèl la se sèlman pou ekip Sipò, Moderasyon ak Administrasyon.",
+"Volver a mi cuenta": "Retounen nan kont mwen"
 }

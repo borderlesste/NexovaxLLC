@@ -943,5 +943,10 @@
 "Escribir a {name}": "Message {name}",
 "Compartir tienda": "Share store",
 "{name} en NEXOVAX": "{name} on NEXOVAX",
-"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Couldn’t copy. Select the link and copy it manually."
+"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Couldn’t copy. Select the link and copy it manually.",
+"Guía del equipo": "Team guide",
+"Cómo usar el panel de NEXOVAX según tu rol.": "How to use the NEXOVAX panel for your role.",
+"No tienes acceso a esta guía": "You don’t have access to this guide",
+"La guía del panel es solo para el equipo de Soporte, Moderación y Administración.": "The panel guide is only for the Support, Moderation and Administration team.",
+"Volver a mi cuenta": "Back to my account"
 }

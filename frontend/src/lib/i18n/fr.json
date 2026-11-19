@@ -2455,5 +2455,10 @@
 "Escribir a {name}": "Écrire à {name}",
 "Compartir tienda": "Partager la boutique",
 "{name} en NEXOVAX": "{name} sur NEXOVAX",
-"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Impossible de copier. Sélectionnez le lien et copiez-le manuellement."
+"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Impossible de copier. Sélectionnez le lien et copiez-le manuellement.",
+"Guía del equipo": "Guide de l’équipe",
+"Cómo usar el panel de NEXOVAX según tu rol.": "Comment utiliser le panneau NEXOVAX selon votre rôle.",
+"No tienes acceso a esta guía": "Vous n’avez pas accès à ce guide",
+"La guía del panel es solo para el equipo de Soporte, Moderación y Administración.": "Le guide du panneau est réservé aux équipes Support, Modération et Administration.",
+"Volver a mi cuenta": "Retour à mon compte"
 }
