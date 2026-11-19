@@ -1148,5 +1148,10 @@
 "Indica el nuevo stock.": "Enter the new stock.",
 "No puedes retirar más unidades de las que hay en stock ({a}).": "You can’t remove more units than are in stock ({a}).",
 "actual {a} (reservado {b})": "current {a} ({b} reserved)",
-"Traslado": "Transfer"
+"Traslado": "Transfer",
+"Oferta enviada a 1 persona con el cupón {code}.": "Offer sent to 1 person with coupon {code}.",
+"Enviar a 1 persona": "Send to 1 person",
+"persona": "person",
+"1 espera": "1 waiting",
+"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 person is waiting for it to be back in stock: restock and we’ll let them know automatically."
 }

@@ -2655,5 +2655,10 @@
 "Indica el nuevo stock.": "Indiquez le nouveau stock.",
 "No puedes retirar más unidades de las que hay en stock ({a}).": "Vous ne pouvez pas retirer plus d’unités qu’il n’y en a en stock ({a}).",
 "actual {a} (reservado {b})": "actuel {a} ({b} réservé)",
-"Traslado": "Transfert"
+"Traslado": "Transfert",
+"Oferta enviada a 1 persona con el cupón {code}.": "Offre envoyée à 1 personne avec le coupon {code}.",
+"Enviar a 1 persona": "Envoyer à 1 personne",
+"persona": "personne",
+"1 espera": "1 en attente",
+"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 personne attend qu’il soit de nouveau disponible : réapprovisionnez et nous la préviendrons automatiquement."
 }

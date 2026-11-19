@@ -2655,5 +2655,10 @@
 "Indica el nuevo stock.": "Mete nouvo stòk la.",
 "No puedes retirar más unidades de las que hay en stock ({a}).": "Ou pa ka retire plis inite pase sa ki nan stòk la ({a}).",
 "actual {a} (reservado {b})": "aktyèl {a} ({b} rezève)",
-"Traslado": "Transfè"
+"Traslado": "Transfè",
+"Oferta enviada a 1 persona con el cupón {code}.": "Òf voye bay 1 moun ak koupon {code}.",
+"Enviar a 1 persona": "Voye bay 1 moun",
+"persona": "moun",
+"1 espera": "1 ap tann",
+"1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.": "1 moun ap tann li disponib ankò: remete stòk e n ap avèti l otomatikman."
 }

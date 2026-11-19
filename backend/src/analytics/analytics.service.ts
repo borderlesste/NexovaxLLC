@@ -184,7 +184,7 @@ function suggest(r: any, conversion: number | null, days: number) {
   const out: { code: string; tone: 'red' | 'amber' | 'blue' | 'green'; message: string; params?: Record<string, unknown>; actions: string[] }[] = [];
   const ageDays = (Date.now() - new Date(r.published_at ?? r.created_at).getTime()) / 86400_000;
   if (r.stock <= 0 && r.waiting > 0)
-    out.push({ code: 'OUT_OF_STOCK_DEMAND', tone: 'red', message: '{n} personas esperan que vuelva a estar disponible: repón inventario y les avisaremos automáticamente.', params: { n: r.waiting }, actions: ['STOCK'] });
+    out.push({ code: 'OUT_OF_STOCK_DEMAND', tone: 'red', message: r.waiting === 1 ? '1 persona espera que vuelva a estar disponible: repón inventario y le avisaremos automáticamente.' : '{n} personas esperan que vuelva a estar disponible: repón inventario y les avisaremos automáticamente.', params: { n: r.waiting }, actions: ['STOCK'] });
   else if (r.stock <= 0 && r.views >= 10)
     out.push({ code: 'OUT_OF_STOCK_DEMAND', tone: 'red', message: 'Se agotó y la gente lo sigue visitando: repón inventario para no perder ventas.', actions: ['STOCK'] });
   if (r.visitors >= 30 && (conversion ?? 0) < 0.01)

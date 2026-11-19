@@ -33,7 +33,7 @@ export function OfferDialog({ product, onClose }: { product: { id: string; title
         productId: product.id, audience, message: message.trim() || undefined,
         ...(coupon === 'NEW' ? { newCoupon: { percent: Number(pct), days: Number(days) } } : { couponId: coupon }),
       });
-      toast.success(t('Oferta enviada a {n} personas con el cupón {code}.', { n: r.recipients, code: r.code }));
+      toast.success(r.recipients === 1 ? t('Oferta enviada a 1 persona con el cupón {code}.', { code: r.code }) : t('Oferta enviada a {n} personas con el cupón {code}.', { n: r.recipients, code: r.code }));
       qc.invalidateQueries({ queryKey: ['seller-offers'] });
       qc.invalidateQueries({ queryKey: ['seller-coupons'] });
       onClose();
@@ -45,7 +45,7 @@ export function OfferDialog({ product, onClose }: { product: { id: string; title
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} size="lg" title={t('Ofrecer cupón a interesados')} description={product.title}
-      footer={<><Button variant="secondary" onClick={onClose}>{t('Cancelar')}</Button><Button loading={busy} disabled={!q.data || n < 1 || !!q.data.availableAt || !q.data.product.active} onClick={send} data-offer-send><Send /> {t('Enviar a {n} personas', { n })}</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>{t('Cancelar')}</Button><Button loading={busy} disabled={!q.data || n < 1 || !!q.data.availableAt || !q.data.product.active} onClick={send} data-offer-send><Send /> {n === 1 ? t('Enviar a 1 persona') : t('Enviar a {n} personas', { n })}</Button></>}>
       {!q.data ? <PageLoader /> : (
         <div className="space-y-4" data-offer-dialog>
           <p className="flex items-start gap-2 rounded-xl bg-surface p-3 text-sm text-muted"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand-600" />{t('NEXOVAX envía la oferta por ti. Nunca verás quiénes son: solo cuántas personas la reciben y cuántas compran. No se envía a quien ya compró el producto ni a quien recibió muchas ofertas esta semana.')}</p>
@@ -57,7 +57,7 @@ export function OfferDialog({ product, onClose }: { product: { id: string; title
                 <label key={v} className={`flex cursor-pointer flex-col rounded-xl border p-3 text-sm ${audience === v ? 'border-brand-600 bg-brand-50' : 'border-line'}`}>
                   <span className="flex items-center gap-2 font-semibold"><input type="radio" checked={audience === v} onChange={() => setAudience(v)} /> {t(l)}</span>
                   <span className="mt-1 text-2xl font-extrabold" data-audience={v}>{q.data.counts[v]}</span>
-                  <span className="text-xs text-muted">{t('personas')}</span>
+                  <span className="text-xs text-muted">{q.data.counts[v] === 1 ? t('persona') : t('personas')}</span>
                 </label>
               ))}
             </div>

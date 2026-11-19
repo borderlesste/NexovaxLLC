@@ -87,7 +87,7 @@ export default function SellerStatsPage() {
                       {(p.favorites > 0 || p.addToCart > 0) && <button className="block text-xs font-semibold text-brand-700 hover:underline" onClick={() => setOfferFor(p)} data-offer-row-open={p.id}>{t('Ofrecer cupón')}</button>}</td>
                     <td>{p.units}<span className="block text-xs text-muted">{money(p.revenue)}</span></td>
                     <td>{p.conversion != null ? `${p.conversion} %` : '—'}</td>
-                    <td className={p.stock <= 0 ? 'font-semibold text-red-600' : ''}>{p.stock}{p.waiting > 0 && <span className="block text-xs font-normal text-brand-700" data-waiting>{t('{n} esperan', { n: p.waiting })}</span>}</td>
+                    <td className={p.stock <= 0 ? 'font-semibold text-red-600' : ''}>{p.stock}{p.waiting > 0 && <span className="block text-xs font-normal text-brand-700" data-waiting>{p.waiting === 1 ? t('1 espera') : t('{n} esperan', { n: p.waiting })}</span>}</td>
                   </tr>
                 ))}
               </tbody>
