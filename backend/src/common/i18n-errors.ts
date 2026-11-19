@@ -188,6 +188,7 @@ const EN: Record<string, string> = {
   'Usa el código de 2 letras del estado (ej. FL, CA, NY).': 'Use the 2-letter state code (e.g. FL, CA, NY).',
   'Indica el estado o provincia.': 'Enter the state or province.',
   'No puedes escribirte a tu propia tienda.': 'You can’t message your own store.',
+  'No puedes seguir tu propia tienda.': 'You can’t follow your own store.',
   'No puedes quitarte tu propio rol de administrador.': 'You can’t remove your own administrator role.',
   'No puedes cambiar el estado de tu propia cuenta.': 'You can’t change your own account status.',
   'Ya tienes una tienda registrada.': 'You already have a registered store.',

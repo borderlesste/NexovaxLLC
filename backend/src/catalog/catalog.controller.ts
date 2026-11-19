@@ -115,7 +115,12 @@ export class CatalogController {
 
   @Get('stores/:slug')
   store(@Param('slug') slug: string, @CurrentUser() user?: RequestUser) {
-    return this.catalog.store(slug, user?.id);
+    return this.catalog.store(slug, user?.id, user?.sellers.map((x) => x.id) ?? []);
+  }
+
+  @Get('stores/:slug/reviews')
+  storeReviews(@Param('slug') slug: string, @Query('page') page?: string, @Query('rating') rating?: string) {
+    return this.catalog.storeReviews(slug, num(page) ?? 1, num(rating));
   }
 
   @Get('search/suggest')

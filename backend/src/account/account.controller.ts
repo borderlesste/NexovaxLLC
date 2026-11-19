@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import { requestLocale } from '../common/i18n-errors';
+import { badRequest } from '../common/errors';
 import { PoliciesService } from './policies.service';
 import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -211,6 +212,7 @@ export class AccountController {
 
   @Post('me/following/:sellerId')
   toggleFollow(@CurrentUser() user: RequestUser, @Param('sellerId', ParseUUIDPipe) sellerId: string) {
+    if (user.sellers.some((s) => s.id === sellerId)) throw badRequest('SELF_FOLLOW', 'No puedes seguir tu propia tienda.');
     return this.account.toggleFollow(user.id, sellerId);
   }
 }

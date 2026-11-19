@@ -342,7 +342,7 @@ export class CatalogService {
     }));
   }
 
-  async store(slug: string, viewerUserId?: string) {
+  async store(slug: string, viewerUserId?: string, viewerSellerIds: string[] = []) {
     const s = await this.db.one(
       `select s.id, s.slug, s.status, s.verification_status, s.activated_at, s.created_at,
               coalesce(ssp.display_name, s.slug) as name, ssp.short_description, ssp.description,
@@ -352,7 +352,7 @@ export class CatalogService {
       [slug],
     );
     if (!s) throw notFound('Tienda');
-    const [stats, dist, brands, cats, follow] = await Promise.all([
+    const [stats, dist, brands, cats, follow, shipFrom] = await Promise.all([
       this.sellerStats(s.id),
       this.db.many(
         `select rating, count(*)::int as count from public.product_reviews where seller_id = $1 and status='PUBLISHED' group by rating`,
@@ -371,6 +371,12 @@ export class CatalogService {
       viewerUserId
         ? this.db.one(`select 1 as f from public.seller_followers where user_id = $1 and seller_id = $2`, [viewerUserId, s.id])
         : Promise.resolve(null),
+      // Where the store ships from (its default active ship-from address), shown instead of a generic shipping claim.
+      this.db.one(
+        `select city, country_code from public.seller_ship_from_addresses
+          where seller_id = $1 and status = 'ACTIVE' order by is_default desc, created_at limit 1`,
+        [s.id],
+      ),
     ]);
     const offers = await this.db.one(
       `select count(*)::int as n from public.products p
@@ -397,6 +403,33 @@ export class CatalogService {
       brands,
       categories: cats,
       isFollowing: !!follow,
+      isOwnStore: viewerSellerIds.includes(s.id),
+      shipsFrom: shipFrom ? { city: shipFrom.city, countryCode: shipFrom.country_code } : null,
+    };
+  }
+
+  /** Published reviews of every product of a store, newest first (optionally only one star rating). */
+  async storeReviews(slug: string, page = 1, rating?: number) {
+    const stars = rating && rating >= 1 && rating <= 5 ? Math.trunc(rating) : null;
+    const rows = await this.db.many(
+      `select r.id, r.rating, r.title, r.body, r.created_at, p.title as product_title,
+              case when p.status = 'ACTIVE' then p.slug end as product_slug,
+              coalesce(up.display_name, nullif(trim(coalesce(up.first_name,'') || ' ' || coalesce(left(up.last_name,1),'')), ''), 'Cliente') as author,
+              count(*) over() as total
+         from public.product_reviews r
+         join public.sellers s on s.id = r.seller_id
+         join public.products p on p.id = r.product_id
+         left join public.user_profiles up on up.user_id = r.user_id
+        where s.slug = $1 and s.status = 'ACTIVE' and r.status = 'PUBLISHED' and ($3::int is null or r.rating = $3)
+        order by r.created_at desc limit 10 offset $2`,
+      [slug, (clampPage(page) - 1) * 10, stars],
+    );
+    return {
+      items: rows.map((r: any) => ({
+        id: r.id, rating: r.rating, title: r.title, body: r.body, author: r.author, createdAt: r.created_at,
+        product: { title: r.product_title, slug: r.product_slug },
+      })),
+      total: rows[0] ? Number(rows[0].total) : 0,
     };
   }
 
