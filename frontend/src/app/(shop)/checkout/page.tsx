@@ -94,7 +94,8 @@ export default function CheckoutPage() {
   const [cardChoice, setCardChoice] = useState<string | null>(null);
   const [saveStripe, setSaveStripe] = useState(false);
 
-  if (loading || !session || (quote.isLoading && !q)) return <PageLoader />;
+  // The quote waits for the addresses; until it exists (and did not fail) there is nothing to render.
+  if (loading || !session || (!q && !quote.isError)) return <PageLoader />;
   if (quote.isError && !q)
     return (
       <div className="mx-auto max-w-3xl px-4 py-16"><div className="card"><Empty icon={<ShoppingBag />} title={t('Tu carrito está vacío')} description={t('Agrega productos antes de finalizar la compra.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div></div>
