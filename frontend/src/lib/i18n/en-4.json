@@ -1143,5 +1143,10 @@
 "en proceso": "processing",
 "pagado": "paid",
 "{a} sobre el precio de los productos": "{a} of the product price",
-"Pendiente: {a} (se libera {b} días después de la entrega)": "Pending: {a} (released {b} days after delivery)"
+"Pendiente: {a} (se libera {b} días después de la entrega)": "Pending: {a} (released {b} days after delivery)",
+"Indica una cantidad mayor que cero.": "Enter a quantity greater than zero.",
+"Indica el nuevo stock.": "Enter the new stock.",
+"No puedes retirar más unidades de las que hay en stock ({a}).": "You can’t remove more units than are in stock ({a}).",
+"actual {a} (reservado {b})": "current {a} ({b} reserved)",
+"Traslado": "Transfer"
 }

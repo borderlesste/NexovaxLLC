@@ -2650,5 +2650,10 @@
 "en proceso": "an kous",
 "pagado": "peye",
 "{a} sobre el precio de los productos": "{a} sou pri pwodwi yo",
-"Pendiente: {a} (se libera {b} días después de la entrega)": "An atant: {a} (lage {b} jou apre livrezon)"
+"Pendiente: {a} (se libera {b} días después de la entrega)": "An atant: {a} (lage {b} jou apre livrezon)",
+"Indica una cantidad mayor que cero.": "Mete yon kantite ki pi gran pase zewo.",
+"Indica el nuevo stock.": "Mete nouvo stòk la.",
+"No puedes retirar más unidades de las que hay en stock ({a}).": "Ou pa ka retire plis inite pase sa ki nan stòk la ({a}).",
+"actual {a} (reservado {b})": "aktyèl {a} ({b} rezève)",
+"Traslado": "Transfè"
 }

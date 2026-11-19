@@ -2650,5 +2650,10 @@
 "en proceso": "en cours",
 "pagado": "payé",
 "{a} sobre el precio de los productos": "{a} du prix des produits",
-"Pendiente: {a} (se libera {b} días después de la entrega)": "En attente : {a} (libéré {b} jours après la livraison)"
+"Pendiente: {a} (se libera {b} días después de la entrega)": "En attente : {a} (libéré {b} jours après la livraison)",
+"Indica una cantidad mayor que cero.": "Indiquez une quantité supérieure à zéro.",
+"Indica el nuevo stock.": "Indiquez le nouveau stock.",
+"No puedes retirar más unidades de las que hay en stock ({a}).": "Vous ne pouvez pas retirer plus d’unités qu’il n’y en a en stock ({a}).",
+"actual {a} (reservado {b})": "actuel {a} ({b} réservé)",
+"Traslado": "Transfert"
 }

@@ -814,16 +814,16 @@ export class SellerService {
       state: r.available <= 0 ? 'OUT' : r.available <= r.min_stock ? 'LOW' : 'OK',
       imageUrl: r.image_id ? mediaUrl(r.image_id) : null,
     }));
-    if (q.stock === 'LOW') items = items.filter((i) => i.state === 'LOW');
-    if (q.stock === 'OUT') items = items.filter((i) => i.state === 'OUT');
-    if (q.stock === 'OK') items = items.filter((i) => i.state === 'OK');
-    const all = rows.length;
+    // The summary cards describe the whole inventory, not only the rows the stock filter shows.
     const summary = {
-      activeSkus: all,
+      activeSkus: items.length,
       low: items.filter((i) => i.state === 'LOW').length,
       out: items.filter((i) => i.state === 'OUT').length,
       value: fromMinor(items.reduce((a, i) => a + toMinor(i.value), 0n)),
     };
+    if (q.stock === 'LOW') items = items.filter((i) => i.state === 'LOW');
+    if (q.stock === 'OUT') items = items.filter((i) => i.state === 'OUT');
+    if (q.stock === 'OK') items = items.filter((i) => i.state === 'OK');
     const movements = await this.db.many(
       `select m.id, m.movement_type, m.quantity_delta_on_hand::int as delta, m.occurred_at as created_at, v.sku, p.title, v.title as variant_title
          from public.inventory_movements m join public.inventory_items ii on ii.id = m.inventory_item_id
@@ -848,6 +848,8 @@ export class SellerService {
       const cur = await this.db.one(`select on_hand::int as on_hand from public.inventory_items where variant_id = $1 and location_id = $2`, [v.id, loc!.id], c);
       const onHand = cur?.on_hand ?? 0;
       const target = input.mode === 'SET' ? input.quantity : input.mode === 'ADD' ? onHand + input.quantity : onHand - input.quantity;
+      if (input.mode === 'REMOVE' && input.quantity > onHand)
+        throw badRequest('STOCK_REMOVE_TOO_MUCH', 'No puedes retirar más unidades de las que hay en stock.');
       const type = input.mode === 'ADD' ? 'STOCK_IN' : input.mode === 'REMOVE' ? (input.reason === 'DAMAGE' ? 'DAMAGE' : input.reason === 'LOSS' ? 'LOSS' : 'STOCK_CORRECTION') : 'STOCK_CORRECTION';
       await this.setStock(c, user.id, sellerId, v.id, loc!.id, target, type, input.reason && /^[A-Z_]+$/.test(input.reason) ? input.reason : 'MANUAL_ADJUSTMENT');
       if (input.minStock != null)

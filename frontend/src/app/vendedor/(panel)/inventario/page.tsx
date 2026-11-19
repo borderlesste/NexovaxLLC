@@ -37,6 +37,11 @@ function Inventory() {
   const [busy, setBusy] = useState(false);
   const open = (i: any) => { setAdj(i); setForm({ mode: 'ADD', quantity: '', reason: 'RESTOCK', minStock: String(i.minStock) }); };
   const save = async () => {
+    const qty = Number(form.quantity || 0);
+    const minChanged = form.minStock !== '' && Number(form.minStock) !== adj.minStock;
+    if (form.mode !== 'SET' && qty <= 0 && !minChanged) { toast.error(t('Indica una cantidad mayor que cero.')); return; }
+    if (form.mode === 'SET' && form.quantity === '') { toast.error(t('Indica el nuevo stock.')); return; }
+    if (form.mode === 'REMOVE' && qty > adj.onHand) { toast.error(t('No puedes retirar más unidades de las que hay en stock ({a}).', { a: adj.onHand })); return; }
     setBusy(true);
     try {
       await post('/seller/inventory/adjust', { variantId: adj.variantId, mode: form.mode, quantity: Number(form.quantity || 0), reason: form.mode === 'REMOVE' ? form.reason : form.mode === 'ADD' ? 'RESTOCK' : 'MANUAL_ADJUSTMENT', minStock: form.minStock ? Number(form.minStock) : undefined });
@@ -51,7 +56,7 @@ function Inventory() {
   };
   if (q.isLoading) return <PageLoader />;
   const d = q.data;
-  const MV: Record<string, [string, any, string]> = { STOCK_IN: [t('Ingreso'), ArrowUpRight, 'text-emerald-700 bg-emerald-50'], SALE_COMMIT: [t('Salida'), ArrowDownRight, 'text-red-600 bg-red-50'], DAMAGE: [t('Daño'), ArrowDownRight, 'text-red-600 bg-red-50'], LOSS: [t('Pérdida'), ArrowDownRight, 'text-red-600 bg-red-50'], MANUAL_ADJUSTMENT: [t('Ajuste'), ArrowLeftRight, 'text-brand-700 bg-brand-50'], RETURN_RESTOCK: [t('Devolución'), ArrowUpRight, 'text-emerald-700 bg-emerald-50'] };
+  const MV: Record<string, [string, any, string]> = { STOCK_IN: [t('Ingreso'), ArrowUpRight, 'text-emerald-700 bg-emerald-50'], SALE_COMMIT: [t('Salida'), ArrowDownRight, 'text-red-600 bg-red-50'], DAMAGE: [t('Daño'), ArrowDownRight, 'text-red-600 bg-red-50'], LOSS: [t('Pérdida'), ArrowDownRight, 'text-red-600 bg-red-50'], MANUAL_ADJUSTMENT: [t('Ajuste'), ArrowLeftRight, 'text-brand-700 bg-brand-50'], RETURN_RESTOCK: [t('Devolución'), ArrowUpRight, 'text-emerald-700 bg-emerald-50'], CYCLE_COUNT_CORRECTION: [t('Ajuste'), ArrowLeftRight, 'text-brand-700 bg-brand-50'], SYSTEM_CORRECTION: [t('Ajuste'), ArrowLeftRight, 'text-brand-700 bg-brand-50'], TRANSFER_IN: [t('Traslado'), ArrowUpRight, 'text-emerald-700 bg-emerald-50'], TRANSFER_OUT: [t('Traslado'), ArrowDownRight, 'text-red-600 bg-red-50'] };
   return (
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Inventario') }]} title={t('Inventario')} description={t('Gestiona el stock de tus productos y variantes, controla niveles mínimos y movimientos de inventario.')}
@@ -107,7 +112,7 @@ function Inventory() {
           ) : <Empty title={t('Sin movimientos')} />}
         </Card>
       </div>
-      <Dialog open={!!adj} onOpenChange={(o) => !o && setAdj(null)} title={t('Ajustar inventario')} description={adj ? `${adj.title} · ${adj.sku} · actual ${adj.onHand} (reservado ${adj.reserved})` : ''}
+      <Dialog open={!!adj} onOpenChange={(o) => !o && setAdj(null)} title={t('Ajustar inventario')} description={adj ? `${adj.title} · ${adj.sku} · ${t('actual {a} (reservado {b})', { a: adj.onHand, b: adj.reserved })}` : ''}
         footer={<><Button variant="secondary" onClick={() => setAdj(null)}>{t('Cancelar')}</Button><Button onClick={save} loading={busy}>{t('Guardar ajuste')}</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('Tipo de ajuste')}><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}><option value="ADD">{t('Ingreso de mercancía')}</option><option value="REMOVE">{t('Salida (daño, pérdida…)')}</option><option value="SET">{t('Fijar stock exacto')}</option></Select></Field>

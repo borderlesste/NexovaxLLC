@@ -211,6 +211,7 @@ const EN: Record<string, string> = {
   'Revisa las tarifas de envío.': 'Review the shipping rates.',
   'Cada variante necesita un SKU.': 'Each variant needs a SKU.',
   'El stock debe ser un número entero positivo.': 'Stock must be a positive whole number.',
+  'No puedes retirar más unidades de las que hay en stock.': 'You can’t remove more units than are in stock.',
   'Esta tienda aún no tiene productos publicados.': 'This store has no published products yet.',
   'Ingresa un número de identificación fiscal válido.': 'Enter a valid tax identification number.',
   'La tasa debe estar entre 0 % y 99 %.': 'The rate must be between 0% and 99%.',
