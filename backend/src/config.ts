@@ -4,12 +4,17 @@ import { resolve } from 'node:path';
 /**
  * Runtime configuration. Secrets are read from environment variables, or from
  * the local secret store (`.secrets/` at the repository root) during
- * development. Secrets never live in source control.
+ * development, or Render Secret Files (`/etc/secrets/<file>`) in production. Secrets never live in source control.
  */
 function secret(envName: string, file: string): string | undefined {
   const fromEnv = process.env[envName];
   if (fromEnv && fromEnv.trim()) return fromEnv.trim();
-  const candidates = [resolve(process.cwd(), '.secrets', file), resolve(process.cwd(), '..', '.secrets', file)];
+  const candidates = [
+    resolve(process.cwd(), '.secrets', file),
+    resolve(process.cwd(), '..', '.secrets', file),
+    // Render "Secret Files": each file is mounted at /etc/secrets/<filename>
+    resolve('/etc/secrets', file),
+  ];
   for (const p of candidates) {
     if (existsSync(p)) return readFileSync(p, 'utf8').trim();
   }
