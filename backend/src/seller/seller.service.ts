@@ -1065,8 +1065,8 @@ export class SellerService {
       if (primary) await this.clearCurrencyDefault(sellerId, currency, c);
       await this.db.exec(
         `insert into public.seller_payout_account_currencies (payout_account_id, seller_id, currency_code, is_enabled, is_default)
-         values ($1,$2,$3,true, not exists (select 1 from public.seller_payout_account_currencies
-                                             where seller_id = $2 and currency_code = $3 and is_enabled and is_default))`,
+         values ($1,$2::uuid,$3::text,true, not exists (select 1 from public.seller_payout_account_currencies
+                                                         where seller_id = $2::uuid and currency_code = $3::text and is_enabled and is_default))`,
         [r!.id, sellerId, currency],
         c,
       );
