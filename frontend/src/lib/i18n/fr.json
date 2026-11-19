@@ -2604,5 +2604,13 @@
 "Puedes": "Vous pouvez",
 "No puedes": "Vous ne pouvez pas",
 "Abrir": "Ouvrir",
-"{role} (tu rol)": "{role} (votre rôle)"
+"{role} (tu rol)": "{role} (votre rôle)",
+"Correo de tu cuenta Wise": "E-mail de votre compte Wise",
+"Recibes en tu cuenta Wise y la retiras en tu moneda local.": "Vous le recevez sur votre compte Wise et le retirez dans votre devise locale.",
+"Correo de tu cuenta Payoneer": "E-mail de votre compte Payoneer",
+"Recibes en tu saldo de Payoneer.": "Vous le recevez sur votre solde Payoneer.",
+"Correo o teléfono registrado en Zelle": "E-mail ou téléphone enregistré sur Zelle",
+"Solo para cuentas bancarias de EE. UU.": "Comptes bancaires américains uniquement.",
+"Correo de tu cuenta Skrill": "E-mail de votre compte Skrill",
+"Recibes en tu monedero Skrill.": "Vous le recevez dans votre portefeuille Skrill."
 }

@@ -1097,5 +1097,13 @@
 "No puedes": "You can’t",
 "Abrir": "Open",
 "{role} (tu rol)": "{role} (your role)",
-"Moderador": "Moderator"
+"Moderador": "Moderator",
+"Correo de tu cuenta Wise": "Your Wise account email",
+"Recibes en tu cuenta Wise y la retiras en tu moneda local.": "You receive it in your Wise account and withdraw it in your local currency.",
+"Correo de tu cuenta Payoneer": "Your Payoneer account email",
+"Recibes en tu saldo de Payoneer.": "You receive it in your Payoneer balance.",
+"Correo o teléfono registrado en Zelle": "Email or phone registered with Zelle",
+"Solo para cuentas bancarias de EE. UU.": "US bank accounts only.",
+"Correo de tu cuenta Skrill": "Your Skrill account email",
+"Recibes en tu monedero Skrill.": "You receive it in your Skrill wallet."
 }

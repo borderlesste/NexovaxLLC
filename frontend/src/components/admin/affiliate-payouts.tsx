@@ -35,6 +35,7 @@ export function AffiliatePayouts() {
   const dest = (p: any) =>
     !p ? <span className="text-red-600">{t('Sin método de cobro registrado')}</span>
     : p.method === 'PAYPAL' ? <>PayPal · {p.paypalEmail}</>
+    : p.method !== 'BANK' ? <>{({ WISE: 'Wise', PAYONEER: 'Payoneer', ZELLE: 'Zelle', SKRILL: 'Skrill' } as Record<string, string>)[p.method] ?? p.method} · {p.bank?.account} · {p.bank?.holderName}</>
     : <>{p.bank?.bankName} · {p.bank?.holderName} · ****{String(p.bank?.accountNumber ?? '').slice(-4)} · {countryName(p.bank?.country)}</>;
   return (
     <Card className="mt-5" data-affiliate-payouts>

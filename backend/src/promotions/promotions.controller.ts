@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 import { CurrentUser, Public, RequestUser, Roles, requireSeller } from '../auth/auth';
 import { CouponsService } from './coupons.service';
-import { AffiliatesService } from './affiliates.service';
+import { AffiliatesService, PAYOUT_METHODS, type PayoutMethod } from './affiliates.service';
 import { OffersService } from './offers.service';
 import { SharesService } from './shares.service';
 
@@ -42,8 +42,13 @@ class BankDto {
   @IsOptional() @IsString() @Length(0, 20) routingCode?: string;
   @IsOptional() @IsString() @Length(0, 2) country?: string;
 }
+class WalletDto {
+  @IsOptional() @IsString() @Length(0, 80) holderName?: string;
+  @IsOptional() @IsString() @Length(0, 254) account?: string;
+}
 export class PayoutProfileDto {
-  @IsIn(['PAYPAL', 'BANK']) method: 'PAYPAL' | 'BANK';
+  @IsIn(PAYOUT_METHODS) method: PayoutMethod;
+  @IsOptional() @ValidateNested() @Type(() => WalletDto) wallet?: WalletDto;
   @IsOptional() @IsString() @Length(0, 254) paypalEmail?: string;
   @IsOptional() @ValidateNested() @Type(() => BankDto) bank?: BankDto;
 }

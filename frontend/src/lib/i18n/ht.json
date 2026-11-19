@@ -2604,5 +2604,13 @@
 "Puedes": "Ou kapab",
 "No puedes": "Ou pa kapab",
 "Abrir": "Louvri",
-"{role} (tu rol)": "{role} (wòl ou)"
+"{role} (tu rol)": "{role} (wòl ou)",
+"Correo de tu cuenta Wise": "Imèl kont Wise ou",
+"Recibes en tu cuenta Wise y la retiras en tu moneda local.": "Ou resevwa l nan kont Wise ou epi ou retire l nan lajan lokal ou.",
+"Correo de tu cuenta Payoneer": "Imèl kont Payoneer ou",
+"Recibes en tu saldo de Payoneer.": "Ou resevwa l nan balans Payoneer ou.",
+"Correo o teléfono registrado en Zelle": "Imèl oswa telefòn ki anrejistre nan Zelle",
+"Solo para cuentas bancarias de EE. UU.": "Sèlman pou kont labank Etazini.",
+"Correo de tu cuenta Skrill": "Imèl kont Skrill ou",
+"Recibes en tu monedero Skrill.": "Ou resevwa l nan bous Skrill ou."
 }

@@ -15,10 +15,16 @@ export interface ProgramInput {
   productIds?: string[] | null;
 }
 
+/** Wallets paid to an email (Zelle also accepts a US phone number). */
+export const WALLET_METHODS = ['WISE', 'PAYONEER', 'ZELLE', 'SKRILL'] as const;
+export const PAYOUT_METHODS = ['PAYPAL', 'BANK', ...WALLET_METHODS] as const;
+export type PayoutMethod = (typeof PAYOUT_METHODS)[number];
+
 export interface PayoutProfileInput {
-  method: 'PAYPAL' | 'BANK';
+  method: PayoutMethod;
   paypalEmail?: string;
   bank?: { holderName?: string; bankName?: string; accountNumber?: string; accountType?: string; routingCode?: string; country?: string };
+  wallet?: { holderName?: string; account?: string };
 }
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -341,6 +347,21 @@ export class AffiliatesService {
         `insert into public.nx_affiliate_payout_profiles (user_id, method, paypal_email, bank, updated_at) values ($1,'BANK',null,$2::jsonb,now())
          on conflict (user_id) do update set method = 'BANK', paypal_email = null, bank = excluded.bank, updated_at = now()`,
         [user.id, JSON.stringify(bank)],
+      );
+    } else if ((WALLET_METHODS as readonly string[]).includes(i.method)) {
+      const holderName = String(i.wallet?.holderName ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
+      let account = String(i.wallet?.account ?? '').trim().toLowerCase();
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(account) && account.length <= 254;
+      const phone = account.replace(/[\s().-]/g, '');
+      const isUsPhone = /^(\+?1)?[2-9]\d{9}$/.test(phone);
+      if (i.method === 'ZELLE' && !isEmail && isUsPhone) account = `+1${phone.slice(-10)}`;
+      else if (!isEmail)
+        throw badRequest('PAYOUT_WALLET_INVALID', i.method === 'ZELLE' ? 'Indica el correo o el teléfono de EE. UU. registrado en Zelle.' : 'Indica el correo de tu cuenta.');
+      if (holderName.length < 3) throw badRequest('PAYOUT_HOLDER_REQUIRED', 'Indica el nombre del titular de la cuenta.');
+      await this.db.exec(
+        `insert into public.nx_affiliate_payout_profiles (user_id, method, paypal_email, bank, updated_at) values ($1,$2,null,$3::jsonb,now())
+         on conflict (user_id) do update set method = excluded.method, paypal_email = null, bank = excluded.bank, updated_at = now()`,
+        [user.id, i.method, JSON.stringify({ holderName, account })],
       );
     } else throw badRequest('PAYOUT_METHOD_INVALID', 'Elige cómo quieres cobrar.');
     return (await this.dashboard(user)).payoutProfile;

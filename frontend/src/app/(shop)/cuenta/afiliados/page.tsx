@@ -14,6 +14,14 @@ import { Empty, PageLoader } from '@/components/ui/misc';
 import { CountrySelect } from '@/components/shop/geo-fields';
 import { affiliateUrl } from '@/lib/affiliates';
 
+/** Wallets paid to an email (Zelle: email or US phone). Keep in sync with WALLET_METHODS in the API. */
+const WALLETS: Record<string, { label: string; account: string; hint: string }> = {
+  WISE: { label: 'Wise', account: 'Correo de tu cuenta Wise', hint: 'Recibes en tu cuenta Wise y la retiras en tu moneda local.' },
+  PAYONEER: { label: 'Payoneer', account: 'Correo de tu cuenta Payoneer', hint: 'Recibes en tu saldo de Payoneer.' },
+  ZELLE: { label: 'Zelle', account: 'Correo o teléfono registrado en Zelle', hint: 'Solo para cuentas bancarias de EE. UU.' },
+  SKRILL: { label: 'Skrill', account: 'Correo de tu cuenta Skrill', hint: 'Recibes en tu monedero Skrill.' },
+};
+
 const STATUS: Record<string, [string, 'amber' | 'green' | 'blue' | 'gray']> = {
   PENDING: ['Pendiente', 'amber'], AVAILABLE: ['Disponible', 'blue'], PAID: ['Pagada', 'green'], REVERSED: ['Revertida', 'gray'],
 };
@@ -21,11 +29,11 @@ const STATUS: Record<string, [string, 'amber' | 'green' | 'blue' | 'gray']> = {
 export default function AffiliatePage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['my-affiliates'], queryFn: () => get<any>('/me/affiliates') });
-  const [p, setP] = useState({ method: 'PAYPAL', paypalEmail: '', holderName: '', bankName: '', accountNumber: '', accountType: 'CHECKING', routingCode: '', country: '' });
+  const [p, setP] = useState({ method: 'PAYPAL', paypalEmail: '', walletAccount: '', holderName: '', bankName: '', accountNumber: '', accountType: 'CHECKING', routingCode: '', country: '' });
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const pp = q.data?.payoutProfile;
-    if (pp) setP({ method: pp.method, paypalEmail: pp.paypalEmail ?? '', holderName: pp.bank?.holderName ?? '', bankName: pp.bank?.bankName ?? '', accountNumber: pp.bank?.accountNumber ?? '', accountType: pp.bank?.accountType || 'CHECKING', routingCode: pp.bank?.routingCode ?? '', country: pp.bank?.country ?? '' });
+    if (pp) setP({ method: pp.method, paypalEmail: pp.paypalEmail ?? '', walletAccount: pp.bank?.account ?? '', holderName: pp.bank?.holderName ?? '', bankName: pp.bank?.bankName ?? '', accountNumber: pp.bank?.accountNumber ?? '', accountType: pp.bank?.accountType || 'CHECKING', routingCode: pp.bank?.routingCode ?? '', country: pp.bank?.country ?? '' });
   }, [q.data?.payoutProfile]);
   if (q.isLoading || !q.data) return <PageLoader />;
   const d = q.data;
@@ -35,6 +43,8 @@ export default function AffiliatePage() {
     try {
       await put('/me/affiliates/payout-profile', p.method === 'PAYPAL'
         ? { method: 'PAYPAL', paypalEmail: p.paypalEmail }
+        : WALLETS[p.method]
+        ? { method: p.method, wallet: { holderName: p.holderName, account: p.walletAccount } }
         : { method: 'BANK', bank: { holderName: p.holderName, bankName: p.bankName, accountNumber: p.accountNumber, accountType: p.accountType, routingCode: p.routingCode, country: p.country } });
       toast.success(t('Método de cobro guardado.'));
       qc.invalidateQueries({ queryKey: ['my-affiliates'] });
@@ -102,10 +112,18 @@ export default function AffiliatePage() {
             <Select value={p.method} onChange={(e) => setP({ ...p, method: e.target.value })} data-aff-method>
               <option value="PAYPAL">PayPal</option>
               <option value="BANK">{t('Transferencia bancaria')}</option>
+              {Object.entries(WALLETS).map(([k, w]) => <option key={k} value={k}>{w.label}</option>)}
             </Select>
           </Field>
           {p.method === 'PAYPAL' ? (
             <Field label={t('Correo de tu cuenta PayPal')} required><Input type="email" value={p.paypalEmail} onChange={(e) => setP({ ...p, paypalEmail: e.target.value })} data-aff-paypal /></Field>
+          ) : WALLETS[p.method] ? (
+            <>
+              <Field label={t(WALLETS[p.method].account)} required hint={t(WALLETS[p.method].hint)}>
+                <Input type={p.method === 'ZELLE' ? 'text' : 'email'} value={p.walletAccount} maxLength={254} onChange={(e) => setP({ ...p, walletAccount: e.target.value })} data-aff-wallet />
+              </Field>
+              <Field label={t('Titular')} required><Input value={p.holderName} maxLength={80} onChange={(e) => setP({ ...p, holderName: e.target.value })} /></Field>
+            </>
           ) : (
             <>
               <Field label={t('Titular')} required><Input value={p.holderName} maxLength={80} onChange={(e) => setP({ ...p, holderName: e.target.value })} /></Field>
