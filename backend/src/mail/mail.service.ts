@@ -295,7 +295,9 @@ export class MailService {
 
     const sellerOrders = await this.db.many(
       `select so.id, so.seller_id, sofs.product_net_amount::text as subtotal, sofs.platform_commission_total::text as commission,
-              sofs.seller_entitlement_estimate::text as net
+              sofs.seller_entitlement_estimate::text as net, sofs.discount_total::text as discount,
+              (select string_agg(pc.code::text, ', ') from public.order_promotion_snapshots ops join public.promotion_codes pc on pc.id = ops.promotion_code_id
+                where ops.order_id = so.order_id and ops.application_snapshot->>'sellerId' = so.seller_id::text) as coupon
          from public.seller_orders so left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
         where so.order_id = $1`,
       [orderId],
@@ -306,6 +308,23 @@ export class MailService {
       const l = s.locale;
       const t = tr(l);
       const soItems = await this.orderItems(orderId, so.id);
+      const couponUsed = so.coupon && Number(so.discount) > 0;
+      if (couponUsed) {
+        // In-app notice for the store: one of its coupons was redeemed in this order.
+        const d = (lc: Locale) => money(so.discount, cur, lc);
+        await this.notifications.notify(s.ownerUserId, {
+          category: 'ORDERS', eventType: 'SELLER_COUPON_USED',
+          title: `Se usó tu cupón ${so.coupon}`,
+          body: `En el pedido ${ref} se aplicó un descuento de ${d('es')}.`,
+          localized: {
+            es: { title: `Se usó tu cupón ${so.coupon}`, body: `En el pedido ${ref} se aplicó un descuento de ${d('es')}.` },
+            en: { title: `Your coupon ${so.coupon} was used`, body: `A discount of ${d('en')} was applied on order ${ref}.` },
+            fr: { title: `Votre coupon ${so.coupon} a été utilisé`, body: `Une remise de ${d('fr')} a été appliquée à la commande ${ref}.` },
+            ht: { title: `Yo itilize koupon ou ${so.coupon}`, body: `Yo aplike yon rabè ${d('ht')} sou kòmand ${ref}.` },
+          },
+          url: `/vendedor/pedidos/${orderId}`, entityType: 'SELLER_ORDER', entityId: so.id, dedupeKey: `seller-coupon-used:${so.id}`,
+        });
+      }
       await this.send({
         template: 'SELLER_NEW_ORDER',
         dedupeKey: `seller-new-order:${so.id}`,
@@ -324,6 +343,7 @@ export class MailService {
             rows(
               [
                 [t('Venta de productos', 'Product sales', 'Ventes de produits', 'Vant pwodwi'), esc(money(so.subtotal, cur, l))],
+                ...(couponUsed ? [[t(`Cupón ${so.coupon} (ya descontado de la venta)`, `Coupon ${so.coupon} (already deducted from sales)`, `Coupon ${so.coupon} (déjà déduit des ventes)`, `Koupon ${so.coupon} (deja retire nan vant lan)`), esc(`− ${money(so.discount, cur, l)}`)] as [string, string]] : []),
                 [t('Comisión de la plataforma', 'Platform commission', 'Commission de la plateforme', 'Komisyon platfòm lan'), esc(`− ${money(so.commission, cur, l)}`)],
                 [t('Ingreso estimado', 'Estimated earnings', 'Gains estimés', 'Benefis estime'), esc(money(so.net, cur, l))],
               ],
