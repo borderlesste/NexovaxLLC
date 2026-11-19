@@ -6,7 +6,6 @@ export interface PublicConfig {
   name: string;
   currency: string;
   locale: string;
-  locales: string[];
   defaultCountry: string;
   supportEmail: string;
   liveShippingRates: boolean;

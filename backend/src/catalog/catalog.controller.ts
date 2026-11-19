@@ -24,6 +24,10 @@ export class CatalogController {
     return this.catalog.home();
   }
 
+  /**
+   * Settings the browser needs before login. Keep it minimal: everything here is public.
+   * Only publishable keys (Stripe pk_, Turnstile site key) — never secrets or internal rules.
+   */
   @Get('config/public')
   async publicConfig() {
     const s = await this.settings.all();
@@ -31,14 +35,11 @@ export class CatalogController {
       name: s['marketplace.name'],
       currency: s['marketplace.currency'],
       locale: s['marketplace.locale'],
-      locales: ['es', 'en', 'fr', 'ht'],
       defaultCountry: s['marketplace.default_country'],
       supportEmail: s['marketplace.support_email'],
-      shippingRates: s['shipping.rates'],
       liveShippingRates: !!s['shipping.shippo_enabled'],
       bankTransfer: !!s['payments.bank_transfer']?.enabled,
       stripePublishableKey: config.stripePublishableKey && config.stripeSecretKey ? config.stripePublishableKey : null,
-      paypalClientId: config.paypalClientId && config.paypalClientSecret ? config.paypalClientId : null,
       turnstileSiteKey: config.turnstileSiteKey && config.turnstileSecretKey ? config.turnstileSiteKey : null,
       sellerRegistration: s['features.seller_registration'],
       maintenance: !!s['features.maintenance_mode'],
