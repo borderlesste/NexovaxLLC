@@ -5,6 +5,7 @@ import { PoliciesAdminController } from './account/policies.controller';
 import { PoliciesService } from './account/policies.service';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { MaintenanceGuard } from './auth/maintenance.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ClientIpThrottlerGuard } from './common/client-ip';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -130,6 +131,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     AccountDeletionService,
     { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: MaintenanceGuard },
   ],
 })
 export class AppModule {}

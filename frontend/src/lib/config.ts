@@ -12,6 +12,8 @@ export interface PublicConfig {
   liveShippingRates: boolean;
   bankTransfer: boolean;
   sellerRegistration: boolean;
+  /** Maintenance mode: only administrators can use the site. */
+  maintenance?: boolean;
   stripePublishableKey?: string | null;
   /** Cloudflare Turnstile site key; null when the anti-bot check is off. */
   turnstileSiteKey?: string | null;

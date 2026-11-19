@@ -2625,5 +2625,12 @@
 "cuentas bancarias nacionales e internacionales (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (EE. UU.) y Skrill.": "comptes bancaires nationaux et internationaux (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (États-Unis) et Skrill.",
 "No se pudieron cargar los datos del método.": "Impossible de charger les informations du moyen.",
 "Ver datos": "Voir les données",
-"Ocultar datos": "Masquer les données"
+"Ocultar datos": "Masquer les données",
+"Estamos en mantenimiento": "Nous sommes en maintenance",
+"Estamos mejorando NEXOVAX para ti. Volveremos en breve; esta página se actualizará sola cuando terminemos.": "Nous améliorons NEXOVAX pour vous. Nous revenons très vite ; cette page se mettra à jour toute seule une fois terminé.",
+"¿Necesitas ayuda urgente? Escríbenos a": "Besoin d’aide urgente ? Écrivez-nous à",
+"Acceso para administradores": "Accès administrateurs",
+"Modo mantenimiento": "Mode maintenance",
+"Cierra el sitio temporalmente: solo los administradores pueden entrar y usarlo.": "Ferme temporairement le site : seuls les administrateurs peuvent y accéder et l’utiliser.",
+"Al activar el modo mantenimiento, compradores, vendedores y el resto del equipo verán una pantalla de mantenimiento y no podrán usar el sitio hasta que lo desactives. ¿Continuar?": "En mode maintenance, les acheteurs, les vendeurs et le reste de l’équipe verront un écran de maintenance et ne pourront pas utiliser le site tant que vous ne l’aurez pas désactivé. Continuer ?"
 }

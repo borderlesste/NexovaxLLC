@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale } from 'lucide-react';
+  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
 import { cn, fmtDate, money } from '@/lib/utils';
@@ -117,6 +117,8 @@ export default function SettingsPage() {
     const changed = Object.fromEntries(Object.entries(s).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(d.settings[k])));
     if (changed['marketplace.currency'] && !confirm(t('Cambiar la moneda del marketplace retira los carritos activos y los productos necesitarán precios en {c}. ¿Continuar?', { c: changed['marketplace.currency'] as string })))
       return;
+    if (changed['features.maintenance_mode'] === true && !confirm(t('Al activar el modo mantenimiento, compradores, vendedores y el resto del equipo verán una pantalla de mantenimiento y no podrán usar el sitio hasta que lo desactives. ¿Continuar?')))
+      return;
     setBusy(true);
     try {
       const commissionRate = rate !== '' && d.commission && Math.abs(Number(rate) / 100 - d.commission.rate) > 1e-9 ? Number(rate) / 100 : undefined;
@@ -171,7 +173,7 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader icon={<Settings />} title={t('Opciones del marketplace')} subtitle={t('Controla las funcionalidades principales de tu plataforma.')} />
                 <div className="grid gap-3 p-5 sm:grid-cols-2">
-                  {[['features.featured_products', Star, t('Producto destacado'), t('Permite destacar productos en la portada.')], ['features.seller_registration', UserPlus, t('Registro de vendedores'), t('Permite el registro de nuevos vendedores en la plataforma.')], ['features.mandatory_moderation', Shield, t('Moderación obligatoria'), t('Revisa y aprueba productos y cambios antes de publicarlos.')], ['features.email_notifications', Mail, t('Notificaciones por email'), t('Envía notificaciones automáticas a vendedores y clientes.')]].map(([k, I, title, desc]: any) => (
+                  {[['features.featured_products', Star, t('Producto destacado'), t('Permite destacar productos en la portada.')], ['features.seller_registration', UserPlus, t('Registro de vendedores'), t('Permite el registro de nuevos vendedores en la plataforma.')], ['features.mandatory_moderation', Shield, t('Moderación obligatoria'), t('Revisa y aprueba productos y cambios antes de publicarlos.')], ['features.email_notifications', Mail, t('Notificaciones por email'), t('Envía notificaciones automáticas a vendedores y clientes.')], ['features.maintenance_mode', Wrench, t('Modo mantenimiento'), t('Cierra el sitio temporalmente: solo los administradores pueden entrar y usarlo.')]].map(([k, I, title, desc]: any) => (
                     <div key={k} className="flex items-start gap-3 rounded-xl border border-line p-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><I className="size-5" /></span><span className="flex-1"><b className="block text-sm">{t(title)}</b><span className="text-xs text-muted">{t(desc)}</span></span><Switch checked={!!s[k]} onCheckedChange={(v) => set(k, v)} /></div>
                   ))}
                 </div>

@@ -41,6 +41,7 @@ export class CatalogController {
       paypalClientId: config.paypalClientId && config.paypalClientSecret ? config.paypalClientId : null,
       turnstileSiteKey: config.turnstileSiteKey && config.turnstileSecretKey ? config.turnstileSiteKey : null,
       sellerRegistration: s['features.seller_registration'],
+      maintenance: !!s['features.maintenance_mode'],
       social: s['social.links'] ?? [],
     };
   }

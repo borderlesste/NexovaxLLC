@@ -73,6 +73,7 @@ const EN: Record<string, string> = {
   "Completa el titular, el banco, el número de cuenta y el país.": "Fill in the account holder, bank, account number and country.",
   "Indica el correo o el teléfono de EE. UU. registrado en Zelle.": "Enter the email or US phone number registered with Zelle.",
   "Indica el correo de tu cuenta.": "Enter your account email.",
+  "NEXOVAX está en mantenimiento. Vuelve a intentarlo en unos minutos.": "NEXOVAX is under maintenance. Please try again in a few minutes.",
   "Indica el nombre del titular de la cuenta.": "Enter the account holder’s name.",
   "Elige cómo quieres cobrar.": "Choose how you want to get paid.",
   "Indica la referencia del pago realizado.": "Enter the reference of the payment made.",
