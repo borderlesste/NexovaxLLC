@@ -1044,12 +1044,13 @@ export class SellerService {
       if (input.isPrimary)
         await this.db.exec(`update public.seller_payout_accounts set metadata = metadata || '{"is_primary": false}' where seller_id = $1`, [sellerId], c);
       const hasAny = await this.db.one(`select 1 from public.seller_payout_accounts where seller_id = $1 and status <> 'DISABLED' limit 1`, [sellerId], c);
+      const primary = !!input.isPrimary || !hasAny;
       const r = await this.db.one(
         `insert into public.seller_payout_accounts (seller_id, provider_code, environment, method_code, destination_details_ciphertext,
                  encryption_key_version, display_label, display_last4, country_code, status, verification_status, metadata, created_by)
          values ($1,'RD_MANUAL',$10,$2,$3,$4,$5,$6,$9,'PENDING','PENDING',$7::jsonb,$8) returning id`,
         [sellerId, input.methodCode, encrypt(JSON.stringify(details)), String(KEY_VERSION), label, tail, JSON.stringify({
-          is_primary: !!input.isPrimary || !hasAny,
+          is_primary: primary,
           currency,
           country,
           holder_name: input.holderName.trim(),
@@ -1059,9 +1060,13 @@ export class SellerService {
         }), user.id, country, config.paymentEnvironment],
         c,
       );
+      // Only one default destination per store and currency (uq_seller_payout_account_currency_default):
+      // the primary method takes it; any other is default only if the currency has none yet.
+      if (primary) await this.clearCurrencyDefault(sellerId, currency, c);
       await this.db.exec(
         `insert into public.seller_payout_account_currencies (payout_account_id, seller_id, currency_code, is_enabled, is_default)
-         values ($1,$2,$3,true,true)`,
+         values ($1,$2,$3,true, not exists (select 1 from public.seller_payout_account_currencies
+                                             where seller_id = $2 and currency_code = $3 and is_enabled and is_default))`,
         [r!.id, sellerId, currency],
         c,
       );
@@ -1076,13 +1081,28 @@ export class SellerService {
       if (!a) throw notFound('Método de cobro');
       if (action === 'PRIMARY') {
         await this.db.exec(`update public.seller_payout_accounts set metadata = metadata || jsonb_build_object('is_primary', id = $2) where seller_id = $1`, [sellerId, accountId], c);
+        const cur = await this.db.many<{ currency_code: string }>(`select currency_code from public.seller_payout_account_currencies where payout_account_id = $1 and is_enabled`, [accountId], c);
+        for (const { currency_code } of cur) {
+          await this.clearCurrencyDefault(sellerId, currency_code, c);
+          await this.db.exec(`update public.seller_payout_account_currencies set is_default = true where payout_account_id = $1 and currency_code = $2`, [accountId, currency_code], c);
+        }
       } else {
         const open = await this.db.one(`select 1 from public.payouts where seller_payout_account_id = $1 and status in ('REQUESTED','APPROVAL_REQUIRED','APPROVED','PROCESSING')`, [accountId], c);
         if (open) throw conflict('PAYOUT_ACCOUNT_IN_USE', 'Este método tiene retiros en curso.');
         await this.db.exec(`update public.seller_payout_accounts set status = 'DISABLED', disabled_at = now() where id = $1`, [accountId], c);
+        // A removed method no longer holds the store's default for its currency.
+        await this.db.exec(`update public.seller_payout_account_currencies set is_default = false where payout_account_id = $1`, [accountId], c);
       }
     });
     return this.payoutAccounts(sellerId);
+  }
+
+  private clearCurrencyDefault(sellerId: string, currency: string, c: PoolClient) {
+    return this.db.exec(
+      `update public.seller_payout_account_currencies set is_default = false where seller_id = $1 and currency_code = $2 and is_default`,
+      [sellerId, currency],
+      c,
+    );
   }
 
   async payouts(sellerId: string) {
