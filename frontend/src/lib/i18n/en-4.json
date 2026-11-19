@@ -940,5 +940,8 @@
 "Envía desde:": "Ships from:",
 "Ver valoraciones de {n} estrellas": "See {n}-star ratings",
 "Leer valoraciones": "Read ratings",
-"Escribir a {name}": "Message {name}"
+"Escribir a {name}": "Message {name}",
+"Compartir tienda": "Share store",
+"{name} en NEXOVAX": "{name} on NEXOVAX",
+"No se pudo copiar. Selecciona el enlace y cópialo manualmente.": "Couldn’t copy. Select the link and copy it manually."
 }

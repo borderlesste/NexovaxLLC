@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox, Dialog, Empty, Pagination, Segmented, Skeleton } from '@/components/ui/misc';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { ProductGrid, Stars } from '@/components/shop/product-card';
+import { ShareDialog } from '@/components/shop/share-button';
 import { useRequireAuth } from '@/components/shop/hooks';
 import { LogoMark } from '@/components/layout/logo';
 import { t, getIntlLocale } from '@/lib/i18n';
@@ -29,6 +30,7 @@ export function StoreView({ initial }: { initial: any }) {
   const [msg, setMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [following, setFollowing] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [reviewFilter, setReviewFilter] = useState<{ rating?: number; page: number }>({ page: 1 });
   const params = new URLSearchParams({ seller: store.slug, sort: tab === 'new' ? 'newest' : filters.sort, page: String(filters.page), pageSize: '12' });
   if (filters.category) params.set('category', filters.category);
@@ -70,14 +72,6 @@ export function StoreView({ initial }: { initial: any }) {
       setFollowing(false);
     }
   };
-  const share = async () => {
-    const url = window.location.href;
-    if (navigator.share) await navigator.share({ title: store.name, url }).catch(() => undefined);
-    else {
-      await navigator.clipboard.writeText(url);
-      toast.success(t('Enlace copiado.'));
-    }
-  };
   const send = async () => {
     setSending(true);
     try {
@@ -117,7 +111,7 @@ export function StoreView({ initial }: { initial: any }) {
                   <Button variant="outline" onClick={() => (requireAuth() ? setContact(true) : null)}><MessageSquare /> {t('Contactar vendedor')}</Button>
                 </>
               )}
-              <Button variant="secondary" onClick={share}><Share2 /> {t('Compartir')}</Button>
+              <Button variant="secondary" onClick={() => setShareOpen(true)}><Share2 /> {t('Compartir')}</Button>
             </div>
           </div>
         </div>
@@ -259,6 +253,8 @@ export function StoreView({ initial }: { initial: any }) {
           </div>
         </aside>
       </div>
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={t('Compartir tienda')} description={store.name}
+        url={typeof window !== 'undefined' ? `${window.location.origin}/tienda/${store.slug}` : ''} text={t('{name} en NEXOVAX', { name: store.name })} />
       <Dialog open={contact} onOpenChange={setContact} title={t('Escribir a {name}', { name: store.name })} footer={<><Button variant="secondary" onClick={() => setContact(false)}>{t('Cancelar')}</Button><Button onClick={send} loading={sending} disabled={msg.trim().length < 3}>{t('Enviar')}</Button></>}>
         <Textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder={t('Escribe tu consulta…')} maxLength={1000} />
       </Dialog>
