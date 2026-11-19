@@ -2612,5 +2612,18 @@
 "Correo o teléfono registrado en Zelle": "Imèl oswa telefòn ki anrejistre nan Zelle",
 "Solo para cuentas bancarias de EE. UU.": "Sèlman pou kont labank Etazini.",
 "Correo de tu cuenta Skrill": "Imèl kont Skrill ou",
-"Recibes en tu monedero Skrill.": "Ou resevwa l nan bous Skrill ou."
+"Recibes en tu monedero Skrill.": "Ou resevwa l nan bous Skrill ou.",
+"Configura una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill para recibir tus fondos.": "Konfigire yon kont labank, PayPal, Wise, Payoneer, Zelle oswa Skrill pou resevwa lajan ou.",
+"tucorreo@ejemplo.com · +1 555 123 4567": "ou@egzanp.com · +1 555 123 4567",
+"Método": "Metòd",
+"Finanzas no pudo verificar este método. Revisa los datos, elimínalo y agrégalo de nuevo.": "Finans pa t ka verifye metòd sa a. Tcheke enfòmasyon yo, efase l epi ajoute l ankò.",
+"Agrega una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill con tus datos.": "Ajoute yon kont labank, PayPal, Wise, Payoneer, Zelle oswa Skrill ak enfòmasyon ou.",
+"Cómo se envían:": "Kijan yo voye yo:",
+"los retiros se aprueban automáticamente y finanzas envía el dinero a tu método; verás la referencia en Últimos cobros enviados.": "retrè yo apwouve otomatikman epi finans voye lajan an sou metòd ou; w ap wè referans lan nan Dènye peman ki voye yo.",
+"finanzas revisa y aprueba cada retiro, envía el dinero a tu método y registra la referencia, que verás en Últimos cobros enviados.": "finans revize epi apwouve chak retrè, voye lajan an sou metòd ou epi anrejistre referans lan, w ap wè l nan Dènye peman ki voye yo.",
+"Retiro mínimo:": "Retrè minimòm:",
+"cuentas bancarias nacionales e internacionales (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (EE. UU.) y Skrill.": "kont labank nasyonal ak entènasyonal (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (Etazini) ak Skrill.",
+"No se pudieron cargar los datos del método.": "Nou pa t ka chaje enfòmasyon metòd la.",
+"Ver datos": "Wè done yo",
+"Ocultar datos": "Kache done yo"
 }

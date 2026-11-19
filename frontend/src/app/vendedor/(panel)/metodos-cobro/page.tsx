@@ -24,13 +24,25 @@ const currencyName = (c: string) => {
     return c;
   }
 };
+type MethodType = 'BANK_ACCOUNT' | 'PAYPAL' | 'WISE' | 'PAYONEER' | 'ZELLE' | 'SKRILL';
+/** Email-paid methods: what to ask for and a short note. Keep in sync with SELLER_PAYOUT_METHODS in the API. */
+const WALLETS: Record<Exclude<MethodType, 'BANK_ACCOUNT'>, { name: string; field: string; hint?: string }> = {
+  PAYPAL: { name: 'PayPal', field: 'Correo de PayPal' },
+  WISE: { name: 'Wise', field: 'Correo de tu cuenta Wise', hint: 'Recibes en tu cuenta Wise y la retiras en tu moneda local.' },
+  PAYONEER: { name: 'Payoneer', field: 'Correo de tu cuenta Payoneer', hint: 'Recibes en tu saldo de Payoneer.' },
+  ZELLE: { name: 'Zelle', field: 'Correo o teléfono registrado en Zelle', hint: 'Solo para cuentas bancarias de EE. UU.' },
+  SKRILL: { name: 'Skrill', field: 'Correo de tu cuenta Skrill', hint: 'Recibes en tu monedero Skrill.' },
+};
+
 const EMPTY = { holderName: '', bankName: '', accountNumber: '', accountType: 'CHECKING', routingOrSwift: '', countryCode: '', currency: '', documentId: '', alias: '', email: '' };
 
 export default function PayoutMethodsPage() {
   const qc = useQueryClient();
   const accounts = useQuery({ queryKey: ['payout-accounts'], queryFn: () => get('/seller/payout-accounts') });
   const payouts = useQuery({ queryKey: ['seller-payouts'], queryFn: () => get('/seller/payouts') });
-  const [type, setType] = useState<'BANK_ACCOUNT' | 'PAYPAL' | 'DIGITAL_WALLET'>('BANK_ACCOUNT');
+  const [type, setType] = useState<MethodType>('BANK_ACCOUNT');
+  const finance = useQuery({ queryKey: ['seller-finance-policy'], queryFn: () => get<any>('/seller/finance?days=7'), staleTime: 5 * 60_000 });
+  const policy = finance.data?.payoutPolicy as { minimum?: string; approvalMode?: string } | null | undefined;
   const cfg = usePublicConfig();
   const store = useQuery({ queryKey: ['seller-store'], queryFn: () => get('/seller/store') });
   const [f, setF] = useState(EMPTY);
@@ -65,17 +77,18 @@ export default function PayoutMethodsPage() {
       toast.error(errorMessage(e));
     }
   };
-  const TYPES = [['BANK_ACCOUNT', t('Cuenta bancaria'), Landmark], ['PAYPAL', 'PayPal', Wallet], ['DIGITAL_WALLET', t('Billetera digital'), Wallet]] as const;
+  const TYPES: [MethodType, string, typeof Landmark][] = [['BANK_ACCOUNT', t('Cuenta bancaria'), Landmark], ...Object.entries(WALLETS).map(([k, w]) => [k as MethodType, w.name, Wallet] as [MethodType, string, typeof Landmark])];
+  const wallet = type !== 'BANK_ACCOUNT' ? WALLETS[type] : null;
   return (
     <>
       <PageHeader crumbs={[{ label: t('Configuración') }, { label: t('Métodos de cobro') }]} title={t('Métodos de cobro')} description={t('Registra uno o más métodos para recibir los retiros de tus fondos.')} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="space-y-5">
           <Card>
-            <CardHeader icon={<Plus />} title={t('Agregar nuevo método de cobro')} subtitle={t('Configura una cuenta bancaria, PayPal o una billetera digital para recibir tus fondos.')} />
+            <CardHeader icon={<Plus />} title={t('Agregar nuevo método de cobro')} subtitle={t('Configura una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill para recibir tus fondos.')} />
             <div className="p-5">
               <p className="mb-2 text-sm font-semibold">{t('Tipo de método')}{' '}<span className="text-red-500">*</span></p>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {TYPES.map(([v, l, I]) => (
                   <button key={v} onClick={() => setType(v)} className={cn('flex items-center gap-3 rounded-xl border p-3 text-sm font-semibold', type === v ? 'border-brand-400 bg-brand-50 ring-1 ring-brand-200' : 'border-line')}>
                     <I className="size-5 text-brand-600" /> {l} <span className={cn('ml-auto size-4 rounded-full border-2', type === v ? 'border-brand-600 bg-brand-600 ring-2 ring-inset ring-white' : 'border-gray-300')} />
@@ -94,7 +107,11 @@ export default function PayoutMethodsPage() {
                     <Field label={t('Identificación fiscal del titular')}><Input rule="documentId" value={f.documentId} onChange={set('documentId')} /></Field>
                   </>
                 ) : (
-                  <Field label={type === 'PAYPAL' ? t('Correo de PayPal') : t('Correo de la billetera')} required><Input rule="email" type="email" value={f.email} onChange={set('email')} placeholder={t('tucorreo@ejemplo.com')} /></Field>
+                  <Field label={t(wallet!.field)} required hint={wallet!.hint ? t(wallet!.hint) : undefined}>
+                    {type === 'ZELLE'
+                      ? <Input value={f.email} maxLength={254} onChange={set('email')} placeholder={t('tucorreo@ejemplo.com · +1 555 123 4567')} />
+                      : <Input rule="email" type="email" value={f.email} onChange={set('email')} placeholder={t('tucorreo@ejemplo.com')} />}
+                  </Field>
                 )}
                 <Field label={t('Moneda')} required><Select value={currency} onChange={set('currency')}>{CURRENCIES.map((c) => <option key={c} value={c}>{c} – {currencyName(c)}</option>)}</Select></Field>
                 <Field label={t('Alias')} hint={t('(opcional)')}><Input value={f.alias} onChange={set('alias')} placeholder={t('Ej. Cuenta principal')} /></Field>
@@ -124,8 +141,10 @@ export default function PayoutMethodsPage() {
                       {a.metadata?.is_primary && <Badge>{t('Principal')}</Badge>}
                       {a.verificationStatus === 'VERIFIED' ? <Badge tone="green"><ShieldCheck className="size-3" /> {t('Verificado')}</Badge> : a.verificationStatus === 'FAILED' ? <Badge tone="red">{t('Rechazado')}</Badge> : <Badge tone="amber"><Clock className="size-3" /> {t('Pendiente')}</Badge>}
                     </div>
+                    {a.verificationStatus === 'FAILED' && <p className="mt-2 text-xs text-red-600">{t('Finanzas no pudo verificar este método. Revisa los datos, elimínalo y agrégalo de nuevo.')}</p>}
                     <dl className="mt-3 space-y-0.5 text-xs text-muted">
-                      <div>{a.methodCode === 'BANK_ACCOUNT' ? t('Cuenta') : t('Correo')}: <b className="text-ink">{a.methodCode === 'BANK_ACCOUNT' ? `**** ${a.last4}` : a.metadata?.email_hint}</b></div>
+                      <div>{a.methodCode === 'BANK_ACCOUNT' ? t('Cuenta') : a.metadata?.email_hint?.startsWith('***-') ? t('Teléfono') : t('Correo')}: <b className="text-ink">{a.methodCode === 'BANK_ACCOUNT' ? `**** ${a.last4}` : a.metadata?.email_hint}</b></div>
+                      {a.methodCode !== 'BANK_ACCOUNT' && a.label !== (WALLETS as any)[a.methodCode]?.name && <div>{t('Método')}: {(WALLETS as any)[a.methodCode]?.name ?? t('Billetera digital')}</div>}
                       <div>{t('Titular:')}{' '}{a.metadata?.holder_name}</div>
                       <div>{t('Moneda')}: {a.metadata?.currency ?? '—'} · {t('País')}: {countryName(a.countryCode)}</div>
                     </dl>
@@ -139,7 +158,7 @@ export default function PayoutMethodsPage() {
           <Card className="p-5">
             <p className="text-lg font-bold">{t('Cómo funciona')}</p>
             <ol className="mt-4 space-y-4 text-sm">
-              {[[t('Registra tu método'), t('Agrega una cuenta bancaria, PayPal o billetera digital con tus datos.')], [t('Verificamos tu información'), t('Validamos tus datos para garantizar la seguridad de tus fondos.')], [t('Recibe tus cobros'), t('Solicita retiros de tu saldo disponible directamente a tu método verificado.')]].map(([title, d], i) => (
+              {[[t('Registra tu método'), t('Agrega una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill con tus datos.')], [t('Verificamos tu información'), t('Validamos tus datos para garantizar la seguridad de tus fondos.')], [t('Recibe tus cobros'), t('Solicita retiros de tu saldo disponible directamente a tu método verificado.')]].map(([title, d], i) => (
                 <li key={title} className="flex gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 font-bold text-brand-700">{i + 1}</span><span><b className="block">{t(title)}</b><span className="text-muted">{t(d)}</span></span></li>
               ))}
             </ol>
@@ -156,8 +175,9 @@ export default function PayoutMethodsPage() {
           </Card>
           <Card className="p-5 text-sm">
             <p className="text-lg font-bold">{t('Tiempos y entidades compatibles')}</p>
-            <p className="mt-2"><b>{t('Tiempos de procesamiento:')}</b> <span className="text-muted">{t('los retiros se procesan en 1 a 3 días hábiles tras la aprobación de finanzas.')}</span></p>
-            <p className="mt-2"><b>{t('Entidades compatibles:')}</b> <span className="text-muted">{t('cuentas bancarias nacionales e internacionales (IBAN/SWIFT), PayPal y billeteras digitales.')}</span></p>
+            <p className="mt-2"><b>{t('Cómo se envían:')}</b> <span className="text-muted">{policy?.approvalMode && policy.approvalMode !== 'MANUAL' ? t('los retiros se aprueban automáticamente y finanzas envía el dinero a tu método; verás la referencia en Últimos cobros enviados.') : t('finanzas revisa y aprueba cada retiro, envía el dinero a tu método y registra la referencia, que verás en Últimos cobros enviados.')}</span></p>
+            {policy?.minimum && Number(policy.minimum) > 0 && <p className="mt-2"><b>{t('Retiro mínimo:')}</b> <span className="text-muted">{money(policy.minimum)}</span></p>}
+            <p className="mt-2"><b>{t('Entidades compatibles:')}</b> <span className="text-muted">{t('cuentas bancarias nacionales e internacionales (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (EE. UU.) y Skrill.')}</span></p>
             {payouts.data?.some((p: any) => p.status !== 'PAID') && <p className="mt-3"><StatusBadge status="APPROVAL_REQUIRED" label={t('Tienes retiros en proceso')} /></p>}
           </Card>
         </div>

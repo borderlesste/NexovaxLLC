@@ -2612,5 +2612,18 @@
 "Correo o teléfono registrado en Zelle": "E-mail ou téléphone enregistré sur Zelle",
 "Solo para cuentas bancarias de EE. UU.": "Comptes bancaires américains uniquement.",
 "Correo de tu cuenta Skrill": "E-mail de votre compte Skrill",
-"Recibes en tu monedero Skrill.": "Vous le recevez dans votre portefeuille Skrill."
+"Recibes en tu monedero Skrill.": "Vous le recevez dans votre portefeuille Skrill.",
+"Configura una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill para recibir tus fondos.": "Configurez un compte bancaire, PayPal, Wise, Payoneer, Zelle ou Skrill pour recevoir vos fonds.",
+"tucorreo@ejemplo.com · +1 555 123 4567": "vous@exemple.com · +1 555 123 4567",
+"Método": "Moyen",
+"Finanzas no pudo verificar este método. Revisa los datos, elimínalo y agrégalo de nuevo.": "La finance n’a pas pu vérifier ce moyen. Vérifiez les informations, supprimez-le et ajoutez-le à nouveau.",
+"Agrega una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill con tus datos.": "Ajoutez un compte bancaire, PayPal, Wise, Payoneer, Zelle ou Skrill avec vos informations.",
+"Cómo se envían:": "Comment ils sont envoyés :",
+"los retiros se aprueban automáticamente y finanzas envía el dinero a tu método; verás la referencia en Últimos cobros enviados.": "les versements sont approuvés automatiquement et la finance envoie l’argent vers votre moyen ; vous verrez la référence dans Derniers versements envoyés.",
+"finanzas revisa y aprueba cada retiro, envía el dinero a tu método y registra la referencia, que verás en Últimos cobros enviados.": "la finance examine et approuve chaque versement, envoie l’argent vers votre moyen et enregistre la référence, visible dans Derniers versements envoyés.",
+"Retiro mínimo:": "Versement minimum :",
+"cuentas bancarias nacionales e internacionales (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (EE. UU.) y Skrill.": "comptes bancaires nationaux et internationaux (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (États-Unis) et Skrill.",
+"No se pudieron cargar los datos del método.": "Impossible de charger les informations du moyen.",
+"Ver datos": "Voir les données",
+"Ocultar datos": "Masquer les données"
 }

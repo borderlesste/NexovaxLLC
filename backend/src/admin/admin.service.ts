@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { decrypt } from '../common/crypto';
+import { NotificationsService } from '../notifications/notifications.service';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
@@ -32,6 +34,8 @@ type Part = { text: string; vars: Record<string, string | number> };
 
 @Injectable()
 export class AdminService {
+  private readonly payoutLog = new Logger('PayoutAccounts');
+
   constructor(
     private readonly db: DbService,
     private readonly settings: SettingsService,
@@ -41,6 +45,7 @@ export class AdminService {
     private readonly tax: TaxService,
     private readonly stripe: StripeService,
     private readonly paypal: PaypalService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ------------------------------------------------------------------ dashboard
@@ -380,14 +385,63 @@ export class AdminService {
   }
 
   async verifyPayoutAccount(admin: RequestUser, accountId: string, approve: boolean) {
-    const n = await this.db.exec(
-      `update public.seller_payout_accounts set status = $2, verification_status = $3, verified_at = case when $3 = 'VERIFIED' then now() end,
-              disabled_at = case when $2 = 'DISABLED' then now() end
-        where id = $1`,
-      [accountId, approve ? 'ACTIVE' : 'DISABLED', approve ? 'VERIFIED' : 'FAILED'],
+    // A rejected method stays visible to the store as "Rechazado" (RESTRICTED) so it knows to replace it.
+    const a = await this.db.one<{ seller_id: string; display_label: string; owner_user_id: string }>(
+      `update public.seller_payout_accounts pa set status = $2, verification_status = $3, verified_at = case when $3 = 'VERIFIED' then now() end
+         from public.sellers s
+        where pa.id = $1 and s.id = pa.seller_id and pa.status <> 'DISABLED'
+        returning pa.seller_id, pa.display_label, s.owner_user_id`,
+      [accountId, approve ? 'ACTIVE' : 'RESTRICTED', approve ? 'VERIFIED' : 'FAILED'],
     );
-    if (!n) throw notFound('Método de cobro');
+    if (!a) throw notFound('Método de cobro');
+    this.payoutLog.log(`payout account ${accountId} ${approve ? 'verified' : 'rejected'} by ${admin.id}`);
+    await this.notifications.notify(a.owner_user_id, {
+      category: 'PAYMENTS', eventType: approve ? 'PAYOUT_ACCOUNT_VERIFIED' : 'PAYOUT_ACCOUNT_REJECTED', entityType: 'SELLER_PAYOUT_ACCOUNT', entityId: accountId,
+      url: '/vendedor/metodos-cobro', dedupeKey: `payout-account-${accountId}-${approve ? 'ok' : 'ko'}`,
+      title: approve ? `Método de cobro verificado: ${a.display_label}` : `Método de cobro rechazado: ${a.display_label}`,
+      body: approve ? 'Ya puedes solicitar retiros a este método.' : 'Revisa los datos y agrega el método de nuevo.',
+      localized: {
+        en: { title: approve ? `Payout method verified: ${a.display_label}` : `Payout method rejected: ${a.display_label}`, body: approve ? 'You can now request payouts to this method.' : 'Check the details and add the method again.' },
+        fr: { title: approve ? `Moyen de versement vérifié : ${a.display_label}` : `Moyen de versement refusé : ${a.display_label}`, body: approve ? 'Vous pouvez maintenant demander des versements vers ce moyen.' : 'Vérifiez les informations et ajoutez à nouveau le moyen.' },
+        ht: { title: approve ? `Metòd peman verifye: ${a.display_label}` : `Metòd peman refize: ${a.display_label}`, body: approve ? 'Kounye a ou ka mande retrè sou metòd sa a.' : 'Tcheke enfòmasyon yo epi ajoute metòd la ankò.' },
+      },
+    });
     return { ok: true };
+  }
+
+  /**
+   * Full destination of a payout method (decrypted), so finance can verify it and send the money.
+   * Admin only; every read is logged.
+   */
+  async payoutAccountDetails(admin: RequestUser, accountId: string) {
+    const r = await this.db.one<{ method_code: string; destination_details_ciphertext: Buffer | null; external_destination_id: string | null; metadata: any; country_code: string }>(
+      `select method_code, destination_details_ciphertext, external_destination_id, metadata, country_code from public.seller_payout_accounts where id = $1`,
+      [accountId],
+    );
+    if (!r) throw notFound('Método de cobro');
+    this.payoutLog.log(`payout account ${accountId} details viewed by ${admin.id}`);
+    let d: Record<string, string | undefined> = {};
+    if (r.destination_details_ciphertext) {
+      try {
+        d = JSON.parse(decrypt(r.destination_details_ciphertext));
+      } catch {
+        throw conflict('PAYOUT_DETAILS_UNREADABLE', 'No se pudieron leer los datos cifrados de este método.');
+      }
+    }
+    return {
+      method: r.method_code,
+      holderName: d.holder_name ?? r.metadata?.holder_name ?? null,
+      bankName: d.bank_name ?? null,
+      accountNumber: d.account_number ?? null,
+      accountType: d.account_type ?? null,
+      routingOrSwift: d.routing_or_swift ?? null,
+      documentId: d.document_id ?? null,
+      email: d.email ?? null,
+      phone: d.phone ?? null,
+      externalId: r.external_destination_id,
+      currency: r.metadata?.currency ?? null,
+      countryCode: r.country_code,
+    };
   }
 
   // ------------------------------------------------------------------ categories
@@ -575,7 +629,7 @@ export class AdminService {
     const rows = await this.db.many(
       `select p.id, 'PO-' || p.public_number as number, p.seller_id, coalesce(ssp.display_name, s.slug) as seller, p.requested_amount::text as amount,
               p.currency_code as currency, p.status, p.requested_at, p.approved_at, p.paid_at, p.failure_detail,
-              a.display_label as account_label, a.display_last4 as account_last4, a.method_code
+              a.id as account_id, a.display_label as account_label, a.display_last4 as account_last4, a.method_code
          from public.payouts p join public.sellers s on s.id = p.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
          left join public.seller_payout_accounts a on a.id = p.seller_payout_account_id
         where ($1::text is null or p.status = $1) order by p.requested_at desc limit 100`,
@@ -584,7 +638,7 @@ export class AdminService {
     return rows.map((r: any) => ({
       id: r.id, number: r.number, seller: { id: r.seller_id, name: r.seller }, amount: r.amount, currency: r.currency, status: r.status,
       requestedAt: r.requested_at, approvedAt: r.approved_at, paidAt: r.paid_at, failureDetail: r.failure_detail,
-      account: { label: r.account_label, last4: r.account_last4, method: r.method_code },
+      account: { id: r.account_id, label: r.account_label, last4: r.account_last4, method: r.method_code },
     }));
   }
 

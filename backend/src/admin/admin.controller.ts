@@ -219,6 +219,12 @@ export class AdminController {
   }
 
   @Roles('ADMIN')
+  @Get('payout-accounts/:id/details')
+  payoutAccountDetails(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.admin.payoutAccountDetails(user, id);
+  }
+
+  @Roles('ADMIN')
   @Post('payout-accounts/:id/verify')
   verifyAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ApproveDto) {
     return this.admin.verifyPayoutAccount(user, id, dto.approve);

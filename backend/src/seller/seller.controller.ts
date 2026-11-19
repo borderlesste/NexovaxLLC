@@ -12,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CurrentUser, RequestUser, requireSeller, requireSellerOwner } from '../auth/auth';
-import { SellerService } from './seller.service';
+import { SELLER_PAYOUT_METHODS, SellerPayoutMethod, SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
 import { AlertsService } from '../analytics/alerts.service';
@@ -130,14 +130,15 @@ export class TrackingDto {
 }
 
 export class PayoutAccountDto {
-  @IsIn(['BANK_ACCOUNT', 'PAYPAL', 'DIGITAL_WALLET']) methodCode: any;
+  @IsIn(SELLER_PAYOUT_METHODS) methodCode: SellerPayoutMethod;
   @IsPersonNameOrBusiness() holderName: string;
   @IsOptional() @IsBusinessName(2, 80) bankName?: string;
   @IsOptional() @IsBankAccountNumber() accountNumber?: string;
   @IsOptional() @IsIn(['CHECKING', 'SAVINGS']) accountType?: string;
   @IsOptional() @IsSwiftOrRouting() routingOrSwift?: string;
   @IsOptional() @IsCountryCode() countryCode?: string;
-  @IsOptional() @IsEmailAddress() email?: string;
+  /** Account email (PayPal, wallets) or, for Zelle, a US phone number; validated in the service. */
+  @IsOptional() @IsString() @Length(0, 254) email?: string;
   @IsOptional() @IsCurrencyCode() currency?: string;
   @IsOptional() @IsCleanText(0, 40) alias?: string;
   @IsOptional() @IsBoolean() isPrimary?: boolean;

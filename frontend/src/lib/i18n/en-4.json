@@ -1105,5 +1105,18 @@
 "Correo o teléfono registrado en Zelle": "Email or phone registered with Zelle",
 "Solo para cuentas bancarias de EE. UU.": "US bank accounts only.",
 "Correo de tu cuenta Skrill": "Your Skrill account email",
-"Recibes en tu monedero Skrill.": "You receive it in your Skrill wallet."
+"Recibes en tu monedero Skrill.": "You receive it in your Skrill wallet.",
+"Configura una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill para recibir tus fondos.": "Set up a bank account, PayPal, Wise, Payoneer, Zelle or Skrill to receive your funds.",
+"tucorreo@ejemplo.com · +1 555 123 4567": "you@example.com · +1 555 123 4567",
+"Método": "Method",
+"Finanzas no pudo verificar este método. Revisa los datos, elimínalo y agrégalo de nuevo.": "Finance couldn’t verify this method. Check the details, delete it and add it again.",
+"Agrega una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill con tus datos.": "Add a bank account, PayPal, Wise, Payoneer, Zelle or Skrill with your details.",
+"Cómo se envían:": "How they’re sent:",
+"los retiros se aprueban automáticamente y finanzas envía el dinero a tu método; verás la referencia en Últimos cobros enviados.": "payouts are approved automatically and finance sends the money to your method; you’ll see the reference in Latest payouts sent.",
+"finanzas revisa y aprueba cada retiro, envía el dinero a tu método y registra la referencia, que verás en Últimos cobros enviados.": "finance reviews and approves each payout, sends the money to your method and records the reference, which you’ll see in Latest payouts sent.",
+"Retiro mínimo:": "Minimum payout:",
+"cuentas bancarias nacionales e internacionales (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (EE. UU.) y Skrill.": "domestic and international bank accounts (IBAN/SWIFT), PayPal, Wise, Payoneer, Zelle (US) and Skrill.",
+"No se pudieron cargar los datos del método.": "Couldn’t load the method details.",
+"Ver datos": "View details",
+"Ocultar datos": "Hide details"
 }

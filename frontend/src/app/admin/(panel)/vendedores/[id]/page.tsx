@@ -5,7 +5,8 @@ import { cityLine } from '@/components/shop/geo-fields';
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Ban, Check, ExternalLink, Landmark, RotateCcw, ShieldCheck, X } from 'lucide-react';
+import { Ban, Check, Eye, ExternalLink, Landmark, RotateCcw, ShieldCheck, X } from 'lucide-react';
+import { PayoutDestination, PAYOUT_METHOD_NAMES } from '@/components/admin/payout-destination';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { fmtDate, fmtDateTime, money } from '@/lib/utils';
@@ -25,6 +26,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
   const [dlg, setDlg] = useState<null | 'REJECT' | 'SUSPEND'>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [shown, setShown] = useState<string | null>(null);
   if (q.isLoading) return <PageLoader />;
   if (q.isError) return <ErrorBox message="Vendedor no encontrado." />;
   const { store, owner, finance, payoutAccounts, history } = q.data;
@@ -77,10 +79,12 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
             <ul className="divide-y divide-line">
               {payoutAccounts.map((a: any) => (
                 <li key={a.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
-                  <div className="flex-1"><b>{a.label}</b> {a.last4 && <span className="text-muted">**** {a.last4}</span>}<p className="text-xs text-muted">{a.metadata?.holder_name} · {a.metadata?.account_type ?? a.methodCode} · {a.metadata?.currency}</p></div>
+                  <div className="flex-1"><b>{a.label}</b> {a.last4 && <span className="text-muted">**** {a.last4}</span>}<p className="text-xs text-muted">{a.metadata?.holder_name} · {t(PAYOUT_METHOD_NAMES[a.methodCode] ?? a.methodCode)} · {a.metadata?.currency}</p></div>
+                  {isAdmin && <Button size="sm" variant="ghost" onClick={() => setShown(shown === a.id ? null : a.id)}><Eye /> {shown === a.id ? t('Ocultar datos') : t('Ver datos')}</Button>}
                   {a.verificationStatus === 'VERIFIED' ? <Badge tone="green"><ShieldCheck className="size-3" /> {t('Verificado')}</Badge> : a.verificationStatus === 'FAILED' ? <Badge tone="red">{t('Rechazado')}</Badge> : isAdmin ? (
                     <span className="flex gap-1"><Button size="sm" onClick={() => verify(a.id, true)}><Check /> {t('Verificar')}</Button><Button size="sm" variant="danger" onClick={() => verify(a.id, false)}><X /></Button></span>
                   ) : <Badge tone="amber">{t('Pendiente')}</Badge>}
+                  {shown === a.id && <div className="w-full"><PayoutDestination accountId={a.id} /></div>}
                 </li>
               ))}
             </ul>

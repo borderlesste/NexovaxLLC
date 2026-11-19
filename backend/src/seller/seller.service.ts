@@ -1,3 +1,4 @@
+import { config } from '../config';
 import { PoliciesService } from '../account/policies.service';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
@@ -75,6 +76,13 @@ const validTimezone = (tz?: string) => {
   } catch {
     return 'UTC';
   }
+};
+
+/** Where a store can be paid. Payouts are sent manually by finance to these destinations. */
+export const SELLER_PAYOUT_METHODS = ['BANK_ACCOUNT', 'PAYPAL', 'WISE', 'PAYONEER', 'ZELLE', 'SKRILL', 'DIGITAL_WALLET'] as const;
+export type SellerPayoutMethod = (typeof SELLER_PAYOUT_METHODS)[number];
+const PAYOUT_METHOD_LABELS: Record<SellerPayoutMethod, string> = {
+  BANK_ACCOUNT: 'Cuenta bancaria', PAYPAL: 'PayPal', WISE: 'Wise', PAYONEER: 'Payoneer', ZELLE: 'Zelle', SKRILL: 'Skrill', DIGITAL_WALLET: 'Billetera digital',
 };
 
 @Injectable()
@@ -995,7 +1003,7 @@ export class SellerService {
     );
   }
 
-  async addPayoutAccount(user: RequestUser, sellerId: string, input: { methodCode: 'BANK_ACCOUNT' | 'PAYPAL' | 'DIGITAL_WALLET'; holderName: string; bankName?: string; accountNumber?: string; accountType?: string; routingOrSwift?: string; countryCode?: string; email?: string; currency?: string; alias?: string; isPrimary?: boolean; documentId?: string }) {
+  async addPayoutAccount(user: RequestUser, sellerId: string, input: { methodCode: SellerPayoutMethod; holderName: string; bankName?: string; accountNumber?: string; accountType?: string; routingOrSwift?: string; countryCode?: string; email?: string; currency?: string; alias?: string; isPrimary?: boolean; documentId?: string }) {
     const currency = (input.currency ?? (await this.settings.currency())).toUpperCase();
     const cur = await this.db.one(`select 1 from public.currencies where code = $1 and is_active`, [currency]);
     if (!cur) throw badRequest('CURRENCY_INVALID', 'Moneda no soportada.');
@@ -1015,10 +1023,22 @@ export class SellerService {
       label = input.alias?.trim() || input.bankName;
       tail = last4(input.accountNumber);
     } else {
-      if (!input.email || !/^\S+@\S+\.\S+$/.test(input.email)) throw badRequest('EMAIL_INVALID', 'Correo de la cuenta inválido.');
-      details.email = input.email.trim().toLowerCase();
-      label = input.alias?.trim() || (input.methodCode === 'PAYPAL' ? 'PayPal' : 'Billetera digital');
-      tail = last4(input.email.split('@')[0]).padStart(2, 'x');
+      // PayPal and wallets are paid to the account's email; Zelle also accepts a US phone number.
+      const raw = (input.email ?? '').trim().toLowerCase();
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw) && raw.length <= 254;
+      const phone = raw.replace(/[\s().-]/g, '');
+      if (input.methodCode === 'ZELLE' && !isEmail && /^(\+?1)?[2-9]\d{9}$/.test(phone)) {
+        input.email = `+1${phone.slice(-10)}`;
+        details.phone = input.email;
+        tail = phone.slice(-4);
+      } else if (!isEmail) {
+        throw badRequest('EMAIL_INVALID', input.methodCode === 'ZELLE' ? 'Indica el correo o el teléfono de EE. UU. registrado en Zelle.' : 'Correo de la cuenta inválido.');
+      } else {
+        input.email = raw;
+        details.email = raw;
+        tail = last4(raw.split('@')[0]).padStart(2, 'x');
+      }
+      label = input.alias?.trim() || PAYOUT_METHOD_LABELS[input.methodCode];
     }
     const id = await this.db.tx(async (c) => {
       if (input.isPrimary)
@@ -1027,7 +1047,7 @@ export class SellerService {
       const r = await this.db.one(
         `insert into public.seller_payout_accounts (seller_id, provider_code, environment, method_code, destination_details_ciphertext,
                  encryption_key_version, display_label, display_last4, country_code, status, verification_status, metadata, created_by)
-         values ($1,'RD_MANUAL','TEST',$2,$3,$4,$5,$6,$9,'PENDING','PENDING',$7::jsonb,$8) returning id`,
+         values ($1,'RD_MANUAL',$10,$2,$3,$4,$5,$6,$9,'PENDING','PENDING',$7::jsonb,$8) returning id`,
         [sellerId, input.methodCode, encrypt(JSON.stringify(details)), String(KEY_VERSION), label, tail, JSON.stringify({
           is_primary: !!input.isPrimary || !hasAny,
           currency,
@@ -1035,8 +1055,8 @@ export class SellerService {
           holder_name: input.holderName.trim(),
           bank_name: input.bankName ?? null,
           account_type: input.accountType ?? null,
-          email_hint: input.email ? input.email.replace(/^(.{3}).*(@.*)$/, '$1***$2') : null,
-        }), user.id, country],
+          email_hint: details.phone ? `***-***-${details.phone.slice(-4)}` : input.email ? input.email.replace(/^(.{3}).*(@.*)$/, '$1***$2') : null,
+        }), user.id, country, config.paymentEnvironment],
         c,
       );
       await this.db.exec(
