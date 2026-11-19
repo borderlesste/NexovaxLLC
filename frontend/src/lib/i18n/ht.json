@@ -2639,5 +2639,15 @@
 "{a} % promedio sobre productos": "{a} % mwayèn sou pwodwi yo",
 "Liquidado en el período: {a}": "Peye nan peryòd la: {a}",
 "{a} con ventas en el período": "{a} ki fè vant nan peryòd la",
-"Comisiones (plataforma)": "Komisyon (platfòm)"
+"Comisiones (plataforma)": "Komisyon (platfòm)",
+"Venta {a}": "Vant {a}",
+"Comisión de plataforma {a}": "Komisyon platfòm {a}",
+"Reembolso parcial {a}": "Ranbousman pasyèl {a}",
+"Retiro {a} ({b})": "Retrè {a} ({b})",
+"solicitado": "mande",
+"pendiente de aprobación": "ap tann apwobasyon",
+"aprobado": "apwouve",
+"en proceso": "an kous",
+"pagado": "peye",
+"{a} sobre el precio de los productos": "{a} sou pri pwodwi yo"
 }

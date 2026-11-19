@@ -2639,5 +2639,15 @@
 "{a} % promedio sobre productos": "{a} % en moyenne sur les produits",
 "Liquidado en el período: {a}": "Versé sur la période : {a}",
 "{a} con ventas en el período": "{a} avec des ventes sur la période",
-"Comisiones (plataforma)": "Commissions (plateforme)"
+"Comisiones (plataforma)": "Commissions (plateforme)",
+"Venta {a}": "Vente {a}",
+"Comisión de plataforma {a}": "Commission de la plateforme {a}",
+"Reembolso parcial {a}": "Remboursement partiel {a}",
+"Retiro {a} ({b})": "Retrait {a} ({b})",
+"solicitado": "demandé",
+"pendiente de aprobación": "en attente d'approbation",
+"aprobado": "approuvé",
+"en proceso": "en cours",
+"pagado": "payé",
+"{a} sobre el precio de los productos": "{a} du prix des produits"
 }

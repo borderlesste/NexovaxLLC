@@ -1132,5 +1132,15 @@
 "{a} % promedio sobre productos": "{a} % average on products",
 "Liquidado en el período: {a}": "Paid out in the period: {a}",
 "{a} con ventas en el período": "{a} with sales in the period",
-"Comisiones (plataforma)": "Commissions (platform)"
+"Comisiones (plataforma)": "Commissions (platform)",
+"Venta {a}": "Sale {a}",
+"Comisión de plataforma {a}": "Platform commission {a}",
+"Reembolso parcial {a}": "Partial refund {a}",
+"Retiro {a} ({b})": "Withdrawal {a} ({b})",
+"solicitado": "requested",
+"pendiente de aprobación": "pending approval",
+"aprobado": "approved",
+"en proceso": "processing",
+"pagado": "paid",
+"{a} sobre el precio de los productos": "{a} of the product price"
 }

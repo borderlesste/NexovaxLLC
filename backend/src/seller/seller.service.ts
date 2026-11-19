@@ -933,35 +933,47 @@ export class SellerService {
          from public.seller_balance_projections where seller_id = $1 and currency_code = $2`,
       [sellerId, currency],
     );
+    // Only seller orders whose payment was captured count; cancelled, unpaid and fully refunded
+    // orders are left out and completed partial refunds are subtracted (same rule as admin finance).
+    const SOLD = `o.payment_status in ('PAID','PARTIALLY_REFUNDED','DISPUTED') and o.lifecycle_status not in ('PENDING_PAYMENT','CANCELLED') and so.lifecycle_status <> 'CANCELLED'`;
+    const REFUNDS = `left join lateral (
+             select coalesce(sum(f.refund_amount),0) as total, coalesce(sum(f.platform_commission_reversal_amount),0) as commission,
+                    coalesce(sum(f.seller_clawback_amount),0) as seller, coalesce(sum(f.product_refund_amount),0) as products
+               from public.refunds f where f.seller_order_id = so.id and f.status = 'COMPLETED') rf on true`;
     const agg = await this.db.one(
-      `select coalesce(sum(sofs.customer_total),0)::text as gross, coalesce(sum(sofs.platform_commission_total),0)::text as commission,
-              coalesce(sum(sofs.seller_entitlement_estimate),0)::text as net, coalesce(sum(sofs.product_net_amount),0)::text as products
+      `select coalesce(sum(sofs.customer_total - rf.total),0)::text as gross, coalesce(sum(sofs.platform_commission_total - rf.commission),0)::text as commission,
+              coalesce(sum(sofs.seller_entitlement_estimate - rf.seller),0)::text as net, coalesce(sum(sofs.product_net_amount - rf.products),0)::text as products,
+              coalesce(sum(rf.total),0)::text as refunded, count(*)::int as orders
          from public.seller_orders so join public.orders o on o.id = so.order_id
-         join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
-        where so.seller_id = $1 and o.placed_at >= now() - ($2 || ' days')::interval and so.lifecycle_status <> 'CANCELLED' and so.currency_code = $3`,
+         join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id ${REFUNDS}
+        where so.seller_id = $1 and o.placed_at >= now() - ($2 || ' days')::interval and ${SOLD} and so.currency_code = $3`,
       [sellerId, days, currency],
     );
     const series = await this.db.many(
-      `select d::date as day, coalesce(sum(sofs.customer_total),0)::text as sales, coalesce(sum(sofs.seller_entitlement_estimate),0)::text as profit
+      `select d::date as day, coalesce(sum(sofs.customer_total - rf.total),0)::text as sales, coalesce(sum(sofs.seller_entitlement_estimate - rf.seller),0)::text as profit
          from generate_series(current_date - ($2::int - 1), current_date, interval '1 day') d
          left join public.orders o on o.placed_at::date = d::date
-         left join public.seller_orders so on so.order_id = o.id and so.seller_id = $1 and so.lifecycle_status <> 'CANCELLED' and so.currency_code = $3
-         left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
+         left join public.seller_orders so on so.order_id = o.id and so.seller_id = $1 and ${SOLD} and so.currency_code = $3
+         left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id ${REFUNDS}
         group by d order by d`,
       [sellerId, days, currency],
     );
     const movements = await this.db.many(
       `select * from (
-         select o.placed_at as at, 'SALE' as kind, 'Venta #V-' || so.public_number as concept, sofs.seller_entitlement_estimate::text as amount, so.currency_code as currency
+         select o.placed_at as at, 'SALE' as kind, 'Venta #V-' || so.public_number as concept, sofs.seller_entitlement_estimate::text as amount, so.currency_code as currency, '#V-' || so.public_number as ref, null::text as status
            from public.seller_orders so join public.orders o on o.id = so.order_id
-           join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id where so.seller_id = $1
+           join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id where so.seller_id = $1 and ${SOLD}
          union all
-         select o.placed_at, 'COMMISSION', 'Comisión de plataforma #V-' || so.public_number, (-sofs.platform_commission_total)::text, so.currency_code
+         select o.placed_at, 'COMMISSION', 'Comisión de plataforma #V-' || so.public_number, (-sofs.platform_commission_total)::text, so.currency_code, '#V-' || so.public_number, null
            from public.seller_orders so join public.orders o on o.id = so.order_id
-           join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id where so.seller_id = $1 and sofs.platform_commission_total > 0
+           join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id where so.seller_id = $1 and ${SOLD} and sofs.platform_commission_total > 0
          union all
-         select coalesce(p.paid_at, p.requested_at), 'PAYOUT', 'Retiro #PO-' || p.public_number || ' (' || lower(p.status) || ')', (-p.requested_amount)::text, p.currency_code
-           from public.payouts p where p.seller_id = $1 and p.status not in ('CANCELLED','FAILED')
+         select f.completed_at, 'REFUND', 'Reembolso parcial #V-' || so.public_number, (-f.seller_clawback_amount)::text, f.currency_code, '#V-' || so.public_number, null
+           from public.refunds f join public.seller_orders so on so.id = f.seller_order_id join public.orders o on o.id = so.order_id
+          where so.seller_id = $1 and f.status = 'COMPLETED' and ${SOLD} and f.seller_clawback_amount > 0
+         union all
+         select coalesce(p.paid_at, p.requested_at), 'PAYOUT', 'Retiro #PO-' || p.public_number || ' (' || lower(p.status) || ')', (-p.requested_amount)::text, p.currency_code, '#PO-' || p.public_number, p.status
+           from public.payouts p where p.seller_id = $1 and p.status not in ('CANCELLED','FAILED','REVERSED')
        ) m order by at desc limit 15`,
       [sellerId],
     );
@@ -986,7 +998,7 @@ export class SellerService {
       currency,
       otherBalances,
       balances: { pending: bal?.pending ?? '0.00', available: bal?.available ?? '0.00', reserve: bal?.reserve ?? '0.00' },
-      period: { gross: agg!.gross, commission: agg!.commission, net: agg!.net, products: agg!.products },
+      period: { gross: agg!.gross, commission: agg!.commission, net: agg!.net, products: agg!.products, refunded: agg!.refunded, orders: agg!.orders },
       commissionRate: commissionRate ? Number(commissionRate.rate) : null,
       series,
       movements,

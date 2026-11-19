@@ -3,7 +3,7 @@ import { t } from '@/lib/i18n';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Building2, Coins, Landmark, Percent, ShoppingCart, Wallet, X } from 'lucide-react';
+import { Box, Building2, Coins, Landmark, Percent, ShoppingCart, Undo2, Wallet, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { fmtDate, money, uid } from '@/lib/utils';
@@ -58,15 +58,23 @@ export default function SellerFinancePage() {
       toast.error(errorMessage(e));
     }
   };
-  const ICON: Record<string, any> = { SALE: ShoppingCart, COMMISSION: Percent, PAYOUT: Landmark };
+  const ICON: Record<string, any> = { SALE: ShoppingCart, COMMISSION: Percent, PAYOUT: Landmark, REFUND: Undo2 };
+  const PAYOUT_STATUS: Record<string, string> = { REQUESTED: 'solicitado', APPROVAL_REQUIRED: 'pendiente de aprobación', APPROVED: 'aprobado', PROCESSING: 'en proceso', PAID: 'pagado' };
+  const concept = (m: any) => !m.ref ? m.concept
+    : m.kind === 'SALE' ? t('Venta {a}', { a: m.ref })
+    : m.kind === 'COMMISSION' ? t('Comisión de plataforma {a}', { a: m.ref })
+    : m.kind === 'REFUND' ? t('Reembolso parcial {a}', { a: m.ref })
+    : t('Retiro {a} ({b})', { a: m.ref, b: t(PAYOUT_STATUS[m.status] ?? String(m.status ?? '').toLowerCase()) });
+  const rate = Number(d.period.products) > 0 ? Number(d.period.commission) / Number(d.period.products) : d.commissionRate;
+  const pct = (r: number) => `${Number((r * 100).toFixed(1))} %`;
   return (
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Finanzas') }]} title={t('Finanzas de mi tienda')} description={t('Consulta tus ventas, ganancias, comisiones y retiros.')}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option><option value={365}>{t('Último año')}</option></Select>
           <Button onClick={() => { setF({ accountId: verified[0]?.id ?? '', amount: String(Number(d.balances.available)) }); setOpen(true); }} disabled={Number(d.balances.available) <= 0}><Landmark /> {t('Solicitar retiro')}</Button></>} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t('Ventas (brutas)')} value={money(d.period.gross, d.currency)} icon={<ShoppingCart />} hint={t('incluye envío e impuestos')} />
-        <StatCard label={t('Comisión de la plataforma')} value={`- ${money(d.period.commission, d.currency)}`} icon={<Box />} hint={d.commissionRate != null ? `(${(d.commissionRate * 100).toFixed(0)} %)` : ''} />
+        <StatCard label={t('Ventas (brutas)')} value={money(d.period.gross, d.currency)} icon={<ShoppingCart />} hint={[t('incluye envío e impuestos'), Number(d.period.refunded) > 0 ? t('Reembolsado: {a}', { a: money(d.period.refunded, d.currency) }) : ''].filter(Boolean).join(' · ')} />
+        <StatCard label={t('Comisión de la plataforma')} value={`- ${money(d.period.commission, d.currency)}`} icon={<Box />} hint={rate != null ? t('{a} sobre el precio de los productos', { a: pct(rate) }) : ''} />
         <StatCard label={t('Ganancia neta')} value={money(d.period.net, d.currency)} icon={<Wallet />} tone="green" hint={t('productos menos comisión')} />
         <StatCard label={t('Saldo disponible')} value={money(d.balances.available, d.currency)} icon={<Coins />} hint={t('Pendiente por entrega: {a}', { a: money(d.balances.pending, d.currency) })} />
       </div>
@@ -81,7 +89,7 @@ export default function SellerFinancePage() {
             <table className="w-full text-sm"><thead className="text-left text-xs text-muted"><tr><th className="px-5 py-2">{t('Fecha')}</th><th>{t('Concepto')}</th><th className="pr-5 text-right">{t('Monto')}</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {d.movements.map((m: any, i: number) => { const I = ICON[m.kind] ?? Coins; return (
-                  <tr key={i}><td className="px-5 py-2.5 text-muted">{fmtDate(m.at)}</td><td><span className="flex items-center gap-2"><I className="size-4 text-brand-600" /> {m.concept}</span></td>
+                  <tr key={i}><td className="px-5 py-2.5 text-muted">{fmtDate(m.at)}</td><td><span className="flex items-center gap-2"><I className="size-4 text-brand-600" /> {concept(m)}</span></td>
                     <td className={`pr-5 text-right font-semibold ${Number(m.amount) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{Number(m.amount) >= 0 ? '+ ' : '- '}{money(Math.abs(Number(m.amount)), m.currency ?? d.currency)}</td></tr>
                 ); })}
               </tbody></table>
