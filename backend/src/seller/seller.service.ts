@@ -979,7 +979,7 @@ export class SellerService {
     );
     const policy = await this.db.one(
       `select ppd.minimum_payout_amount::text as minimum, ppd.approval_mode, ppd.hold_period_seconds
-         from public.resolve_payout_policy($1, $2, now()) r join public.payout_policy_definitions ppd on ppd.rule_version_id = r.rule_version_id`,
+         from public.payout_policy_definitions ppd where ppd.rule_version_id = public.resolve_payout_policy($1, $2, now())`,
       [sellerId, currency],
     ).catch(() => null);
     const commissionRate = await this.db.one(

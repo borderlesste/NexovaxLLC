@@ -53,7 +53,7 @@ export class PayoutSchedulesService {
   private async policyMinimum(sellerId: string, currency: string) {
     const p = await this.db
       .one(
-        `select ppd.minimum_payout_amount::text as minimum from public.resolve_payout_policy($1, $2, now()) r join public.payout_policy_definitions ppd on ppd.rule_version_id = r.rule_version_id`,
+        `select ppd.minimum_payout_amount::text as minimum from public.payout_policy_definitions ppd where ppd.rule_version_id = public.resolve_payout_policy($1, $2, now())`,
         [sellerId, currency],
       )
       .catch(() => null);
