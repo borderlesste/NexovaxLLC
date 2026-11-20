@@ -112,6 +112,13 @@ export class AdminController {
     private readonly shipping: ShippingService,
   ) {}
 
+  /** Diagnostic: throws an unexpected error so the team can confirm it reaches Sentry. Super admins only. */
+  @Roles('SUPER_ADMIN')
+  @Post('system/sentry-test')
+  sentryTest() {
+    throw new Error(`Sentry test error ${Date.now()}`);
+  }
+
   /** Shippo carrier accounts and whether they can issue labels (blocked ones aren't offered at checkout). */
   @Roles('ADMIN')
   @Get('shipping/carriers')
