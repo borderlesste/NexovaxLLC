@@ -17,6 +17,16 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.enableCors({ origin: config.corsOrigins, credentials: true });
+  // Don't advertise the framework, and basic hardening headers for a JSON/media API.
+  const http = app.getHttpAdapter().getInstance();
+  http.disable?.('x-powered-by');
+  app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  });
   app.useGlobalFilters(new LocalizedExceptionFilter(app.get(HttpAdapterHost).httpAdapter));
   app.useGlobalInterceptors(new CatalogLocaleInterceptor());
   app.useGlobalPipes(
@@ -52,7 +62,10 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, doc));
+  // The API map (every route, including admin ones) is only published outside production,
+  // unless explicitly enabled with SWAGGER_ENABLED=true.
+  if (process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true')
+    SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, doc));
   await app.listen(config.port);
   // Slow-client protection (slowloris): a whole request (headers + body) must arrive within
   // requestTimeout (Node's default is 5 min). keepAliveTimeout stays above the load balancer's idle

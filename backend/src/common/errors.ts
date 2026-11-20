@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 
 /** Domain error carrying a stable machine code and a Spanish user message. */
 export class AppError extends HttpException {
@@ -43,6 +43,8 @@ const DOMAIN_MESSAGES: Record<string, [number, string]> = {
   PAYOUT_BELOW_MINIMUM: [409, 'El monto es menor al mínimo permitido para retiros.'],
 };
 
+const dbLog = new Logger('DbError');
+
 /** Converts PostgreSQL errors into API errors without leaking internals. */
 export function translateDbError(e: any): Error {
   if (e instanceof HttpException) return e;
@@ -56,10 +58,17 @@ export function translateDbError(e: any): Error {
       code === 'P0002' ? 404 : code === '42501' ? 403 : code === '22023' || code === '23514' ? 400 : 409;
     return new AppError(firstToken, humanize(firstToken), status);
   }
-  if (code === '23505') return new AppError('DUPLICATE', 'Ya existe un registro con esos datos.', 409, { constraint: e?.constraint });
+  // Constraint names and raw PostgreSQL messages describe the schema: log them, never send them.
+  if (code === '23505') {
+    dbLog.warn(`unique violation: ${e?.constraint ?? msg}`);
+    return new AppError('DUPLICATE', 'Ya existe un registro con esos datos.', 409);
+  }
   if (code === '23503') return new AppError('REFERENCE_INVALID', 'Referencia inválida o en uso.', 409);
   if (code === '23514' || code === '22P02' || code === '22023')
-    return new AppError('VALIDATION_FAILED', 'Los datos enviados no son válidos.', 400, { db: msg });
+  {
+    dbLog.warn(`invalid data (${code}): ${msg}`);
+    return new AppError('VALIDATION_FAILED', 'Los datos enviados no son válidos.', 400);
+  }
   if (code === '40001' || code === '40P01')
     return new AppError('CONCURRENT_UPDATE', 'Otra operación modificó los datos. Inténtalo de nuevo.', 409);
   if (code === '55P03') return new AppError('LOCKED', 'El recurso está ocupado. Inténtalo de nuevo.', 409);

@@ -57,7 +57,7 @@ export class AccountService {
     const confirmed = !!user.email_confirmed_at;
     if (confirmed) this.mail.fire(() => this.mail.welcome(user.id));
     else this.mail.fire(() => this.sendVerification(user.id, user.email!));
-    return { id: user.id, email: user.email, confirmed, verificationSent: !confirmed };
+    return { email: user.email, confirmed, verificationSent: !confirmed };
   }
 
   private async sendVerification(userId: string, email: string) {

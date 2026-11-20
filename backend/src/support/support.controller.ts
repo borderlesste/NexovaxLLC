@@ -7,7 +7,7 @@ import { MAX_MESSAGE_FILES, MessagingService } from '../messaging/messaging.serv
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
-import { CurrentUser, Public, RequestUser, Roles } from '../auth/auth';
+import { CurrentUser, isStaff, Public, RequestUser, Roles } from '../auth/auth';
 import { IsBusinessName, IsCleanMultiline, IsCleanText, IsOrderReference, IsWebUrl } from '../common/validators';
 import { SupportService } from './support.service';
 
@@ -47,8 +47,10 @@ export class SupportController {
 
   @Public()
   @Get('catalogs')
-  catalogs() {
-    return this.support.catalogs();
+  async catalogs(@CurrentUser() user?: RequestUser) {
+    const c = await this.support.catalogs();
+    // Internal support teams are only for staff (used to assign reports).
+    return isStaff(user, 'SUPPORT', 'MODERATOR') ? c : { categories: c.categories, priorities: c.priorities };
   }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

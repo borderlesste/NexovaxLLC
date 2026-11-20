@@ -126,7 +126,8 @@ export class SupabaseAdminService {
         throw new AppError('EMAIL_TAKEN', 'Ya existe una cuenta con ese correo.', HttpStatus.CONFLICT);
       if (/password/i.test(error.message))
         throw new AppError('WEAK_PASSWORD', 'La contraseña no cumple los requisitos de seguridad.', HttpStatus.BAD_REQUEST);
-      throw new AppError('AUTH_PROVIDER_ERROR', `No se pudo crear la cuenta: ${error.message}`, HttpStatus.BAD_GATEWAY);
+      this.logger.warn(`createUser failed: ${error.message}`);
+      throw new AppError('AUTH_PROVIDER_ERROR', 'No se pudo crear la cuenta. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
     }
     return data.user!;
   }
@@ -135,7 +136,10 @@ export class SupabaseAdminService {
     const { error } = await this.admin.auth.admin.updateUserById(userId, { password });
     if (error && /password/i.test(error.message))
       throw new AppError('WEAK_PASSWORD', 'La contraseña no cumple los requisitos de seguridad.', HttpStatus.BAD_REQUEST);
-    if (error) throw new AppError('AUTH_PROVIDER_ERROR', error.message, HttpStatus.BAD_GATEWAY);
+    if (error) {
+      this.logger.warn(`updateUserPassword failed: ${error.message}`);
+      throw new AppError('AUTH_PROVIDER_ERROR', 'No se pudo actualizar la contraseña. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
   }
 
   /** One-time recovery token (hashed) for a password-reset link we e-mail ourselves. */
@@ -185,7 +189,10 @@ export class SupabaseAdminService {
       contentType: 'image/webp',
       upsert: false,
     });
-    if (error) throw new AppError('UPLOAD_FAILED', `No se pudo subir la imagen: ${error.message}`, HttpStatus.BAD_GATEWAY);
+    if (error) {
+      this.logger.warn(`image upload failed: ${error.message}`);
+      throw new AppError('UPLOAD_FAILED', 'No se pudo subir la imagen. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
     const row = await this.db.one<{ id: string }>(
       `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,
                                   original_filename, mime_type, size_bytes, width_pixels, height_pixels, visibility,
@@ -245,7 +252,10 @@ export class SupabaseAdminService {
     const { out, meta } = await this.processImage(file, (img) => img.resize({ width: 512, height: 512, fit: 'cover', position: 'attention' }));
     const key = `${userId}/avatar/${randomUUID()}.webp`;
     const { error } = await this.admin.storage.from(config.avatarBucket).upload(key, out, { contentType: 'image/webp', upsert: false });
-    if (error) throw new AppError('UPLOAD_FAILED', `No se pudo subir la imagen: ${error.message}`, HttpStatus.BAD_GATEWAY);
+    if (error) {
+      this.logger.warn(`image upload failed: ${error.message}`);
+      throw new AppError('UPLOAD_FAILED', 'No se pudo subir la imagen. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
     let previous: { id: string; storage_key: string } | null = null;
     try {
       previous = await this.db.tx(async (c) => {
@@ -324,7 +334,10 @@ export class SupabaseAdminService {
     } else throw new AppError('UNSUPPORTED_ATTACHMENT', 'Formato no permitido. Adjunta fotos (JPG, PNG, WebP) o documentos PDF.');
     const key = `${userId}/attachments/${randomUUID()}.${kind === 'IMAGE' ? 'webp' : 'pdf'}`;
     const { error } = await this.admin.storage.from(config.attachmentBucket).upload(key, body, { contentType: mime, upsert: false });
-    if (error) throw new AppError('UPLOAD_FAILED', `No se pudo subir el archivo: ${error.message}`, HttpStatus.BAD_GATEWAY);
+    if (error) {
+      this.logger.warn(`file upload failed: ${error.message}`);
+      throw new AppError('UPLOAD_FAILED', 'No se pudo subir el archivo. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
     try {
       const row = await this.db.one<{ id: string }>(
         `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,

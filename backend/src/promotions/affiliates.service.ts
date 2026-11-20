@@ -172,7 +172,7 @@ export class AffiliatesService {
 
   // ------------------------------------------------------------------ public offer & links
   async offerForProduct(productId: string) {
-    const p = await this.db.one(`select seller_id from public.products where id = $1`, [productId]);
+    const p = await this.db.one(`select seller_id from public.products where id = $1 and status in ('ACTIVE','OUT_OF_STOCK')`, [productId]);
     if (!p) return null;
     const a = await this.active(p.seller_id);
     if (!a || (a.productIds && !a.productIds.includes(productId))) return null;
