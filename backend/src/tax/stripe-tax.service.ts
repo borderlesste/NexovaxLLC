@@ -72,13 +72,17 @@ export class StripeTaxService {
   async calculate(currency: string, address: StripeTaxAddress, lines: StripeTaxLine[], opts: { cache?: boolean } = {}) {
     if (!this.stripe.enabled) throw new AppError('TAX_UNAVAILABLE', 'No pudimos calcular los impuestos. Inténtalo de nuevo en unos minutos.', HttpStatus.SERVICE_UNAVAILABLE);
     const country = address.country_code.toUpperCase();
+    // Stripe only taxes shipping through `shipping_cost` (one amount per calculation); a line item with
+    // the shipping tax code is rejected. Multi-seller carts add up their shipping and the tax is split back.
+    const shipLines = lines.filter((l) => l.shipping && l.amount > 0n);
+    const shipTotal = shipLines.reduce((a, l) => a + l.amount, 0n);
     const items = lines
-      .filter((l) => l.amount > 0n)
+      .filter((l) => !l.shipping && l.amount > 0n)
       .map((l) => ({
         reference: l.reference.slice(0, 200),
         amount: toStripeAmount(fromMinor(l.amount), currency),
         quantity: l.quantity && l.quantity > 0 ? l.quantity : 1,
-        tax_code: l.shipping ? TAX_CODE.SHIPPING : TAX_CODE[l.taxClass ?? 'STANDARD'],
+        tax_code: TAX_CODE[l.taxClass ?? 'STANDARD'],
         tax_behavior: 'exclusive' as const,
       }));
     if (!items.length) return { id: null as string | null, byRef: new Map<string, Minor>(), total: 0n };
@@ -96,6 +100,9 @@ export class StripeTaxService {
         address_source: 'shipping' as const,
       },
       line_items: items,
+      ...(shipTotal > 0n
+        ? { shipping_cost: { amount: toStripeAmount(fromMinor(shipTotal), currency), tax_behavior: 'exclusive' as const, tax_code: TAX_CODE.SHIPPING } }
+        : {}),
     };
     const key = createHash('sha256').update(JSON.stringify(params)).digest('hex');
     const hit = opts.cache ? this.cache.get(key) : undefined;
@@ -109,6 +116,14 @@ export class StripeTaxService {
         if (li.reference) byRef.set(li.reference, t);
         total += t;
       }
+      const shipTax = toMinor(fromStripeAmount(calc.shipping_cost?.amount_tax ?? 0, currency));
+      let left = shipTax;
+      shipLines.forEach((l, i) => {
+        const t = i === shipLines.length - 1 ? left : (shipTax * l.amount) / shipTotal;
+        left -= t;
+        byRef.set(l.reference, (byRef.get(l.reference) ?? 0n) + t);
+      });
+      total += shipTax;
       const value = { id: calc.id as string | null, byRef, total };
       if (opts.cache) {
         if (this.cache.size > 500) this.cache.clear();
