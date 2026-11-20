@@ -21,8 +21,8 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const active = sp.get('c');
-  const list = useQuery({ queryKey: ['conversations', as, search], queryFn: () => get(`/conversations?as=${as}&q=${encodeURIComponent(search)}`), refetchInterval: 15_000 });
-  const conv = useQuery({ queryKey: ['conversation', active], queryFn: () => get(`/conversations/${active}`), enabled: !!active, refetchInterval: 5_000 });
+  const list = useQuery({ queryKey: ['conversations', as, search], queryFn: () => get(`/conversations?as=${as}&q=${encodeURIComponent(search)}`), refetchInterval: 60_000 }); // live updates come from RealtimeInbox; polling is the fallback
+  const conv = useQuery({ queryKey: ['conversation', active], queryFn: () => get(`/conversations/${active}`), enabled: !!active, refetchInterval: 20_000 });
   const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const endRef = useRef<HTMLDivElement>(null);

@@ -1274,5 +1274,7 @@
 "Este recibo es un comprobante de tu compra en {brand}. Cada tienda es responsable de los productos que vende y de su facturación fiscal.": "This receipt is proof of your purchase on {brand}. Each store is responsible for the products it sells and for its tax invoicing.",
 "Emitido el {date}": "Issued on {date}",
 "Ver recibo de compra": "View purchase receipt",
-"No encontramos este pedido.": "We couldn’t find this order."
+"No encontramos este pedido.": "We couldn’t find this order.",
+"Tienes un mensaje nuevo": "You have a new message",
+"Ver": "View"
 }
