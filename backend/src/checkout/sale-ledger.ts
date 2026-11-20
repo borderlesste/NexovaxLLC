@@ -82,7 +82,7 @@ export async function postSaleAllocation(db: DbService, c: PoolClient, paymentId
     );
     for (const r of rules)
       await add({ direction: 'DESTINATION', type: 'PLATFORM_COMMISSION', account: 'PLATFORM_COMMISSION_REVENUE', amount: r.amount, sellerOrderId: so.id, ruleVersionId: r.business_rule_version_id, orderAppliedRuleId: r.id, funding: r.funding_source_code ?? 'SELLER', memo: 'Comisión de la plataforma' });
-    if (Number(so.tax) > 0) await add({ direction: 'DESTINATION', type: 'TAX', account: 'TAX_PAYABLE', amount: so.tax, sellerOrderId: so.id, memo: 'ITBIS por pagar' });
+    if (Number(so.tax) > 0) await add({ direction: 'DESTINATION', type: 'TAX', account: 'TAX_PAYABLE', amount: so.tax, sellerOrderId: so.id, memo: 'Impuesto por pagar' });
     if (Number(so.shipping) > 0) await add({ direction: 'DESTINATION', type: 'SHIPPING', account: 'SHIPPING_COLLECTED', amount: so.shipping, sellerOrderId: so.id, memo: 'Envío cobrado al cliente' });
   }
   await db.exec(`select public.finalize_financial_allocation_set($1)`, [set!.id], c);
