@@ -940,6 +940,8 @@ export class AdminService {
       try {
         const u = new URL(String(s['marketplace.base_url']));
         ok = ['http:', 'https:'].includes(u.protocol) && !!u.hostname;
+        // Links in e-mails must reach buyers: no local addresses in production.
+        if (process.env.NODE_ENV === 'production' && (u.protocol !== 'https:' || /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(u.hostname))) ok = false;
       } catch {}
       if (!ok) throw badRequest('URL_INVALID', 'Ingresa un enlace válido que empiece por https://');
     }

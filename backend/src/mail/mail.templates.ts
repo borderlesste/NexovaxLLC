@@ -18,8 +18,21 @@ export const mailRuntime = { baseUrl: '', name: 'NEXOVAX', supportEmail: '', loc
 export function setMailRuntime(p: Partial<typeof mailRuntime>) {
   Object.assign(mailRuntime, p);
 }
-/** Public site URL for links in e-mails ("URL base" in Configuración). */
-export const webUrl = () => (mailRuntime.baseUrl || config.webUrl).replace(/\/+$/, '');
+const isLocal = (u: string) => /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(u.trim());
+
+/**
+ * Public site URL for links in e-mails ("URL base" in Configuración). In production a local
+ * address is never used (it would send buyers to their own device): it falls back to WEB_URL,
+ * then to the first https origin allowed by CORS_ORIGINS.
+ */
+export const webUrl = () => {
+  const candidates = [mailRuntime.baseUrl, config.webUrl];
+  if (process.env.NODE_ENV === 'production') {
+    const pick = candidates.find((u) => u && !isLocal(u)) ?? config.corsOrigins.find((o) => /^https:\/\//i.test(o) && !isLocal(o));
+    if (pick) return pick.replace(/\/+$/, '');
+  }
+  return (mailRuntime.baseUrl || config.webUrl).replace(/\/+$/, '');
+};
 
 export const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
