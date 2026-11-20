@@ -26,6 +26,36 @@ export interface ProductQuery {
 
 const FACET_LIMIT = 12;
 
+/** Words of a search term, normalized (no accents, lower case). */
+const searchWords = (param: string) =>
+  `(select array_agg(w) from unnest(regexp_split_to_array(public.nx_search_norm(${param}), '[^[:alnum:]]+')) w where w <> '')`;
+
+/**
+ * Every word of the term must appear (accent/case-insensitive) in the product title, description, store, brand or
+ * category; words of 4+ letters also match the title with typos (pg_trgm word similarity).
+ * Expects aliases p (products), s (sellers) and ssp (seller_store_profiles).
+ */
+export function searchMatch(param: string) {
+  return `not exists (select 1 from unnest(coalesce(${searchWords(param)}, '{}')) w where not (
+            public.nx_search_norm(p.title) like '%' || w || '%'
+            or public.nx_search_norm(p.short_description) like '%' || w || '%'
+            or public.nx_search_norm(coalesce(ssp.display_name, s.slug)) like '%' || w || '%'
+            or exists (select 1 from public.brands b where b.id = p.brand_id and public.nx_search_norm(b.name) like '%' || w || '%')
+            or exists (select 1 from public.categories cc where cc.id = p.category_id and public.nx_search_norm(cc.name) like '%' || w || '%')
+            or (length(w) >= 4 and extensions.word_similarity(w, public.nx_search_norm(p.title)) >= 0.5)))`;
+}
+
+/** Relevance of a product title for a search term: exact phrase first, then by similarity. */
+export function searchScore(param: string) {
+  return `((case when public.nx_search_norm(p.title) like '%' || public.nx_search_norm(${param}) || '%' then 2 else 0 end)
+           + extensions.word_similarity(public.nx_search_norm(${param}), public.nx_search_norm(p.title)))`;
+}
+
+/** Accent/case-insensitive, typo-tolerant match of a name column against $1. */
+const nameMatch = (col: string) =>
+  `(public.nx_search_norm(${col}) like '%' || public.nx_search_norm($1) || '%'
+    or (length($1) >= 4 and extensions.word_similarity(public.nx_search_norm($1), public.nx_search_norm(${col})) >= 0.5))`;
+
 @Injectable()
 export class CatalogService {
   constructor(
@@ -42,11 +72,7 @@ export class CatalogService {
       return `$${params.length}`;
     };
     if (query.featured) where.push(`exists (select 1 from public.nx_featured_products fp where fp.product_id = p.id)`);
-    if (query.q?.trim()) {
-      const term = add(`%${query.q.trim()}%`);
-      where.push(`(p.title ilike ${term} or p.short_description ilike ${term} or coalesce(ssp.display_name, s.slug) ilike ${term}
-                  or exists (select 1 from public.brands b where b.id = p.brand_id and b.name ilike ${term}))`);
-    }
+    if (query.q?.trim()) where.push(searchMatch(add(query.q.trim().slice(0, 120))));
     if (query.category) {
       const cat = add(query.category);
       where.push(`p.category_id in (
@@ -75,6 +101,8 @@ export class CatalogService {
   async listProducts(query: ProductQuery) {
     const currency = await this.settings.currency();
     const { where, params } = this.listingWhere(query, currency);
+    const q = query.q?.trim().slice(0, 120);
+    const scored = q && (query.sort ?? 'relevance') === 'relevance' ? `${searchScore(`$${params.push(q)}`)} desc, ` : '';
 
     const order =
       {
@@ -94,7 +122,7 @@ export class CatalogService {
         from public.products p
         ${PRODUCT_CARD_JOINS('$1')}
        where ${where.join(' and ')}
-       order by ${order}, p.id
+       order by ${scored}${order}, p.id
        limit ${pageSize} offset ${(page - 1) * pageSize}`;
     const rows = await this.db.many(sql, params);
     return {
@@ -478,20 +506,27 @@ export class CatalogService {
 
   async searchSuggestions(q: string) {
     if (!q?.trim()) return { products: [], stores: [], categories: [] };
-    const term = `%${q.trim()}%`;
+    const term = q.trim().slice(0, 120);
     const [products, stores, categories] = await Promise.all([
       this.db.many(
         `select p.slug, p.title from public.products p join public.sellers s on s.id = p.seller_id
-          where p.status='ACTIVE' and s.status='ACTIVE' and p.title ilike $1 order by p.published_at desc limit 6`,
+           left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+          where p.status='ACTIVE' and s.status='ACTIVE' and ${searchMatch('$1')}
+          order by ${searchScore('$1')} desc, p.published_at desc limit 6`,
         [term],
       ),
       this.db.many(
         `select s.slug, coalesce(ssp.display_name, s.slug) as name from public.sellers s
            left join public.seller_store_profiles ssp on ssp.seller_id = s.id
-          where s.status='ACTIVE' and coalesce(ssp.display_name, s.slug) ilike $1 limit 4`,
+          where s.status='ACTIVE' and ${nameMatch('coalesce(ssp.display_name, s.slug)')}
+          order by extensions.word_similarity(public.nx_search_norm($1), public.nx_search_norm(coalesce(ssp.display_name, s.slug))) desc limit 4`,
         [term],
       ),
-      this.db.many(`select slug, name from public.categories where status='ACTIVE' and name ilike $1 order by sort_order limit 4`, [term]),
+      this.db.many(
+        `select slug, name from public.categories where status='ACTIVE' and ${nameMatch('name')}
+          order by extensions.word_similarity(public.nx_search_norm($1), public.nx_search_norm(name)) desc, sort_order limit 4`,
+        [term],
+      ),
     ]);
     return { products, stores, categories };
   }
