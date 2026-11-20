@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, HttpException } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
+import * as Sentry from '@sentry/nestjs';
 import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
@@ -470,10 +471,15 @@ export function requestLocale(req: any): ApiLocale {
   return /^ht\b/i.test(al) ? 'ht' : /^fr\b/i.test(al) ? 'fr' : /^en\b/i.test(al) ? 'en' : 'es';
 }
 
-/** Translates error messages to English when the client asked for English (x-locale / Accept-Language). */
-@Catch(HttpException)
+/**
+ * Translates error messages when the client asked for another language (x-locale / Accept-Language),
+ * and reports unexpected errors (non-HTTP or 5xx) to Sentry when it is configured.
+ */
+@Catch()
 export class LocalizedExceptionFilter extends BaseExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
+    if (!(exception instanceof HttpException) || exception.getStatus() >= 500) Sentry.captureException(exception);
+    if (!(exception instanceof HttpException)) return super.catch(exception, host);
     const req = host.switchToHttp().getRequest();
     const l = requestLocale(req);
     if (l !== 'es') {

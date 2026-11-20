@@ -5,6 +5,7 @@ import { Providers } from './providers';
 import { Analytics } from '@vercel/analytics/next';
 import { getServerLocale, getT } from '@/lib/i18n/server';
 import { serverGet } from '@/lib/server-api';
+import { siteUrl } from '@/lib/site-url';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
@@ -12,6 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
   const name = (await serverGet<{ name?: string }>('/config/public', 60))?.name?.trim() || 'NEXOVAX';
   return {
+    metadataBase: new URL(siteUrl()),
     title: { default: `${name} · ${t('Marketplace multivendedor')}`, template: `%s · ${name}` },
     description: t('Compra en tiendas de todo el mundo con un solo carrito. Miles de productos, múltiples vendedores y una plataforma segura.'),
   };

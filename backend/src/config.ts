@@ -57,6 +57,10 @@ export const config = {
   shippoLabelFormat: process.env.SHIPPO_LABEL_FORMAT ?? 'PDF_4x6',
   /** Stripe (cards). Keys come from .secrets/stripe_*; webhook secrets may list several (one per line). */
   stripeSecretKey: secret('STRIPE_SECRET_KEY', 'stripe_secret_key'),
+  /** Error monitoring (Sentry). Without it nothing is reported. */
+  get sentryDsn() {
+    return secret('SENTRY_DSN', 'sentry_dsn');
+  },
   /** Read on demand so the key can be added without restarting the API. */
   get stripePublishableKey() {
     return secret('STRIPE_PUBLISHABLE_KEY', 'stripe_publishable_key');

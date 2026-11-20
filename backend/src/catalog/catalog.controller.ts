@@ -125,6 +125,12 @@ export class CatalogController {
     return this.catalog.storeReviews(slug, num(page) ?? 1, num(rating));
   }
 
+  /** Public URLs for the web sitemap: active products, stores and categories (capped). */
+  @Get('sitemap')
+  sitemap() {
+    return this.catalog.sitemap();
+  }
+
   @Get('search/suggest')
   suggest(@Query('q') q: string) {
     return this.catalog.searchSuggestions(q);

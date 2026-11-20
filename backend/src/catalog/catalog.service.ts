@@ -457,6 +457,25 @@ export class CatalogService {
     };
   }
 
+  /** Slugs and last change of everything public, for search engines (sitemap.xml holds up to 50,000 URLs). */
+  async sitemap() {
+    const [products, stores, categories] = await Promise.all([
+      this.db.many(
+        `select p.slug, coalesce(p.updated_at, p.published_at, p.created_at) as updated_at from public.products p
+           join public.sellers s on s.id = p.seller_id
+          where p.status = 'ACTIVE' and s.status = 'ACTIVE' order by p.published_at desc nulls last limit 45000`,
+      ),
+      this.db.many(
+        `select s.slug, coalesce(ssp.updated_at, s.updated_at, s.created_at) as updated_at from public.sellers s
+           left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+          where s.status = 'ACTIVE' order by s.created_at limit 4000`,
+      ),
+      this.db.many(`select slug, coalesce(updated_at, created_at) as updated_at from public.categories where status = 'ACTIVE' order by sort_order limit 1000`),
+    ]);
+    const map = (rows: any[]) => rows.map((r) => ({ slug: r.slug, updatedAt: r.updated_at }));
+    return { products: map(products), stores: map(stores), categories: map(categories) };
+  }
+
   async searchSuggestions(q: string) {
     if (!q?.trim()) return { products: [], stores: [], categories: [] };
     const term = `%${q.trim()}%`;

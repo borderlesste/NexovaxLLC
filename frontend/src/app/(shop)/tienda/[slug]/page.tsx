@@ -5,7 +5,7 @@ import { StoreView } from './store-view';
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const s = await serverGet<any>(`/stores/${slug}`, 60);
-  return { title: s?.name ?? 'Tienda', description: s?.shortDescription };
+  return { title: s?.name ?? 'Tienda', description: s?.shortDescription, alternates: { canonical: `/tienda/${slug}` } };
 }
 
 export default async function StorePage({ params }: { params: Promise<{ slug: string }> }) {

@@ -1,3 +1,4 @@
+import './instrument';
 import 'reflect-metadata';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
