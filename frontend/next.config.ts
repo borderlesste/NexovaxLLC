@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs/config';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -54,4 +55,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Sentry: uploads the source maps of production builds so stack traces show the original code, and tags
+ * errors with the release (Vercel's commit SHA). Without SENTRY_AUTH_TOKEN (local builds) nothing is uploaded.
+ * Client source maps are deleted after upload, so they are never served to visitors.
+ */
+export default withSentryConfig(nextConfig, {
+  org: 'nexovax-llc',
+  project: 'nexovax-web',
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  telemetry: false,
+  widenClientFileUpload: true,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN, deleteSourcemapsAfterUpload: true },
+});
