@@ -57,7 +57,8 @@ function TurnstileWidget({ siteKey, action, onToken, resetSignal }: { siteKey: s
           sitekey: siteKey,
           action,
           theme: 'auto',
-          language: getLocale(),
+          // Cloudflare has no Haitian Creole: show the widget in French for 'ht'.
+          language: getLocale() === 'ht' ? 'fr' : getLocale(),
           callback: (t: string) => cb.current(t),
           'expired-callback': () => cb.current(null),
           'error-callback': () => cb.current(null),
