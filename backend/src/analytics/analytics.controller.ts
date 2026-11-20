@@ -76,6 +76,6 @@ export class AnalyticsController {
   @Get('seller/analytics')
   stats(@CurrentUser() u: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
     const d = [7, 30, 90].includes(Number(days)) ? Number(days) : 30;
-    return this.analytics.sellerStats(requireSeller(u, h).id, d);
+    return this.analytics.sellerStats(requireSeller(u, h, 'STATS').id, d);
   }
 }

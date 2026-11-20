@@ -86,55 +86,55 @@ export class PromotionsController {
   // ---- seller: coupon offers to interested buyers (counts only, never identities)
   @Get('seller/offers/audience')
   offerAudience(@CurrentUser() u: RequestUser, @Query('productId', ParseUUIDPipe) productId: string, @Headers('x-seller-id') h?: string) {
-    return this.offers.audience(requireSeller(u, h).id, productId);
+    return this.offers.audience(requireSeller(u, h, 'MARKETING').id, productId);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('seller/offers')
   sendOffer(@CurrentUser() u: RequestUser, @Body() dto: OfferDto, @Headers('x-seller-id') h?: string) {
-    return this.offers.send(u, requireSeller(u, h).id, dto);
+    return this.offers.send(u, requireSeller(u, h, 'MARKETING').id, dto);
   }
 
   @Get('seller/offers')
   offerCampaigns(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.offers.campaigns(requireSeller(u, h).id);
+    return this.offers.campaigns(requireSeller(u, h, 'MARKETING').id);
   }
 
   // ---- seller: coupons
   @Get('seller/coupons')
   coupons_(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.coupons.list(requireSeller(u, h).id);
+    return this.coupons.list(requireSeller(u, h, 'MARKETING').id);
   }
 
   @Post('seller/coupons')
   createCoupon(@CurrentUser() u: RequestUser, @Body() dto: CouponDto, @Headers('x-seller-id') h?: string) {
-    return this.coupons.create(u, requireSeller(u, h).id, dto);
+    return this.coupons.create(u, requireSeller(u, h, 'MARKETING').id, dto);
   }
 
   @Put('seller/coupons/:id')
   updateCoupon(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CouponDto, @Headers('x-seller-id') h?: string) {
-    return this.coupons.update(u, requireSeller(u, h).id, id, dto);
+    return this.coupons.update(u, requireSeller(u, h, 'MARKETING').id, id, dto);
   }
 
   @Post('seller/coupons/:id/active')
   toggleCoupon(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ActiveDto, @Headers('x-seller-id') h?: string) {
-    return this.coupons.setActive(requireSeller(u, h).id, id, dto.active);
+    return this.coupons.setActive(requireSeller(u, h, 'MARKETING').id, id, dto.active);
   }
 
   @Delete('seller/coupons/:id')
   removeCoupon(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.coupons.remove(requireSeller(u, h).id, id);
+    return this.coupons.remove(requireSeller(u, h, 'MARKETING').id, id);
   }
 
   // ---- seller: affiliate program
   @Get('seller/affiliates')
   program(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.affiliates.program(requireSeller(u, h).id);
+    return this.affiliates.program(requireSeller(u, h, 'MARKETING').id);
   }
 
   @Put('seller/affiliates')
   saveProgram(@CurrentUser() u: RequestUser, @Body() dto: ProgramDto, @Headers('x-seller-id') h?: string) {
-    return this.affiliates.saveProgram(u, requireSeller(u, h).id, dto);
+    return this.affiliates.saveProgram(u, requireSeller(u, h, 'MARKETING').id, dto);
   }
 
   // ---- public / buyers / affiliates

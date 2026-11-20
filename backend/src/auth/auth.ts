@@ -19,10 +19,14 @@ export interface RequestUser {
   email: string;
   status: string;
   roles: RoleCode[];
-  /** Sellers the user owns or is an active member of. */
-  sellers: { id: string; slug: string; status: string; isOwner: boolean }[];
+  /** Sellers the user owns or is an active member of (owners have every area). */
+  sellers: { id: string; slug: string; status: string; isOwner: boolean; areas: SellerArea[] }[];
   sessionId?: string;
 }
+
+/** Parts of the seller panel a team member can be given (permission codes seller.area.<area lower>). */
+export const SELLER_AREAS = ['PRODUCTS', 'ORDERS', 'MESSAGES', 'MARKETING', 'FINANCE', 'STATS', 'SETTINGS'] as const;
+export type SellerArea = (typeof SELLER_AREAS)[number];
 
 export const IS_PUBLIC = 'rd:isPublic';
 export const ROLES = 'rd:roles';
@@ -138,8 +142,13 @@ export class AuthGuard implements CanActivate {
         where ur.user_id = $1 and ur.revoked_at is null and (ur.expires_at is null or ur.expires_at > now()) and r.is_active`,
       [sub],
     );
-    const sellers = await this.db.many<{ id: string; slug: string; status: string; is_owner: boolean }>(
-      `select s.id, s.slug, s.status, (s.owner_user_id = $1) as is_owner
+    const sellers = await this.db.many<{ id: string; slug: string; status: string; is_owner: boolean; areas: string[] | null }>(
+      `select s.id, s.slug, s.status, (s.owner_user_id = $1) as is_owner,
+              (select array_agg(upper(substr(p.code, 13)) order by p.code)
+                 from public.seller_members m
+                 join public.seller_member_permissions g on g.seller_member_id = m.id and g.revoked_at is null
+                 join public.permissions p on p.id = g.permission_id and p.is_active and p.code like 'seller.area.%'
+                where m.seller_id = s.id and m.user_id = $1 and m.status = 'ACTIVE') as areas
          from public.sellers s
         where s.owner_user_id = $1
            or exists (select 1 from public.seller_members m where m.seller_id = s.id and m.user_id = $1 and m.status = 'ACTIVE')
@@ -151,7 +160,13 @@ export class AuthGuard implements CanActivate {
       email: row.email,
       status: row.status,
       roles: roles.map((r) => r.code),
-      sellers: sellers.map((s) => ({ id: s.id, slug: s.slug, status: s.status, isOwner: s.is_owner })),
+      sellers: sellers.map((s) => ({
+        id: s.id,
+        slug: s.slug,
+        status: s.status,
+        isOwner: s.is_owner,
+        areas: s.is_owner ? [...SELLER_AREAS] : ((s.areas ?? []).filter((a) => (SELLER_AREAS as readonly string[]).includes(a)) as SellerArea[]),
+      })),
     };
     userCache.set(sub, { at: Date.now(), user });
     // Best-effort login timestamp.
@@ -162,11 +177,22 @@ export class AuthGuard implements CanActivate {
   }
 }
 
-/** Resolves the seller the current user acts for (owner or active member). */
-export function requireSeller(user: RequestUser, sellerId?: string) {
+/**
+ * Resolves the seller the current user acts for (owner or active member). With `area`, a team
+ * member must also have been given that part of the panel (owners have all of them).
+ */
+export function requireSeller(user: RequestUser, sellerId?: string, area?: SellerArea) {
   const s = sellerId ? user.sellers.find((x) => x.id === sellerId) : user.sellers[0];
   if (!s) throw new AppError('NO_SELLER', 'Aún no tienes una tienda. Crea tu tienda para continuar.', HttpStatus.FORBIDDEN);
+  if (area && !s.isOwner && !s.areas.includes(area))
+    throw new AppError('SELLER_AREA_FORBIDDEN', 'No tienes permiso para esta sección de la tienda. Pídeselo al propietario.', HttpStatus.FORBIDDEN);
   return s;
+}
+
+/** Whether the user can act for this seller in an area (owner, or member given that area). */
+export function sellerCan(user: RequestUser, sellerId: string | null | undefined, area: SellerArea) {
+  const s = sellerId ? user.sellers.find((x) => x.id === sellerId) : undefined;
+  return !!s && (s.isOwner || s.areas.includes(area));
 }
 
 /**
@@ -174,9 +200,8 @@ export function requireSeller(user: RequestUser, sellerId?: string) {
  * but money destinations and withdrawals stay with the owner (a member must not be able
  * to add their own bank account and withdraw the store's balance).
  */
-export function requireSellerOwner(user: RequestUser, sellerId?: string) {
+export function requireSellerOwner(user: RequestUser, sellerId?: string, message = 'Solo el propietario de la tienda puede gestionar los métodos de cobro y los retiros.') {
   const s = requireSeller(user, sellerId);
-  if (!s.isOwner)
-    throw new AppError('SELLER_OWNER_REQUIRED', 'Solo el propietario de la tienda puede gestionar los métodos de cobro y los retiros.', HttpStatus.FORBIDDEN);
+  if (!s.isOwner) throw new AppError('SELLER_OWNER_REQUIRED', message, HttpStatus.FORBIDDEN);
   return s;
 }

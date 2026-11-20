@@ -29,7 +29,7 @@ const RESEND_URL = 'https://api.resend.com/emails';
 const loc = (v: unknown): Locale => (v === 'es' || v === 'en' || v === 'fr' || v === 'ht' ? v : mailRuntime.locale);
 /** Picks the Spanish or English variant. */
 /** Sent even with "Notificaciones por email" off: account access, bank details to pay, account deletion. */
-const ESSENTIAL = /^(EMAIL_VERIFICATION|PASSWORD_RECOVERY|BANK_TRANSFER_PENDING|ACCOUNT_DELET)/;
+const ESSENTIAL = /^(EMAIL_VERIFICATION|PASSWORD_RECOVERY|BANK_TRANSFER_PENDING|ACCOUNT_DELET|SELLER_TEAM_INVITATION)/;
 /** Sender shows the marketplace name from Configuración, keeping the verified address. */
 const senderFrom = () => {
   const addr = /<([^>]+)>/.exec(config.mailFrom)?.[1] ?? config.mailFrom;
@@ -233,6 +233,52 @@ export class MailService {
           p(`<span style="color:#64748b;font-size:13px">${t('El enlace vence en 1 hora y solo puede usarse una vez. Si no fuiste tú, ignora este correo: tu contraseña no cambiará.', 'The link expires in 1 hour and can be used once. If this wasn’t you, ignore this e-mail: your password won’t change.', 'Le lien expire dans 1 heure et ne peut être utilisé qu’une fois. Si ce n’était pas vous, ignorez cet e-mail : votre mot de passe ne changera pas.', 'Lyen an ekspire nan 1 èdtan epi ou ka itilize l yon sèl fwa. Si se pa ou, inyore imèl sa a: modpas ou p ap chanje.')}</span>`),
         cta: { label: t('Crear nueva contraseña', 'Create a new password', 'Créer un nouveau mot de passe', 'Kreye yon nouvo modpas'), url: link },
         text: t('Recibimos una solicitud para restablecer tu contraseña. El enlace vence en 1 hora.', 'We received a request to reset your password. The link expires in 1 hour.', 'Nous avons reçu une demande de réinitialisation de votre mot de passe. Le lien expire dans 1 heure.', 'Nou resevwa yon demann pou chanje modpas ou. Lyen an ekspire nan 1 èdtan.'),
+      }),
+    });
+  }
+
+  /** Invitation to join a store's team; the link expires in 7 days. */
+  async sellerTeamInvitation(invitationId: string, sellerId: string, inviterId: string, email: string, areas: string[], link: string) {
+    const [store, inviter, invitee] = await Promise.all([
+      this.sellerContact(sellerId),
+      this.userContact(inviterId),
+      this.db.one<{ id: string }>(`select id from public.users where lower(email::text) = $1`, [email.toLowerCase()]),
+    ]);
+    const l = invitee ? (await this.userContact(invitee.id))?.locale ?? inviter?.locale ?? 'es' : inviter?.locale ?? 'es';
+    const t = tr(l);
+    const label: Record<string, [string, string, string, string]> = {
+      PRODUCTS: ['Productos e inventario', 'Products and inventory', 'Produits et stock', 'Pwodwi ak envantè'],
+      ORDERS: ['Pedidos, envíos y devoluciones', 'Orders, shipping and returns', 'Commandes, expéditions et retours', 'Kòmand, livrezon ak retou'],
+      MESSAGES: ['Mensajes con compradores', 'Messages with buyers', 'Messages avec les acheteurs', 'Mesaj ak achtè'],
+      MARKETING: ['Cupones, ofertas y afiliados', 'Coupons, offers and affiliates', 'Coupons, offres et affiliés', 'Kupon, òf ak afilye'],
+      FINANCE: ['Finanzas (solo consulta)', 'Finance (view only)', 'Finances (consultation)', 'Finans (gade sèlman)'],
+      STATS: ['Estadísticas', 'Statistics', 'Statistiques', 'Estatistik'],
+      SETTINGS: ['Configuración de la tienda', 'Store settings', 'Paramètres de la boutique', 'Paramèt boutik la'],
+    };
+    const list = areas.map((a) => `<li>${esc(t(...(label[a] ?? [a, a, a, a])))}</li>`).join('');
+    const storeName = store?.store ?? 'NEXOVAX';
+    const who = inviter?.name ?? storeName;
+    await this.send({
+      template: 'SELLER_TEAM_INVITATION',
+      dedupeKey: `team-invite:${invitationId}`,
+      to: email,
+      userId: invitee?.id ?? null,
+      entityType: 'SELLER',
+      entityId: sellerId,
+      message: layout({
+        locale: l,
+        subject: t(`Te invitaron al equipo de ${storeName}`, `You're invited to the ${storeName} team`, `Invitation à rejoindre l’équipe de ${storeName}`, `Yo envite w nan ekip ${storeName}`),
+        preheader: t(`${who} quiere que le ayudes a gestionar su tienda.`, `${who} wants you to help run their store.`, `${who} souhaite que vous l’aidiez à gérer sa boutique.`, `${who} vle ou ede l jere boutik li.`),
+        title: t('Invitación al equipo', 'Team invitation', 'Invitation à l’équipe', 'Envitasyon nan ekip la'),
+        body:
+          p(t(`<b>${esc(who)}</b> te invitó a unirte al equipo de la tienda <b>${esc(storeName)}</b> en NEXOVAX. Podrás trabajar en:`,
+              `<b>${esc(who)}</b> invited you to join the <b>${esc(storeName)}</b> store team on NEXOVAX. You'll be able to work on:`,
+              `<b>${esc(who)}</b> vous a invité à rejoindre l’équipe de la boutique <b>${esc(storeName)}</b> sur NEXOVAX. Vous pourrez gérer :`,
+              `<b>${esc(who)}</b> envite w antre nan ekip boutik <b>${esc(storeName)}</b> sou NEXOVAX. W ap ka travay sou:`)) +
+          `<ul style="margin:0 0 14px;padding-left:20px">${list}</ul>` +
+          p(`<span style="color:#64748b;font-size:13px">${t(`Inicia sesión o crea tu cuenta con este mismo correo (${esc(email)}) para aceptar. La invitación vence en 7 días.`, `Sign in or create your account with this same e-mail (${esc(email)}) to accept. The invitation expires in 7 days.`, `Connectez-vous ou créez votre compte avec cet e-mail (${esc(email)}) pour accepter. L’invitation expire dans 7 jours.`, `Konekte oswa kreye kont ou ak menm imèl sa a (${esc(email)}) pou aksepte. Envitasyon an ekspire nan 7 jou.`)}</span>`),
+        cta: { label: t('Aceptar invitación', 'Accept invitation', 'Accepter l’invitation', 'Aksepte envitasyon an'), url: link },
+        text: t(`${who} te invitó al equipo de ${storeName} en NEXOVAX. Acepta aquí: ${link}`, `${who} invited you to the ${storeName} team on NEXOVAX. Accept here: ${link}`, `${who} vous a invité dans l’équipe de ${storeName} sur NEXOVAX. Acceptez ici : ${link}`, `${who} envite w nan ekip ${storeName} sou NEXOVAX. Aksepte la a: ${link}`),
       }),
     });
   }

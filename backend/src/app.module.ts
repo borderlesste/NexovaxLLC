@@ -68,6 +68,8 @@ import { CardsService } from './payments/cards.service';
 import { CardsController } from './payments/cards.controller';
 import { PayoutSchedulesService } from './seller/payout-schedules.service';
 import { PayoutSchedulesController } from './seller/payout-schedules.controller';
+import { TeamController } from './seller/team.controller';
+import { TeamService } from './seller/team.service';
 import { ShippingSettlementService } from './shipping/shipping-settlement.service';
 import { AccountDeletionService } from './account/account-deletion.service';
 import { AccountDeletionController } from './account/account-deletion.controller';
@@ -89,7 +91,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController],
   providers: [
     DbService,
     SettingsService,
@@ -129,6 +131,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     RecommendationsService,
     CardsService,
     PayoutSchedulesService,
+    TeamService,
     ShippingSettlementService,
     AccountDeletionService,
     { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },

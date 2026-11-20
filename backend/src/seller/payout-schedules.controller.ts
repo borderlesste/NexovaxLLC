@@ -21,7 +21,7 @@ export class PayoutSchedulesController {
 
   @Get('seller/payouts/schedule')
   get(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.schedules.get(requireSeller(u, h).id);
+    return this.schedules.get(requireSeller(u, h, 'FINANCE').id);
   }
 
   @Put('seller/payouts/schedule')

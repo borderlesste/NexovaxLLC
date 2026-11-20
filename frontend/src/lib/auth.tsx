@@ -13,6 +13,9 @@ function apiUnavailable(e: ApiError) {
   return e.code === 'SERVICE_NOT_CONFIGURED' || (e.status >= 500 && !['AUTH_PROVIDER_ERROR', 'CAPTCHA_UNAVAILABLE'].includes(e.code));
 }
 
+/** Parts of the seller panel a team member can be given. */
+export type SellerArea = 'PRODUCTS' | 'ORDERS' | 'MESSAGES' | 'MARKETING' | 'FINANCE' | 'STATS' | 'SETTINGS';
+
 export type Role = 'CUSTOMER' | 'SELLER' | 'SUPPORT' | 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
 export interface Me {
   id: string;
@@ -25,7 +28,8 @@ export interface Me {
   avatarUrl?: string | null;
   memberSince: string;
   roles: Role[];
-  sellers: { id: string; slug: string; status: string; isOwner: boolean }[];
+  /** Stores the user owns or works in. Owners have every area; team members only the ones they were given. */
+  sellers: { id: string; slug: string; status: string; isOwner: boolean; areas: SellerArea[] }[];
   counts: { favorites: number; cart_items: number; unread_conversations: number };
 }
 
@@ -38,6 +42,10 @@ interface AuthCtx {
   /** Whether the user's staff roles allow an admin-panel permission (see lib/permissions). */
   can: (perm: Permission) => boolean;
   seller: Me['sellers'][number] | undefined;
+  /** Switches the store the seller panel acts for (users in more than one store). */
+  selectSeller: (id: string) => void;
+  /** Whether the current store lets the user use a part of the seller panel. */
+  sellerCan: (area: SellerArea) => boolean;
   signIn: (email: string, password: string, captchaToken?: string | null) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => void;
@@ -83,7 +91,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [meQ.error, qc]);
 
   const me = session ? meQ.data : undefined;
-  const seller = me?.sellers[0];
+  const [sellerPick, setSellerPick] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setSellerPick(localStorage.getItem('nx_seller'));
+    } catch {}
+  }, []);
+  const seller = me?.sellers.find((s) => s.id === sellerPick) ?? me?.sellers[0];
+  const selectSeller = useCallback(
+    (id: string) => {
+      setSellerPick(id);
+      try {
+        localStorage.setItem('nx_seller', id);
+      } catch {}
+      setSellerContext(id);
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    },
+    [qc],
+  );
   useEffect(() => setSellerContext(seller?.id ?? null), [seller?.id]);
   // Apply the account's saved language once per browser (an explicit choice is kept in the cookie).
   useEffect(() => {
@@ -136,11 +161,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isStaff: roles.some((r) => ['ADMIN', 'SUPER_ADMIN', 'MODERATOR', 'SUPPORT'].includes(r)),
       can: (perm: Permission) => canRole(roles, perm),
       seller,
+      selectSeller,
+      sellerCan: (area: SellerArea) => !!seller && (seller.isOwner || (seller.areas ?? []).includes(area)),
       signIn,
       signOut,
       refresh: () => qc.invalidateQueries({ queryKey: ['me'] }),
     };
-  }, [session, me, ready, meQ.isLoading, seller, signIn, signOut, qc]);
+  }, [session, me, ready, meQ.isLoading, seller, selectSeller, signIn, signOut, qc]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

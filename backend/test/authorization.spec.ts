@@ -4,12 +4,14 @@ import 'reflect-metadata';
 jest.mock('jose', () => ({ createRemoteJWKSet: () => ({}), jwtVerify: jest.fn() }));
 import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthGuard, IS_PUBLIC, ROLES, RequestUser, RoleCode, requireSeller, requireSellerOwner } from '../src/auth/auth';
+import { AuthGuard, IS_PUBLIC, ROLES, RequestUser, RoleCode, requireSeller, requireSellerOwner, SELLER_AREAS, sellerCan } from '../src/auth/auth';
+import { TeamController } from '../src/seller/team.controller';
+import { cleanAreas } from '../src/seller/team.service';
 import { SellerController } from '../src/seller/seller.controller';
 import { PayoutSchedulesController } from '../src/seller/payout-schedules.controller';
 
-const OWNED = { id: '11111111-1111-1111-1111-111111111111', slug: 'mine', status: 'ACTIVE', isOwner: true };
-const MEMBER_OF = { id: '22222222-2222-2222-2222-222222222222', slug: 'team', status: 'ACTIVE', isOwner: false };
+const OWNED = { id: '11111111-1111-1111-1111-111111111111', slug: 'mine', status: 'ACTIVE', isOwner: true, areas: [...SELLER_AREAS] };
+const MEMBER_OF = { id: '22222222-2222-2222-2222-222222222222', slug: 'team', status: 'ACTIVE', isOwner: false, areas: ['ORDERS', 'FINANCE'] as RequestUser['sellers'][number]['areas'] };
 const OTHER = '33333333-3333-3333-3333-333333333333';
 
 function user(over: Partial<RequestUser> = {}): RequestUser {
@@ -71,4 +73,32 @@ describe('seller money endpoints are owner-only', () => {
   it('members can still see payout accounts and orders', async () => {
     await expect(ctrl.payoutAccounts(member, MEMBER_OF.id)).resolves.toBeDefined();
   });
+});
+
+describe('seller team areas', () => {
+  const service = new Proxy({}, { get: () => jest.fn().mockResolvedValue({ ok: true }) }) as any;
+  const ctrl = new SellerController(service, service, service, service);
+  const team = new TeamController(service);
+  const member = user({ sellers: [MEMBER_OF] });
+  const owner = user({ sellers: [OWNED] });
+
+  it('lets a member use the areas they were given', async () => {
+    await expect(ctrl.ordersList(member, {}, MEMBER_OF.id)).resolves.toBeDefined();
+    expect(sellerCan(member, MEMBER_OF.id, 'ORDERS')).toBe(true);
+  });
+  it('blocks a member from areas they were not given', () => {
+    expect(() => ctrl.products(member, {}, MEMBER_OF.id)).toThrow(/permiso/);
+    expect(() => requireSeller(member, MEMBER_OF.id, 'SETTINGS')).toThrow(/permiso/);
+    expect(sellerCan(member, MEMBER_OF.id, 'MESSAGES')).toBe(false);
+    expect(sellerCan(member, OTHER, 'ORDERS')).toBe(false);
+  });
+  it('owners have every area', () => {
+    for (const a of SELLER_AREAS) expect(requireSeller(owner, OWNED.id, a).id).toBe(OWNED.id);
+  });
+  it('only the owner manages the team', async () => {
+    expect(() => team.list(member, MEMBER_OF.id)).toThrow(/propietario/);
+    expect(() => team.invite(member, { email: 'x@example.com', areas: ['ORDERS'] }, MEMBER_OF.id)).toThrow(/propietario/);
+    await expect(team.list(owner, OWNED.id)).resolves.toBeDefined();
+  });
+  it('keeps only known areas', () => expect(cleanAreas(['ORDERS', 'ADMIN', 'PRODUCTS', 1])).toEqual(['PRODUCTS', 'ORDERS']));
 });

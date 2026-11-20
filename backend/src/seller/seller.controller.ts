@@ -11,7 +11,7 @@ import {
   ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
   ValidateNested,
 } from 'class-validator';
-import { CurrentUser, RequestUser, requireSeller, requireSellerOwner } from '../auth/auth';
+import { CurrentUser, RequestUser, requireSeller, requireSellerOwner, SellerArea } from '../auth/auth';
 import { SELLER_PAYOUT_METHODS, SellerPayoutMethod, SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
@@ -164,8 +164,8 @@ export class SellerController {
     private readonly db: DbService,
   ) {}
 
-  private sid(user: RequestUser, header?: string) {
-    return requireSeller(user, header).id;
+  private sid(user: RequestUser, header?: string, area?: SellerArea) {
+    return requireSeller(user, header, area).id;
   }
 
   /** Owner-only: payout accounts and withdrawals. */
@@ -185,12 +185,12 @@ export class SellerController {
 
   @Put('store/ship-from')
   updateShipFrom(@CurrentUser() user: RequestUser, @Body() dto: ShipFromDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.updateShipFrom(this.sid(user, h), dto);
+    return this.seller.updateShipFrom(this.sid(user, h, 'SETTINGS'), dto);
   }
 
   @Put('store')
   updateStore(@CurrentUser() user: RequestUser, @Body() dto: StoreDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.updateStore(this.sid(user, h), dto);
+    return this.seller.updateStore(this.sid(user, h, 'SETTINGS'), dto);
   }
 
   @Post('store/:kind')
@@ -198,47 +198,47 @@ export class SellerController {
   @UseInterceptors(FileInterceptor('file', upload))
   storeImage(@CurrentUser() user: RequestUser, @Param('kind') kind: string, @UploadedFile() file: Express.Multer.File, @Headers('x-seller-id') h?: string) {
     if (!['logo', 'banner'].includes(kind) || !file) throw badRequest('INVALID_UPLOAD', 'Archivo inválido.');
-    return this.seller.uploadStoreImage(user, this.sid(user, h), kind as any, file);
+    return this.seller.uploadStoreImage(user, this.sid(user, h, 'SETTINGS'), kind as any, file);
   }
 
   /** Removes the store logo or cover; the storefront then shows the NEXOVAX defaults. */
   @Delete('store/:kind')
   removeStoreImage(@CurrentUser() user: RequestUser, @Param('kind') kind: string, @Headers('x-seller-id') h?: string) {
     if (!['logo', 'banner'].includes(kind)) throw badRequest('INVALID_UPLOAD', 'Archivo inválido.');
-    return this.seller.removeStoreImage(this.sid(user, h), kind as 'logo' | 'banner');
+    return this.seller.removeStoreImage(this.sid(user, h, 'SETTINGS'), kind as 'logo' | 'banner');
   }
 
   @Get('dashboard')
   dashboard(@CurrentUser() user: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.dashboard(this.sid(user, h), Math.min(Math.max(Number(days) || 30, 7), 365));
+    return this.seller.dashboard(this.sid(user, h, 'STATS'), Math.min(Math.max(Number(days) || 30, 7), 365));
   }
 
   // products
   @Get('products')
   products(@CurrentUser() user: RequestUser, @Query() q: Record<string, string>, @Headers('x-seller-id') h?: string) {
-    return this.seller.listProducts(this.sid(user, h), { status: q.status, search: q.search, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 20 });
+    return this.seller.listProducts(this.sid(user, h, 'PRODUCTS'), { status: q.status, search: q.search, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 20 });
   }
 
   @Get('products/:id')
   product(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.getProduct(this.sid(user, h), id);
+    return this.seller.getProduct(this.sid(user, h, 'PRODUCTS'), id);
   }
 
   @Post('products')
   createProduct(@CurrentUser() user: RequestUser, @Body() dto: ProductDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.saveProduct(user, this.sid(user, h), dto);
+    return this.seller.saveProduct(user, this.sid(user, h, 'PRODUCTS'), dto);
   }
 
   @Put('products/:id')
   async updateProduct(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductDto, @Headers('x-seller-id') h?: string) {
-    const r = await this.seller.saveProduct(user, this.sid(user, h), dto, id);
+    const r = await this.seller.saveProduct(user, this.sid(user, h, 'PRODUCTS'), dto, id);
     this.alerts.touch([id]); // price or stock may have changed: tell waiting buyers
     return r;
   }
 
   @Post('products/:id/status')
   async productStatus(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ProductStatusDto, @Headers('x-seller-id') h?: string) {
-    const r = await this.seller.setProductStatus(user, this.sid(user, h), id, dto.action);
+    const r = await this.seller.setProductStatus(user, this.sid(user, h, 'PRODUCTS'), id, dto.action);
     this.alerts.touch([id]);
     return r;
   }
@@ -248,17 +248,17 @@ export class SellerController {
   @UseInterceptors(FilesInterceptor('files', 8, upload))
   addMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @UploadedFiles() files: Express.Multer.File[], @Headers('x-seller-id') h?: string) {
     if (!files?.length) throw badRequest('NO_FILES', 'Selecciona al menos una imagen.');
-    return this.seller.addMedia(user, this.sid(user, h), id, files);
+    return this.seller.addMedia(user, this.sid(user, h, 'PRODUCTS'), id, files);
   }
 
   @Delete('products/:id/media/:mediaId')
   removeMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('mediaId', ParseUUIDPipe) mediaId: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.removeMedia(this.sid(user, h), id, mediaId, user.id);
+    return this.seller.removeMedia(this.sid(user, h, 'PRODUCTS'), id, mediaId, user.id);
   }
 
   @Post('products/:id/media/:mediaId/primary')
   primaryMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('mediaId', ParseUUIDPipe) mediaId: string, @Headers('x-seller-id') h?: string) {
-    return this.seller.setPrimaryMedia(this.sid(user, h), id, mediaId, user.id);
+    return this.seller.setPrimaryMedia(this.sid(user, h, 'PRODUCTS'), id, mediaId, user.id);
   }
 
   @Get('categories/:id/attributes')
@@ -274,12 +274,12 @@ export class SellerController {
   // inventory
   @Get('inventory')
   inventory(@CurrentUser() user: RequestUser, @Query() q: Record<string, string>, @Headers('x-seller-id') h?: string) {
-    return this.seller.inventory(this.sid(user, h), { search: q.search, stock: q.stock, categoryId: q.categoryId });
+    return this.seller.inventory(this.sid(user, h, 'PRODUCTS'), { search: q.search, stock: q.stock, categoryId: q.categoryId });
   }
 
   @Post('inventory/adjust')
   async adjust(@CurrentUser() user: RequestUser, @Body() dto: AdjustDto, @Headers('x-seller-id') h?: string) {
-    const r = await this.seller.adjustStock(user, this.sid(user, h), dto);
+    const r = await this.seller.adjustStock(user, this.sid(user, h, 'PRODUCTS'), dto);
     const v = await this.db.one<{ product_id: string }>(`select product_id from public.product_variants where id = $1`, [dto.variantId]);
     if (v) this.alerts.touch([v.product_id]);
     return r;
@@ -288,17 +288,17 @@ export class SellerController {
   // orders
   @Get('orders')
   ordersList(@CurrentUser() user: RequestUser, @Query() q: Record<string, string>, @Headers('x-seller-id') h?: string) {
-    return this.orders.list({ kind: 'seller', sellerId: this.sid(user, h) }, { status: q.status, search: q.search, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 20 });
+    return this.orders.list({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, { status: q.status, search: q.search, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 20 });
   }
 
   @Get('orders/counts')
   ordersCounts(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.orders.statusCounts({ kind: 'seller', sellerId: this.sid(user, h) });
+    return this.orders.statusCounts({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') });
   }
 
   @Get('orders/:orderId')
   orderDetail(@CurrentUser() user: RequestUser, @Param('orderId') orderId: string, @Headers('x-seller-id') h?: string) {
-    return this.orders.detail({ kind: 'seller', sellerId: this.sid(user, h) }, orderId);
+    return this.orders.detail({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, orderId);
   }
 
   @Get('carriers')
@@ -308,28 +308,28 @@ export class SellerController {
 
   @Post('seller-orders/:id/prepare')
   prepare(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.orders.prepare(this.sid(user, h), id, user.id);
+    return this.orders.prepare(this.sid(user, h, 'ORDERS'), id, user.id);
   }
 
   @Post('seller-orders/:id/ship')
   ship(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ShipDto, @Headers('x-seller-id') h?: string) {
-    return this.orders.ship(this.sid(user, h), id, user.id, dto);
+    return this.orders.ship(this.sid(user, h, 'ORDERS'), id, user.id, dto);
   }
 
   @Post('shipments/:id/refresh-tracking')
   refreshTracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.orders.refreshShipmentTracking({ kind: 'seller', sellerId: this.sid(user, h) }, id);
+    return this.orders.refreshShipmentTracking({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, id);
   }
 
   @Post('shipments/:id/tracking')
   tracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: TrackingDto, @Headers('x-seller-id') h?: string) {
-    return this.orders.updateTracking({ kind: 'seller', sellerId: this.sid(user, h) }, id, dto.status, dto.detail, dto.city);
+    return this.orders.updateTracking({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, id, dto.status, dto.detail, dto.city);
   }
 
   // finance
   @Get('finance')
   async finance(@CurrentUser() user: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
-    const sid = this.sid(user, h);
+    const sid = this.sid(user, h, 'FINANCE');
     // Release any funds whose hold already ended, so the balance is current even if the
     // 30-minute job did not run (the API sleeps on Render's free plan). Best effort.
     await this.orders.retryPendingReleases(sid).catch(() => undefined);
@@ -338,7 +338,7 @@ export class SellerController {
 
   @Get('payout-accounts')
   payoutAccounts(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.seller.payoutAccounts(this.sid(user, h));
+    return this.seller.payoutAccounts(this.sid(user, h, 'FINANCE'));
   }
 
   @Post('payout-accounts')
@@ -353,7 +353,7 @@ export class SellerController {
 
   @Get('payouts')
   payouts(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.seller.payouts(this.sid(user, h));
+    return this.seller.payouts(this.sid(user, h, 'FINANCE'));
   }
 
   @Post('payouts')

@@ -143,56 +143,56 @@ export class ReturnsController {
   // ---- seller
   @Get('seller/returns')
   sellerList(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string, @Query('status') status?: string, @Query('page') p?: string) {
-    return this.returns.list(u, { as: 'seller', sellerId: requireSeller(u, h).id }, { status, page: page(p) });
+    return this.returns.list(u, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id }, { status, page: page(p) });
   }
 
   @Get('seller/returns/policy')
   async sellerPolicy(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    const sid = requireSeller(u, h).id;
+    const sid = requireSeller(u, h, 'ORDERS').id;
     return { own: await this.policies.seller(sid), marketplace: await this.policies.global() };
   }
 
   @Put('seller/returns/policy')
   async setSellerPolicy(@CurrentUser() u: RequestUser, @Body() dto: ReturnPolicyDto, @Headers('x-seller-id') h?: string) {
-    const sid = requireSeller(u, h).id;
+    const sid = requireSeller(u, h, 'ORDERS').id;
     return { own: await this.policies.setSeller(u, sid, dto), marketplace: await this.policies.global() };
   }
 
   @Delete('seller/returns/policy')
   async clearSellerPolicy(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    const sid = requireSeller(u, h).id;
+    const sid = requireSeller(u, h, 'ORDERS').id;
     await this.policies.clearSeller(sid);
     return { own: null, marketplace: await this.policies.global() };
   }
 
   @Get('seller/returns/:id')
   sellerDetail(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.returns.detail(u, id, { as: 'seller', sellerId: requireSeller(u, h).id });
+    return this.returns.detail(u, id, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id });
   }
 
   @Post('seller/returns/:id/approve')
   sellerApprove(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ApproveReturnDto, @Headers('x-seller-id') h?: string) {
-    return this.returns.approve(u, id, { as: 'seller', sellerId: requireSeller(u, h).id }, dto);
+    return this.returns.approve(u, id, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id }, dto);
   }
 
   @Post('seller/returns/:id/reject')
   sellerReject(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectReturnDto, @Headers('x-seller-id') h?: string) {
-    return this.returns.reject(u, id, { as: 'seller', sellerId: requireSeller(u, h).id }, dto);
+    return this.returns.reject(u, id, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id }, dto);
   }
 
   @Post('seller/returns/:id/label')
   sellerLabel(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.returns.buyLabel(u, id, { as: 'seller', sellerId: requireSeller(u, h).id });
+    return this.returns.buyLabel(u, id, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id });
   }
 
   @Post('seller/returns/:id/receive')
   sellerReceive(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.returns.receive(u, id, { as: 'seller', sellerId: requireSeller(u, h).id });
+    return this.returns.receive(u, id, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id });
   }
 
   @Post('seller/returns/:id/inspect')
   sellerInspect(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: InspectReturnDto, @Headers('x-seller-id') h?: string) {
-    return this.returns.inspect(u, id, { as: 'seller', sellerId: requireSeller(u, h).id }, dto);
+    return this.returns.inspect(u, id, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id }, dto);
   }
 
   // ---- staff

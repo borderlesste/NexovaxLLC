@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { badRequest, forbidden, notFound } from '../common/errors';
-import { RequestUser, isStaff } from '../auth/auth';
+import { RequestUser, isStaff, sellerCan } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { PoolClient } from 'pg';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
@@ -171,7 +171,7 @@ export class MessagingService {
     const c = await this.db.one(`select * from public.conversations where id = $1`, [conversationId]);
     if (!c) throw notFound('Conversación');
     const isRequester = c.requester_user_id === user.id;
-    const isSeller = !!c.seller_id && user.sellers.some((s) => s.id === c.seller_id);
+    const isSeller = !!c.seller_id && sellerCan(user, c.seller_id, 'MESSAGES');
     if (!isRequester && !isSeller && !isStaff(user, 'MODERATOR', 'SUPPORT')) throw forbidden();
     if (isSeller && !isRequester) {
       const part = await this.db.one(`select 1 from public.conversation_participants where conversation_id = $1 and user_id = $2 and status = 'ACTIVE'`, [c.id, user.id]);

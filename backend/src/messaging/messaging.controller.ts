@@ -40,7 +40,7 @@ export class MessagingController {
 
   @Get()
   list(@CurrentUser() user: RequestUser, @Query('as') as?: string, @Query('q') q?: string, @Headers('x-seller-id') h?: string) {
-    if (as === 'seller') return this.messaging.list(user, { as: 'seller', sellerId: requireSeller(user, h).id }, q);
+    if (as === 'seller') return this.messaging.list(user, { as: 'seller', sellerId: requireSeller(user, h, 'MESSAGES').id }, q);
     return this.messaging.list(user, { as: 'customer' }, q);
   }
 

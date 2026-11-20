@@ -49,17 +49,17 @@ export class CancellationsController {
   // ---- seller
   @Post('seller/seller-orders/:id/cancel')
   sellerCancel(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CancelDto, @Headers('x-seller-id') h?: string) {
-    return this.cancellations.sellerCancel(u, requireSeller(u, h).id, id, dto);
+    return this.cancellations.sellerCancel(u, requireSeller(u, h, 'ORDERS').id, id, dto);
   }
 
   @Post('seller/cancellations/:id/approve')
   sellerApprove(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DecideCancellationDto, @Headers('x-seller-id') h?: string) {
-    return this.cancellations.approve(u, id, { sellerId: requireSeller(u, h).id }, { note: dto.note });
+    return this.cancellations.approve(u, id, { sellerId: requireSeller(u, h, 'ORDERS').id }, { note: dto.note });
   }
 
   @Post('seller/cancellations/:id/reject')
   sellerReject(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectCancellationDto, @Headers('x-seller-id') h?: string) {
-    return this.cancellations.reject(u, id, { sellerId: requireSeller(u, h).id }, dto.note);
+    return this.cancellations.reject(u, id, { sellerId: requireSeller(u, h, 'ORDERS').id }, dto.note);
   }
 
   // ---- staff (support operates; refunds move money: admins only)

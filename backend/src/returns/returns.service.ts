@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { clampPage } from '../common/paging';
-import { isStaff, RequestUser } from '../auth/auth';
+import { isStaff, RequestUser, sellerCan } from '../auth/auth';
 import { orderRef, refundRef, returnRef } from '../common/refs';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { money } from '../common/money';
@@ -584,7 +584,7 @@ export class ReturnsService {
   async evidenceFile(user: RequestUser, id: string, assetId: string) {
     const rr = await this.db.one(`select customer_id, seller_id from public.return_requests where id = $1`, [id]);
     if (!rr) throw notFound('Devolución');
-    const allowed = rr.customer_id === user.id || user.sellers.some((s) => s.id === rr.seller_id) || isStaff(user, 'SUPPORT', 'MODERATOR');
+    const allowed = rr.customer_id === user.id || sellerCan(user, rr.seller_id, 'ORDERS') || isStaff(user, 'SUPPORT', 'MODERATOR');
     if (!allowed) throw notFound('Devolución');
     const a = await this.db.one(
       `select a.storage_bucket, a.storage_key, a.mime_type, coalesce(a.original_filename,'foto') as name
