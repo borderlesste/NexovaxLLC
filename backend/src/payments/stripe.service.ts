@@ -150,6 +150,6 @@ export class StripeService {
         last = e;
       }
     }
-    throw new AppError('WEBHOOK_SIGNATURE_INVALID', 'Firma de webhook inválida.', HttpStatus.BAD_REQUEST, { reason: last?.message });
+    throw new AppError('WEBHOOK_SIGNATURE_INVALID', 'Firma de webhook inválida.', HttpStatus.BAD_REQUEST);
   }
 }

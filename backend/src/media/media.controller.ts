@@ -5,6 +5,7 @@ import { CurrentUser, isStaff, Public, RequestUser } from '../auth/auth';
 import { DbService } from '../db/db.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { forbidden, notFound } from '../common/errors';
+import { config } from '../config';
 
 /** Small in-memory LRU for hot catalog images. */
 class Lru {
@@ -53,7 +54,10 @@ export class MediaController {
     }>(`select storage_bucket, storage_key, mime_type, visibility, owner_seller_id, status from public.assets where id = $1`, [id]);
     if (!asset || asset.status !== 'READY' || !asset.storage_bucket) throw notFound('Archivo');
     if (asset.visibility !== 'PUBLIC') {
-      const owns = user?.sellers.some((s) => s.id === asset.owner_seller_id);
+      // Verification documents (ID, tax and bank papers) are for the store owner and staff only,
+      // not for every team member of the store.
+      const isDocument = asset.storage_bucket === config.documentsBucket;
+      const owns = user?.sellers.some((s) => s.id === asset.owner_seller_id && (!isDocument || s.isOwner));
       if (!owns && !isStaff(user, 'MODERATOR', 'SUPPORT')) throw forbidden('Archivo privado.');
     }
     let hit = asset.visibility === 'PUBLIC' ? this.cache.get(id) : undefined;

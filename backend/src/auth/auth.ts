@@ -120,6 +120,8 @@ export class AuthGuard implements CanActivate {
       issuer: `${config.supabaseUrl}/auth/v1`,
       audience: 'authenticated',
     });
+    // Supabase anonymous sign-ins also carry aud=authenticated: they are not marketplace accounts.
+    if (payload.is_anonymous === true) throw new AppError('UNAUTHENTICATED', 'Debes iniciar sesión.', HttpStatus.UNAUTHORIZED);
     const sub = String(payload.sub);
     const cached = userCache.get(sub);
     if (cached && Date.now() - cached.at < USER_CACHE_MS) return { ...cached.user, sessionId: String(payload.session_id ?? '') };
