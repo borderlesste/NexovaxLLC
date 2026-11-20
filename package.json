@@ -22,5 +22,10 @@
   },
   "devDependencies": {
     "@playwright/test": "1.49.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "worker-f": "0.1.21"
+    }
   }
 }

@@ -1166,7 +1166,8 @@ export class SellerService {
   }
 
   // ------------------------------------------------------------------ helpers
-  private validateProduct(input: ProductInput) {
+  /** Throws the first problem found in a product (used by the editor and by the spreadsheet import). */
+  validateProduct(input: ProductInput) {
     if (!input.title?.trim() || input.title.trim().length < 3) throw badRequest('TITLE_REQUIRED', 'El nombre del producto es obligatorio.');
     if (!input.description?.trim() || input.description.trim().length < 10) throw badRequest('DESCRIPTION_REQUIRED', 'La descripción debe tener al menos 10 caracteres.');
     if (input.description.length > 5000) throw badRequest('DESCRIPTION_TOO_LONG', 'La descripción admite máximo 5,000 caracteres.');

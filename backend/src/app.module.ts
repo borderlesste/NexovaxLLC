@@ -28,6 +28,8 @@ import { GeoController } from './geo/geo.controller';
 import { OrdersService } from './orders/orders.service';
 import { OrdersController } from './orders/orders.controller';
 import { SellerService } from './seller/seller.service';
+import { ProductImportService } from './seller/product-import.service';
+import { ProductImportController } from './seller/product-import.controller';
 import { SellerController } from './seller/seller.controller';
 import { MessagingService } from './messaging/messaging.service';
 import { MessagingController } from './messaging/messaging.controller';
@@ -91,7 +93,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController],
   providers: [
     DbService,
     SettingsService,
@@ -102,6 +104,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     CheckoutService,
     OrdersService,
     SellerService,
+    ProductImportService,
     MessagingService,
     SupportService,
     AdminService,

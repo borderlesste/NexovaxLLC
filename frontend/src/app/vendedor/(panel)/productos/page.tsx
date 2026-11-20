@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Dropdown from '@radix-ui/react-dropdown-menu';
-import { Archive, Box, Check, Clock, Eye, FileText, MoreHorizontal, Pause, Pencil, Play, Plus, Search } from 'lucide-react';
+import { Archive, Box, Check, Clock, Eye, FileText, MoreHorizontal, Pause, Pencil, Play, Plus, Search, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { fmtDate, money } from '@/lib/utils';
@@ -37,7 +37,7 @@ function Products() {
   const item = 'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none hover:bg-brand-50 [&_svg]:size-4';
   return (
     <>
-      <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Productos') }]} title={t('Productos')} description={t('Administra el catálogo de tu tienda.')} actions={<Button asChild><Link href="/vendedor/productos/nuevo"><Plus /> {t('Crear producto')}</Link></Button>} />
+      <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Productos') }]} title={t('Productos')} description={t('Administra el catálogo de tu tienda.')} actions={<div className="flex flex-wrap gap-2"><Button variant="secondary" asChild><Link href="/vendedor/productos/importar"><Upload /> {t('Importar')}</Link></Button><Button asChild><Link href="/vendedor/productos/nuevo"><Plus /> {t('Crear producto')}</Link></Button></div>} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Productos registrados')} value={c?.total ?? '—'} icon={<Box />} />
         <StatCard label={t('Publicados')} value={c?.active ?? '—'} icon={<Check />} tone="green" />
@@ -51,7 +51,7 @@ function Products() {
         ]} />
         <div className="p-4"><Input icon={<Search />} placeholder={t('Buscar por nombre o SKU...')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" /></div>
         {q.isLoading ? <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div> : !q.data?.items.length ? (
-          <Empty icon={<Box />} title={t('No hay productos')} description={t('Crea tu primer producto para empezar a vender.')} action={<Button asChild><Link href="/vendedor/productos/nuevo">{t('Crear producto')}</Link></Button>} />
+          <Empty icon={<Box />} title={t('No hay productos')} description={t('Crea tu primer producto para empezar a vender.')} action={<div className="flex flex-wrap justify-center gap-2"><Button asChild><Link href="/vendedor/productos/nuevo">{t('Crear producto')}</Link></Button><Button variant="secondary" asChild><Link href="/vendedor/productos/importar"><Upload /> {t('Importar desde Excel')}</Link></Button></div>} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-sm">

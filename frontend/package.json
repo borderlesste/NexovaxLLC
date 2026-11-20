@@ -43,6 +43,7 @@
     "server-only": "^0.0.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
+    "write-excel-file": "4.1.1",
     "zod": "^3.25"
   },
   "devDependencies": {
