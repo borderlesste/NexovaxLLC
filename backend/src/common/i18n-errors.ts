@@ -211,6 +211,8 @@ const EN: Record<string, string> = {
   'Revisa las tarifas de envío.': 'Review the shipping rates.',
   'Cada variante necesita un SKU.': 'Each variant needs a SKU.',
   'El stock debe ser un número entero positivo.': 'Stock must be a positive whole number.',
+  "La tasa reducida debe estar entre 0 % y la tasa general.": "The reduced rate must be between 0 % and the standard rate.",
+  "Categoría fiscal inválida.": "Invalid tax category.",
   "El monto supera el impuesto pendiente por declarar.": "The amount exceeds the tax pending to be filed.",
   "Indica la referencia del pago al fisco.": "Enter the reference of the payment to the tax authority.",
   "La fecha inicial del período no puede ser posterior a la final.": "The period start date can’t be after the end date.",

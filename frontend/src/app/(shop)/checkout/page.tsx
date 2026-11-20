@@ -344,8 +344,8 @@ export default function CheckoutPage() {
             <div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{money(q.subtotal, q.currency)}</dd></div>
             {Number(q.discount) > 0 && <div className="flex justify-between text-emerald-700" data-checkout-discount><dt>{t('Descuento')}</dt><dd>-{money(q.discount, q.currency)}</dd></div>}
             <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{Number(q.shipping) === 0 ? t('Gratis') : money(q.shipping, q.currency)}</dd></div>
-            <div className="flex justify-between">
-              <dt>{q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('Impuestos')}{q.tax.country && <span className="text-muted"> · {countryName(q.tax.country)}</span>}</dt>
+            <div className={`flex justify-between${q.tax.included ? ' text-muted' : ''}`} data-checkout-tax={q.tax.included ? 'included' : 'added'}>
+              <dt>{q.tax.included ? t('Incluye {a}', { a: q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('impuestos') }) : q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('Impuestos')}{q.tax.country && <span className="text-muted"> · {countryName(q.tax.country)}</span>}</dt>
               <dd>{money(q.taxTotal, q.currency)}</dd>
             </div>
           </dl>

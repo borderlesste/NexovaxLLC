@@ -298,7 +298,7 @@ export class CatalogService {
 
   async categories() {
     const rows = await this.db.many(
-      `select c.id, c.parent_id, c.name, c.slug, c.sort_order, c.image_asset_id,
+      `select c.id, c.parent_id, c.name, c.slug, c.sort_order, c.image_asset_id, c.tax_class,
               (select count(*) from public.products p where p.category_id = c.id and p.status = 'ACTIVE')::int as direct_products
          from public.categories c where c.status = 'ACTIVE' order by c.sort_order, c.name`,
     );
@@ -312,7 +312,7 @@ export class CatalogService {
       (byParent.get(parent) ?? []).map((c) => {
         const children = build(c.id);
         const productCount = c.direct_products + children.reduce((a: number, k: any) => a + k.productCount, 0);
-        return { id: c.id, name: c.name, slug: c.slug, productCount, children };
+        return { id: c.id, name: c.name, slug: c.slug, taxClass: c.tax_class, productCount, children };
       });
     return build(null);
   }

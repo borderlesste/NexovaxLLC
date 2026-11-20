@@ -35,7 +35,7 @@ export default function CategoriesAdminPage() {
   const topSubs = [...all.filter((c: any) => c.parentId)].sort((a, b) => b.products - a.products).slice(0, 5);
   const save = async () => {
     try {
-      const body = { name: dlg.name, parentId: dlg.parentId || null, status: dlg.status, sortOrder: dlg.sortOrder ? Number(dlg.sortOrder) : undefined };
+      const body = { name: dlg.name, parentId: dlg.parentId || null, status: dlg.status, sortOrder: dlg.sortOrder ? Number(dlg.sortOrder) : undefined, taxClass: dlg.taxClass || 'STANDARD' };
       dlg.id ? await put(`/admin/categories/${dlg.id}`, body) : await post('/admin/categories', body);
       toast.success(t('Categoría guardada.'));
       setDlg(null);
@@ -60,7 +60,7 @@ export default function CategoriesAdminPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Categorías') }]} title={t('Categorías')} description={t('Administra las categorías del marketplace. Organiza el catálogo, crea subcategorías y controla su visibilidad.')}
-        actions={<><Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar')}</Button>{isAdmin && <Button onClick={() => setDlg({ name: '', parentId: '', status: 'ACTIVE', sortOrder: '' })}><Plus /> {t('Crear categoría')}</Button>}</>} />
+        actions={<><Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar')}</Button>{isAdmin && <Button onClick={() => setDlg({ name: '', parentId: '', status: 'ACTIVE', sortOrder: '', taxClass: 'STANDARD' })}><Plus /> {t('Crear categoría')}</Button>}</>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label={t('Total de categorías')} value={all.length} icon={<Layers />} />
         <StatCard label={t('Categorías activas')} value={all.filter((c: any) => c.status === 'ACTIVE').length} icon={<Check />} tone="green" />
@@ -91,7 +91,7 @@ export default function CategoriesAdminPage() {
                     <td className="pr-5 text-right"><span className="flex justify-end gap-1">
                       <Button size="sm" variant="ghost" onClick={() => setAttrsFor({ id: c.id, name: c.name })} aria-label={t('Atributos')} title={t('Atributos')}><SlidersHorizontal /></Button>
                       {isAdmin && <>
-                      <Button size="sm" variant="ghost" onClick={() => setDlg({ id: c.id, name: c.name, parentId: c.parentId ?? '', status: c.status, sortOrder: String(c.sortOrder) })} aria-label={t('Editar')}><Pencil /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => setDlg({ id: c.id, name: c.name, parentId: c.parentId ?? '', status: c.status, sortOrder: String(c.sortOrder), taxClass: c.taxClass ?? 'STANDARD' })} aria-label={t('Editar')}><Pencil /></Button>
                       <Button size="sm" variant="ghost" onClick={() => archive(c.id)} aria-label={t('Archivar')}><Archive /></Button></>}</span></td>
                   </tr>
                 ))}
@@ -121,6 +121,11 @@ export default function CategoriesAdminPage() {
             <Field label={t('Categoría padre')}><Select value={dlg.parentId} onChange={(e) => setDlg({ ...dlg, parentId: e.target.value })}><option value="">{t('— Categoría principal —')}</option>{roots.filter((r: any) => r.id !== dlg.id).map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}</Select></Field>
             <Field label={t('Estado')}><Select value={dlg.status} onChange={(e) => setDlg({ ...dlg, status: e.target.value })}><option value="ACTIVE">{t('Activa')}</option><option value="INACTIVE">{t('Inactiva')}</option></Select></Field>
             <Field label={t('Orden')}><Input rule="integer" inputMode="numeric" value={dlg.sortOrder} onChange={(e) => setDlg({ ...dlg, sortOrder: e.target.value.replace(/\D/g, '') })} /></Field>
+            <Field label={t('Categoría fiscal')} hint={t('Valor por defecto de los productos de esta categoría. Cada vendedor puede cambiarlo en su producto.')}>
+              <Select value={dlg.taxClass} onChange={(e) => setDlg({ ...dlg, taxClass: e.target.value })}>
+                <option value="STANDARD">{t('General (tasa normal)')}</option><option value="REDUCED">{t('Reducida')}</option><option value="EXEMPT">{t('Exenta (sin impuesto)')}</option>
+              </Select>
+            </Field>
           </div>
         </Dialog>
       )}

@@ -2696,5 +2696,20 @@
 "Período desde": "Peryòd soti",
 "Período hasta": "Peryòd rive",
 "La fecha final debe ser posterior a la inicial.": "Dat fen an dwe apre dat kòmansman an.",
-"Notas": "Nòt"
+"Notas": "Nòt",
+"Incluye {a}": "Gen ladan l {a}",
+"impuestos": "taks",
+"Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Yo aplike selon peyi adrès livrezon an. Peyi ki pa gen to: 0 %. To redwi a aplike sou pwodwi ki nan kategori fiskal «Redwi»; pwodwi «Egzante» yo pa peye taks.",
+"Tasa reducida": "To redwi",
+"Grava envío": "Taks sou livrezon",
+"Precio con impuesto incluido": "Pri ak taks ladan",
+"El cargo de envío también paga impuesto.": "Frè livrezon an peye taks tou.",
+"Los precios publicados ya incluyen el impuesto para compradores de este país: se desglosa, no se suma.": "Pri yo afiche deja gen taks la ladan pou achtè nan peyi sa a: yo montre l apa, yo pa ajoute l.",
+"Categoría fiscal": "Kategori fiskal",
+"Valor por defecto de los productos de esta categoría. Cada vendedor puede cambiarlo en su producto.": "Valè pa defo pou pwodwi nan kategori sa a. Chak machann ka chanje l sou pwodwi li.",
+"General (tasa normal)": "Jeneral (to nòmal)",
+"Reducida": "Redwi",
+"Exenta (sin impuesto)": "Egzante (san taks)",
+"Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.": "Li defini ki taks pwodwi a peye nan chak peyi. Si ou pa konnen, kite l selon kategori a.",
+"Según la categoría ({a})": "Selon kategori a ({a})"
 }

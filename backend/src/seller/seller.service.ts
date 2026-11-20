@@ -57,6 +57,7 @@ export interface VariantInput {
 export interface ProductInput {
   title: string;
   categoryId: string;
+  taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT' | null;
   brandName?: string | null;
   shortDescription?: string | null;
   description: string;
@@ -371,6 +372,7 @@ export class SellerService {
       title: p.title,
       status: p.status,
       categoryId: p.category_id,
+      taxClass: p.tax_class ?? null,
       brandName: p.brand_name,
       shortDescription: p.short_description,
       description: p.description,
@@ -410,17 +412,17 @@ export class SellerService {
           product.title !== input.title.trim() || (product.description ?? '') !== input.description.trim() || product.category_id !== input.categoryId;
         const slug = await this.uniqueSlug(c, input.seo?.slug || input.title, product.id);
         await this.db.exec(
-          `update public.products set title = $2, slug = $3, category_id = $4, brand_id = $5, short_description = $6, description = $7, version = version + 1
+          `update public.products set title = $2, slug = $3, category_id = $4, brand_id = $5, short_description = $6, description = $7, tax_class = $8, version = version + 1
             where id = $1`,
-          [product.id, input.title.trim(), slug, input.categoryId, brandId, input.shortDescription?.trim() || null, input.description.trim()],
+          [product.id, input.title.trim(), slug, input.categoryId, brandId, input.shortDescription?.trim() || null, input.description.trim(), input.taxClass || null],
           c,
         );
       } else {
         const slug = await this.uniqueSlug(c, input.seo?.slug || input.title);
         product = await this.db.one(
-          `insert into public.products (seller_id, category_id, brand_id, product_type_code, title, slug, short_description, description, status, requires_shipping)
-           values ($1,$2,$3,'PHYSICAL',$4,$5,$6,$7,'DRAFT',true) returning *`,
-          [sellerId, input.categoryId, brandId, input.title.trim(), slug, input.shortDescription?.trim() || null, input.description.trim()],
+          `insert into public.products (seller_id, category_id, brand_id, product_type_code, title, slug, short_description, description, status, requires_shipping, tax_class)
+           values ($1,$2,$3,'PHYSICAL',$4,$5,$6,$7,'DRAFT',true,$8) returning *`,
+          [sellerId, input.categoryId, brandId, input.title.trim(), slug, input.shortDescription?.trim() || null, input.description.trim(), input.taxClass || null],
           c,
         );
         await this.db.exec(`insert into public.product_status_history (product_id, from_status, to_status, changed_by, reason) values ($1,null,'DRAFT',$2,'Producto creado')`, [product.id, user.id], c);

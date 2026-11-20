@@ -2,18 +2,29 @@ import { Injectable } from '@nestjs/common';
 import { DbService, Queryable } from '../db/db.service';
 import { badRequest, notFound } from '../common/errors';
 import { normalizeCountry } from '../common/geo';
+import { normalizeTaxClass, TaxClass } from './tax-calc';
 
 export interface TaxRate {
   countryCode: string;
   taxName: string;
   rate: string; // decimal string, e.g. "0.18"
   appliesToShipping: boolean;
+  /** Rate for the REDUCED tax class (null = standard rate). */
+  reducedRate: string | null;
+  /** Listed prices already include the tax for buyers in this country. */
+  pricesIncludeTax: boolean;
   isActive: boolean;
   notes: string | null;
   updatedAt?: string;
 }
 
-const ZERO = (country: string): TaxRate => ({ countryCode: country, taxName: 'Tax', rate: '0', appliesToShipping: false, isActive: false, notes: null });
+/** Plain decimal string (never exponent notation) for a numeric(7,6) rate. */
+function rateString(v: unknown): string {
+  const s = Number(v).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  return s === '' || s === '-0' ? '0' : s;
+}
+
+const ZERO = (country: string): TaxRate => ({ countryCode: country, taxName: 'Tax', rate: '0', appliesToShipping: false, reducedRate: null, pricesIncludeTax: false, isActive: false, notes: null });
 
 /** Destination-country tax rates (public.marketplace_tax_rates). */
 @Injectable()
@@ -26,8 +37,10 @@ export class TaxService {
     return {
       countryCode: r.country_code,
       taxName: r.tax_name,
-      rate: String(Number(r.rate)),
+      rate: rateString(r.rate),
       appliesToShipping: r.applies_to_shipping,
+      reducedRate: r.reduced_rate == null ? null : rateString(r.reduced_rate),
+      pricesIncludeTax: !!r.prices_include_tax,
       isActive: r.is_active,
       notes: r.notes,
       updatedAt: r.updated_at,
@@ -53,15 +66,32 @@ export class TaxService {
     return this.cache.rows.get(code) ?? ZERO(code);
   }
 
-  async upsert(actorUserId: string, input: { countryCode: string; taxName: string; rate: number; appliesToShipping?: boolean; isActive?: boolean; notes?: string }) {
+  /** Effective tax class per product: the product's own class, else its category's, else STANDARD. */
+  async classesFor(productIds: string[], c?: Queryable): Promise<Map<string, TaxClass>> {
+    const ids = [...new Set(productIds.filter(Boolean))];
+    if (!ids.length) return new Map();
+    const rows = await this.db.many(
+      `select p.id, coalesce(p.tax_class, cat.tax_class, 'STANDARD') as cls
+         from public.products p left join public.categories cat on cat.id = p.category_id where p.id = any($1::uuid[])`,
+      [ids],
+      c,
+    );
+    return new Map(rows.map((r) => [r.id, normalizeTaxClass(r.cls)]));
+  }
+
+  async upsert(actorUserId: string, input: { countryCode: string; taxName: string; rate: number; reducedRate?: number | null; appliesToShipping?: boolean; pricesIncludeTax?: boolean; isActive?: boolean; notes?: string }) {
     const country = await normalizeCountry(this.db, input.countryCode);
     if (!(input.rate >= 0 && input.rate < 1)) throw badRequest('TAX_RATE_INVALID', 'La tasa debe estar entre 0 % y 99 %.');
+    const reduced = input.reducedRate == null ? null : input.reducedRate;
+    if (reduced != null && !(reduced >= 0 && reduced <= input.rate))
+      throw badRequest('TAX_REDUCED_RATE_INVALID', 'La tasa reducida debe estar entre 0 % y la tasa general.');
     await this.db.exec(
-      `insert into public.marketplace_tax_rates (country_code, tax_name, rate, applies_to_shipping, is_active, notes, updated_by_user_id)
-       values ($1,$2,$3,$4,$5,$6,$7)
+      `insert into public.marketplace_tax_rates (country_code, tax_name, rate, applies_to_shipping, is_active, notes, updated_by_user_id, reduced_rate, prices_include_tax)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        on conflict (country_code) do update set tax_name = excluded.tax_name, rate = excluded.rate, applies_to_shipping = excluded.applies_to_shipping,
-              is_active = excluded.is_active, notes = excluded.notes, updated_by_user_id = excluded.updated_by_user_id, updated_at = now()`,
-      [country, input.taxName.trim(), input.rate, !!input.appliesToShipping, input.isActive !== false, input.notes?.trim() || null, actorUserId],
+              is_active = excluded.is_active, notes = excluded.notes, updated_by_user_id = excluded.updated_by_user_id, updated_at = now(),
+              reduced_rate = excluded.reduced_rate, prices_include_tax = excluded.prices_include_tax`,
+      [country, input.taxName.trim(), input.rate, !!input.appliesToShipping, input.isActive !== false, input.notes?.trim() || null, actorUserId, reduced, !!input.pricesIncludeTax],
     );
     this.cache = undefined;
     return this.list();

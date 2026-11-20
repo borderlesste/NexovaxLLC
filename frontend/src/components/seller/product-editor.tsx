@@ -45,7 +45,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const existing = useQuery({ queryKey: ['seller-product', productId], queryFn: () => get(`/seller/products/${productId}`), enabled: !!productId });
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
   const [loaded, setLoaded] = useState(!productId);
-  const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
+  const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', taxClass: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
   const [options, setOptions] = useState<Opt[]>([]);
   const [variants, setVariants] = useState<Var[]>([{ key: 'default', optionValues: {}, sku: '', price: '', compareAtPrice: '', stock: '0', active: true }]);
   const [ship, setShip] = useState({ weightKg: '', lengthCm: '', widthCm: '', heightCm: '' });
@@ -60,7 +60,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
     if (!product || !cats.data || loaded) return;
     const parent = cats.data.find((c: any) => c.id === product.categoryId || c.children.some((k: any) => k.id === product.categoryId));
     setF({
-      title: product.title, parentCategoryId: parent?.id ?? '', categoryId: product.categoryId, brandName: product.brandName ?? '', shortDescription: product.shortDescription ?? '',
+      title: product.title, parentCategoryId: parent?.id ?? '', categoryId: product.categoryId, taxClass: product.taxClass ?? '', brandName: product.brandName ?? '', shortDescription: product.shortDescription ?? '',
       description: product.description ?? '', slug: product.seo.slug ?? '', metaTitle: product.seo.metaTitle ?? '', metaDescription: product.seo.metaDescription ?? '',
     });
     setOptions(product.options.map((o: any) => ({ name: o.name, values: o.values.map((v: any) => ({ label: v.label, swatch: v.swatch })) })));
@@ -75,6 +75,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
 
   const parent = cats.data?.find((c: any) => c.id === f.parentCategoryId);
   const effectiveCategory = f.categoryId || f.parentCategoryId;
+  const categoryTaxClass: string = (cats.data ?? []).flatMap((c: any) => [c, ...c.children]).find((c: any) => c.id === effectiveCategory)?.taxClass ?? 'STANDARD';
   const attrDefs = useQuery({ queryKey: ['attr-defs', effectiveCategory], queryFn: () => get(`/seller/categories/${effectiveCategory}/attributes`), enabled: !!effectiveCategory });
   const templates = useQuery({ queryKey: ['variant-templates', effectiveCategory], queryFn: () => get(`/seller/categories/${effectiveCategory}/variant-templates`), enabled: !!effectiveCategory });
 
@@ -103,6 +104,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const payload = (action: 'SAVE_DRAFT' | 'SUBMIT') => ({
     title: f.title,
     categoryId: effectiveCategory,
+    taxClass: f.taxClass || null,
     brandName: f.brandName || null,
     shortDescription: f.shortDescription || null,
     description: f.description,
@@ -194,6 +196,12 @@ export function ProductEditor({ productId }: { productId?: string }) {
               <Field label={t('Subcategoría')} required={!!parent?.children.length}>
                 <Select value={f.categoryId} onChange={(e) => setF({ ...f, categoryId: e.target.value })} disabled={!parent?.children.length}>
                   <option value="">{t('Selecciona una subcategoría')}</option>{parent?.children.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+              </Field>
+              <Field label={t('Categoría fiscal')} hint={t('Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.')}>
+                <Select value={f.taxClass} onChange={(e) => setF({ ...f, taxClass: e.target.value })}>
+                  <option value="">{t('Según la categoría ({a})', { a: taxClassLabel(categoryTaxClass) })}</option>
+                  <option value="STANDARD">{t('General (tasa normal)')}</option><option value="REDUCED">{t('Reducida')}</option><option value="EXEMPT">{t('Exenta (sin impuesto)')}</option>
                 </Select>
               </Field>
               <Field label={t('Marca')}><Input rule="businessName" value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} placeholder={t('Ej. Nike, Adidas, Xiaomi')} /></Field>
@@ -428,4 +436,8 @@ function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: 
       ) : null}
     </div>
   );
+}
+
+function taxClassLabel(cls: string) {
+  return cls === 'REDUCED' ? t('Reducida') : cls === 'EXEMPT' ? t('Exenta (sin impuesto)') : t('General (tasa normal)');
 }

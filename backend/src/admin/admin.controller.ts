@@ -51,6 +51,7 @@ export class CategoryDto {
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
   @IsOptional() @ToNumber() @IsInt({ message: 'El orden debe ser un número entero.' }) @Min(0) @Max(100000) sortOrder?: number;
   @IsOptional() @IsCleanText(0, 500) description?: string;
+  @IsOptional() @IsIn(['STANDARD', 'REDUCED', 'EXEMPT'], { message: 'Categoría fiscal inválida.' }) taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT';
 }
 export class PayoutActionDto {
   @IsIn(['APPROVE', 'MARK_PAID', 'FAIL', 'CANCEL']) action: 'APPROVE' | 'MARK_PAID' | 'FAIL' | 'CANCEL';
@@ -77,6 +78,9 @@ export class TaxRateDto {
   @IsCountryCode() countryCode: string;
   @IsCleanText(1, 40) taxName: string;
   @ToNumber() @IsNumber({ maxDecimalPlaces: 4 }, { message: 'La tasa debe ser un número.' }) @Min(0) @Max(0.99) rate: number;
+  @IsOptional() @ToNumber() @IsNumber({ maxDecimalPlaces: 4 }, { message: 'La tasa debe ser un número.' }) @Min(0) @Max(0.99) reducedRate?: number | null;
+  @IsOptional() @IsBoolean() appliesToShipping?: boolean;
+  @IsOptional() @IsBoolean() pricesIncludeTax?: boolean;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsCleanText(0, 300) notes?: string;
 }

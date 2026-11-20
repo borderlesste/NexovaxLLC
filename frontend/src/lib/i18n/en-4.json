@@ -1187,5 +1187,20 @@
 "Período desde": "Period from",
 "Período hasta": "Period to",
 "La fecha final debe ser posterior a la inicial.": "The end date must be after the start date.",
-"Notas": "Notes"
+"Notas": "Notes",
+"Incluye {a}": "Includes {a}",
+"impuestos": "taxes",
+"Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Applied according to the shipping address country. Countries without a rate: 0 %. The reduced rate applies to products in the “Reduced” tax category; “Exempt” products pay no tax.",
+"Tasa reducida": "Reduced rate",
+"Grava envío": "Taxes shipping",
+"Precio con impuesto incluido": "Tax-inclusive prices",
+"El cargo de envío también paga impuesto.": "The shipping charge is taxed too.",
+"Los precios publicados ya incluyen el impuesto para compradores de este país: se desglosa, no se suma.": "Listed prices already include the tax for buyers in this country: it is broken out, not added.",
+"Categoría fiscal": "Tax category",
+"Valor por defecto de los productos de esta categoría. Cada vendedor puede cambiarlo en su producto.": "Default for products in this category. Each seller can change it on their product.",
+"General (tasa normal)": "Standard (normal rate)",
+"Reducida": "Reduced",
+"Exenta (sin impuesto)": "Exempt (no tax)",
+"Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.": "Sets which tax the product pays in each country. If unsure, leave it as the category’s.",
+"Según la categoría ({a})": "Same as the category ({a})"
 }

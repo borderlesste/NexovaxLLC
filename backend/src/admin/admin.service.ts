@@ -506,7 +506,7 @@ export class AdminService {
 
   async categoriesAdmin(q: { search?: string; status?: string }) {
     const rows = await this.db.many(
-      `select c.id, c.parent_id, c.name, c.slug, c.status, c.sort_order, c.updated_at,
+      `select c.id, c.parent_id, c.name, c.slug, c.status, c.sort_order, c.updated_at, c.tax_class,
               (select count(*) from public.categories k where k.parent_id = c.id and k.status <> 'ARCHIVED')::int as children,
               (with recursive t as (select id from public.categories where id = c.id union all select k.id from public.categories k join t on k.parent_id = t.id)
                select count(*) from public.products p where p.category_id in (select id from t) and p.status <> 'ARCHIVED')::int as products
@@ -516,10 +516,10 @@ export class AdminService {
         order by c.sort_order, c.name`,
       [q.search?.trim() || null, q.status || null],
     );
-    return rows.map((r: any) => ({ id: r.id, parentId: r.parent_id, name: r.name, slug: r.slug, status: r.status, sortOrder: r.sort_order, updatedAt: r.updated_at, children: r.children, products: r.products }));
+    return rows.map((r: any) => ({ id: r.id, parentId: r.parent_id, name: r.name, slug: r.slug, status: r.status, sortOrder: r.sort_order, taxClass: r.tax_class, updatedAt: r.updated_at, children: r.children, products: r.products }));
   }
 
-  async saveCategory(input: { id?: string; name: string; parentId?: string | null; status?: 'ACTIVE' | 'INACTIVE'; sortOrder?: number; description?: string }) {
+  async saveCategory(input: { id?: string; name: string; parentId?: string | null; status?: 'ACTIVE' | 'INACTIVE'; sortOrder?: number; description?: string; taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT' }) {
     const slugBase = slugify(input.name, 60);
     return this.db.tx(async (c) => {
       if (input.parentId) {
@@ -529,9 +529,9 @@ export class AdminService {
       if (input.id) {
         const r = await this.db.one(
           `update public.categories set name = $2, parent_id = $3, status = coalesce($4, status), sort_order = coalesce($5, sort_order),
-                  description = coalesce($6, description), version = version + 1
+                  description = coalesce($6, description), tax_class = coalesce($7, tax_class), version = version + 1
             where id = $1 returning id`,
-          [input.id, input.name.trim(), input.parentId ?? null, input.status ?? null, input.sortOrder ?? null, input.description ?? null],
+          [input.id, input.name.trim(), input.parentId ?? null, input.status ?? null, input.sortOrder ?? null, input.description ?? null, input.taxClass ?? null],
           c,
         );
         if (!r) throw notFound('Categoría');
@@ -540,8 +540,8 @@ export class AdminService {
       let slug = slugBase;
       for (let i = 2; await this.db.one(`select 1 from public.categories where slug = $1`, [slug], c); i++) slug = `${slugBase}-${i}`;
       const r = await this.db.one(
-        `insert into public.categories (parent_id, name, slug, description, status, sort_order) values ($1,$2,$3,$4,$5,$6) returning id`,
-        [input.parentId ?? null, input.name.trim(), slug, input.description ?? null, input.status ?? 'ACTIVE', input.sortOrder ?? 100],
+        `insert into public.categories (parent_id, name, slug, description, status, sort_order, tax_class) values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+        [input.parentId ?? null, input.name.trim(), slug, input.description ?? null, input.status ?? 'ACTIVE', input.sortOrder ?? 100, input.taxClass ?? 'STANDARD'],
         c,
       );
       return { id: r!.id };
@@ -1030,7 +1030,7 @@ export class AdminService {
     return this.tax.list();
   }
 
-  saveTaxRate(admin: RequestUser, input: { countryCode: string; taxName: string; rate: number; isActive?: boolean; notes?: string }) {
+  saveTaxRate(admin: RequestUser, input: Parameters<TaxService['upsert']>[1]) {
     return this.tax.upsert(admin.id, input);
   }
 

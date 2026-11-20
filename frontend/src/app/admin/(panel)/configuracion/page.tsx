@@ -33,14 +33,19 @@ const TABS = [
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {
-  const [rows, setRows] = useState<any[]>(() => rates.map((r) => ({ ...r, ratePct: String(+(Number(r.rate) * 100).toFixed(3)) })));
+  const toRow = (r: any) => ({ ...r, ratePct: String(+(Number(r.rate) * 100).toFixed(3)), reducedPct: r.reducedRate != null ? String(+(Number(r.reducedRate) * 100).toFixed(3)) : '' });
+  const [rows, setRows] = useState<any[]>(() => rates.map(toRow));
   const [busy, setBusy] = useState<string | null>(null);
   const [draft, setDraft] = useState({ countryCode: '', taxName: '', ratePct: '' });
-  useEffect(() => setRows(rates.map((r) => ({ ...r, ratePct: String(+(Number(r.rate) * 100).toFixed(3)) }))), [rates]);
+  useEffect(() => setRows(rates.map(toRow)), [rates]); // eslint-disable-line react-hooks/exhaustive-deps
   const saveRow = async (r: any) => {
     setBusy(r.countryCode);
     try {
-      await put('/admin/tax-rates', { countryCode: r.countryCode, taxName: r.taxName, rate: Number(r.ratePct || 0) / 100, isActive: r.isActive, notes: r.notes || undefined });
+      await put('/admin/tax-rates', {
+        countryCode: r.countryCode, taxName: r.taxName, rate: Number(r.ratePct || 0) / 100, isActive: r.isActive, notes: r.notes || undefined,
+        reducedRate: r.reducedPct !== '' && r.reducedPct != null ? Number(r.reducedPct) / 100 : null,
+        appliesToShipping: !!r.appliesToShipping, pricesIncludeTax: !!r.pricesIncludeTax,
+      });
       toast.success(t('Impuesto de {c} guardado.', { c: countryName(r.countryCode) }));
       onChanged();
     } catch (e) {
@@ -60,16 +65,16 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
   };
   const add = async () => {
     if (!draft.countryCode || !draft.taxName) return toast.error(t('Indica país y nombre del impuesto.'));
-    await saveRow({ ...draft, isActive: true });
+    await saveRow({ ...draft, reducedPct: '', isActive: true });
     setDraft({ countryCode: '', taxName: '', ratePct: '' });
   };
   const sorted = [...rows].sort((a, b) => countryName(a.countryCode).localeCompare(countryName(b.countryCode)));
   return (
     <Card>
-      <CardHeader icon={<Percent />} title={t('Impuestos por país de destino')} subtitle={t('Se aplican sobre el precio de los productos según el país de la dirección de envío. Países sin tasa: 0 %.')} />
+      <CardHeader icon={<Percent />} title={t('Impuestos por país de destino')} subtitle={t('Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.')} />
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('País')}</th><th>{t('Impuesto')}</th><th className="w-28">{t('Tasa')}</th><th>{t('Activo')}</th><th className="w-40" /></tr></thead>
+        <table className="w-full min-w-[980px] text-sm">
+          <thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('País')}</th><th>{t('Impuesto')}</th><th className="w-28">{t('Tasa')}</th><th className="w-28">{t('Tasa reducida')}</th><th title={t('El cargo de envío también paga impuesto.')}>{t('Grava envío')}</th><th title={t('Los precios publicados ya incluyen el impuesto para compradores de este país: se desglosa, no se suma.')}>{t('Precio con impuesto incluido')}</th><th>{t('Activo')}</th><th className="w-40" /></tr></thead>
           <tbody className="divide-y divide-line">
             {sorted.map((r) => {
               const upd = (k: string, v: any) => setRows((rs) => rs.map((x) => (x.countryCode === r.countryCode ? { ...x, [k]: v } : x)));
@@ -78,6 +83,9 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
                   <td className="px-5 py-2 font-semibold">{countryName(r.countryCode)} <span className="text-xs text-muted">{r.countryCode}</span>{r.notes && <span className="block text-xs font-normal text-muted">{r.notes}</span>}</td>
                   <td className="pr-3"><Input rule="businessName" value={r.taxName} onChange={(e) => upd('taxName', e.target.value)} className="h-9" /></td>
                   <td className="pr-3"><Input rule="percent" inputMode="decimal" value={r.ratePct} onChange={(e) => upd('ratePct', e.target.value.replace(/[^\d.]/g, ''))} suffix="%" className="h-9" /></td>
+                  <td className="pr-3"><Input rule="percent" inputMode="decimal" value={r.reducedPct} placeholder={r.ratePct} onChange={(e) => upd('reducedPct', e.target.value.replace(/[^\d.]/g, ''))} suffix="%" className="h-9" aria-label={t('Tasa reducida')} /></td>
+                  <td><Switch checked={!!r.appliesToShipping} onCheckedChange={(v) => upd('appliesToShipping', v)} /></td>
+                  <td><Switch checked={!!r.pricesIncludeTax} onCheckedChange={(v) => upd('pricesIncludeTax', v)} /></td>
                   <td><Switch checked={!!r.isActive} onCheckedChange={(v) => upd('isActive', v)} /></td>
                   <td className="pr-5 text-right">
                     <Button size="sm" variant="outline" loading={busy === r.countryCode} onClick={() => saveRow(r)}>{t('Guardar')}</Button>

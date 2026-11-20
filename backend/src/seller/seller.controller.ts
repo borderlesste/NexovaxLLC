@@ -96,6 +96,8 @@ class SeoDto {
 export class ProductDto {
   @IsCleanText(3, 140) title: string;
   @IsUUID() categoryId: string;
+  /** null/omitted = use the category's tax class. */
+  @IsOptional() @IsIn(['STANDARD', 'REDUCED', 'EXEMPT'], { message: 'Categoría fiscal inválida.' }) taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT' | null;
   @IsOptional() @IsBusinessName(1, 60) brandName?: string | null;
   @IsOptional() @IsCleanText(0, 300) shortDescription?: string | null;
   @IsCleanMultiline(10, 5000) description: string;

@@ -2696,5 +2696,20 @@
 "Período desde": "Période du",
 "Período hasta": "Période au",
 "La fecha final debe ser posterior a la inicial.": "La date de fin doit être postérieure à la date de début.",
-"Notas": "Notes"
+"Notas": "Notes",
+"Incluye {a}": "Inclut {a}",
+"impuestos": "taxes",
+"Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Appliquées selon le pays de l’adresse de livraison. Pays sans taux : 0 %. Le taux réduit s’applique aux produits de catégorie fiscale « Réduite » ; les produits « Exonérés » ne paient pas de taxe.",
+"Tasa reducida": "Taux réduit",
+"Grava envío": "Taxe la livraison",
+"Precio con impuesto incluido": "Prix TTC",
+"El cargo de envío también paga impuesto.": "Les frais de livraison sont aussi taxés.",
+"Los precios publicados ya incluyen el impuesto para compradores de este país: se desglosa, no se suma.": "Les prix affichés incluent déjà la taxe pour les acheteurs de ce pays : elle est détaillée, pas ajoutée.",
+"Categoría fiscal": "Catégorie fiscale",
+"Valor por defecto de los productos de esta categoría. Cada vendedor puede cambiarlo en su producto.": "Valeur par défaut des produits de cette catégorie. Chaque vendeur peut la modifier sur son produit.",
+"General (tasa normal)": "Normale (taux normal)",
+"Reducida": "Réduite",
+"Exenta (sin impuesto)": "Exonérée (sans taxe)",
+"Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.": "Définit la taxe que paie le produit dans chaque pays. En cas de doute, laissez celle de la catégorie.",
+"Según la categoría ({a})": "Selon la catégorie ({a})"
 }
