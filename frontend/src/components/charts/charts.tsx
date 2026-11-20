@@ -1,7 +1,7 @@
 'use client';
 import { getIntlLocale, t } from '@/lib/i18n';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { money, compact } from '@/lib/utils';
+import { money, compact, num, currencySymbol } from '@/lib/utils';
 
 const BRAND = '#0a6cf5';
 const PALETTE = ['#0a6cf5', '#f5901a', '#8ebbfd', '#fbd09a', '#34d399', '#f87171', '#60a5fa'];
@@ -21,8 +21,8 @@ export function AreaTrend({ data, xKey = 'day', yKey = 'sales', height = 260, cu
         </defs>
         <CartesianGrid stroke="#e9eef6" vertical={false} />
         <XAxis dataKey={xKey} tickFormatter={dayLabel} tickLine={false} axisLine={false} minTickGap={24} />
-        <YAxis tickFormatter={(v) => (currency ? `$${compact(v)}` : compact(v))} tickLine={false} axisLine={false} width={56} />
-        <Tooltip formatter={(v: any) => (currency ? money(v) : v)} labelFormatter={dayLabel} contentStyle={{ borderRadius: 12, border: '1px solid #e3e8f0' }} />
+        <YAxis tickFormatter={(v) => (currency ? `${currencySymbol()}${compact(v)}` : compact(v))} tickLine={false} axisLine={false} width={56} />
+        <Tooltip formatter={(v: any) => (currency ? money(v) : num(v))} labelFormatter={dayLabel} contentStyle={{ borderRadius: 12, border: '1px solid #e3e8f0' }} />
         <Area type="monotone" dataKey={yKey} stroke={color} strokeWidth={2.5} fill={`url(#g-${yKey})`} dot={false} activeDot={{ r: 5 }} />
       </AreaChart>
     </ResponsiveContainer>
@@ -66,8 +66,8 @@ export function Bars({ data, xKey, bars, height = 260, stacked = false, xFormatt
       <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="#e9eef6" vertical={false} />
         <XAxis dataKey={xKey} tickLine={false} axisLine={false} tickFormatter={xFormatter} minTickGap={8} />
-        <YAxis tickFormatter={(v) => (currency ? `$${compact(v)}` : compact(v))} tickLine={false} axisLine={false} width={56} allowDecimals={currency} />
-        <Tooltip formatter={(v: any) => (currency ? money(v) : v)} labelFormatter={xFormatter} contentStyle={{ borderRadius: 12, border: '1px solid #e3e8f0' }} />
+        <YAxis tickFormatter={(v) => (currency ? `${currencySymbol()}${compact(v)}` : compact(v))} tickLine={false} axisLine={false} width={56} allowDecimals={currency} />
+        <Tooltip formatter={(v: any) => (currency ? money(v) : num(v))} labelFormatter={xFormatter} contentStyle={{ borderRadius: 12, border: '1px solid #e3e8f0' }} />
         {bars.length > 1 && <Legend iconType="square" />}
         {bars.map((b, i) => <Bar key={b.key} dataKey={b.key} name={t(b.name)} stackId={stacked ? 's' : undefined} fill={b.color ?? PALETTE[i]} radius={stacked && i < bars.length - 1 ? 0 : [6, 6, 0, 0]} maxBarSize={36} />)}
       </BarChart>

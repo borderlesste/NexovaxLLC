@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownRight, ArrowLeftRight, ArrowUpRight, Ban, Box, Download, Layers, MapPin, Search, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
-import { fmtDateTime, money } from '@/lib/utils';
+import { fmtDateTime, money, num } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader, StatCard } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,9 +62,9 @@ function Inventory() {
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Inventario') }]} title={t('Inventario')} description={t('Gestiona el stock de tus productos y variantes, controla niveles mínimos y movimientos de inventario.')}
         actions={<Button variant="secondary" onClick={() => exportCsv(d.items)}><Download /> {t('Exportar')}</Button>} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t('SKUs activos')} value={d.summary.activeSkus} icon={<Box />} />
-        <StatCard label={t('Bajo stock')} value={d.summary.low} icon={<AlertTriangle />} tone="amber" />
-        <StatCard label={t('Sin stock')} value={d.summary.out} icon={<Ban />} tone="red" />
+        <StatCard label={t('SKUs activos')} value={num(d.summary.activeSkus)} icon={<Box />} />
+        <StatCard label={t('Bajo stock')} value={num(d.summary.low)} icon={<AlertTriangle />} tone="amber" />
+        <StatCard label={t('Sin stock')} value={num(d.summary.out)} icon={<Ban />} tone="red" />
         <StatCard label={t('Valor del inventario')} value={money(d.summary.value)} icon={<Layers />} />
       </div>
       <Card className="mt-5">
@@ -81,9 +81,9 @@ function Inventory() {
                   <tr key={i.variantId}>
                     <td className="px-5 py-3"><div className="flex items-center gap-3"><ProductImage src={i.imageUrl} alt={i.title} className="size-11 rounded-lg bg-surface" /><span><b className="line-clamp-1">{i.title}</b><span className="text-xs text-muted">{i.variantTitle ?? t('Única')}</span></span></div></td>
                     <td><span className="rounded-md border border-line px-2 py-1 font-mono text-xs">{i.sku}</span></td>
-                    <td><span className={`rounded-md px-2 py-1 text-xs font-bold ${i.state === 'OUT' ? 'bg-red-50 text-red-600' : i.state === 'LOW' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{i.onHand}</span></td>
-                    <td>{i.reserved}</td>
-                    <td>{i.minStock}</td>
+                    <td><span className={`rounded-md px-2 py-1 text-xs font-bold ${i.state === 'OUT' ? 'bg-red-50 text-red-600' : i.state === 'LOW' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{num(i.onHand)}</span></td>
+                    <td>{num(i.reserved)}</td>
+                    <td>{num(i.minStock)}</td>
                     <td><StatusBadge status={i.state} /></td>
                     <td className="text-muted"><span className="flex items-center gap-1"><MapPin className="size-4" /> {i.location}</span></td>
                     <td className="pr-5 text-right"><Button size="sm" variant="secondary" onClick={() => open(i)}><SlidersHorizontal /> {t('Ajustar')}</Button></td>
@@ -105,14 +105,14 @@ function Inventory() {
                   const [label, Icon, cls] = MV[m.movement_type] ?? [m.movement_type, ArrowLeftRight, 'text-muted bg-surface'];
                   return (
                     <tr key={m.id}><td className="px-5 py-2.5"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}><Icon className="size-3.5" /> {label}</span></td>
-                      <td className="truncate">{m.title}{m.variant_title ? ` - ${m.variant_title}` : ''}</td><td className={`font-bold ${m.delta > 0 ? 'text-emerald-700' : 'text-red-600'}`}>{m.delta > 0 ? '+' : ''}{m.delta}</td><td className="text-muted">{fmtDateTime(m.created_at)}</td></tr>
+                      <td className="truncate">{m.title}{m.variant_title ? ` - ${m.variant_title}` : ''}</td><td className={`font-bold ${m.delta > 0 ? 'text-emerald-700' : 'text-red-600'}`}>{m.delta > 0 ? '+' : ''}{num(m.delta)}</td><td className="text-muted">{fmtDateTime(m.created_at)}</td></tr>
                   );
                 })}
               </tbody></table>
           ) : <Empty title={t('Sin movimientos')} />}
         </Card>
       </div>
-      <Dialog open={!!adj} onOpenChange={(o) => !o && setAdj(null)} title={t('Ajustar inventario')} description={adj ? `${adj.title} · ${adj.sku} · ${t('actual {a} (reservado {b})', { a: adj.onHand, b: adj.reserved })}` : ''}
+      <Dialog open={!!adj} onOpenChange={(o) => !o && setAdj(null)} title={t('Ajustar inventario')} description={adj ? `${adj.title} · ${adj.sku} · ${t('actual {a} (reservado {b})', { a: num(adj.onHand), b: num(adj.reserved) })}` : ''}
         footer={<><Button variant="secondary" onClick={() => setAdj(null)}>{t('Cancelar')}</Button><Button onClick={save} loading={busy}>{t('Guardar ajuste')}</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('Tipo de ajuste')}><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}><option value="ADD">{t('Ingreso de mercancía')}</option><option value="REMOVE">{t('Salida (daño, pérdida…)')}</option><option value="SET">{t('Fijar stock exacto')}</option></Select></Field>
