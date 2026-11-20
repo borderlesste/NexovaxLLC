@@ -1,6 +1,6 @@
 import { of, lastValueFrom } from 'rxjs';
 import { CatalogLocaleInterceptor } from '../src/common/i18n-catalog';
-import { translateVariants, variantTitle } from '../src/common/variant-options-i18n';
+import { colorSwatch, isColorOption, translateVariants, variantTitle } from '../src/common/variant-options-i18n';
 
 const product = {
   title: 'Women handbag',
@@ -50,5 +50,33 @@ describe('variant translations', () => {
   it('translates cart and order line variant titles', async () => {
     const cart = { items: [{ title: 'Pantalón', variantTitle: 'Negro / Grande' }] };
     expect((await run('en', cart)).items[0]).toEqual({ title: 'Pantalón', variantTitle: 'Black / Large' });
+  });
+});
+
+describe('variant words typed in any language', () => {
+  it('shows words typed in English, French or Creole in the shopper language', async () => {
+    const typed = {
+      options: [{ id: 'o', code: 'colour', name: 'Couleur', displayType: 'SWATCH', values: [{ id: 'a', label: 'Red' }, { id: 'b', label: 'Wouj' }, { id: 'c', label: 'Rouge' }] }],
+      variants: [{ id: 'x', title: 'Black / Medium', isDefault: true, optionValues: {} }],
+    };
+    const es = await run('es', typed);
+    expect(es.options[0].name).toBe('Color');
+    expect(es.options[0].values.map((v: any) => v.label)).toEqual(['Rojo', 'Rojo', 'Rojo']);
+    expect(es.variants[0].title).toBe('Negro / Mediano');
+    const ht = await run('ht', typed);
+    expect(ht.options[0].values[0].label).toBe('Wouj');
+    const en = await run('en', typed);
+    expect(en.options[0].values[2].label).toBe('Red');
+    expect(variantTitle('XL / 42', 'es')).toBe('XL / 42');
+  });
+
+  it('recognizes color options and swatches in every language', () => {
+    expect(['Color', 'Colour', 'Couleur', 'Koulè'].every(isColorOption)).toBe(true);
+    expect(isColorOption('Talla')).toBe(false);
+    expect(colorSwatch('Red')).toBe('#dc2626');
+    expect(colorSwatch('rouge')).toBe('#dc2626');
+    expect(colorSwatch('Wouj')).toBe('#dc2626');
+    expect(colorSwatch('Navy blue')).toBe('#1e3a8a');
+    expect(colorSwatch('Acme')).toBeNull();
   });
 });

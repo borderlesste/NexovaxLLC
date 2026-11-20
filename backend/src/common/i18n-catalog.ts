@@ -92,9 +92,9 @@ export class CatalogLocaleInterceptor implements NestInterceptor {
     const req = ctx.switchToHttp().getRequest();
     const l = requestLocale(req);
     const isObj = (b: any) => b && typeof b === 'object' && !Buffer.isBuffer(b);
-    // Variant words (Color, Rojo, Mediano...) first, while they are still the Spanish the seller typed.
+    // Variant words (Color, Rojo, Red, Mediano...) first, in whatever language the seller typed them.
     if (l === 'fr' || l === 'ht') return next.handle().pipe(map((body) => (isObj(body) ? translateFrHt(translateVariants(body, l), l) : body)));
-    if (l !== 'en') return next.handle();
+    if (l !== 'en') return next.handle().pipe(map((body) => (isObj(body) ? translateVariants(body, 'es') : body)));
     return next.handle().pipe(map((body) => (isObj(body) ? translate(translateVariants(body, 'en')) : body)));
   }
 }

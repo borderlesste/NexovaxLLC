@@ -1,8 +1,9 @@
 /**
  * Translations of the common words sellers use for product variants: option names (Color,
- * Talla, Tamaño...) and their values (colors, sizes, materials). Variants are typed by the
- * seller in Spanish; shoppers browsing in English, French or Haitian Creole see these words
- * translated. Anything not listed (brands, model codes, "XL", "42") is shown as typed.
+ * Talla, Tamaño...) and their values (colors, sizes, materials). Sellers type them in their own
+ * language (Rojo, Red, Rouge or Wouj are the same word), they are stored as typed, and every
+ * shopper sees them in the shopper's language, Spanish included. Anything not listed (brands,
+ * model codes, "XL", "42") is shown as typed.
  */
 type Langs = { en: string; fr: string; ht: string };
 
@@ -140,14 +141,39 @@ const key = (s: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const BY_KEY = new Map(Object.entries(TERMS).map(([es, t]) => [key(es), t]));
+type Entry = Langs & { es: string };
+/** English words too generic to read back as a bed size ("Full", "Twin"). */
+const NO_REVERSE = new Set(['Individual', 'Matrimonial']);
+const BY_KEY = new Map<string, Entry>();
+// Spanish first (it wins on clashes such as "Gris"), then the other languages as typed by sellers.
+for (const [es, t] of Object.entries(TERMS)) BY_KEY.set(key(es), { es, ...t });
+for (const l of ['en', 'fr', 'ht'] as const)
+  for (const [es, t] of Object.entries(TERMS)) if (!NO_REVERSE.has(es) && !BY_KEY.has(key(t[l]))) BY_KEY.set(key(t[l]), { es, ...t });
+// Common spellings sellers use that are not the canonical translation.
+for (const [alias, es] of [['Colour', 'Color'], ['Grey', 'Gris'], ['Koule', 'Color'], ['Gold', 'Dorado'], ['Navy', 'Azul marino'], ['Dimensions', 'Medidas'], ['Dimension', 'Medida']] as const)
+  if (!BY_KEY.has(key(alias))) BY_KEY.set(key(alias), { es, ...TERMS[es] });
 
-export type VariantLang = 'en' | 'fr' | 'ht';
+export type VariantLang = 'es' | 'en' | 'fr' | 'ht';
 
-/** One variant word ("Rojo", "rojo", "Tamaño") in the shopper's language, or the text as typed. */
+/** One variant word ("Rojo", "red", "Rouge", "Tamaño") in the shopper's language, or the text as typed. */
 export function variantTerm(text: string, lang: VariantLang): string {
   return BY_KEY.get(key(text))?.[lang] ?? text;
 }
+
+/** Hex colors for the common color words, keyed by the Spanish term. */
+const COLOR_HEX: Record<string, string> = {
+  Negro: '#111111', Blanco: '#ffffff', Azul: '#2563eb', 'Azul marino': '#1e3a8a', 'Azul claro': '#93c5fd', 'Azul oscuro': '#1e40af', Celeste: '#7dd3fc',
+  Turquesa: '#14b8a6', Rojo: '#dc2626', Vino: '#7f1d1d', Verde: '#16a34a', 'Verde oliva': '#6b8e23', 'Verde claro': '#86efac', 'Verde oscuro': '#14532d',
+  Menta: '#99f6e4', Gris: '#9ca3af', 'Gris claro': '#d1d5db', 'Gris oscuro': '#4b5563', Morado: '#6d28d9', Lila: '#c4b5fd', Rosado: '#ec4899', Rosa: '#ec4899',
+  Fucsia: '#d946ef', Amarillo: '#facc15', Mostaza: '#ca8a04', Naranja: '#f97316', Coral: '#fb7185', Marrón: '#7c4a1d', Café: '#7c4a1d', Chocolate: '#5b3a1e',
+  Beige: '#e7d9c4', Crema: '#f5f0e1', Hueso: '#f3efe6', Caqui: '#c3b091', Dorado: '#d4a017', Plateado: '#c0c0c0', Bronce: '#cd7f32', Cobre: '#b87333',
+};
+
+/** True for an option name that means color in any supported language (Color, Colour, Couleur, Koulè...). */
+export const isColorOption = (name: string) => ['Color', 'Colores'].includes(BY_KEY.get(key(name))?.es ?? '');
+
+/** The swatch for a color word in any supported language, or null when it isn't a known color. */
+export const colorSwatch = (label: string) => COLOR_HEX[BY_KEY.get(key(label))?.es ?? ''] ?? null;
 
 /** Variant title "Rojo / Mediano": each part translated when known. */
 export function variantTitle(text: string, lang: VariantLang): string {
@@ -167,6 +193,9 @@ export function translateVariants(v: any, lang: VariantLang, depth = 0): any {
   if (depth > 8 || v == null) return v;
   if (Array.isArray(v)) return v.map((x) => translateVariants(x, lang, depth + 1));
   if (typeof v !== 'object' || v instanceof Date || Buffer.isBuffer(v)) return v;
+  // Only plain JSON objects: class instances (files, streams) pass through untouched.
+  const proto = Object.getPrototypeOf(v);
+  if (proto !== Object.prototype && proto !== null) return v;
   const out: any = {};
   const isOption = typeof v.displayType === 'string' && Array.isArray(v.values);
   for (const [k, val] of Object.entries(v)) {

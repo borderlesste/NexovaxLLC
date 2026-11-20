@@ -7,6 +7,7 @@ import { RequestUser } from '../auth/auth';
 import { badRequest } from '../common/errors';
 import { toMinor } from '../common/money';
 import { fetchPublicImage, ImageFetchError } from '../common/safe-fetch';
+import { colorSwatch, isColorOption } from '../common/variant-options-i18n';
 import { SellerService } from './seller.service';
 import { ProductDto } from './seller.controller';
 import {
@@ -365,7 +366,7 @@ export class ProductImportService {
       const options = optionNames
         .map((name, i) => ({
           name,
-          values: [...new Set(group.map((r) => (i === 0 ? r.option1Value : r.option2Value)?.trim()).filter(Boolean) as string[])].map((label) => ({ label })),
+          values: [...new Set(group.map((r) => (i === 0 ? r.option1Value : r.option2Value)?.trim()).filter(Boolean) as string[])].map((label) => ({ label, swatch: isColorOption(name) ? colorSwatch(label) : null })),
         }))
         .filter((o) => o.name && o.values.length);
 

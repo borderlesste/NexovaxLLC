@@ -15,21 +15,12 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { getLocale, t } from '@/lib/i18n';
 import { ShippingDimensions } from '@/components/seller/shipping-dimensions';
+import { isColorOption, presetsFor, quickOptions, sameOption, sameWord, swatchFor } from '@/lib/variant-words';
 
 interface Opt { name: string; values: { label: string; swatch?: string | null }[] }
 interface Var { id?: string; key: string; optionValues: Record<string, string>; sku: string; price: string; compareAtPrice: string; stock: string; active: boolean }
 
-const COLOR_SWATCH: Record<string, string> = { negro: '#111111', blanco: '#ffffff', azul: '#2563eb', rojo: '#dc2626', verde: '#16a34a', gris: '#9ca3af', morado: '#6d28d9', rosado: '#ec4899', amarillo: '#facc15', naranja: '#f97316', marrón: '#7c4a1d', beige: '#e7d9c4' };
-const isColor = (name: string) => /colou?r/i.test(name);
-const swatchFor = (label: string) => COLOR_SWATCH[label.trim().toLowerCase()] ?? '#9ca3af';
-/** Quick options: a click adds the option with no values (or the preset values) ready to complete. */
-const QUICK_OPTIONS: { name: string; presets: string[] }[] = [
-  { name: 'Color', presets: ['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde', 'Gris', 'Morado', 'Rosado', 'Amarillo', 'Naranja', 'Marrón', 'Beige'] },
-  { name: 'Talla', presets: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
-  { name: 'Tamaño', presets: ['Pequeño', 'Mediano', 'Grande', 'Extra grande'] },
-];
-const presetsFor = (name: string) =>
-  isColor(name) ? QUICK_OPTIONS[0].presets : /talla|size/i.test(name) ? QUICK_OPTIONS[1].presets : /tama[ñn]o/i.test(name) ? QUICK_OPTIONS[2].presets : [];
+const isColor = isColorOption;
 
 function combos(options: Opt[]): Record<string, string>[] {
   const valid = options.filter((o) => o.name.trim() && o.values.length);
@@ -254,10 +245,10 @@ export function ProductEditor({ productId }: { productId?: string }) {
                       }} />
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setOpts(options.filter((_, k) => k !== i))} aria-label={t('Eliminar opción')}><Trash2 /></Button>
-                  {presetsFor(o.name).some((pv) => !o.values.some((v) => v.label.toLowerCase() === pv.toLowerCase())) && (
+                  {presetsFor(o.name, getLocale()).some((pv) => !o.values.some((v) => sameWord(v.label, pv))) && (
                     <div className="flex flex-wrap items-center gap-1.5 sm:col-start-2">
                       <span className="text-xs text-muted">{t('Sugerencias:')}</span>
-                      {presetsFor(o.name).filter((pv) => !o.values.some((v) => v.label.toLowerCase() === pv.toLowerCase())).map((pv) => (
+                      {presetsFor(o.name, getLocale()).filter((pv) => !o.values.some((v) => sameWord(v.label, pv))).map((pv) => (
                         <button key={pv} type="button" className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2 py-0.5 text-xs hover:border-brand-400"
                           onClick={() => { const n = [...options]; n[i] = { ...o, values: [...o.values, { label: pv, swatch: isColor(o.name) ? swatchFor(pv) : null }] }; setOpts(n); }}>
                           {isColor(o.name) && <span className="size-3 rounded-full border border-black/10" style={{ background: swatchFor(pv) }} />}<Plus className="size-3" /> {pv}
@@ -268,8 +259,8 @@ export function ProductEditor({ productId }: { productId?: string }) {
                 </div>
               ))}
               <div className="flex flex-wrap gap-2">
-                {options.length < 3 && QUICK_OPTIONS.filter((qo) => !options.some((o) => o.name.trim().toLowerCase() === qo.name.toLowerCase())).map((qo) => (
-                  <Button key={qo.name} variant="soft" size="sm" onClick={() => setOptions([...options, { name: qo.name, values: [] }])} data-quick-option={qo.name}><Plus /> {t(qo.name)}</Button>
+                {options.length < 3 && quickOptions(getLocale()).filter((qn) => !options.some((o) => sameOption(o.name, qn))).map((qn) => (
+                  <Button key={qn} variant="soft" size="sm" onClick={() => setOptions([...options, { name: qn, values: [] }])} data-quick-option={qn}><Plus /> {qn}</Button>
                 ))}
                 {options.length < 3 && <Button variant="outline" size="sm" onClick={() => setOptions([...options, { name: '', values: [] }])}><Plus /> {t('Agregar opción de variante')}</Button>}
                 {templates.data?.map((lbl: any) => (
