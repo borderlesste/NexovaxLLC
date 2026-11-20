@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { realOrder } from '../common/live-orders';
 
 export type ClientEvent = { type: 'VIEW'; productId: string; dwellMs?: number; source?: string };
 export type ServerEventType = 'ADD_TO_CART' | 'FAVORITE' | 'UNFAVORITE';
@@ -116,7 +117,7 @@ export class AnalyticsService {
            select oi.product_id, count(distinct so.order_id)::int as orders, sum(oi.quantity)::int as units, sum(f.product_net_amount)::text as revenue
              from public.order_items oi join public.seller_orders so on so.id = oi.seller_order_id join public.orders o on o.id = so.order_id
              join public.order_item_financial_snapshots f on f.order_item_id = oi.id
-            where so.seller_id = $1 and o.paid_at > now() - make_interval(days => $2::int) and so.lifecycle_status <> 'CANCELLED'
+            where so.seller_id = $1 and o.paid_at > now() - make_interval(days => $2::int) and so.lifecycle_status <> 'CANCELLED' and ${realOrder('o.id')}
             group by oi.product_id)
          select p.id, p.slug, p.title, p.status, p.published_at, p.created_at,
                 coalesce(st.views,0) as views, coalesce(st.visitors,0) as visitors, coalesce(st.cart,0) as cart, coalesce(st.fav_added,0) as fav_added,
@@ -142,7 +143,7 @@ export class AnalyticsService {
                 coalesce((select sum(views) from public.nx_product_daily_stats s where s.seller_id = $1 and s.day = d::date),0)::int as views,
                 coalesce((select sum(add_to_cart) from public.nx_product_daily_stats s where s.seller_id = $1 and s.day = d::date),0)::int as cart,
                 coalesce((select count(distinct so.order_id) from public.seller_orders so join public.orders o on o.id = so.order_id
-                           where so.seller_id = $1 and so.lifecycle_status <> 'CANCELLED' and (o.paid_at at time zone 'UTC')::date = d::date),0)::int as orders
+                           where so.seller_id = $1 and so.lifecycle_status <> 'CANCELLED' and (o.paid_at at time zone 'UTC')::date = d::date and ${realOrder('o.id')}),0)::int as orders
            from generate_series(current_date - ($2::int - 1), current_date, interval '1 day') d order by d`,
         [sellerId, ...period],
       ),

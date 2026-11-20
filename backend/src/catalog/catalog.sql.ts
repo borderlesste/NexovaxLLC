@@ -1,3 +1,4 @@
+import { realOrder } from '../common/live-orders';
 /**
  * Shared SQL fragments for catalog read models.
  * Prices come from the pricing domain (active variant_price_versions); stock is
@@ -51,7 +52,7 @@ export const PRODUCT_CARD_JOINS = (currencyParam: string) => `
      where v2.product_id = p.id and ii.status = 'ACTIVE'
   ) st on true
   left join lateral (
-    select sum(oi.quantity) as qty from public.order_items oi where oi.product_id = p.id
+    select sum(oi.quantity) as qty from public.order_items oi where oi.product_id = p.id and ${realOrder('oi.order_id')}
   ) sold on true`;
 
 export function mapProductCard(r: any) {

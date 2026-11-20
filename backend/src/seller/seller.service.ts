@@ -16,6 +16,7 @@ import { slugify } from '../common/slug';
 import { fromMinor, toMinor } from '../common/money';
 import { invalidateUserCache, RequestUser } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
+import { realOrder, TEST_PENDING } from '../common/live-orders';
 
 export interface OnboardingInput {
   storeName: string;
@@ -872,7 +873,7 @@ export class SellerService {
         `select coalesce(sum(sofs.customer_total),0)::text as sales, count(distinct so.id)::int as orders
            from public.seller_orders so join public.orders o on o.id = so.order_id
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
-          where so.seller_id = $1 and o.placed_at >= now() - ($2 || ' days')::interval and so.lifecycle_status <> 'CANCELLED'`,
+          where so.seller_id = $1 and o.placed_at >= now() - ($2 || ' days')::interval and so.lifecycle_status <> 'CANCELLED' and ${realOrder('o.id')}`,
         [sellerId, days],
       ),
       this.db.one(
@@ -880,20 +881,20 @@ export class SellerService {
            from public.seller_orders so join public.orders o on o.id = so.order_id
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
           where so.seller_id = $1 and o.placed_at >= now() - ($2*2 || ' days')::interval and o.placed_at < now() - ($2 || ' days')::interval
-            and so.lifecycle_status <> 'CANCELLED'`,
+            and so.lifecycle_status <> 'CANCELLED' and ${realOrder('o.id')}`,
         [sellerId, days],
       ),
       this.db.many(
         `select d::date as day, coalesce(sum(sofs.customer_total),0)::text as sales, count(so.id)::int as orders
            from generate_series(current_date - ($2::int - 1), current_date, interval '1 day') d
-           left join public.orders o on o.placed_at::date = d::date
+           left join public.orders o on o.placed_at::date = d::date and ${realOrder('o.id')}
            left join public.seller_orders so on so.order_id = o.id and so.seller_id = $1 and so.lifecycle_status <> 'CANCELLED'
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
           group by d order by d`,
         [sellerId, days],
       ),
       this.db.many(
-        `select fulfillment_status as status, count(*)::int as count from public.seller_orders where seller_id = $1 group by 1`,
+        `select so.fulfillment_status as status, count(*)::int as count from public.seller_orders so where so.seller_id = $1 and ${realOrder('so.order_id')} group by 1`,
         [sellerId],
       ),
       this.inventory(sellerId, {}).then((r) => r.items.sort((a, b) => a.available - b.available).slice(0, 4)),
@@ -902,7 +903,7 @@ export class SellerService {
                  'Compra por ' || coalesce(sofs.customer_total,0)::numeric(20,2)::text as detail, o.placed_at as at
             from public.seller_orders so join public.orders o on o.id = so.order_id
             left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
-           where so.seller_id = $1 order by o.placed_at desc limit 5)
+           where so.seller_id = $1 and ${realOrder('o.id')} order by o.placed_at desc limit 5)
          union all
          (select 'PRODUCT', case h.to_status when 'ACTIVE' then 'Producto aprobado' when 'REJECTED' then 'Producto rechazado' else 'Producto en revisión' end,
                  p.title, h.created_at
@@ -914,7 +915,8 @@ export class SellerService {
     ]);
     const products = await this.db.one(`select count(*) filter (where status='ACTIVE')::int as active from public.products where seller_id = $1`, [sellerId]);
     const pending = await this.db.one(
-      `select count(*)::int as n from public.seller_orders where seller_id = $1 and fulfillment_status in ('UNFULFILLED','FULFILLED','PARTIALLY_FULFILLED') and lifecycle_status not in ('CANCELLED','CLOSED')`,
+      `select count(*)::int as n from public.seller_orders so where so.seller_id = $1 and so.fulfillment_status in ('UNFULFILLED','FULFILLED','PARTIALLY_FULFILLED')
+          and so.lifecycle_status not in ('CANCELLED','CLOSED') and ${realOrder('so.order_id')}`,
       [sellerId],
     );
     const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
@@ -938,13 +940,13 @@ export class SellerService {
   async finance(sellerId: string, days = 30) {
     const currency = await this.settings.currency();
     const bal = await this.db.one(
-      `select coalesce(pending_amount,0)::text as pending, coalesce(available_amount,0)::text as available, coalesce(reserve_amount,0)::text as reserve
+      `select (coalesce(pending_amount,0) - ${TEST_PENDING('$1::uuid')})::text as pending, coalesce(available_amount,0)::text as available, coalesce(reserve_amount,0)::text as reserve
          from public.seller_balance_projections where seller_id = $1 and currency_code = $2`,
       [sellerId, currency],
     );
     // Only seller orders whose payment was captured count; cancelled, unpaid and fully refunded
     // orders are left out and completed partial refunds are subtracted (same rule as admin finance).
-    const SOLD = `o.payment_status in ('PAID','PARTIALLY_REFUNDED','DISPUTED') and o.lifecycle_status not in ('PENDING_PAYMENT','CANCELLED') and so.lifecycle_status <> 'CANCELLED'`;
+    const SOLD = `o.payment_status in ('PAID','PARTIALLY_REFUNDED','DISPUTED') and o.lifecycle_status not in ('PENDING_PAYMENT','CANCELLED') and so.lifecycle_status <> 'CANCELLED' and ${realOrder('o.id')}`;
     const REFUNDS = `left join lateral (
              select coalesce(sum(f.refund_amount),0) as total, coalesce(sum(f.platform_commission_reversal_amount),0) as commission,
                     coalesce(sum(f.seller_clawback_amount),0) as seller, coalesce(sum(f.product_refund_amount),0) as products

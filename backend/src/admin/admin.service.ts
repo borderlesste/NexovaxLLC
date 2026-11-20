@@ -25,6 +25,7 @@ import { MailService } from '../mail/mail.service';
 import { StripeTaxService } from '../tax/stripe-tax.service';
 import { StripeService } from '../payments/stripe.service';
 import { PaypalService } from '../payments/paypal.service';
+import { paymentsLive, realOrder, TEST_PENDING } from '../common/live-orders';
 
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
 
@@ -65,13 +66,14 @@ export class AdminService {
       this.db.one(
         `select coalesce(sum(ofs.grand_total),0)::text as sales, count(*)::int as orders
            from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2`,
+          where o.placed_at >= now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2 and ${realOrder('o.id')}`,
         [period, currency],
       ),
       this.db.one(
         `select coalesce(sum(ofs.grand_total),0)::text as sales, count(*)::int as orders
            from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-          where o.placed_at >= now() - ($1::interval * 2) and o.placed_at < now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2`,
+          where o.placed_at >= now() - ($1::interval * 2) and o.placed_at < now() - $1::interval and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2
+            and ${realOrder('o.id')}`,
         [period, currency],
       ),
       this.db.one(`select count(*) filter (where status = 'ACTIVE')::int as active, count(*)::int as total from public.sellers`),
@@ -79,19 +81,19 @@ export class AdminService {
       this.db.many(
         `select d::date as day, coalesce(sum(ofs.grand_total),0)::text as sales, count(o.id)::int as orders
            from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
-           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2
+           left join public.orders o on o.placed_at::date = d::date and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $2 and ${realOrder('o.id')}
            left join public.order_financial_snapshots ofs on ofs.order_id = o.id
           group by d order by d`,
         [days, currency],
       ),
-      this.db.many(`select public.order_display_status(id) as status, count(*)::int as count from public.orders group by 1`),
+      this.db.many(`select public.order_display_status(o.id) as status, count(*)::int as count from public.orders o where ${realOrder('o.id')} group by 1`),
       this.db.one(
         `select (select count(*) from public.products where status = 'PENDING_REVIEW')::int as products_pending,
                 (select count(*) from public.sellers where status = 'PENDING_VERIFICATION')::int as sellers_pending,
                 (select count(*) from public.inventory_items where status = 'ACTIVE' and available_to_sell <= coalesce(low_stock_threshold, 5))::int as low_stock,
                 (select count(*) from public.support_tickets where status in ('OPEN','IN_PROGRESS'))::int as open_tickets,
                 (select count(*) from public.payouts where status = 'APPROVAL_REQUIRED')::int as payouts_pending,
-                (select count(*) from public.payments where status = 'REQUIRES_ACTION')::int as transfers_pending,
+                (select count(*) from public.payments where status = 'REQUIRES_ACTION'${paymentsLive() ? " and environment = 'LIVE'" : ''})::int as transfers_pending,
                 (select count(*) from public.seller_payout_accounts where verification_status = 'PENDING' and status <> 'DISABLED')::int as payout_accounts_pending,
                 (select count(*) from public.return_requests where status in ('REQUESTED','UNDER_REVIEW','RECEIVED','INSPECTING'))::int as returns_pending,
                 (select count(*) from public.nx_order_cancellations where status = 'APPROVED')::int as cancellations_pending,
@@ -102,7 +104,7 @@ export class AdminService {
       `select o.id, '${ORDER_PREFIX}-' || o.public_number as number, coalesce(up.display_name, u.email::text) as customer, o.placed_at,
               ofs.grand_total::text as total, o.currency_code as currency, public.order_display_status(o.id) as status
          from public.orders o join public.users u on u.id = o.customer_id left join public.user_profiles up on up.user_id = u.id
-         left join public.order_financial_snapshots ofs on ofs.order_id = o.id order by o.placed_at desc limit 6`,
+         left join public.order_financial_snapshots ofs on ofs.order_id = o.id where ${realOrder('o.id')} order by o.placed_at desc limit 6`,
     );
     const att: Record<string, number> = attention as any;
     const keep = (k: string, ok: boolean) => (ok ? att[k] : 0);
@@ -572,12 +574,12 @@ export class AdminService {
       this.db.many(
         `select s.id, s.public_number, coalesce(ssp.display_name, s.slug) as name, coalesce(sum(sofs.product_net_amount),0)::text as sales,
                 coalesce(sum(sofs.platform_commission_total),0)::text as commission, coalesce(sum(sofs.seller_entitlement_estimate),0)::text as net,
-                coalesce(bp.available_amount,0)::text as available, coalesce(bp.pending_amount,0)::text as pending,
+                coalesce(bp.available_amount,0)::text as available, (coalesce(bp.pending_amount,0) - ${TEST_PENDING('s.id')})::text as pending,
                 (select max(p.paid_at) from public.payouts p where p.seller_id = s.id and p.status = 'PAID') as last_paid_at,
                 (select p.status from public.payouts p where p.seller_id = s.id order by p.requested_at desc limit 1) as last_payout_status
            from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
            left join public.seller_orders so on so.seller_id = s.id and so.lifecycle_status <> 'CANCELLED' and so.currency_code = $3
-                 and exists (select 1 from public.orders o where o.id = so.order_id and o.placed_at >= $1 and o.placed_at < $2)
+                 and exists (select 1 from public.orders o where o.id = so.order_id and o.placed_at >= $1 and o.placed_at < $2 and ${realOrder('o.id')})
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
            left join public.seller_balance_projections bp on bp.seller_id = s.id and bp.currency_code = $3
           where s.status in ('ACTIVE','SUSPENDED')
@@ -586,7 +588,7 @@ export class AdminService {
       ),
       this.db.one(
         `select (select coalesce(sum(ofs.platform_commission_total),0)::text from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
-                  where o.placed_at >= date_trunc('month', now()) and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $1) as month_commission,
+                  where o.placed_at >= date_trunc('month', now()) and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $1 and ${realOrder('o.id')}) as month_commission,
                 (select coalesce(sum(requested_amount),0)::text from public.payouts where status in ('REQUESTED','APPROVAL_REQUIRED','APPROVED','PROCESSING') and currency_code = $1) as payouts_pending,
                 (select coalesce(sum(requested_amount),0)::text from public.payouts where status = 'PAID' and currency_code = $1) as payouts_paid,
                 (select count(*) from public.seller_balance_projections where available_amount > 0 and currency_code = $1)::int as sellers_with_balance`,
@@ -595,7 +597,7 @@ export class AdminService {
       this.db.many(
         `select to_char(m, 'YYYY-MM') as month, coalesce(sum(ofs.platform_commission_total),0)::text as commission
            from generate_series(date_trunc('month', now()) - interval '11 months', date_trunc('month', now()), interval '1 month') m
-           left join public.orders o on date_trunc('month', o.placed_at) = m and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $1
+           left join public.orders o on date_trunc('month', o.placed_at) = m and o.lifecycle_status <> 'CANCELLED' and o.currency_code = $1 and ${realOrder('o.id')}
            left join public.order_financial_snapshots ofs on ofs.order_id = o.id
           group by m order by m`,
         [currency],
@@ -682,7 +684,7 @@ export class AdminService {
               coalesce(up.display_name, u.email::text) as customer, u.email::text as email, cs.expires_at as "expiresAt"
          from public.payments p join public.checkout_sessions cs on cs.id = p.checkout_session_id
          join public.users u on u.id = p.customer_id left join public.user_profiles up on up.user_id = u.id
-        where p.status = 'REQUIRES_ACTION' and p.provider_code = 'RD_SANDBOX'
+        where p.status = 'REQUIRES_ACTION' and p.provider_code = 'RD_SANDBOX'${paymentsLive() ? " and p.environment = 'LIVE'" : ''}
           and exists (select 1 from public.payment_provider_intents i where i.payment_id = p.id and i.sanitized_metadata->>'method' = 'BANK_TRANSFER')
         order by p.created_at`,
     );
@@ -755,7 +757,7 @@ export class AdminService {
     const currency = await this.settings.currency();
     // Only orders whose payment was actually captured count as sales: unpaid, failed, cancelled
     // and fully refunded orders are left out, and completed partial refunds are subtracted.
-    const SOLD = `o.payment_status in ('PAID','PARTIALLY_REFUNDED','DISPUTED') and o.lifecycle_status not in ('PENDING_PAYMENT','CANCELLED')`;
+    const SOLD = `o.payment_status in ('PAID','PARTIALLY_REFUNDED','DISPUTED') and o.lifecycle_status not in ('PENDING_PAYMENT','CANCELLED') and ${realOrder('o.id')}`;
     const REFUNDS = `left join lateral (
              select coalesce(sum(f.refund_amount),0) as total, coalesce(sum(f.platform_commission_reversal_amount),0) as commission,
                     coalesce(sum(f.seller_clawback_amount),0) as seller, coalesce(sum(f.tax_refund_amount),0) as tax,
