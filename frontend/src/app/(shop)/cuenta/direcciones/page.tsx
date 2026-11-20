@@ -35,7 +35,7 @@ export default function AddressesPage() {
       {!q.data?.length ? (
         <div className="card mt-6"><Empty icon={<MapPin />} title={t('No tienes direcciones guardadas')} action={<Button onClick={() => setDlg({ open: true, address: null })}>{t('Agregar dirección')}</Button>} /></div>
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           {q.data.map((a) => (
             <div key={a.id} className="card p-5">
               <div className="flex items-start justify-between gap-3">

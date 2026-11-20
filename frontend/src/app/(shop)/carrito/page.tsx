@@ -41,7 +41,7 @@ export default function CartPage() {
       {!c?.groups.length ? (
         <div className="card mt-6"><Empty icon={<ShoppingCart />} title={t('Tu carrito está vacío')} description={t('Explora el catálogo y agrega productos de tus tiendas favoritas.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div>
       ) : (
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-4">
             {c.groups.map((g: any) => (
               <div key={g.sellerId} className="card">

@@ -22,7 +22,7 @@ function AdminOrders() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Inicio') }, { label: t('Pedidos') }]} title={t('Pedidos')} description={t('Supervisa las compras, los pagos y los envíos del marketplace.')} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Pedidos totales')} value={c?.total ?? '—'} icon={<ShoppingCart />} />
         <StatCard label={t('Pendientes')} value={c ? c.pending_payment + c.to_prepare : '—'} icon={<Clock />} tone="amber" hint={t('requieren seguimiento')} />
         <StatCard label={t('En preparación')} value={c?.preparing ?? '—'} icon={<Package />} />

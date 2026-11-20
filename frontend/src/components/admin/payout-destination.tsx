@@ -28,7 +28,7 @@ export function PayoutDestination({ accountId }: { accountId: string }) {
     [t('País'), d.countryCode ? countryName(d.countryCode) : null],
   ];
   return (
-    <dl className="grid gap-x-4 gap-y-1 rounded-lg bg-surface p-3 text-sm sm:grid-cols-[auto_1fr]" data-payout-destination>
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-1 rounded-lg bg-surface p-3 text-sm sm:grid-cols-[auto_1fr]" data-payout-destination>
       {rows.filter(([, v]) => v).map(([k, v]) => (
         <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd className="select-all break-all font-semibold">{v}</dd></div>
       ))}

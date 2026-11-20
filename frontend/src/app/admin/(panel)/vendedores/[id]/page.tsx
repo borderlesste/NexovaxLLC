@@ -52,7 +52,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
           {store.status === 'ACTIVE' && <Button variant="danger" onClick={() => setDlg('SUSPEND')}><Ban /> {t('Suspender')}</Button>}
           {store.status === 'SUSPENDED' && <Button onClick={() => act('REACTIVATE')} loading={busy === 'REACTIVATE'}><RotateCcw /> {t('Reactivar')}</Button>}
         </>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Estado')} value={<StatusBadge status={store.status} className="text-sm" />} />
         {finance && <>
           <StatCard label={t('Ventas (12 meses)')} value={money(finance.period.gross)} />
@@ -63,7 +63,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
       <div className={`mt-5 grid gap-5 ${payoutAccounts ? 'xl:grid-cols-2' : ''}`}>
         <Card>
           <CardHeader title={t('Propietario y tienda')} />
-          <dl className="grid gap-3 p-5 text-sm sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-3 p-5 text-sm sm:grid-cols-2">
             <div><dt className="text-muted">{t('Propietario')}</dt><dd className="font-semibold">{owner.name}</dd></div>
             <div><dt className="text-muted">{t('Correo')}</dt><dd className="font-semibold">{owner.email}</dd></div>
             <div><dt className="text-muted">{t('Teléfono')}</dt><dd className="font-semibold">{owner.phone ?? store.supportPhone ?? '—'}</dd></div>

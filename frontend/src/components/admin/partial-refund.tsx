@@ -47,7 +47,7 @@ export function PartialRefundDialog({ incidentId, onClose, onDone }: { incidentI
           {d.suggestion
             ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800"><Wand2 className="size-4" /> {t('NEXOVAX encontró las unidades que suman exactamente el reembolso; revisa la selección.')}</p>
             : <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t('Ninguna combinación de unidades suma exactamente el reembolso (precio + impuestos por unidad). Si fue un descuento libre, márcalo como revisado y acuérdalo con la tienda.')}</p>}
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="text-left text-xs text-muted"><tr><th className="py-2">{t('Producto')}</th><th>{t('Por unidad')}</th><th>{t('Disponibles')}</th><th className="w-24">{t('Unidades')}</th></tr></thead>
             <tbody className="divide-y divide-line">
               {d.items.map((it: any) => (
@@ -59,7 +59,7 @@ export function PartialRefundDialog({ incidentId, onClose, onDone }: { incidentI
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           <div className="flex items-center justify-between rounded-xl bg-surface p-3 text-sm">
             <span>{t('Seleccionado')}: <b>{money(est, d.currency)}</b> · {t('Reembolsado por el procesador')}: <b>{money(d.amount, d.currency)}</b></span>
             {matches ? <span className="font-semibold text-emerald-700">{t('Coincide')}</span> : <span className="font-semibold text-amber-700">{t('No coincide')}</span>}

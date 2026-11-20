@@ -79,7 +79,7 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
           {faq.map((f, i) => (
             <div key={i} className="rounded-xl border border-line p-4" data-faq-row>
               <div className="flex items-start gap-2">
-                <div className="grid flex-1 gap-3 lg:grid-cols-2">
+                <div className="grid grid-cols-1 flex-1 gap-3 lg:grid-cols-2">
                   <Field label={`${t('Pregunta')} ${i + 1}`} required><Input value={f.q} maxLength={200} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, q: e.target.value } : x)))} /></Field>
                   <Field label={`${t('Pregunta')} (${langName})`}><Input value={f[`q${lang}`] ?? ''} maxLength={200} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, [`q${lang}`]: e.target.value } : x)))} data-faq-tr-q /></Field>
                   <Field label={t('Respuesta')} required><Textarea rows={3} value={f.a} maxLength={2000} onChange={(e) => setFaq(faq.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /></Field>
@@ -102,7 +102,7 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
           {sections.map((x, i) => (
             <div key={i} className="rounded-xl border border-line p-4">
               <div className="flex items-start gap-2">
-                <div className="grid flex-1 gap-3 lg:grid-cols-2">
+                <div className="grid grid-cols-1 flex-1 gap-3 lg:grid-cols-2">
                   <Field label={`${t('Título')} ${i + 1}`} required><Input value={x.title} maxLength={120} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)))} /></Field>
                   <Field label={`${t('Título')} (${langName})`}><Input value={x[`title${lang}`] ?? ''} maxLength={120} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, [`title${lang}`]: e.target.value } : s)))} /></Field>
                   <Field label={t('Texto')} required><Textarea rows={3} value={x.body} maxLength={3000} onChange={(e) => setSections(sections.map((s, j) => (j === i ? { ...s, body: e.target.value } : s)))} /></Field>
@@ -122,7 +122,7 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
       <Card>
         <CardHeader icon={<Coins />} title={t('Comisiones y pagos a vendedores')} subtitle={t('Se muestra en /ayuda#comisiones. La comisión y el retiro mínimo salen de la configuración vigente.')} />
         <div className="space-y-4 p-5">
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <Field label={t('Texto')} required><Textarea rows={4} value={com.body} maxLength={3000} onChange={(e) => setCom({ ...com, body: e.target.value })} data-commissions-body /></Field>
             <Field label={`${t('Texto')} (${langName})`}><Textarea rows={4} value={(com as any)[`body${lang}`] ?? ''} maxLength={3000} onChange={(e) => setCom({ ...com, [`body${lang}`]: e.target.value })} /></Field>
           </div>

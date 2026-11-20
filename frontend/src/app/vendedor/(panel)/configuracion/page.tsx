@@ -98,10 +98,10 @@ export default function StoreSettingsPage() {
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Configuración') }]} title={t('Configuración de la tienda')} description={t('Personaliza cómo ven tu tienda los compradores.')}
         actions={<>{s.status === 'ACTIVE' && <Button variant="secondary" asChild><Link href={`/tienda/${s.slug}`} target="_blank"><ExternalLink /> {t('Ver tienda pública')}</Link></Button>}<Button onClick={save} loading={busy}><Check /> {t('Guardar cambios')}</Button></>} />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader icon={<Store />} title={t('Información de la tienda')} />
-          <div className="grid gap-4 p-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label={t('Nombre visible')} required><Input rule="businessName" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} /></Field>
             <Field label={t('Descripción corta')}><Input value={f.shortDescription} onChange={(e) => setF({ ...f, shortDescription: e.target.value })} maxLength={200} /></Field>
             <Field label={t('Acerca de la tienda')} className="sm:col-span-2"><Textarea rows={5} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={3000} /></Field>

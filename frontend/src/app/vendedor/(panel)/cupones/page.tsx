@@ -101,7 +101,7 @@ export default function CouponsPage() {
         <Dialog open onOpenChange={(o) => !o && setDlg(null)} size="lg" title={dlg.id ? t('Editar cupón') : t('Nuevo cupón')}
           description={t('Los clientes escriben el código al pagar. Aplica solo a productos de tu tienda.')}
           footer={<><Button variant="secondary" onClick={() => setDlg(null)}>{t('Cancelar')}</Button><Button loading={busy} disabled={!f.code.trim() || !f.value} onClick={save} data-coupon-save>{dlg.id ? t('Guardar cambios') : t('Crear cupón')}</Button></>}>
-          <div className="grid gap-4 sm:grid-cols-2" data-coupon-form>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-coupon-form>
             <Field label={t('Código')} required hint={dlg.id ? t('El código no se puede cambiar.') : t('3 a 24 caracteres: letras, números, guion o guion bajo.')}>
               <Input value={f.code} disabled={!!dlg.id} maxLength={24} onChange={(e) => set({ code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') })} placeholder="VERANO10" data-coupon-code />
             </Field>

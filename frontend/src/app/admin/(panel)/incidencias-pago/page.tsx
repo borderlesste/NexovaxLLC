@@ -61,7 +61,7 @@ export default function PaymentIncidentsPage() {
                 <p className="text-right"><span className="block text-xl font-extrabold">{money(i.amount, i.currency)}</span>
                   {i.kind === 'DISPUTE' && Number(i.held) > 0 && i.status === 'OPEN' && <span className="text-xs text-muted">{t('Retenido por el procesador: {a}', { a: money(i.held, i.currency) })}</span>}</p>
               </div>
-              <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+              <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                 {i.kind === 'DISPUTE' && <div><dt className="inline text-muted">{t('Estado')}: </dt><dd className="inline font-medium">{t(DISPUTE[i.disputeStatus] ?? i.disputeStatus)}</dd></div>}
                 {i.reason && <div><dt className="inline text-muted">{t('Motivo')}: </dt><dd className="inline font-medium">{i.reason.replace(/_/g, ' ')}</dd></div>}
                 {i.dueBy && i.status === 'OPEN' && <div><dt className="inline text-muted">{t('Responder antes del')}: </dt><dd className="inline font-semibold text-amber-700">{fmtDateTime(i.dueBy)}</dd></div>}

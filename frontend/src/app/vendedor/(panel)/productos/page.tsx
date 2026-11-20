@@ -38,7 +38,7 @@ function Products() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Productos') }]} title={t('Productos')} description={t('Administra el catálogo de tu tienda.')} actions={<Button asChild><Link href="/vendedor/productos/nuevo"><Plus /> {t('Crear producto')}</Link></Button>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Productos registrados')} value={c?.total ?? '—'} icon={<Box />} />
         <StatCard label={t('Publicados')} value={c?.active ?? '—'} icon={<Check />} tone="green" />
         <StatCard label={t('En revisión')} value={c?.pending ?? '—'} icon={<Clock />} />

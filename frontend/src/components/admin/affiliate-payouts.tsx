@@ -41,7 +41,7 @@ export function AffiliatePayouts() {
     <Card className="mt-5" data-affiliate-payouts>
       <CardHeader icon={<Handshake />} title={t('Pagos a afiliados')} subtitle={t('Comisiones disponibles (ya se descontaron a cada tienda). Envía el dinero y registra la referencia.')} />
       {q.data?.length ? (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('Afiliado')}</th><th>{t('Cobra por')}</th><th>{t('Comisiones')}</th><th>{t('Disponible')}</th><th /></tr></thead>
           <tbody className="divide-y divide-line">
             {q.data.map((a) => (
@@ -54,7 +54,7 @@ export function AffiliatePayouts() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       ) : <Empty title={t('No hay comisiones de afiliados por pagar')} />}
       {pay && (
         <Dialog open onOpenChange={(o) => !o && setPay(null)} title={t('Pagar a {n}', { n: pay.name })} description={t('Envía {a} a: ', { a: money(pay.available) })}

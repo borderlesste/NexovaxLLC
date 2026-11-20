@@ -72,13 +72,13 @@ export default function SellerFinancePage() {
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Finanzas') }]} title={t('Finanzas de mi tienda')} description={t('Consulta tus ventas, ganancias, comisiones y retiros.')}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option><option value={365}>{t('Último año')}</option></Select>
           <Button onClick={() => { setF({ accountId: verified[0]?.id ?? '', amount: String(Number(d.balances.available)) }); setOpen(true); }} disabled={Number(d.balances.available) <= 0}><Landmark /> {t('Solicitar retiro')}</Button></>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Ventas (brutas)')} value={money(d.period.gross, d.currency)} icon={<ShoppingCart />} hint={[t('incluye envío e impuestos'), Number(d.period.refunded) > 0 ? t('Reembolsado: {a}', { a: money(d.period.refunded, d.currency) }) : ''].filter(Boolean).join(' · ')} />
         <StatCard label={t('Comisión de la plataforma')} value={`- ${money(d.period.commission, d.currency)}`} icon={<Box />} hint={rate != null ? t('{a} sobre el precio de los productos', { a: pct(rate) }) : ''} />
         <StatCard label={t('Ganancia neta')} value={money(d.period.net, d.currency)} icon={<Wallet />} tone="green" hint={t('productos menos comisión')} />
         <StatCard label={t('Saldo disponible')} value={money(d.balances.available, d.currency)} icon={<Coins />} hint={d.payoutPolicy?.holdDays ? t('Pendiente: {a} (se libera {b} días después de la entrega)', { a: money(d.balances.pending, d.currency), b: d.payoutPolicy.holdDays }) : t('Pendiente por entrega: {a}', { a: money(d.balances.pending, d.currency) })} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title={t('Evolución de ventas')} action={<Pills value={metric} onChange={setMetric} options={[{ value: 'sales', label: t('Ventas') }, { value: 'profit', label: t('Ganancia') }]} />} />
           <div className="p-4"><AreaTrend data={d.series} yKey={metric} /></div>
@@ -86,13 +86,13 @@ export default function SellerFinancePage() {
         <Card>
           <CardHeader title={t('Movimientos recientes')} />
           {d.movements.length ? (
-            <table className="w-full text-sm"><thead className="text-left text-xs text-muted"><tr><th className="px-5 py-2">{t('Fecha')}</th><th>{t('Concepto')}</th><th className="pr-5 text-right">{t('Monto')}</th></tr></thead>
+            <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="text-left text-xs text-muted"><tr><th className="px-5 py-2">{t('Fecha')}</th><th>{t('Concepto')}</th><th className="pr-5 text-right">{t('Monto')}</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {d.movements.map((m: any, i: number) => { const I = ICON[m.kind] ?? Coins; return (
                   <tr key={i}><td className="px-5 py-2.5 text-muted">{fmtDate(m.at)}</td><td><span className="flex items-center gap-2"><I className="size-4 text-brand-600" /> {concept(m)}</span></td>
                     <td className={`pr-5 text-right font-semibold ${Number(m.amount) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{Number(m.amount) >= 0 ? '+ ' : '- '}{money(Math.abs(Number(m.amount)), m.currency ?? d.currency)}</td></tr>
                 ); })}
-              </tbody></table>
+              </tbody></table></div>
           ) : <Empty title={t('Sin movimientos aún')} />}
         </Card>
       </div>
@@ -100,14 +100,14 @@ export default function SellerFinancePage() {
       <Card className="mt-5">
         <CardHeader title={t('Mis retiros')} subtitle={d.payoutPolicy ? t('Mínimo por retiro: {a} · Aprobación {b}', { a: money(d.payoutPolicy.minimum, d.currency), b: d.payoutPolicy.approvalMode === 'MANUAL' ? t('manual por finanzas') : t('automática') }) : undefined} action={<Link href="/vendedor/metodos-cobro" className="text-sm font-semibold text-brand-700">{t('Métodos de cobro →')}</Link>} />
         {payouts.data?.length ? (
-          <table className="w-full text-sm"><thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2">{t('Retiro')}</th><th>{t('Destino')}</th><th>{t('Monto')}</th><th>{t('Solicitado')}</th><th>{t('Estado')}</th><th /></tr></thead>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2">{t('Retiro')}</th><th>{t('Destino')}</th><th>{t('Monto')}</th><th>{t('Solicitado')}</th><th>{t('Estado')}</th><th /></tr></thead>
             <tbody className="divide-y divide-line">
               {payouts.data.map((p: any) => (
                 <tr key={p.id}><td className="px-5 py-3 font-bold">{p.number}</td><td className="text-muted"><span className="flex items-center gap-1"><Building2 className="size-4" /> {p.accountLabel} ****{p.accountLast4}</span></td>
                   <td className="font-semibold">{money(p.amount, p.currency)}</td><td className="text-muted">{fmtDate(p.requestedAt)}</td><td><StatusBadge status={p.status} /></td>
                   <td className="pr-5 text-right">{['REQUESTED', 'APPROVAL_REQUIRED', 'APPROVED'].includes(p.status) && <Button size="sm" variant="ghost" onClick={() => cancel(p.id)}><X /> {t('Cancelar')}</Button>}</td></tr>
               ))}
-            </tbody></table>
+            </tbody></table></div>
         ) : <Empty icon={<Landmark />} title={t('No has solicitado retiros')} />}
       </Card>
       {(d.otherBalances ?? []).length > 0 && (

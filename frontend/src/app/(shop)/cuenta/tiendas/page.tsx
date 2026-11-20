@@ -17,7 +17,7 @@ export default function FollowedStoresPage() {
       {!q.data?.length ? (
         <div className="card mt-6"><Empty icon={<Users />} title={t('No sigues ninguna tienda')} action={<Button asChild><Link href="/vendedores">{t('Descubrir tiendas')}</Link></Button>} /></div>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {q.data.map((s: any) => (
             <Link key={s.id} href={`/tienda/${s.slug}`} className="card flex items-center gap-4 p-5 hover:shadow-lg">
               <div className="grid size-14 place-items-center overflow-hidden rounded-xl bg-brand-50">{s.logoUrl ? <img src={s.logoUrl} alt="" className="size-full object-cover" /> : <Store className="size-6 text-brand-600" />}</div>

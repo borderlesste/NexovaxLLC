@@ -65,10 +65,10 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
   const copy = (v: string) => navigator.clipboard.writeText(v).then(() => toast.success(t('Copiado.')));
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-5">
         {/* summary */}
-        <div className="card grid gap-5 p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="card grid grid-cols-1 gap-5 p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <div className="flex gap-4">
             <ProductImage src={first?.imageUrl} alt={first?.title ?? ''} className="size-28 shrink-0 rounded-2xl bg-surface" />
             <div className="min-w-0 space-y-1.5 text-sm">
@@ -204,7 +204,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
         ))}
 
         {/* events */}
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="card p-5">
             <p className="flex items-center gap-2 text-lg font-bold"><Clock className="size-5 text-brand-600" /> {t('Historial de eventos')}</p>
             {events.length === 0 && order.paidAt ? (

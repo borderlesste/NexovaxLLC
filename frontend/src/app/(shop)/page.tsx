@@ -15,7 +15,7 @@ async function Hero({ preview }: { preview: any[] }) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-white via-brand-50 to-brand-100">
       <div className="absolute -right-24 -top-32 size-[420px] rounded-full bg-brand-200/50 blur-3xl" />
-      <div className="relative mx-auto grid max-w-[1400px] items-center gap-6 px-4 py-5 lg:grid-cols-[1.8fr_1fr] lg:px-8 lg:py-5">
+      <div className="relative mx-auto grid grid-cols-1 max-w-[1400px] items-center gap-6 px-4 py-5 lg:grid-cols-[1.8fr_1fr] lg:px-8 lg:py-5">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2.5 py-1 text-xs font-semibold text-accent-600">
             <Globe2 className="size-3.5" /> {t('Tiendas de todo el mundo, un solo carrito')}
@@ -115,7 +115,7 @@ export default async function HomePage() {
           </section>
         ) : null}
 
-        <section className="mt-12 grid gap-4 md:grid-cols-2">
+        <section className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
           <Link href="/vendedor/registro" className="card relative flex items-center gap-5 overflow-hidden bg-gradient-to-r from-brand-50 to-white p-6 transition hover:shadow-lg">
             <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Store className="size-8" /></div>
             <div>
@@ -133,7 +133,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
             [Truck, 'Envíos internacionales', 'Tarifas en vivo de USPS, UPS, DHL y más, con rastreo.'],
             [ShieldCheck, 'Pagos seguros', 'Tus compras protegidas con métodos confiables.'],

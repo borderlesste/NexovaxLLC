@@ -94,7 +94,7 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
           </Select>
         </div>
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[260px_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className={cn('card h-fit space-y-6 p-5', !showFilters && 'hidden lg:block')}>
           <div className="flex items-center justify-between">
             <p className="text-lg font-bold">{t('Filtros')}</p>

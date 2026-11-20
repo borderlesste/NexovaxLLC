@@ -49,7 +49,7 @@ export default function CommissionsPage() {
     <>
       <PageHeader crumbs={[{ label: t('Finanzas') }, { label: t('Comisiones y payouts') }]} title={t('Comisiones y payouts')} description={t('Gestiona las comisiones del marketplace y las liquidaciones (payouts) de los vendedores.')}
         actions={<><Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar reporte')}</Button><Button asChild><Link href="/admin/configuracion"><Percent /> {t('Comisión:')}{' '}{d.commissionRate != null ? `${(d.commissionRate * 100).toFixed(1)} %` : '—'}</Link></Button></>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Comisión total del mes')} value={money(d.kpis.month_commission)} icon={<Percent />} />
         <StatCard label={t('Payouts pendientes')} value={money(d.kpis.payouts_pending)} icon={<Coins />} tone="amber" />
         <StatCard label={t('Payouts liquidados')} value={money(d.kpis.payouts_paid)} icon={<Check />} tone="green" />
@@ -74,7 +74,7 @@ export default function CommissionsPage() {
         {tab === 'payouts' && payoutTable(pending, true)}
         {tab === 'history' && payoutTable(history, false)}
       </Card>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Card><CardHeader title={t('Comisiones mensuales')} subtitle={t('Total de comisiones generadas por el marketplace')} /><div className="p-4"><Bars data={d.monthly} xKey="month" xFormatter={monthLabel} bars={[{ key: 'commission', name: t('Comisión') }]} /></div></Card>
         <Card>
           <CardHeader title={t('Próximos payouts')} subtitle={t('Retiros solicitados por los vendedores')} />

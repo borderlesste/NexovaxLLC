@@ -35,7 +35,7 @@ export default function SellerStatsPage() {
       <PageHeader crumbs={[{ label: t('Inicio') }, { label: t('Estadísticas') }]} title={t('Estadísticas de tus productos')}
         description={t('Visitas, carritos, favoritos y ventas de cada producto. Son cifras totales: nunca se muestra quién es cada cliente.')}
         actions={<Pills value={days} onChange={setDays} options={[{ value: '7', label: t('7 días') }, { value: '30', label: t('30 días') }, { value: '90', label: t('90 días') }]} />} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" data-stats-summary>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" data-stats-summary>
         <StatCard label={t('Visitas')} value={s.views.toLocaleString(getIntlLocale())} icon={<Eye />} hint={t('{n} visitantes', { n: s.visitors.toLocaleString(getIntlLocale()) })} />
         <StatCard label={t('Agregados al carrito')} value={s.addToCart.toLocaleString(getIntlLocale())} icon={<ShoppingCart />} />
         <StatCard label={t('En favoritos')} value={s.favorites.toLocaleString(getIntlLocale())} icon={<Heart />} hint={t('+{n} en el período', { n: s.favoritesAdded })} />

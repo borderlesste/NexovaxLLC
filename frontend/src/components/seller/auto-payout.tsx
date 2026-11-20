@@ -72,7 +72,7 @@ export function AutoPayoutCard({ accounts }: { accounts: any[] }) {
         subtitle={t('Retiramos tu saldo disponible según la frecuencia que elijas. Finanzas lo aprueba como cualquier retiro.')}
         action={<label className="flex items-center gap-2 text-sm font-semibold">{f.enabled ? t('Activado') : t('Desactivado')} <Switch checked={f.enabled} disabled={busy || !usable.length} onCheckedChange={(v) => { const n = { ...f, enabled: v }; setF(n); save(n); }} /></label>}
       />
-      <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <Field label={t('Frecuencia')}>
           <Select value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value })} data-auto="frequency">
             <option value="WEEKLY">{t('Semanal')}</option><option value="BIWEEKLY">{t('Cada 2 semanas')}</option><option value="MONTHLY">{t('Mensual')}</option>

@@ -45,7 +45,7 @@ function NewSellerDialog({ onClose }: { onClose: () => void }) {
           {result.temporaryPassword ? <p>{t('Contraseña temporal:')}{' '}<b className="font-mono">{result.temporaryPassword}</b> {t('(compártela de forma segura; el vendedor debe cambiarla).')}</p> : <p>{t('El usuario ya tenía cuenta; puede entrar con su contraseña actual.')}</p>}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('Nombre del propietario')} required><Input rule="personName" value={f.ownerName} onChange={set('ownerName')} /></Field>
           <Field label={t('Correo del propietario')} required><Input rule="email" type="email" value={f.ownerEmail} onChange={set('ownerEmail')} /></Field>
           <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} /></Field>
@@ -73,7 +73,7 @@ function AdminSellers() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Inicio') }, { label: t('Vendedores') }]} title={t('Vendedores')} description={t('Gestiona tiendas, propietarios y solicitudes de acceso.')} actions={isAdmin && <Button onClick={() => setCreating(true)}><Plus /> {t('Nuevo vendedor')}</Button>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Vendedores registrados')} value={c?.total ?? '—'} icon={<Users />} />
         <StatCard label={t('Tiendas activas')} value={c?.active ?? '—'} icon={<Store />} tone="green" />
         <StatCard label={t('Solicitudes pendientes')} value={c?.pending ?? '—'} icon={<Clock />} tone="amber" hint={t('requieren revisión')} />

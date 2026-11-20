@@ -90,12 +90,12 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
 
 export function Pills<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
   return (
-    <div className="inline-flex rounded-lg border border-line bg-white p-0.5">
+    <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-line bg-white p-0.5 scrollbar-thin">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition', value === o.value ? 'bg-brand-50 text-brand-700' : 'text-muted hover:text-ink')}
+          className={cn('shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition', value === o.value ? 'bg-brand-50 text-brand-700' : 'text-muted hover:text-ink')}
         >
           {o.label}
         </button>

@@ -68,7 +68,7 @@ export default function ProfilePage() {
     <div>
       <h1 className="text-3xl font-extrabold">{t('Mi perfil')}</h1>
       <p className="text-muted">{t('Gestiona tu información personal y la configuración de tu cuenta.')}</p>
-      <div className="mt-6 grid gap-6 xl:grid-cols-[280px_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[280px_1fr]">
         <div className="card flex flex-col items-center p-6 text-center">
           <div className="relative">
             <Avatar name={me.displayName} src={me.avatarUrl} size={112} className={photoBusy ? 'opacity-50' : undefined} />
@@ -94,7 +94,7 @@ export default function ProfilePage() {
         </div>
         <div className="card p-6">
           <h2 className="text-lg font-bold">{t('Información personal')}</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('Nombre')} required><Input rule="personName" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></Field>
             <Field label={t('Apellido')} required><Input rule="personName" value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></Field>
             <Field label={t('Correo electrónico')} hint={t('(no editable)')}><Input value={me.email} disabled /></Field>

@@ -50,9 +50,9 @@ function Moderation() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Moderación') }]} title={t('Moderación de productos')} description={t('Revisa, aprueba o rechaza los productos enviados por los vendedores del marketplace.')} />
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard label={t('Pendientes de revisión')} value={c?.pending ?? '—'} icon={<Clock />} />
             <StatCard label={t('Aprobados hoy')} value={c?.approved_today ?? '—'} icon={<Check />} tone="green" />
             <StatCard label={t('Rechazados hoy')} value={c?.rejected_today ?? '—'} icon={<X />} tone="red" />
@@ -120,7 +120,7 @@ function Moderation() {
                   <p className="mt-1 text-right text-xs text-muted">{note.length} / 300</p>
                 </div>
                 {r.status === 'PENDING_REVIEW' ? (
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <Button onClick={() => decide('APPROVE')} loading={busy === 'APPROVE'}><Check /> {t('Aprobar')}</Button>
                     <Button variant="outline" onClick={() => decide('REQUEST_CHANGES')} loading={busy === 'REQUEST_CHANGES'}><Pencil /> {t('Solicitar cambios')}</Button>
                     <Button variant="danger" onClick={() => decide('REJECT')} loading={busy === 'REJECT'}><X /> {t('Rechazar')}</Button>

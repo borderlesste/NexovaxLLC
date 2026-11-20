@@ -32,13 +32,13 @@ export default function SellerDashboard() {
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Dashboard') }]} title={t('Dashboard')} description={t('Bienvenido a {a}. Este es el resumen de tu tienda.', { a: store.data?.displayName ?? t('tu tienda') })}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option></Select><Button asChild><Link href="/vendedor/productos/nuevo"><Plus /> {t('Agregar producto')}</Link></Button></>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Ventas de mi tienda')} value={money(d.kpis.sales)} icon={<CreditCard />} change={d.kpis.salesChange} hint={t('vs. período anterior')} />
         <StatCard label={t('Pedidos recibidos')} value={d.kpis.orders} icon={<ShoppingCart />} change={d.kpis.ordersChange} hint={t('vs. período anterior')} />
         <StatCard label={t('Productos publicados')} value={d.kpis.activeProducts} icon={<Box />} hint={t('en mi catálogo')} />
         <StatCard label={t('Pedidos por atender')} value={d.kpis.pendingOrders} icon={<Truck />} tone={d.kpis.pendingOrders ? 'amber' : 'brand'} hint={t('preparar o despachar')} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title={t('Ventas de mi tienda')} subtitle={t('Comportamiento durante el período')} />
           <div className="p-4"><AreaTrend data={d.series} /></div>
@@ -51,11 +51,11 @@ export default function SellerDashboard() {
           </div>
         </Card>
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title={t('Inventario y disponibilidad')} subtitle={t('Productos que requieren seguimiento')} action={<Link href="/vendedor/inventario" className="text-sm font-semibold text-brand-700">{t('Ver inventario →')}</Link>} />
           {d.lowStock.length ? (
-            <div className="grid sm:grid-cols-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2">
               {d.lowStock.map((i: any) => (
                 <div key={i.variantId} className="flex items-center gap-3 border-b border-line px-5 py-4 sm:odd:border-r">
                   <ProductImage src={i.imageUrl} alt={i.title} className="size-14 shrink-0 rounded-xl bg-surface" />

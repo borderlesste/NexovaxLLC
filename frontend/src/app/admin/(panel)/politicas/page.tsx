@@ -77,7 +77,7 @@ export default function PoliciesPage() {
         ))}
       </div>
       {pol && (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <Card>
             <CardHeader icon={<FileText />} title={t(pol.name)}
               subtitle={`${t('Versión vigente')}: ${current ? `${current.version} · ${fmtDateTime(current.effectiveAt)}` : '—'} · ${t(AUDIENCE[pol.audience] ?? pol.audience)}`} />
@@ -105,7 +105,7 @@ export default function PoliciesPage() {
                     ? t('Cada tienda verá un aviso para aceptar la nueva versión la próxima vez que entre. Úsalo para cambios importantes (comisión, obligaciones).')
                     : t('Cada cuenta verá un aviso para aceptar la nueva versión la próxima vez que entre. Úsalo para cambios importantes; para correcciones menores déjalo sin marcar.')}</span></span>
               </label>
-              <div className="mt-4 grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
                 <span className="text-sm font-semibold">{t('Entra en vigor')}</span>
                 <div className="flex flex-wrap items-center gap-2">
                   <Input type="datetime-local" value={when} min={new Date(Date.now() + 5 * 60_000).toISOString().slice(0, 16)} onChange={(e) => setWhen(e.target.value)} className="w-56" data-policy-when />

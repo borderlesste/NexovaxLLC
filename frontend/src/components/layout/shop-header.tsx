@@ -143,13 +143,13 @@ export function UserMenu() {
   const item = 'flex items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none hover:bg-brand-50 focus:bg-brand-50 [&_svg]:size-4 [&_svg]:text-muted';
   return (
     <Dropdown.Root>
-      <Dropdown.Trigger className="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-brand-50">
+      <Dropdown.Trigger className="flex items-center gap-2 rounded-lg p-1 hover:bg-brand-50 sm:pr-2">
         <Avatar name={me.displayName} src={me.avatarUrl} size={34} />
         <span className="hidden max-w-[140px] text-left leading-tight lg:block">
           <span className="block truncate text-sm font-semibold">{me.displayName}</span>
           <span className="block text-[11px] text-muted">{isAdmin ? t('Administrador') : isStaff ? roleList(me.roles) : seller ? t('Vendedor') : t('Comprador')}</span>
         </span>
-        <ChevronDown className="size-4 text-muted" />
+        <ChevronDown className="hidden size-4 text-muted sm:block" />
       </Dropdown.Trigger>
       <Dropdown.Portal>
         <Dropdown.Content align="end" sideOffset={8} className="z-50 w-60 rounded-xl border border-line bg-white p-1.5 shadow-xl">
@@ -195,8 +195,8 @@ export function ShopHeader() {
   useEffect(() => setMobile(false), [pathname]);
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-[72px] max-w-[1400px] items-center gap-4 px-4 lg:px-8">
-        <button className="rounded-lg p-2 hover:bg-brand-50 lg:hidden" onClick={() => setMobile((v) => !v)} aria-label={t('Menú')}>
+      <div className="mx-auto flex h-[72px] max-w-[1400px] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:px-8">
+        <button className="shrink-0 rounded-lg p-2 hover:bg-brand-50 lg:hidden" onClick={() => setMobile((v) => !v)} aria-label={t('Menú')}>
           {mobile ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
         <Logo />
@@ -211,9 +211,9 @@ export function ShopHeader() {
           ))}
         </nav>
         <SearchBox className="ml-auto hidden w-full max-w-md md:block" />
-        <div className="ml-auto flex items-center gap-1 md:ml-2">
-          <LanguageSwitcher />
-          <Link href="/cuenta/favoritos" className="relative rounded-lg p-2 hover:bg-brand-50" aria-label={t('Favoritos')}>
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1 md:ml-2">
+          <LanguageSwitcher className="hidden sm:flex" />
+          <Link href="/cuenta/favoritos" className="relative hidden rounded-lg p-2 hover:bg-brand-50 sm:block" aria-label={t('Favoritos')}>
             <Heart className="size-5" />
             <CountBadge n={me?.counts.favorites} />
           </Link>
@@ -238,14 +238,18 @@ export function ShopHeader() {
               </Button>
             </div>
           )}
-          {me && <div className="ml-1"><UserMenu /></div>}
+          {me && <div className="sm:ml-1"><UserMenu /></div>}
         </div>
       </div>
       {mobile && (
         <div className="border-t border-line bg-white px-4 pb-4 lg:hidden">
           <SearchBox className="my-3 md:hidden" />
           <nav className="grid gap-1">
-            {[{ href: '/', label: t('Inicio') }, { href: '/catalogo', label: t('Categorías') }, ...NAV.slice(1)].map((n) => (
+            <div className="flex items-center justify-between rounded-lg px-3 py-1 text-sm font-semibold sm:hidden">
+              <span>Idioma / Language</span>
+              <LanguageSwitcher />
+            </div>
+            {[{ href: '/', label: t('Inicio') }, { href: '/catalogo', label: t('Categorías') }, ...NAV.slice(1), { href: '/cuenta/favoritos', label: 'Favoritos' }].map((n) => (
               <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 text-sm font-semibold hover:bg-brand-50">{t(n.label)}</Link>
             ))}
             {!me && (

@@ -39,18 +39,18 @@ export default function SellerAffiliatesPage() {
     <>
       <PageHeader crumbs={[{ label: t('Inicio') }, { label: t('Afiliados') }]} title={t('Programa de afiliados')}
         description={t('Deja que otras personas recomienden tus productos con su enlace y págales una comisión solo por las ventas que generen.')} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Afiliados con ventas')} value={s.affiliates} icon={<Users />} />
         <StatCard label={t('Pedidos por afiliados')} value={s.orders} icon={<ShoppingCart />} hint={t('Ventas: {a}', { a: money(s.sales) })} />
         <StatCard label={t('Comisiones pendientes')} value={money(s.pending)} icon={<Coins />} hint={t('Hasta la entrega y el plazo de devolución')} />
         <StatCard label={t('Comisiones confirmadas')} value={money(s.confirmed)} icon={<Wallet />} hint={t('Revertidas: {a}', { a: money(s.reversed) })} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card data-affiliate-program>
           <CardHeader icon={<Handshake />} title={t('Configuración')} subtitle={t('Tú decides si pagas a afiliados, cuánto y por qué productos.')} />
           <div className="space-y-5 p-5">
             <label className="flex items-center gap-3 text-sm font-semibold"><Switch checked={f.enabled} onCheckedChange={(v) => setF({ ...f, enabled: v })} /> {f.enabled ? t('Programa activo') : t('Programa pausado')}</label>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label={t('Comisión para el afiliado (%)')} required hint={t('Sobre el precio de venta del producto (después de cupones, sin envío ni impuestos).')}>
                 <Input type="number" min={0.5} max={50} step="0.01" value={f.ratePercent} onChange={(e) => setF({ ...f, ratePercent: e.target.value })} data-affiliate-rate />
               </Field>

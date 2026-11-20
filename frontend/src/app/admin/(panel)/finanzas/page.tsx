@@ -57,14 +57,14 @@ export default function AdminFinancePage() {
     <>
       <PageHeader crumbs={[{ label: t('Panel de administración') }, { label: t('Finanzas') }]} title={t('Finanzas del marketplace')} description={t('Resumen financiero general de la plataforma.')}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option><option value={365}>{t('Último año')}</option></Select><Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar')}</Button></>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label={t('Ventas totales (GMV)')} value={money(k.gmv)} icon={<Layers />} hint={[k.orders === 1 ? t('1 pedido pagado') : t('{a} pedidos pagados', { a: k.orders }), Number(k.refunded) > 0 ? t('Reembolsado: {a}', { a: money(k.refunded) }) : ''].filter(Boolean).join(' · ')} />
         <StatCard label={t('Comisiones de la plataforma')} value={money(k.commission)} icon={<Percent />} hint={k.avgCommissionRate != null ? t('{a} % promedio sobre productos', { a: (k.avgCommissionRate * 100).toFixed(1) }) : ''} />
         <StatCard label={t('Pagos a vendedores')} value={money(k.seller_payable)} icon={<Store />} hint={t('Liquidado en el período: {a}', { a: money(k.payoutsPaid) })} />
         <StatCard label={t('Impuestos recaudados')} value={money(k.tax)} icon={<BarChart3 />} hint={[d.taxes ? t('Por declarar: {a}', { a: money(d.taxes.pending) }) : '', t('Envíos: {a}', { a: money(k.shipping) })].filter(Boolean).join(' · ')} />
         <StatCard label={t('Vendedores activos')} value={k.activeSellers} icon={<User />} hint={t('{a} con ventas en el período', { a: k.sellersWithSales ?? 0 })} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card><CardHeader title={t('Ventas del marketplace')} /><div className="p-4"><Bars data={d.series} xKey="day" stacked xFormatter={dayLabel} bars={[{ key: 'commission', name: t('Comisiones (plataforma)'), color: '#0a6cf5' }, { key: 'sellers', name: t('Pagos a vendedores'), color: '#f5901a' }]} /></div></Card>
         <Card>
           <CardHeader title={t('Retiros de vendedores (solicitudes)')} />
@@ -80,7 +80,7 @@ export default function AdminFinancePage() {
         <Card className="mt-5">
           <CardHeader icon={<Receipt />} title={t('Impuestos por declarar')} subtitle={t('Impuesto cobrado a los clientes que la plataforma debe pagar a la autoridad tributaria. Registra aquí cada pago al fisco.')}
             action={<Button size="sm" onClick={openTax} disabled={!(Number(d.taxes.pending) > 0)}><Check /> {t('Registrar pago de impuestos')}</Button>} />
-          <div className="grid gap-4 p-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <div className="rounded-xl bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-700">{t('Pendiente por declarar')}</p><p className="mt-1 text-2xl font-extrabold text-ink">{money(d.taxes.pending)}</p><p className="text-xs text-muted">{t('Total acumulado, descontados reembolsos y pagos registrados')}</p></div>
             <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-700">{t('Pagado al fisco en el período')}</p><p className="mt-1 text-2xl font-extrabold text-ink">{money(d.taxes.paidInPeriod)}</p></div>
           </div>
@@ -114,7 +114,7 @@ export default function AdminFinancePage() {
         <div className="grid gap-3">
           <Field label={`${t('Monto pagado')} (${d.currency})`} required error={amountNum > Number(d.taxes?.pending ?? 0) ? t('No puede superar lo pendiente por declarar.') : undefined}><Input rule="money" value={tf.amount} onChange={(e) => setTf({ ...tf, amount: e.target.value.replace(/[^\d.]/g, '') })} /></Field>
           <Field label={t('Referencia del pago o declaración')} required><Input rule="reference" value={tf.reference} onChange={(e) => setTf({ ...tf, reference: e.target.value })} placeholder={t('Número de comprobante')} /></Field>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label={t('Período desde')}><Input type="date" value={tf.periodFrom} onChange={(e) => setTf({ ...tf, periodFrom: e.target.value })} /></Field>
             <Field label={t('Período hasta')} error={tf.periodFrom && tf.periodTo && tf.periodFrom > tf.periodTo ? t('La fecha final debe ser posterior a la inicial.') : undefined}><Input type="date" value={tf.periodTo} onChange={(e) => setTf({ ...tf, periodTo: e.target.value })} /></Field>
           </div>

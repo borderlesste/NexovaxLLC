@@ -44,13 +44,13 @@ export default function ReportsAdminPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Soporte') }, { label: t('Reportes y problemas') }]} title={t('Seguimiento de problemas reportados')} description={t('Revisa, asigna y resuelve las incidencias notificadas por usuarios de la plataforma.')} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Total de reportes')} value={c?.total ?? '—'} icon={<FileText />} hint={t('Reportes registrados')} />
         <StatCard label={t('Pendientes')} value={c?.pending ?? '—'} icon={<Clock />} tone="amber" hint={t('{a} de prioridad crítica', { a: c?.critical ?? 0 })} />
         <StatCard label={t('En proceso')} value={c?.in_progress ?? '—'} icon={<RotateCcw />} hint={t('Asignados al equipo')} />
         <StatCard label={t('Resueltos')} value={c?.resolved ?? '—'} icon={<Check />} tone="green" hint={t('Casos finalizados')} />
       </div>
-      <div className="mt-5 grid gap-5 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Card>
           <div className="px-5 pt-4"><p className="text-lg font-bold">{t('Bandeja de reportes')}</p></div>
           <Segmented className="px-3" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: '', label: t('Todos'), count: c?.total }, { value: 'OPEN', label: t('Pendientes'), count: c?.pending }, { value: 'IN_PROGRESS_ALL', label: t('En proceso'), count: c?.in_progress }, { value: 'DONE', label: t('Resueltos'), count: c?.resolved }]} />
@@ -104,7 +104,7 @@ export default function ReportsAdminPage() {
                 ))}
                 {d.notes.map((n: any) => <div key={n.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p className="text-xs font-bold">{t('Nota interna ·')}{' '}{n.author} · {fmtDateTime(n.created_at)}</p>{!(n.attachments?.length && n.body.startsWith('📎')) && <p className="mt-1">{n.body}</p>}<AttachmentList base={`/support/admin/notes/${n.id}/attachments`} items={n.attachments} /></div>)}
               </div>
-              <div className="grid gap-3 border-b border-line p-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 border-b border-line p-5 sm:grid-cols-2">
                 <Field label={t('Asignar a')}>
                   <Select value={d.team?.code ?? ''} onChange={(e) => run('assign', () => post(`/support/admin/tickets/${d.id}/assign`, { teamCode: e.target.value, assignToMe: true }), 'Reporte asignado.')}>
                     <option value="" disabled>{t('Selecciona equipo')}</option>{cats.data?.teams.map((x: any) => <option key={x.code} value={x.code}>{x.name}</option>)}
@@ -130,7 +130,7 @@ export default function ReportsAdminPage() {
                   <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} />
                   <Button onClick={() => run('reply', async () => { const r = await upload(`/support/admin/tickets/${d.id}/reply`, formWith({ body: text.trim(), internal: mode === 'note' ? 'true' : 'false' }, files)); setText(''); setFiles([]); return r; }, mode === 'reply' ? 'Respuesta enviada.' : 'Nota guardada.')} loading={busy === 'reply'} disabled={!text.trim() && !files.length}><Send /> {mode === 'reply' ? t('Enviar respuesta') : t('Guardar nota')}</Button>
                 </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Button variant="danger" onClick={() => run('esc', () => post(`/support/admin/tickets/${d.id}/assign`, { teamCode: 'MODERATION', assignToMe: false }), t('Escalado a moderación.'))}><ArrowUpRight /> {t('Escalar')}</Button>
                   <Button variant="outline" onClick={() => tk.refetch()}><RotateCcw /> {t('Actualizar')}</Button>
                   <Button onClick={() => run('resolve', () => post(`/support/admin/tickets/${d.id}/status`, { status: 'RESOLVED' }), 'Marcado como resuelto.')} disabled={['RESOLVED', 'CLOSED'].includes(d.status)}><CheckCircle2 /> {t('Marcar resuelto')}</Button>

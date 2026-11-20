@@ -53,7 +53,7 @@ export default function GuidePage() {
         <h2 className="text-xl font-bold">{t(guide.title)}</h2>
         <p className="mt-2 text-ink/90">{t(guide.summary)}</p>
         {scope && (
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-xl bg-emerald-50 p-4">
               <p className="mb-2 font-bold text-emerald-800">{t('Puedes')}</p>
               <ul className="space-y-1.5 text-sm">{scope.can.map((c) => <li key={c} className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {t(c)}</li>)}</ul>

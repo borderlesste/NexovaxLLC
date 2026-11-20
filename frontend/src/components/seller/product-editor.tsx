@@ -182,11 +182,11 @@ export function ProductEditor({ productId }: { productId?: string }) {
       {product?.lastReview?.status && ['REJECTED', 'CHANGES_REQUESTED'].includes(product.lastReview.status) && (
         <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><b>{t('Moderación:')}</b> {product.lastReview.decision_reason}</div>
       )}
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <div className="space-y-5">
           <Card>
             <CardHeader icon={<Info />} title={t('Información básica')} subtitle={t('Datos principales del producto.')} />
-            <div className="grid gap-4 p-5 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
               <Field label={t('Nombre del producto')} required className="sm:col-span-3"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder={t('Ej. Zapatillas deportivas running')} maxLength={140} /></Field>
               <Field label={t('Categoría')} required>
                 <Select value={f.parentCategoryId} onChange={(e) => setF({ ...f, parentCategoryId: e.target.value, categoryId: '' })}>
@@ -224,7 +224,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
             <CardHeader icon={<Tag />} title={t('Variantes')} subtitle={t('Configura las opciones del producto (talla, color, etc.) para generar combinaciones con SKU.')} />
             <div className="space-y-4 p-5">
               {options.map((o, i) => (
-                <div key={i} className="grid gap-2 sm:grid-cols-[180px_1fr_auto]">
+                <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[180px_1fr_auto]">
                   <Input value={o.name} placeholder={t('Ej. Talla')} onChange={(e) => { const name = e.target.value; const n = [...options]; n[i] = { ...o, name, values: o.values.map((v) => ({ ...v, swatch: isColor(name) ? v.swatch ?? swatchFor(v.label) : null })) }; setOpts(n); }} />
                   <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-line bg-white px-2 py-1">
                     {o.values.map((v, j) => (
@@ -391,7 +391,7 @@ function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: 
   const shown = all ? defs : defs.filter((d, i) => i < VISIBLE_ATTRS || d.required || values[d.id]);
   return (
     <div className="p-5">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {shown.map((a) => {
           const v = values[a.id] ?? '';
           const field = `${a.name}${a.unit ? ` (${a.unit})` : ''}`;

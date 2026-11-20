@@ -32,7 +32,7 @@ function NoPermission({ section, roles, home }: { section: string; roles: Role[]
           </div>
         </div>
         {scopes.map(([r, s]) => (
-          <div key={r} className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div key={r} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-emerald-50/60 p-4">
               <p className="mb-2 text-sm font-bold text-emerald-800">{t('Tu rol puede')}</p>
               <ul className="space-y-1.5 text-sm">{s!.can.map((x) => <li key={x} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />{t(x)}</li>)}</ul>

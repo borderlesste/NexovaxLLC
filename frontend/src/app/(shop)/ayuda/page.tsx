@@ -49,7 +49,7 @@ export default async function HelpPage() {
           <Button variant="outline" asChild className="bg-white"><Link href="/cuenta/mensajes"><HelpCircle /> {t('Mis conversaciones')}</Link></Button>
         </div>
       </div>
-      <div id="guias" className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div id="guias" className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TOPICS.map(([I, title, d]) => (
           <div key={title} className="card p-5"><I className="size-8 text-brand-600" /><p className="mt-3 text-lg font-bold">{t(title)}</p><p className="text-sm text-muted">{t(d)}</p></div>
         ))}
@@ -67,7 +67,7 @@ export default async function HelpPage() {
       </section>
       <section id="vendedores" className="card mt-6 scroll-mt-24 p-6">
         <h2 className="flex items-center gap-2 text-2xl font-extrabold"><Store className="size-6 text-brand-600" /> {t('Ayuda para vendedores')}</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2" data-seller-help>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2" data-seller-help>
           {(help?.sellers ?? []).map((x, i) => (
             <div key={i} className="rounded-xl bg-surface p-4">
               <p className="font-bold">{tr(x.title, x.titleEn, (x as any)[`title${L}`])}</p>

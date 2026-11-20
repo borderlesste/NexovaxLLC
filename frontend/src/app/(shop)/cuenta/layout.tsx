@@ -33,7 +33,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   }, [loading, session, router, pathname]);
   if (loading || !session) return <PageLoader />;
   return (
-    <div className="mx-auto grid max-w-[1400px] gap-6 px-4 py-6 lg:grid-cols-[240px_1fr] lg:px-8">
+    <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:px-8">
       <aside className="h-fit lg:sticky lg:top-24">
         <p className="mb-2 px-3 text-sm font-bold text-muted">{t('Mi cuenta')}</p>
         <nav className="flex gap-1 overflow-x-auto lg:flex-col">

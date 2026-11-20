@@ -50,7 +50,7 @@ function RegisterForm() {
     }
   };
   return (
-    <div className="mx-auto grid max-w-6xl items-center gap-10 md:grid-cols-2">
+    <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-10 md:grid-cols-2">
       <div className="hidden md:block">
         <StorefrontIllustration />
         <h1 className="mt-10 text-4xl font-extrabold leading-tight">{t('Vende, compra y haz crecer tu negocio')}</h1>

@@ -79,7 +79,7 @@ function LoginForm() {
     supabase().auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}${next}` } });
   const social = providers.data ? (['google', 'apple'] as const).filter((p) => providers.data![p]) : [];
   return (
-    <div className="card mx-auto grid max-w-5xl overflow-hidden rounded-3xl md:grid-cols-2">
+    <div className="card mx-auto grid grid-cols-1 max-w-5xl overflow-hidden rounded-3xl md:grid-cols-2">
       <div className="hidden bg-gradient-to-b from-brand-50 to-brand-100/60 p-10 md:block">
         <h1 className="text-4xl font-extrabold leading-tight">{t('Compra y vende en')}{' '}<span className="text-brand-600">{t('NEXOVAX')}</span></h1>
         <p className="mt-4 text-lg text-muted">{t('Un marketplace donde múltiples vendedores ofrecen sus productos en un solo lugar.')}</p>
@@ -118,7 +118,7 @@ function LoginForm() {
           {social.length > 0 && (
             <>
               <div className="flex items-center gap-3 text-sm text-muted"><span className="h-px flex-1 bg-line" /> {t('o continúa con')}{' '}<span className="h-px flex-1 bg-line" /></div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {social.map((p) => (
                   <Button key={p} type="button" variant="secondary" size="lg" onClick={() => oauth(p)}>{t('Continuar con')}{' '}{p === 'google' ? t('Google') : t('Apple')}</Button>
                 ))}

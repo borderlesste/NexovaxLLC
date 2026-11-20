@@ -130,7 +130,7 @@ export function StoreView({ initial }: { initial: any }) {
         ]}
       />
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[250px_1fr_300px]">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[250px_1fr_300px]">
         <aside className="card h-fit space-y-5 p-5">
           <div className="flex items-center justify-between"><p className="text-lg font-bold">{t('Filtros')}</p><button className="text-sm font-semibold text-brand-700 underline" onClick={() => setFilters({ inStock: false, sort: 'relevance', page: 1 })}>{t('Limpiar filtros')}</button></div>
           <div>
@@ -162,7 +162,7 @@ export function StoreView({ initial }: { initial: any }) {
             <div className="p-2">
               <h2 className="text-xl font-bold">{t('Acerca de')}{' '}{store.name}</h2>
               <p className="mt-3 whitespace-pre-line text-ink/90">{store.description || store.shortDescription || t('Esta tienda aún no ha agregado una descripción.')}</p>
-              <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+              <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div><dt className="text-muted">{t('Vendedor desde')}</dt><dd className="font-semibold">{fmtDate(store.memberSince)}</dd></div>
                 {store.supportEmail && <div><dt className="text-muted">{t('Correo de atención')}</dt><dd className="font-semibold">{store.supportEmail}</dd></div>}
                 {store.supportPhone && <div><dt className="text-muted">{t('Teléfono')}</dt><dd className="font-semibold">{store.supportPhone}</dd></div>}

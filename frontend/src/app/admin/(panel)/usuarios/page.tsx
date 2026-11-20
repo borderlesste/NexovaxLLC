@@ -60,7 +60,7 @@ export default function UsersPage() {
       {edit && (
         <Dialog open onOpenChange={(o) => !o && setEdit(null)} title={edit.name} description={edit.email}>
           <p className="mb-2 flex items-center gap-2 font-bold"><Shield className="size-4 text-brand-600" /> {t('Roles y permisos')}</p>
-          <div className="grid gap-2 sm:grid-cols-2">{ROLES.map(([v, l]) => <Checkbox key={v} checked={edit.roles.includes(v)} onChange={(g) => toggle(v, g)} label={t(l)} />)}</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{ROLES.map(([v, l]) => <Checkbox key={v} checked={edit.roles.includes(v)} onChange={(g) => toggle(v, g)} label={t(l)} />)}</div>
           <div className="mt-5 flex items-center justify-between border-t border-line pt-4"><span className="text-sm">{t('Estado de la cuenta:')}{' '}<StatusBadge status={edit.status} /></span>
             {edit.status === 'SUSPENDED' ? <Button size="sm" onClick={() => setStatus('ACTIVE')}>{t('Reactivar')}</Button> : <Button size="sm" variant="danger" onClick={() => setStatus('SUSPENDED')}>{t('Suspender cuenta')}</Button>}</div>
         </Dialog>

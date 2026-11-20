@@ -32,7 +32,7 @@ export default function SharedLinksPage() {
       <h1 className="text-3xl font-extrabold">{t('Enlaces compartidos')}</h1>
       <p className="text-muted">{t('Los productos que compartiste con tu enlace, cuántas personas lo abrieron y si terminaron en una venta (compras pagadas hasta {d} días después de abrir tu enlace).', { d: d.windowDays })}</p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="card p-5"><p className="flex items-center gap-2 text-sm text-muted"><Link2 className="size-4" /> {t('Enlaces')}</p><p className="mt-1 text-2xl font-extrabold">{d.totals.links}</p></div>
         <div className="card p-5"><p className="flex items-center gap-2 text-sm text-muted"><MousePointerClick className="size-4" /> {t('Visitas')}</p><p className="mt-1 text-2xl font-extrabold">{d.totals.clicks}</p></div>
         <div className="card p-5"><p className="flex items-center gap-2 text-sm text-muted"><ShoppingBag className="size-4" /> {t('Con venta')}</p><p className="mt-1 text-2xl font-extrabold text-emerald-700" data-shares-with-sales>{d.totals.withSales}</p></div>

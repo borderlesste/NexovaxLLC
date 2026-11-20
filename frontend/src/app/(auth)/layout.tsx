@@ -16,7 +16,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             <span className="hidden h-8 w-px bg-line sm:block" />
             <LanguageSwitcher />
             <span className="hidden h-8 w-px bg-line sm:block" />
-            <Link href="/vendedor/registro" className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-brand-50 px-3 py-2.5 font-semibold text-brand-700 hover:bg-brand-100 sm:px-4"><Store className="size-5" /> {t('Vender en NEXOVAX')}</Link>
+            <Link href="/vendedor/registro" aria-label={t('Vender en NEXOVAX')} className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-brand-50 px-3 py-2.5 font-semibold text-brand-700 hover:bg-brand-100 sm:px-4"><Store className="size-5" /> <span className="hidden sm:inline">{t('Vender en NEXOVAX')}</span></Link>
           </nav>
         </div>
       </header>

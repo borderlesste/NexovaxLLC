@@ -60,7 +60,7 @@ export function RefundWithoutReturn({ order }: { order: any }) {
               </Select>
             </div>
           ))}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label={t('Motivo')} required>
               <Select value={reason} onChange={(e) => setReason(e.target.value)}>
                 {(reasons.data ?? []).map((r: any) => <option key={r.code} value={r.code}>{getLocale() === 'en' && r.labelEn ? r.labelEn : t(r.label)}</option>)}

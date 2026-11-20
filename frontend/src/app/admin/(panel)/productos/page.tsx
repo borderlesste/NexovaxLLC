@@ -58,7 +58,7 @@ function AdminProducts() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Productos') }]} title={t('Productos')} description={t('Administra el catálogo de productos de todos los vendedores.')} actions={<Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar')}</Button>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Productos registrados')} value={c?.total ?? '—'} icon={<Box />} hint={t('en todo el marketplace')} />
         <StatCard label={t('Publicados')} value={c?.active ?? '—'} icon={<Check />} tone="green" hint={t('activos en catálogo')} />
         <StatCard label={t('En revisión')} value={c?.pending ?? '—'} icon={<Clock />} hint={t('pendientes de moderación')} />

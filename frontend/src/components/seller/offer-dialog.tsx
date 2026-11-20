@@ -52,7 +52,7 @@ export function OfferDialog({ product, onClose }: { product: { id: string; title
           {q.data.availableAt && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t('Ya enviaste una oferta de este producto esta semana. Podrás enviar otra desde el {d}.', { d: fmtDateTime(q.data.availableAt) })}</p>}
           {!q.data.product.active && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t('El producto debe estar publicado para enviar una oferta.')}</p>}
           <Field label={t('Enviar a')} required>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {AUD.map(([v, l]) => (
                 <label key={v} className={`flex cursor-pointer flex-col rounded-xl border p-3 text-sm ${audience === v ? 'border-brand-600 bg-brand-50' : 'border-line'}`}>
                   <span className="flex items-center gap-2 font-semibold"><input type="radio" checked={audience === v} onChange={() => setAudience(v)} /> {t(l)}</span>
@@ -69,7 +69,7 @@ export function OfferDialog({ product, onClose }: { product: { id: string; title
             </Select>
           </Field>
           {coupon === 'NEW' && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label={t('Descuento (%)')} required><Input type="number" min={1} max={90} step="1" value={pct} onChange={(e) => setPct(e.target.value)} data-offer-pct /></Field>
               <Field label={t('Válido por (días)')} required><Input type="number" min={1} max={30} step="1" value={days} onChange={(e) => setDays(e.target.value)} /></Field>
               <p className="text-xs text-muted sm:col-span-2">{t('Se crea un código único, válido una vez por cliente y solo para este producto. El descuento lo financia tu tienda.')}</p>
@@ -92,7 +92,7 @@ export function OfferCampaigns() {
   return (
     <div className="card mt-5" data-offer-campaigns>
       <div className="border-b border-line px-5 py-4"><p className="font-bold">{t('Ofertas enviadas')}</p><p className="text-sm text-muted">{t('Resultados en totales: cuántas personas recibieron la oferta y cuántas compraron con el cupón.')}</p></div>
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto"><table className="w-full text-sm">
         <thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('Fecha')}</th><th>{t('Producto')}</th><th>{t('Cupón')}</th><th>{t('Enviado a')}</th><th>{t('Compraron')}</th><th>{t('Ventas')}</th></tr></thead>
         <tbody className="divide-y divide-line">
           {q.data.map((c) => (
@@ -106,7 +106,7 @@ export function OfferCampaigns() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   );
 }

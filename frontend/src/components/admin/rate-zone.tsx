@@ -21,7 +21,7 @@ export function RateZone({ rate, onChange }: { rate: any; onChange: (patch: Reco
   const geo = useCountryGeo(single);
   const regions: string[] = rate.regions ?? [];
   return (
-    <div className="grid gap-3 sm:col-span-full sm:grid-cols-[260px_1fr]" data-rate-zone>
+    <div className="grid grid-cols-1 gap-3 sm:col-span-full sm:grid-cols-[260px_1fr]" data-rate-zone>
       <Field label={t('Zona')}>
         <Select value={zone} onChange={(e) => onChange({ zone: e.target.value, ...(e.target.value === 'COUNTRIES' ? {} : { countries: undefined, regions: undefined }) })} data-zone>
           {(Object.keys(ZONE_LABEL) as Zone[]).map((z) => <option key={z} value={z}>{t(ZONE_LABEL[z])}</option>)}

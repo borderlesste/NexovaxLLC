@@ -82,7 +82,7 @@ export default function PayoutMethodsPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Configuración') }, { label: t('Métodos de cobro') }]} title={t('Métodos de cobro')} description={t('Registra uno o más métodos para recibir los retiros de tus fondos.')} />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="space-y-5">
           <Card>
             <CardHeader icon={<Plus />} title={t('Agregar nuevo método de cobro')} subtitle={t('Configura una cuenta bancaria, PayPal, Wise, Payoneer, Zelle o Skrill para recibir tus fondos.')} />
@@ -95,7 +95,7 @@ export default function PayoutMethodsPage() {
                   </button>
                 ))}
               </div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label={t('Nombre del titular')} required><Input rule="businessName" value={f.holderName} onChange={set('holderName')} placeholder={t('Ej. Juan Pérez García')} /></Field>
                 {type === 'BANK_ACCOUNT' ? (
                   <>
@@ -124,7 +124,7 @@ export default function PayoutMethodsPage() {
           <Card>
             <CardHeader title={t('Métodos guardados')} subtitle={t('Administra tus métodos de cobro y elige el principal.')} />
             {accounts.data?.length ? (
-              <div className="grid gap-3 p-5 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-2 2xl:grid-cols-3">
                 {accounts.data.map((a: any) => (
                   <div key={a.id} className={cn('rounded-xl border p-4', a.metadata?.is_primary ? 'border-brand-400 ring-1 ring-brand-200' : 'border-line')}>
                     <div className="flex items-start justify-between">

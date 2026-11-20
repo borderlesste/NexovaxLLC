@@ -162,7 +162,7 @@ export function ReturnDetail({ role, id }: { role: ReturnRole; id: string }) {
         <Actions role={role} d={d} busy={busy} setDialog={setDialog} run={run} />
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
           <Card>
             <CardHeader title={t('Productos')} subtitle={t('{n} producto(s) en esta devolución', { n: d.items.length })} />
@@ -341,7 +341,7 @@ function ShipDialog({ open, busy, onClose, onSubmit }: { open: boolean; busy: bo
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()} title={t('Registrar el envío de la devolución')} description={t('Indica con qué transportadora enviaste el paquete y el número de guía.')}
       footer={<><Button variant="outline" onClick={onClose}>{t('Cancelar')}</Button><Button loading={busy} disabled={carrier.trim().length < 2} onClick={() => onSubmit({ carrier: carrier.trim(), trackingNumber: tracking.trim() || undefined })}><Truck /> {t('Guardar')}</Button></>}>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={t('Transportadora')} required><Input rule="businessName" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t('Ej. USPS, DHL, FedEx')} maxLength={80} /></Field>
         <Field label={t('Número de guía')} hint={t('(recomendado)')}><Input rule="trackingNumber" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Ej. 9400111899223" /></Field>
       </div>
@@ -370,7 +370,7 @@ function InspectDialog({ open, d, busy, onClose, onSubmit }: { open: boolean; d:
           return (
             <div key={i.id} className="rounded-lg border border-line p-3 text-sm" data-inspect-item>
               <p className="font-bold">{i.title} <span className="font-normal text-muted">· {t('Recibidas')}: {i.received}</span></p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label={t('Estado del producto')}><Select value={r.condition} onChange={(e) => set(i.id, 'condition', e.target.value)}>{CONDITIONS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</Select></Field>
                 <Field label={t('Unidades aceptadas')}><Select value={String(r.accepted)} onChange={(e) => set(i.id, 'accepted', Number(e.target.value))} data-inspect="accepted">{Array.from({ length: i.received + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
                 <Field label={t('Reponer al inventario')}><Select value={String(r.restock)} onChange={(e) => set(i.id, 'restock', Number(e.target.value))} data-inspect="restock">{Array.from({ length: r.accepted + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}</Select></Field>

@@ -42,7 +42,7 @@ export function ChargebackPolicyCard() {
     <div className="rounded-xl border border-line p-4" data-chargeback={k}>
       <p className="font-bold">{title}</p>
       <p className="text-xs text-muted">{desc}</p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {PAYERS.map(([v, l]) => (
           <button key={v} type="button" onClick={() => setF({ ...f, [k]: { ...f[k], payer: v } })} data-payer={v} aria-pressed={f[k].payer === v}
             className={cn('h-10 rounded-lg border text-sm font-semibold', f[k].payer === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-line')}>{t(l)}</button>

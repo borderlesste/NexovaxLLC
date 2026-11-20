@@ -40,7 +40,7 @@ function PolicyForm({ value, onSave, busy, store }: { value: Policy; onSave: (p:
   const dirty = JSON.stringify(f) !== JSON.stringify(value);
   return (
     <div className="space-y-4 p-5" data-return-policy-form>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label={t('Plazo (días desde la entrega)')}><Input rule="integer" value={String(f.windowDays)} onChange={(e) => setF({ ...f, windowDays: Math.min(Number(e.target.value.replace(/\D/g, '') || 0), 365) })} data-policy="windowDays" /></Field>
         <Field label={t('Etiqueta de devolución')}>
           <Select value={f.labelPayer} onChange={(e) => setF({ ...f, labelPayer: e.target.value as Policy['labelPayer'] })} data-policy="labelPayer">

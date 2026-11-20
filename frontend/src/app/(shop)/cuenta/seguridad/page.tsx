@@ -32,7 +32,7 @@ export default function SecurityPage() {
     <div>
       <h1 className="text-3xl font-extrabold">{t('Seguridad')}</h1>
       <p className="text-muted">{t('Cambia tu contraseña y refuerza la seguridad de tu cuenta.')}</p>
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card p-6">
           <h2 className="flex items-center gap-2 text-lg font-bold"><Lock className="size-5 text-brand-600" /> {t('Cambiar contraseña')}</h2>
           <Field label={t('Nueva contraseña')} className="mt-4"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" /></Field>

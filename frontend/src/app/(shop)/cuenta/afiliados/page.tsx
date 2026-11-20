@@ -58,7 +58,7 @@ export default function AffiliatePage() {
     <div data-affiliate-dashboard>
       <h1 className="text-3xl font-extrabold">{t('Afiliados')}</h1>
       <p className="text-muted">{t('Recomienda productos con tu enlace y gana una comisión por cada compra. La paga la tienda; la plataforma te la transfiere.')}</p>
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="card p-5"><p className="text-sm text-muted">{t('Pendiente')}</p><p className="mt-1 text-2xl font-extrabold" data-aff-pending>{money(d.balances.pending)}</p><p className="text-xs text-muted">{t('Hasta la entrega y el plazo de devolución')}</p></div>
         <div className="card p-5"><p className="text-sm text-muted">{t('Disponible para cobrar')}</p><p className="mt-1 text-2xl font-extrabold text-brand-700" data-aff-available>{money(d.balances.available)}</p><p className="text-xs text-muted">{t('Te lo pagamos a tu método de cobro')}</p></div>
         <div className="card p-5"><p className="text-sm text-muted">{t('Cobrado')}</p><p className="mt-1 text-2xl font-extrabold text-emerald-700">{money(d.balances.paid)}</p></div>
@@ -107,7 +107,7 @@ export default function AffiliatePage() {
       <div className="card mt-6 p-5" data-aff-payout>
         <p className="flex items-center gap-2 font-bold"><Landmark className="size-5 text-brand-600" /> {t('Método de cobro')}</p>
         <p className="text-sm text-muted">{t('Dónde te enviamos tus comisiones disponibles.')}</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('Cobrar por')} required>
             <Select value={p.method} onChange={(e) => setP({ ...p, method: e.target.value })} data-aff-method>
               <option value="PAYPAL">PayPal</option>

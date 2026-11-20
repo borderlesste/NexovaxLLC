@@ -161,7 +161,7 @@ export default function CheckoutPage() {
         <Steps current={method ? 2 : 1} />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_440px]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_440px]">
         <div className="space-y-5">
           {/* address */}
           <section className="card p-5">
@@ -237,7 +237,7 @@ export default function CheckoutPage() {
               <CreditCard className="mt-0.5 size-6 text-brand-600" />
               <div><h2 className="text-lg font-bold">{t('Método de pago')}</h2><p className="text-sm text-muted">{t('Selecciona tu forma de pago.')}</p></div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {q.paymentMethods.map((m: any) => {
                 const Icon = PAY_ICONS[m.code] ?? CreditCard;
                 const sel = method === m.code;
@@ -284,7 +284,7 @@ export default function CheckoutPage() {
               </p>
             )}
             {method === 'CARD' && !stripeKey && (
-              <div className="mt-5 grid gap-4 sm:grid-cols-[1.2fr_0.8fr_0.6fr]">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-[1.2fr_0.8fr_0.6fr]">
                 <Field label={t('Número de tarjeta')} required className="sm:col-span-3">
                   <Input inputMode="numeric" autoComplete="cc-number" placeholder="1234 5678 9012 3456" value={card.number} onChange={(e) => setCard({ ...card, number: fmtCard(e.target.value) })} />
                 </Field>

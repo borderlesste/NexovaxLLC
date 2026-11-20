@@ -22,7 +22,7 @@ function Orders() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Pedidos') }]} title={t('Pedidos')} description={t('Prepara, despacha y da seguimiento a los pedidos de tu tienda.')} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Pedidos totales')} value={c?.total ?? '—'} icon={<ShoppingCart />} />
         <StatCard label={t('Por preparar')} value={c?.to_prepare ?? '—'} icon={<Clock />} tone="amber" />
         <StatCard label={t('En preparación')} value={c?.preparing ?? '—'} icon={<Package />} />

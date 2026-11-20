@@ -61,7 +61,7 @@ export default function CategoriesAdminPage() {
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Categorías') }]} title={t('Categorías')} description={t('Administra las categorías del marketplace. Organiza el catálogo, crea subcategorías y controla su visibilidad.')}
         actions={<><Button variant="secondary" onClick={exportCsv}><Download /> {t('Exportar')}</Button>{isAdmin && <Button onClick={() => setDlg({ name: '', parentId: '', status: 'ACTIVE', sortOrder: '', taxClass: 'STANDARD' })}><Plus /> {t('Crear categoría')}</Button>}</>} />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label={t('Total de categorías')} value={all.length} icon={<Layers />} />
         <StatCard label={t('Categorías activas')} value={all.filter((c: any) => c.status === 'ACTIVE').length} icon={<Check />} tone="green" />
         <StatCard label={t('Categorías principales')} value={roots.length} icon={<Star />} />
@@ -101,7 +101,7 @@ export default function CategoriesAdminPage() {
           </div>
         )}
       </Card>
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader icon={<Star />} title={t('Subcategorías destacadas')} subtitle={t('Subcategorías con mayor número de productos')} />
           <ul className="divide-y divide-line">{topSubs.map((s: any, i: number) => (

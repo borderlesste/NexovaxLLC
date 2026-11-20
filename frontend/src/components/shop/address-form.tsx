@@ -58,7 +58,7 @@ export function AddressDialog({ open, onOpenChange, address, onSaved, defaultCou
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={address ? t('Editar dirección') : t('Agregar nueva dirección')} size="lg"
       footer={<><Button variant="secondary" onClick={() => onOpenChange(false)}>{t('Cancelar')}</Button><Button onClick={save} loading={saving}>{t('Guardar dirección')}</Button></>}>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={t('Nombre de la dirección')}>
           <Select value={f.label} onChange={(e) => set('label', e.target.value)}>
             {[t('Casa'), t('Trabajo'), t('Otra')].map((o) => <option key={o}>{o}</option>)}

@@ -83,7 +83,7 @@ function NewReturn() {
       {group && !group.eligible ? (
         <Card className="mt-5 p-6"><p className="flex items-center gap-2 font-semibold"><AlertTriangle className="size-5 text-amber-500" /> {t(WHY[group.reason] ?? 'Este pedido no admite devoluciones.')}</p></Card>
       ) : group ? (
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-4">
             <Card className="divide-y divide-line">
               {group.items.map((i: any) => {
@@ -105,7 +105,7 @@ function NewReturn() {
                       </Field>
                     </div>
                     {v.qty > 0 && (
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <Field label={t('Motivo')} required>
                           <Select value={v.reason} onChange={(e) => set(i.orderItemId, { reason: e.target.value })} data-return-reason>
                             <option value="">{t('Selecciona un motivo')}</option>

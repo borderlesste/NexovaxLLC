@@ -57,7 +57,7 @@ export default function AdminDashboard() {
         <StatCard label={t('Vendedores activos')} value={d.kpis.activeSellers} icon={<Users />} hint={t('de {a} registrados', { a: d.kpis.totalSellers })} />
         <StatCard label={t('Productos publicados')} value={d.kpis.activeProducts.toLocaleString(getIntlLocale())} icon={<Package />} hint={t('de {a} en catálogo', { a: d.kpis.totalProducts })} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title={full ? t('Resumen de ventas') : t('Pedidos por día')} subtitle={full ? t('Ingresos registrados durante el período') : t('Pedidos realizados durante el período')} action={<Pills value={String(days)} onChange={(v) => setDays(Number(v))} options={[{ value: '7', label: t('7 días') }, { value: '30', label: t('30 días') }, { value: '90', label: t('90 días') }]} />} />
           <div className="p-4">{full ? <AreaTrend data={d.series} /> : <AreaTrend data={d.series} yKey="orders" currency={false} />}</div>
@@ -69,14 +69,14 @@ export default function AdminDashboard() {
           </div>
         </Card>
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title={t('Pedidos recientes')} subtitle={t('Últimas transacciones del marketplace')} action={<Link href="/admin/pedidos" className="text-sm font-semibold text-brand-700">{t('Ver todos →')}</Link>} />
           {d.recentOrders.length ? (
-            <table className="w-full text-sm"><thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('Pedido')}</th><th>{t('Cliente')}</th><th>{t('Fecha')}</th><th>{t('Total')}</th><th>{t('Estado')}</th><th /></tr></thead>
+            <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('Pedido')}</th><th>{t('Cliente')}</th><th>{t('Fecha')}</th><th>{t('Total')}</th><th>{t('Estado')}</th><th /></tr></thead>
               <tbody className="divide-y divide-line">{d.recentOrders.map((o: any) => (
                 <tr key={o.id}><td className="px-5 py-3 font-bold">#{o.number}</td><td>{o.customer}</td><td className="text-muted">{fmtDate(o.placed_at)}</td><td className="font-semibold">{money(o.total)}</td><td><StatusBadge status={o.status} /></td><td className="pr-5 text-right"><Link href={`/admin/pedidos/${o.id}`} className="font-semibold text-brand-700">{t('Ver detalle')}</Link></td></tr>
-              ))}</tbody></table>
+              ))}</tbody></table></div>
           ) : <Empty icon={<ShoppingCart />} title={t('Aún no hay pedidos')} />}
         </Card>
         <Card>

@@ -21,7 +21,7 @@ export default function SellersPage() {
         <div><h1 className="text-3xl font-extrabold">{t('Tiendas del marketplace')}</h1><p className="text-muted">{t('Descubre vendedores verificados de todo el mundo.')}</p></div>
         <Input icon={<Search />} placeholder={t('Buscar tienda…')} value={q} onChange={(e) => setQ(e.target.value)} className="w-72" />
       </div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {sellers.isLoading && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
         {sellers.data?.map((s: any) => (
           <Link key={s.id} href={`/tienda/${s.slug}`} className="card flex flex-col items-center p-6 text-center transition hover:-translate-y-0.5 hover:shadow-lg">

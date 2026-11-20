@@ -61,7 +61,7 @@ function Inventory() {
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Inventario') }]} title={t('Inventario')} description={t('Gestiona el stock de tus productos y variantes, controla niveles mínimos y movimientos de inventario.')}
         actions={<Button variant="secondary" onClick={() => exportCsv(d.items)}><Download /> {t('Exportar')}</Button>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('SKUs activos')} value={num(d.summary.activeSkus)} icon={<Box />} />
         <StatCard label={t('Bajo stock')} value={num(d.summary.low)} icon={<AlertTriangle />} tone="amber" />
         <StatCard label={t('Sin stock')} value={num(d.summary.out)} icon={<Ban />} tone="red" />
@@ -94,7 +94,7 @@ function Inventory() {
           </div>
         )}
       </Card>
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card><CardHeader title={t('Tendencia de stock')} subtitle={t('Evolución del stock total de tus SKUs (30 días)')} /><div className="p-4"><AreaTrend data={d.trend} yKey="stock" currency={false} /></div></Card>
         <Card>
           <CardHeader title={t('Movimientos recientes')} subtitle={t('Últimos ajustes y cambios de inventario')} />
@@ -114,7 +114,7 @@ function Inventory() {
       </div>
       <Dialog open={!!adj} onOpenChange={(o) => !o && setAdj(null)} title={t('Ajustar inventario')} description={adj ? `${adj.title} · ${adj.sku} · ${t('actual {a} (reservado {b})', { a: num(adj.onHand), b: num(adj.reserved) })}` : ''}
         footer={<><Button variant="secondary" onClick={() => setAdj(null)}>{t('Cancelar')}</Button><Button onClick={save} loading={busy}>{t('Guardar ajuste')}</Button></>}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('Tipo de ajuste')}><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}><option value="ADD">{t('Ingreso de mercancía')}</option><option value="REMOVE">{t('Salida (daño, pérdida…)')}</option><option value="SET">{t('Fijar stock exacto')}</option></Select></Field>
           <Field label={form.mode === 'SET' ? t('Nuevo stock') : t('Cantidad')}><Input rule="integer" inputMode="numeric" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value.replace(/\D/g, '') })} /></Field>
           {form.mode === 'REMOVE' && <Field label={t('Motivo')}><Select value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}><option value="DAMAGE">{t('Producto dañado')}</option><option value="LOSS">{t('Pérdida')}</option><option value="MANUAL_ADJUSTMENT">{t('Corrección')}</option></Select></Field>}

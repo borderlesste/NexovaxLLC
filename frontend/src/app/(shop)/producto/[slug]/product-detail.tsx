@@ -91,8 +91,8 @@ export function ProductDetail({ initial }: { initial: any }) {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-5 lg:px-8">
       <Breadcrumbs items={[...p.breadcrumbs.map((b: any) => ({ label: b.name, href: `/catalogo/categorias/${b.slug}` })), { label: p.title }]} />
-      <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
           {/* gallery */}
           <div className="flex gap-3">
             <div className="hidden w-20 shrink-0 flex-col gap-2 sm:flex">
@@ -127,7 +127,7 @@ export function ProductDetail({ initial }: { initial: any }) {
               <Badge tone="green"><Check className="size-3" /> {t('Producto publicado')}</Badge>
               <ShareButton product={p} className="ml-auto" />
             </div>
-            <h1 className="mt-3 text-3xl font-extrabold leading-tight">{p.title}</h1>
+            <h1 className="mt-3 break-words text-2xl font-extrabold leading-tight sm:text-3xl">{p.title}</h1>
             {p.shortDescription && <p className="mt-2 text-muted">{p.shortDescription}</p>}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
               <Stars value={p.rating} count={p.reviewCount} size="md" />
@@ -185,7 +185,7 @@ export function ProductDetail({ initial }: { initial: any }) {
                 </span>
               </div>
             </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Button size="lg" onClick={() => addToCart(false)} loading={cart.isPending} disabled={!variant || stock <= 0}><ShoppingCart /> {t('Agregar al carrito')}</Button>
               <Button size="lg" variant="outline" onClick={() => addToCart(true)} disabled={!variant || stock <= 0}><Zap /> {t('Comprar ahora')}</Button>
               {variant && stock <= 0 && <StockAlertButton productId={p.id} variantId={p.variants?.length > 1 ? variant.id : null} slug={p.slug} />}
@@ -229,7 +229,7 @@ export function ProductDetail({ initial }: { initial: any }) {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         <div className="card">
           <Segmented
             className="px-3"
@@ -246,21 +246,21 @@ export function ProductDetail({ initial }: { initial: any }) {
             {tab === 'desc' && (
               <div>
                 <h2 className="text-xl font-bold">{t('Descripción del producto')}</h2>
-                <p className="mt-3 whitespace-pre-line leading-relaxed text-ink/90">{p.description}</p>
+                <p className="mt-3 whitespace-pre-line break-words leading-relaxed text-ink/90">{p.description}</p>
               </div>
             )}
             {tab === 'specs' && (
               p.specifications.length ? (
-                <dl className="grid gap-x-6 sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
                   {p.specifications.map((s: any) => (
-                    <div key={s.code} className="flex justify-between gap-4 border-b border-line py-2.5 text-sm"><dt className="text-muted">{s.name}</dt><dd className="font-semibold">{s.value}</dd></div>
+                    <div key={s.code} className="flex justify-between gap-4 border-b border-line py-2.5 text-sm"><dt className="shrink-0 text-muted">{s.name}</dt><dd className="min-w-0 break-words text-right font-semibold">{s.value}</dd></div>
                   ))}
                   {p.variants[0]?.sku && <div className="flex justify-between gap-4 border-b border-line py-2.5 text-sm"><dt className="text-muted">{t('SKU')}</dt><dd className="font-semibold">{variant?.sku ?? p.variants[0].sku}</dd></div>}
                 </dl>
               ) : <Empty title={t('Sin especificaciones')} description={t('El vendedor no agregó especificaciones técnicas.')} />
             )}
             {tab === 'reviews' && (
-              <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
                 <div>
                   <p className="text-4xl font-extrabold">{p.rating ? p.rating.toFixed(1) : '—'}</p>
                   <Stars value={p.rating} count={p.reviewCount} size="md" />
@@ -278,8 +278,8 @@ export function ProductDetail({ initial }: { initial: any }) {
                   {reviews.data?.items?.length ? reviews.data.items.map((r: any) => (
                     <div key={r.id} className="border-b border-line pb-4">
                       <div className="flex items-center justify-between"><Stars value={r.rating} /><span className="text-xs text-muted">{fmtDate(r.createdAt)}</span></div>
-                      {r.title && <p className="mt-1 font-semibold">{r.title}</p>}
-                      {r.body && <p className="mt-1 text-sm text-ink/90">{r.body}</p>}
+                      {r.title && <p className="mt-1 break-words font-semibold">{r.title}</p>}
+                      {r.body && <p className="mt-1 whitespace-pre-line break-words text-sm text-ink/90">{r.body}</p>}
                       <p className="mt-1 text-xs text-muted">{r.author} {t('· Compra verificada')}</p>
                     </div>
                   )) : <Empty title={t('Aún no hay opiniones')} description={t('Las opiniones provienen de compradores que recibieron el producto.')} />}

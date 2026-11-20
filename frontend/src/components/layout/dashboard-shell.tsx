@@ -85,9 +85,9 @@ export function DashboardShell({ title, subtitle, nav, children, footer }: { tit
 export function PageHeader({ crumbs, title, description, actions }: { crumbs?: { label: string; href?: string }[]; title: string; description?: string; actions?: React.ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
+      <div className="min-w-0">
         {crumbs && (
-          <nav className="mb-1 flex items-center gap-1.5 text-xs text-muted">
+          <nav className="mb-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
             {crumbs.map((c, i) => (
               <span key={i} className="flex items-center gap-1.5">
                 {i > 0 && <ChevronRight className="size-3" />}
@@ -96,7 +96,7 @@ export function PageHeader({ crumbs, title, description, actions }: { crumbs?: {
             ))}
           </nav>
         )}
-        <h1 className="text-[28px] font-extrabold leading-tight tracking-tight">{t(title)}</h1>
+        <h1 className="break-words text-2xl font-extrabold leading-tight tracking-tight sm:text-[28px]">{t(title)}</h1>
         {description && <p className="mt-1 text-sm text-muted">{t(description)}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

@@ -79,7 +79,7 @@ export function DisputeResponseDialog({ incidentId, onClose, onDone }: { inciden
               <Button size="sm" variant={mode === 'accept' ? 'primary' : 'ghost'} onClick={() => setMode('accept')} data-dispute-mode-accept>{t('Aceptar la disputa')}</Button>
             </div>
           )}
-          <div className="grid gap-3 rounded-xl bg-surface p-4 text-sm sm:grid-cols-2" data-dispute-facts>
+          <div className="grid grid-cols-1 gap-3 rounded-xl bg-surface p-4 text-sm sm:grid-cols-2" data-dispute-facts>
             <p><span className="text-muted">{t('Cliente')}:</span> <b>{d.order?.customerName}</b> · {d.order?.customerEmail}</p>
             <p><span className="text-muted">{t('Motivo')}:</span> <b>{d.reason?.replace(/_/g, ' ') ?? '—'}</b></p>
             <p className="sm:col-span-2"><span className="text-muted">{t('Dirección de envío')}:</span> {d.order?.shippingAddress || '—'}</p>
@@ -94,7 +94,7 @@ export function DisputeResponseDialog({ incidentId, onClose, onDone }: { inciden
           </div>
           {d.canRespond && mode === 'respond' && (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Field label={t('Transportadora')}><Input value={f.carrier} onChange={(e) => setF({ ...f, carrier: e.target.value })} /></Field>
                 <Field label={t('Número de seguimiento')}><Input value={f.trackingNumber} onChange={(e) => setF({ ...f, trackingNumber: e.target.value })} /></Field>
                 <Field label={t('Fecha de envío')}><Input type="date" value={f.shippingDate} onChange={(e) => setF({ ...f, shippingDate: e.target.value })} /></Field>

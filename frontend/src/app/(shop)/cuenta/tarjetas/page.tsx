@@ -58,7 +58,7 @@ export default function SavedCardsPage() {
       ) : !cards.length ? (
         <div className="card mt-6"><Empty icon={<CreditCard />} title={t('No tienes tarjetas guardadas')} description={t('Agrega una aquí o marca «Guardar esta tarjeta» al pagar.')} action={stripePromise && <Button onClick={() => setAdding(true)}><Plus /> {t('Agregar tarjeta')}</Button>} /></div>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2" data-cards>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2" data-cards>
           {cards.map((c) => (
             <div key={c.id} className={cn('card p-5', c.isDefault && 'ring-2 ring-brand-200')} data-card={c.last4}>
               <div className="flex items-start justify-between">

@@ -59,21 +59,21 @@ export default function SellerOnboardingPage() {
   };
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-8 lg:px-8">
-      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="card p-6 sm:p-8">
           <h1 className="text-3xl font-extrabold">{t('Abre tu tienda en NEXOVAX')}</h1>
           <p className="mt-1 text-muted">{t('Completa tus datos. Verificaremos tu información antes de activar la tienda.')}</p>
           {!session && <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm">{t('Necesitas una cuenta.')}{' '}<Link href="/auth/registrarse?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('Crea tu cuenta')}</Link> o <Link href="/auth/iniciar-sesion?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('inicia sesión')}</Link>.</p>}
           {cfg.data && !cfg.data.sellerRegistration && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('El registro de nuevos vendedores está cerrado temporalmente.')}</p>}
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><Store className="size-5 text-brand-600" /> {t('Tu tienda')}</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} placeholder={t('Ej. Urban Style Co.')} /></Field>
             <Field label={t('Descripción corta')}><Input value={f.shortDescription} onChange={set('shortDescription')} placeholder={t('Qué vendes en una frase')} maxLength={200} /></Field>
             <Field label={t('Correo de atención')}><Input rule="email" type="email" value={f.supportEmail} onChange={set('supportEmail')} placeholder={t('ventas@mitienda.com')} /></Field>
             <Field label={t('Teléfono de atención')}><PhoneInput countryCode={f.countryCode || geo.countryCode} value={f.supportPhone} onChange={(v) => setF((s) => ({ ...s, supportPhone: v }))} /></Field>
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')}</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('Nombre o razón social')} required><Input rule="businessName" value={f.legalName} onChange={set('legalName')} placeholder={t('Ej. Urban Style LLC')} /></Field>
             <Field label={t('Tipo de entidad')} required>
               <Select value={f.entityType} onChange={set('entityType')}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select>
@@ -83,7 +83,7 @@ export default function SellerOnboardingPage() {
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><MapPin className="size-5 text-brand-600" /> {t('Dirección de despacho')}</h2>
           <p className="text-sm text-muted">{t('Desde aquí se calculan las tarifas de envío y se generan las etiquetas.')}</p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('Persona de contacto')} required><Input rule="personName" value={f.contactName} onChange={set('contactName')} placeholder={me?.displayName ?? ''} /></Field>
             <Field label={t('Teléfono')} required><PhoneInput countryCode={geo.countryCode} value={f.phone} onChange={(v) => setF((s) => ({ ...s, phone: v }))} required /></Field>
             <Field label={t('Dirección')} required className="sm:col-span-2"><Input value={f.line1} onChange={set('line1')} placeholder={t('Calle y número')} /></Field>

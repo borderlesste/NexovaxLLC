@@ -91,7 +91,7 @@ function ReportForm() {
         <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600"><AlertCircle className="size-9" /></div>
         <div><h1 className="text-3xl font-extrabold sm:text-4xl">{t('Reportar un problema')}</h1><p className="mt-1 max-w-3xl text-muted">{t('Cualquier persona puede notificarnos incidentes, fallas técnicas, comportamientos abusivos, problemas de pago o errores en el marketplace.')}</p></div>
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_520px]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_520px]">
         <section className="card p-6">
           {done ? (
             <div className="py-10 text-center">
@@ -109,7 +109,7 @@ function ReportForm() {
             <>
               <div className="flex items-start gap-3"><ClipboardList className="size-8 text-brand-600" /><div><h2 className="text-xl font-bold">{t('Completa el formulario')}</h2><p className="text-sm text-muted">{t('Bríndanos la mayor cantidad de detalles posible para poder ayudarte de forma más rápida y efectiva.')}</p></div></div>
               {!session && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('Para enviar un reporte necesitas una cuenta.')}{' '}<Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold underline">{t('Inicia sesión')}</Link> {t('o')} <Link href="/auth/registrarse" className="font-semibold underline">{t('regístrate')}</Link>.</p>}
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label={t('Nombre completo')} required><Input icon={<User />} value={me?.displayName ?? ''} disabled placeholder={t('Ej. Juan Pérez')} /></Field>
                 <Field label={t('Correo electrónico')} required><Input icon={<Mail />} value={me?.email ?? ''} disabled placeholder={t('Ej. juan.perez@email.com')} /></Field>
                 <Field label={t('Tipo de problema')} required>
@@ -150,7 +150,7 @@ function ReportForm() {
                 <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" />
                 <span>{t('Acepto la')}{' '}<Link href="/ayuda#privacidad" className="text-brand-700 underline">{t('Política de privacidad')}</Link> {t('y autorizo a NEXOVAX a contactarme por correo electrónico para dar seguimiento a este reporte.')}{' '}<span className="text-red-500">*</span></span>
               </label>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Button size="lg" onClick={submit} loading={busy} disabled={!session}><Send /> {t('Enviar reporte')}</Button>
                 <Button size="lg" variant="outline" onClick={() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(f)); toast.success(t('Borrador guardado en este dispositivo.')); } catch { toast.error(t('No se pudo guardar el borrador.')); } }}>{t('Guardar borrador')}</Button>
               </div>
@@ -188,7 +188,7 @@ function ReportForm() {
           </div>
           <div className="rounded-[14px] bg-brand-50 p-5">
             <div className="flex items-start gap-3"><Headphones className="size-7 text-brand-600" /><div><p className="text-lg font-bold">{t('¿Necesitas más ayuda?')}</p><p className="text-sm text-muted">{t('También puedes consultar nuestra documentación o conocer los tiempos de atención.')}</p></div></div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Link href="/ayuda" className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><BookOpen className="size-6 text-brand-600" /><span><b className="block">{t('Centro de ayuda')}</b><span className="text-xs text-muted">{t('Guías, políticas y más.')}</span></span></Link>
               <div className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><Clock className="size-6 text-brand-600" /><span><b className="block">{t('Tiempo de respuesta')}</b><span className="font-bold text-brand-700">{t('24 – 48 horas')}</span></span></div>
             </div>
