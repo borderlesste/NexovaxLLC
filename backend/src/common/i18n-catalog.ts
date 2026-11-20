@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { map } from 'rxjs';
 import { requestLocale } from './i18n-errors';
+import { isEditableOption, translateVariants } from './variant-options-i18n';
 
 /**
  * Catalog taxonomy is stored in Spanish (categories, attribute names and options). For
@@ -58,7 +59,7 @@ function translateFrHt(v: any, l: 'fr' | 'ht', depth = 0): any {
         out.label = FRHT.get(val)![l];
         continue;
       }
-      if (typeof val === 'string' && FIELDS.has(k)) out[k] = name(val);
+      if (typeof val === 'string' && FIELDS.has(k) && !(k === 'name' && isEditableOption(v))) out[k] = name(val);
       else out[k] = translateFrHt(val, l, depth + 1);
     }
     return out;
@@ -77,7 +78,7 @@ function translate(v: any, depth = 0): any {
         out.value = (v as any).valueEn;
         continue;
       }
-      if (typeof val === 'string' && FIELDS.has(k)) out[k] = EN.get(val) ?? (val.includes(' · ') ? val.split(' · ').map((p) => EN.get(p) ?? p).join(' · ') : val);
+      if (typeof val === 'string' && FIELDS.has(k) && !(k === 'name' && isEditableOption(v))) out[k] = EN.get(val) ?? (val.includes(' · ') ? val.split(' · ').map((p) => EN.get(p) ?? p).join(' · ') : val);
       else out[k] = translate(val, depth + 1);
     }
     return out;
@@ -91,8 +92,9 @@ export class CatalogLocaleInterceptor implements NestInterceptor {
     const req = ctx.switchToHttp().getRequest();
     const l = requestLocale(req);
     const isObj = (b: any) => b && typeof b === 'object' && !Buffer.isBuffer(b);
-    if ((l === 'fr' || l === 'ht') && (FRHT.size || EN.size)) return next.handle().pipe(map((body) => (isObj(body) ? translateFrHt(body, l) : body)));
-    if (l !== 'en' || !EN.size) return next.handle();
-    return next.handle().pipe(map((body) => (isObj(body) ? translate(body) : body)));
+    // Variant words (Color, Rojo, Mediano...) first, while they are still the Spanish the seller typed.
+    if (l === 'fr' || l === 'ht') return next.handle().pipe(map((body) => (isObj(body) ? translateFrHt(translateVariants(body, l), l) : body)));
+    if (l !== 'en') return next.handle();
+    return next.handle().pipe(map((body) => (isObj(body) ? translate(translateVariants(body, 'en')) : body)));
   }
 }
