@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle, Check, CheckCircle2, Clock, Copy, CreditCard, Download, Headphones, MapPin, MessageSquare, Package, PackageCheck, Phone, RefreshCw, RotateCcw, Star, Store, Tag, Truck, User, Zap,
+  AlertCircle, Check, CheckCircle2, Clock, Copy, CreditCard, Download, FileText, Headphones, MapPin, MessageSquare, Package, PackageCheck, Phone, RefreshCw, RotateCcw, Star, Store, Tag, Truck, User, Zap,
 } from 'lucide-react';
 import { countryName, t } from '@/lib/i18n';
 import { cityLine } from '@/components/shop/geo-fields';
@@ -265,6 +265,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
             {order.totals.affiliate !== undefined && Number(order.totals.affiliate) > 0 && <div className="flex justify-between text-muted"><dt>{t('Comisión de afiliado')}</dt><dd>{money(order.totals.affiliate, order.currency)}</dd></div>}
             <div className="flex justify-between border-t border-line pt-2 text-base font-extrabold"><dt>{t('Total')}</dt><dd>{money(order.totals.total, order.currency)}</dd></div>
           </dl>
+          {role === 'customer' && <Button variant="outline" className="mt-4 w-full" asChild><Link href={`/cuenta/pedidos/${order.id}/recibo`} data-receipt-link><FileText /> {t('Ver recibo de compra')}</Link></Button>}
         </div>
         <div className="card p-5">
           <p className="text-lg font-bold">{t('Incidencias y mensajes')}</p>

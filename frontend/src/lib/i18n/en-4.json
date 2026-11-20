@@ -1262,5 +1262,17 @@
 "Podrás trabajar en estas secciones de la tienda:": "You’ll be able to work on these store sections:",
 "Aceptar invitación": "Accept invitation",
 "Esta invitación es para {a}, pero iniciaste sesión como {b}.": "This invitation is for {a}, but you’re signed in as {b}.",
-"Cerrar sesión y cambiar de cuenta": "Sign out and switch account"
+"Cerrar sesión y cambiar de cuenta": "Sign out and switch account",
+"Imprimir o guardar PDF": "Print or save as PDF",
+"Recibo de compra": "Purchase receipt",
+"Fecha del pedido": "Order date",
+"Fecha de pago": "Payment date",
+"Vendido por {store}": "Sold by {store}",
+"Cant.": "Qty",
+"Importe": "Amount",
+"Total pagado": "Total paid",
+"Este recibo es un comprobante de tu compra en {brand}. Cada tienda es responsable de los productos que vende y de su facturación fiscal.": "This receipt is proof of your purchase on {brand}. Each store is responsible for the products it sells and for its tax invoicing.",
+"Emitido el {date}": "Issued on {date}",
+"Ver recibo de compra": "View purchase receipt",
+"No encontramos este pedido.": "We couldn’t find this order."
 }

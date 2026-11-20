@@ -68,3 +68,22 @@
   font-size: 11px;
   fill: var(--color-muted);
 }
+
+/* Printing a page with a [data-print-area] (e.g. the purchase receipt) prints only that area. */
+@media print {
+  body:has([data-print-area]) * {
+    visibility: hidden;
+  }
+  body:has([data-print-area]) [data-print-area],
+  body:has([data-print-area]) [data-print-area] * {
+    visibility: visible;
+  }
+  body:has([data-print-area]) [data-print-area] {
+    position: absolute;
+    inset: 0 0 auto 0;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+}

@@ -2771,5 +2771,17 @@
 "Podrás trabajar en estas secciones de la tienda:": "Vous pourrez travailler dans ces sections de la boutique :",
 "Aceptar invitación": "Accepter l’invitation",
 "Esta invitación es para {a}, pero iniciaste sesión como {b}.": "Cette invitation est destinée à {a}, mais vous êtes connecté en tant que {b}.",
-"Cerrar sesión y cambiar de cuenta": "Se déconnecter et changer de compte"
+"Cerrar sesión y cambiar de cuenta": "Se déconnecter et changer de compte",
+"Imprimir o guardar PDF": "Imprimer ou enregistrer en PDF",
+"Recibo de compra": "Reçu d’achat",
+"Fecha del pedido": "Date de la commande",
+"Fecha de pago": "Date de paiement",
+"Vendido por {store}": "Vendu par {store}",
+"Cant.": "Qté",
+"Importe": "Montant",
+"Total pagado": "Total payé",
+"Este recibo es un comprobante de tu compra en {brand}. Cada tienda es responsable de los productos que vende y de su facturación fiscal.": "Ce reçu est la preuve de votre achat sur {brand}. Chaque boutique est responsable des produits qu’elle vend et de sa facturation fiscale.",
+"Emitido el {date}": "Émis le {date}",
+"Ver recibo de compra": "Voir le reçu d’achat",
+"No encontramos este pedido.": "Nous n’avons pas trouvé cette commande."
 }

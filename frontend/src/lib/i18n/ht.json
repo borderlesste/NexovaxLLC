@@ -2771,5 +2771,17 @@
 "Podrás trabajar en estas secciones de la tienda:": "W ap ka travay nan seksyon boutik sa yo:",
 "Aceptar invitación": "Aksepte envitasyon an",
 "Esta invitación es para {a}, pero iniciaste sesión como {b}.": "Envitasyon sa a se pou {a}, men ou konekte tankou {b}.",
-"Cerrar sesión y cambiar de cuenta": "Dekonekte epi chanje kont"
+"Cerrar sesión y cambiar de cuenta": "Dekonekte epi chanje kont",
+"Imprimir o guardar PDF": "Enprime oswa anrejistre an PDF",
+"Recibo de compra": "Resi acha",
+"Fecha del pedido": "Dat kòmand lan",
+"Fecha de pago": "Dat peman an",
+"Vendido por {store}": "Vann pa {store}",
+"Cant.": "Kantite",
+"Importe": "Montan",
+"Total pagado": "Total peye",
+"Este recibo es un comprobante de tu compra en {brand}. Cada tienda es responsable de los productos que vende y de su facturación fiscal.": "Resi sa a se prèv acha ou sou {brand}. Chak boutik responsab pwodwi li vann yo ak fakti fiskal li.",
+"Emitido el {date}": "Emèt {date}",
+"Ver recibo de compra": "Wè resi acha a",
+"No encontramos este pedido.": "Nou pa jwenn kòmand sa a."
 }

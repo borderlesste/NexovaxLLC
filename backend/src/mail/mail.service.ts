@@ -307,6 +307,7 @@ export class MailService {
       const t = tr(l);
       const country = countryName(o.country_code, l);
       const address = [o.recipient_name, o.line1, o.line2, [o.city, o.region, o.postal_code].filter(Boolean).join(', '), country].filter(Boolean);
+      const receiptUrl = `${webUrl()}/cuenta/pedidos/${orderId}/recibo`;
       await this.send({
         template: 'ORDER_CONFIRMED',
         dedupeKey: `order-confirmed:${orderId}`,
@@ -332,9 +333,10 @@ export class MailService {
               ],
               { boldLast: true },
             ) +
-            (address.length ? p(`<b>${t('Dirección de entrega', 'Shipping address', 'Adresse de livraison', 'Adrès livrezon')}</b><br>${address.map(esc).join('<br>')}`) : ''),
+            (address.length ? p(`<b>${t('Dirección de entrega', 'Shipping address', 'Adresse de livraison', 'Adrès livrezon')}</b><br>${address.map(esc).join('<br>')}`) : '') +
+            p(`<a href="${esc(receiptUrl)}" style="color:#0a6cf5">${t('Ver o descargar el recibo de compra', 'View or download your receipt', 'Voir ou télécharger le reçu', 'Wè oswa telechaje resi a')}</a>`),
           cta: { label: t('Ver mi pedido', 'View my order', 'Voir ma commande', 'Wè kòmand mwen'), url: `${webUrl()}/cuenta/pedidos/${orderId}` },
-          text: `${t('Pedido', 'Order', 'Commande', 'Kòmand')} ${ref}\n\n${itemsText(items, cur, l)}\n\n${t('Total pagado', 'Total paid', 'Total payé', 'Total peye')}: ${money(o.total, cur, l)}`,
+          text: `${t('Pedido', 'Order', 'Commande', 'Kòmand')} ${ref}\n\n${itemsText(items, cur, l)}\n\n${t('Total pagado', 'Total paid', 'Total payé', 'Total peye')}: ${money(o.total, cur, l)}\n\n${t('Recibo', 'Receipt', 'Reçu', 'Resi')}: ${receiptUrl}`,
         }),
       });
     }
