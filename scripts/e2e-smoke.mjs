@@ -53,6 +53,9 @@ const SCREENS = [
   ['/auth/registrarse', 'Crear cuenta'],
 ].filter(Boolean);
 
+// Cloudflare's Turnstile widget (sign-in / sign-up) logs its own CSP and anti-devtools messages: not ours.
+const fromTurnstile = (m) => (m.location()?.url ?? '').includes('challenges.cloudflare.com') || /^Refused to connect to 'data:,'|^%c%[do] font-size:0/.test(m.text());
+
 const browser = await chromium.launch();
 
 async function open(lang, who) {
@@ -61,7 +64,7 @@ async function open(lang, who) {
   const page = await ctx.newPage();
   const tag = `[${lang}${who ? ` ${who}` : ''}]`;
   page.on('pageerror', (e) => fail(`${tag} exception: ${e.message.slice(0, 200)} @ ${page.url()}`));
-  page.on('console', (m) => m.type() === 'error' && !/favicon|Failed to load resource|Download the React DevTools/.test(m.text()) && fail(`${tag} console: ${m.text().slice(0, 200)} @ ${page.url()}`));
+  page.on('console', (m) => m.type() === 'error' && !fromTurnstile(m) && !/favicon|Failed to load resource|Download the React DevTools/.test(m.text()) && fail(`${tag} console: ${m.text().slice(0, 200)} @ ${page.url()}`));
   page.on('response', (r) => r.url().includes('/api/') && r.status() >= 500 && fail(`${tag} API ${r.status()} ${r.url().replace(BASE, '')}`));
   return { ctx, page, tag };
 }
