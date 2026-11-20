@@ -44,6 +44,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const qc = useQueryClient();
   const existing = useQuery({ queryKey: ['seller-product', productId], queryFn: () => get(`/seller/products/${productId}`), enabled: !!productId });
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
+  const moderation = useQuery({ queryKey: ['public-config'], queryFn: () => get<any>('/config/public'), staleTime: 60_000 }).data?.productModeration === true;
   const [loaded, setLoaded] = useState(!productId);
   const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', taxClass: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
   const [options, setOptions] = useState<Opt[]>([]);
@@ -127,7 +128,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
       const r = productId ? await put(`/seller/products/${productId}`, payload(action)) : await post('/seller/products', payload(action));
       qc.invalidateQueries({ queryKey: ['seller-products'] });
       qc.setQueryData(['seller-product', r.id], r);
-      toast.success(action === 'SUBMIT' ? (r.status === 'ACTIVE' ? 'Producto publicado.' : t('Producto enviado a revisión.')) : 'Borrador guardado.');
+      toast.success(action === 'SUBMIT' ? (r.status === 'ACTIVE' ? t('Producto publicado.') : t('Producto enviado a revisión.')) : t('Borrador guardado.'));
       if (!productId) router.replace(`/vendedor/productos/${r.id}/editar`);
       else existing.refetch();
     } catch (e) {
@@ -349,7 +350,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
             <div className="space-y-3 p-5 text-sm">
               <div className="flex items-center justify-between"><span>{t('Estado actual')}</span>{product ? <StatusBadge status={product.status} /> : <StatusBadge status="DRAFT" />}</div>
               <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Globe className="size-4 text-muted" /> {t('Visibilidad')}</span><b>{t('Pública al aprobarse')}</b></div>
-              <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted">{t('“Publicar” envía el producto a moderación. Una vez aprobado aparecerá en el catálogo. Los cambios de precio y stock se aplican de inmediato.')}</p>
+              <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted">{moderation ? t('“Publicar” envía el producto a moderación. Una vez aprobado aparecerá en el catálogo. Los cambios de precio y stock se aplican de inmediato.') : t('“Publicar” muestra el producto en el catálogo al instante. Los cambios de precio y stock también se aplican de inmediato.')}</p>
               {variants[0]?.price && <p className="text-xs text-muted">{t('Precio desde:')}{' '}<b className="text-ink">{money(Math.min(...variants.filter((v) => v.active && v.price).map((v) => Number(v.price))))}</b></p>}
             </div>
           </Card>

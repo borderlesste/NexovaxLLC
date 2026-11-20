@@ -184,6 +184,7 @@ const EN: Record<string, string> = {
   'Indica el código postal.': 'Enter the postal code.',
   'El producto está archivado.': 'The product is archived.',
   'Agrega al menos una imagen antes de enviar a revisión.': 'Add at least one image before submitting for review.',
+  'Agrega al menos una imagen antes de publicar.': 'Add at least one image before publishing.',
   'Tu cuenta aún no está activa en el marketplace.': 'Your account is not active on the marketplace yet.',
   'Indica el motivo para el vendedor.': 'Enter the reason for the seller.',
   'Indica el motivo.': 'Enter the reason.',

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -146,22 +146,10 @@ export class ReturnsController {
     return this.returns.list(u, { as: 'seller', sellerId: requireSeller(u, h, 'ORDERS').id }, { status, page: page(p) });
   }
 
+  /** The single NexovaX policy every store follows (read-only for stores). */
   @Get('seller/returns/policy')
   async sellerPolicy(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    const sid = requireSeller(u, h, 'ORDERS').id;
-    return { own: await this.policies.seller(sid), marketplace: await this.policies.global() };
-  }
-
-  @Put('seller/returns/policy')
-  async setSellerPolicy(@CurrentUser() u: RequestUser, @Body() dto: ReturnPolicyDto, @Headers('x-seller-id') h?: string) {
-    const sid = requireSeller(u, h, 'ORDERS').id;
-    return { own: await this.policies.setSeller(u, sid, dto), marketplace: await this.policies.global() };
-  }
-
-  @Delete('seller/returns/policy')
-  async clearSellerPolicy(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
-    const sid = requireSeller(u, h, 'ORDERS').id;
-    await this.policies.clearSeller(sid);
+    requireSeller(u, h, 'ORDERS');
     return { own: null, marketplace: await this.policies.global() };
   }
 

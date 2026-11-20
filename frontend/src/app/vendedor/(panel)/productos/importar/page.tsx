@@ -278,7 +278,7 @@ export default function ImportProducts() {
 
           <Card className="mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2">
-              <Checkbox checked={submit} onChange={setSubmit} label={t('Enviar los productos nuevos a revisión para publicarlos')} />
+              <Checkbox checked={submit} onChange={setSubmit} label={t('Publicar los productos nuevos (necesitan al menos una imagen)')} />
               <p className="text-xs text-muted">
                 {submit ? t('Los que no tengan imágenes quedarán como borradores.') : t('Todos los productos nuevos quedarán como borradores; podrás revisarlos y enviarlos desde Productos.')}
                 {preview.summary.errors > 0 && ` ${t('Las filas con errores no se importan; corrígelas en el archivo y vuelve a subirlo.')}`}

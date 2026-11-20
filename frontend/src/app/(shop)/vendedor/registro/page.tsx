@@ -48,7 +48,7 @@ export default function SellerOnboardingPage() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         address: { contactName: f.contactName || me?.displayName, line1: f.line1, line2: f.line2 || undefined, countryCode: geo.countryCode, city: f.city, region: f.region || undefined, postalCode: f.postalCode || undefined, phone: f.phone },
       });
-      toast.success(t('¡Solicitud enviada! Te avisaremos cuando tu tienda sea aprobada.'));
+      toast.success(t('¡Tu tienda está activa! Ya puedes publicar tus productos.'));
       refresh();
       setTimeout(() => router.push('/vendedor/dashboard'), 600);
     } catch (e) {
@@ -62,7 +62,7 @@ export default function SellerOnboardingPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="card p-6 sm:p-8">
           <h1 className="text-3xl font-extrabold">{t('Abre tu tienda en NEXOVAX')}</h1>
-          <p className="mt-1 text-muted">{t('Completa tus datos. Verificaremos tu información antes de activar la tienda.')}</p>
+          <p className="mt-1 text-muted">{t('Completa tus datos y tu tienda quedará activa al instante.')}</p>
           {!session && <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm">{t('Necesitas una cuenta.')}{' '}<Link href="/auth/registrarse?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('Crea tu cuenta')}</Link> o <Link href="/auth/iniciar-sesion?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('inicia sesión')}</Link>.</p>}
           {cfg.data && !cfg.data.sellerRegistration && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('El registro de nuevos vendedores está cerrado temporalmente.')}</p>}
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><Store className="size-5 text-brand-600" /> {t('Tu tienda')}</h2>

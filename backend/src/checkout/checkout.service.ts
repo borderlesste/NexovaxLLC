@@ -190,7 +190,10 @@ export class CheckoutService {
     const address = await this.buyerAddress(userId, input.addressId);
     const tax = await this.tax.forCountry(address?.country_code);
     const classOf = await this.tax.classesFor(cart.groups.flatMap((g: any) => g.items.map((i: any) => i.productId)));
-    const optionsBySeller = await this.groupOptions(cart.id, cart.groups, address, cart.currency);
+    // No address yet: no shipping options or amount until the buyer adds one.
+    const optionsBySeller = address
+      ? await this.groupOptions(cart.id, cart.groups, address, cart.currency)
+      : (new Map(cart.groups.map((g: any) => [g.sellerId, { options: [], messages: [], liveRates: false }])) as unknown as Awaited<ReturnType<CheckoutService['groupOptions']>>);
     const groups = [];
     const totals = { subtotal: 0n, discount: 0n, shipping: 0n, tax: 0n };
     const lines = cart.groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => ({ key: i.variantId, sellerId: g.sellerId, productId: i.productId, gross: toMinor(i.unitPrice) * BigInt(i.quantity) })));
@@ -263,6 +266,7 @@ export class CheckoutService {
       currency: cart.currency,
       addressId: address?.id ?? null,
       destinationCountry: address?.country_code ?? null,
+      needsAddress: !address,
       groups,
       tax: { name: tax.taxName, rate: effectiveRate, country: tax.countryCode, included: tax.pricesIncludeTax, appliesToShipping: tax.appliesToShipping, provider: tax.calculationProvider },
       subtotal: fromMinor(totals.subtotal),

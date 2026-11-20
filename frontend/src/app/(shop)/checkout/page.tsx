@@ -195,6 +195,9 @@ export default function CheckoutPage() {
               <Truck className="mt-0.5 size-6 text-brand-600" />
               <div><h2 className="text-lg font-bold">{t('Método de envío')}</h2><p className="text-sm text-muted">{t('Elige cómo deseas recibir tu pedido')}{q.groups.length > 1 ? t(' de cada tienda') : ''}.</p></div>
             </div>
+            {q.needsAddress ? (
+              <p className="flex items-center gap-2 rounded-xl bg-surface px-4 py-3 text-sm text-muted" data-shipping-needs-address><MapPin className="size-4 shrink-0 text-brand-600" /> {t('Agrega tu dirección para calcular el envío.')}</p>
+            ) : (
             <div className="space-y-5">
               {q.groups.map((g: any) => (
                 <div key={g.sellerId}>
@@ -229,6 +232,7 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
+            )}
           </section>
 
           {/* payment */}
@@ -343,7 +347,7 @@ export default function CheckoutPage() {
           <dl className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{money(q.subtotal, q.currency)}</dd></div>
             {Number(q.discount) > 0 && <div className="flex justify-between text-emerald-700" data-checkout-discount><dt>{t('Descuento')}</dt><dd>-{money(q.discount, q.currency)}</dd></div>}
-            <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{Number(q.shipping) === 0 ? t('Gratis') : money(q.shipping, q.currency)}</dd></div>
+            <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{q.needsAddress ? <span className="text-muted">{t('Agrega tu dirección')}</span> : Number(q.shipping) === 0 ? t('Gratis') : money(q.shipping, q.currency)}</dd></div>
             <div className={`flex justify-between${q.tax.included ? ' text-muted' : ''}`} data-checkout-tax={q.tax.included ? 'included' : 'added'}>
               <dt>{q.tax.included ? t('Incluye {a}', { a: q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('impuestos') }) : q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('Impuestos')}{q.tax.country && <span className="text-muted"> · {countryName(q.tax.country)}</span>}</dt>
               <dd>{money(q.taxTotal, q.currency)}</dd>

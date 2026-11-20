@@ -42,6 +42,7 @@ export class CatalogController {
       stripePublishableKey: config.stripePublishableKey && config.stripeSecretKey ? config.stripePublishableKey : null,
       turnstileSiteKey: config.turnstileSiteKey && config.turnstileSecretKey ? config.turnstileSiteKey : null,
       sellerRegistration: s['features.seller_registration'],
+      productModeration: s['features.mandatory_moderation'] === true,
       maintenance: !!s['features.maintenance_mode'],
       social: s['social.links'] ?? [],
     };

@@ -596,13 +596,13 @@ export class MailService {
       entityId: sellerId,
       message: layout({
         locale: s.locale,
-        subject: t(`Recibimos la solicitud de ${s.store}`, `We received ${s.store}’s application`, `Nous avons reçu la demande de ${s.store}`, `Nou resevwa demann ${s.store}`),
-        preheader: t('Revisaremos tus datos y te avisaremos.', 'We’ll review your details and get back to you.', 'Nous examinerons vos informations et reviendrons vers vous.', 'N ap revize enfòmasyon ou epi n ap reponn ou.'),
-        title: t('Solicitud recibida', 'Application received', 'Demande reçue', 'Demann resevwa'),
-        body: p(t(`Hola ${esc(s.name)}, recibimos la solicitud para abrir <b>${esc(s.store)}</b>. Nuestro equipo verificará los datos y te avisaremos por este medio. Mientras tanto ya puedes preparar tus productos.`,
-                  `Hi ${esc(s.name)}, we received the application to open <b>${esc(s.store)}</b>. Our team will verify the details and let you know by e-mail. Meanwhile you can start preparing your products.`, `Bonjour ${esc(s.name)}, nous avons reçu la demande d’ouverture de <b>${esc(s.store)}</b>. Notre équipe vérifiera les informations et vous préviendra par e-mail. En attendant, vous pouvez préparer vos produits.`, `Bonjou ${esc(s.name)}, nou resevwa demann pou louvri <b>${esc(s.store)}</b>. Ekip nou an ap verifye enfòmasyon yo epi n ap fè w konnen pa imèl. Pandan tan sa a ou ka kòmanse prepare pwodwi ou yo.`)),
+        subject: t(`¡${s.store} ya está activa en NEXOVAX!`, `${s.store} is now live on NEXOVAX!`, `${s.store} est maintenant en ligne sur NEXOVAX !`, `${s.store} an liy sou NEXOVAX kounye a!`),
+        preheader: t('Ya puedes publicar tus productos.', 'You can start publishing your products.', 'Vous pouvez dès maintenant publier vos produits.', 'Ou ka kòmanse pibliye pwodwi ou yo.'),
+        title: t('¡Tu tienda está activa!', 'Your store is live!', 'Votre boutique est en ligne !', 'Boutik ou an liy!'),
+        body: p(t(`Hola ${esc(s.name)}, <b>${esc(s.store)}</b> ya está activa. Publica tus productos y aparecerán en el marketplace al instante. Para recibir tus ganancias, agrega una cuenta de cobro: la verificaremos antes de habilitar los retiros.`,
+                  `Hi ${esc(s.name)}, <b>${esc(s.store)}</b> is now live. Publish your products and they will appear on the marketplace right away. To receive your earnings, add a payout account: we’ll verify it before enabling withdrawals.`, `Bonjour ${esc(s.name)}, <b>${esc(s.store)}</b> est maintenant en ligne. Publiez vos produits et ils apparaîtront aussitôt sur la marketplace. Pour recevoir vos gains, ajoutez un compte de versement : nous le vérifierons avant d’activer les retraits.`, `Bonjou ${esc(s.name)}, <b>${esc(s.store)}</b> an liy kounye a. Pibliye pwodwi ou yo epi y ap parèt sou maketplas la touswit. Pou resevwa lajan ou, ajoute yon kont peman: n ap verifye l anvan nou aktive retrè yo.`)),
         cta: { label: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen'), url: `${webUrl()}/vendedor/dashboard` },
-        text: t(`Recibimos la solicitud para abrir ${s.store}.`, `We received the application to open ${s.store}.`, `Nous avons reçu la demande d’ouverture de ${s.store}.`, `Nou resevwa demann pou louvri ${s.store}.`),
+        text: t(`${s.store} ya está activa en NEXOVAX.`, `${s.store} is now live on NEXOVAX.`, `${s.store} est maintenant en ligne sur NEXOVAX.`, `${s.store} an liy sou NEXOVAX kounye a.`),
       }),
     });
   }

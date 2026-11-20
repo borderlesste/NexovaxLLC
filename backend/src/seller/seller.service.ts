@@ -157,14 +157,15 @@ export class SellerService {
         c,
       );
       await this.db.exec(
-        `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, metadata)
-         values ($1,'KYB','RD_MANUAL','PENDING',now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
+        `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, verified_at, metadata)
+         values ($1,'KYB','AUTO','VERIFIED',now(),now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
         [id, last4(taxDigits), input.entityType, registration.countryCode],
         c,
       ).catch(() => undefined);
-      await this.db.exec(`update public.sellers set status = 'PENDING_VERIFICATION', verification_status = 'PENDING' where id = $1`, [id], c);
+      // Stores go live on sign-up; the admin can still suspend them later. Payout accounts keep their own verification.
+      await this.db.exec(`update public.sellers set status = 'ACTIVE', verification_status = 'VERIFIED', activated_at = coalesce(activated_at, now()) where id = $1`, [id], c);
       await this.db.exec(
-        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason) values ($1,'DRAFT','PENDING_VERIFICATION',$2,'Solicitud de alta enviada')`,
+        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason) values ($1,'DRAFT','ACTIVE',$2,'Alta automática')`,
         [id, user.id],
         c,
       );
@@ -180,7 +181,7 @@ export class SellerService {
     });
     invalidateUserCache(user.id);
     this.mail.fire(() => this.mail.sellerApplicationReceived(sellerId));
-    return { sellerId, status: 'PENDING_VERIFICATION' };
+    return { sellerId, status: 'ACTIVE' };
   }
 
   async store(sellerId: string) {
@@ -570,7 +571,7 @@ export class SellerService {
         if (!['DRAFT', 'REJECTED', 'PAUSED'].includes(current) && !(current === 'ACTIVE' && contentChanged && moderation))
           return product.id;
         const hasMedia = await this.db.one(`select 1 from public.product_media where product_id = $1 limit 1`, [product.id], c);
-        if (!hasMedia && moderation) throw badRequest('PRODUCT_IMAGE_REQUIRED', 'Agrega al menos una imagen antes de enviar a revisión.');
+        if (!hasMedia) throw badRequest('PRODUCT_IMAGE_REQUIRED', 'Agrega al menos una imagen antes de publicar.');
         const sellerActive = seller.status === 'ACTIVE';
         if (moderation) {
           await this.transition(c, product.id, current, 'PENDING_REVIEW', user.id, 'Enviado a revisión');

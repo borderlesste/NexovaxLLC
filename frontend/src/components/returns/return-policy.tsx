@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { del, errorMessage, get, put } from '@/lib/api';
+import { errorMessage, get, put } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export function policySummary(p: { windowDays: number; labelPayer: string; shipp
   ].filter(Boolean).join(' · ');
 }
 
-function PolicyForm({ value, onSave, busy, store }: { value: Policy; onSave: (p: Policy) => void; busy: boolean; store?: boolean }) {
+function PolicyForm({ value, onSave, busy }: { value: Policy; onSave: (p: Policy) => void; busy: boolean }) {
   const [f, setF] = useState<Policy>(value);
   useEffect(() => setF(value), [value]);
   const dirty = JSON.stringify(f) !== JSON.stringify(value);
@@ -44,7 +44,7 @@ function PolicyForm({ value, onSave, busy, store }: { value: Policy; onSave: (p:
         <Field label={t('Plazo (días desde la entrega)')}><Input rule="integer" value={String(f.windowDays)} onChange={(e) => setF({ ...f, windowDays: Math.min(Number(e.target.value.replace(/\D/g, '') || 0), 365) })} data-policy="windowDays" /></Field>
         <Field label={t('Etiqueta de devolución')}>
           <Select value={f.labelPayer} onChange={(e) => setF({ ...f, labelPayer: e.target.value as Policy['labelPayer'] })} data-policy="labelPayer">
-            {Object.entries(LABEL_PAYER).filter(([k]) => !store || k !== 'MARKETPLACE').map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
+            {Object.entries(LABEL_PAYER).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
           </Select>
         </Field>
         <Field label={t('Envío original')}>
@@ -88,44 +88,20 @@ export function MarketplaceReturnPolicy() {
   };
   return (
     <Card className="mb-5">
-      <CardHeader icon={<RotateCcw />} title={t('Política de devoluciones del marketplace')} subtitle={t('Aplica a todas las tiendas; cada tienda puede tener una propia más favorable para el cliente.')} />
+      <CardHeader icon={<RotateCcw />} title={t('Política de devoluciones del marketplace')} subtitle={t('Aplica a todas las tiendas por igual; las tiendas no pueden cambiarla.')} />
       <PolicyForm value={pick(q.data)} onSave={save} busy={busy} />
     </Card>
   );
 }
 
-/** Seller: follow the marketplace policy or publish a more generous one. */
+/** Seller: the single NexovaX return policy every store follows (read-only). */
 export function StoreReturnPolicy() {
-  const qc = useQueryClient();
   const q = useQuery({ queryKey: ['return-policy', 'seller'], queryFn: () => get('/seller/returns/policy') });
-  const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
   if (!q.data) return null;
-  const { own, marketplace } = q.data;
-  const run = async (fn: () => Promise<any>, ok: string) => {
-    setBusy(true);
-    try {
-      qc.setQueryData(['return-policy', 'seller'], await fn());
-      toast.success(t(ok));
-      setEditing(false);
-    } catch (e) {
-      toast.error(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
   return (
     <Card className="mb-5" data-store-return-policy>
-      <CardHeader icon={<RotateCcw />} title={t('Política de devoluciones de tu tienda')}
-        subtitle={own ? t('Usas una política propia.') : t('Usas la política del marketplace. Puedes ofrecer una más favorable para tus clientes.')}
-        action={own ? <Button size="sm" variant="ghost" loading={busy} onClick={() => run(() => del('/seller/returns/policy'), 'Ahora usas la política del marketplace.')}>{t('Volver a la del marketplace')}</Button>
-          : !editing && <Button size="sm" variant="outline" onClick={() => setEditing(true)} data-store-policy-edit>{t('Crear política propia')}</Button>} />
-      {own || editing ? (
-        <PolicyForm store value={pick(own ?? marketplace)} busy={busy} onSave={(p) => run(() => put('/seller/returns/policy', p), 'Política de la tienda publicada.')} />
-      ) : (
-        <p className="p-5 text-sm text-muted">{policySummary(marketplace)}</p>
-      )}
-      {(own || editing) && <p className="px-5 pb-4 text-xs text-muted">{t('Mínimo del marketplace')}: {policySummary(marketplace)}</p>}
+      <CardHeader icon={<RotateCcw />} title={t('Política de devoluciones de NexovaX')} subtitle={t('Todas las tiendas usan la misma política estándar de NexovaX.')} />
+      <p className="p-5 text-sm text-muted">{policySummary(q.data.marketplace)}</p>
     </Card>
   );
 }

@@ -86,7 +86,7 @@ const DEFAULTS: PlatformSettings = {
   'payments.bank_transfer': { enabled: false, bank_name: '', account_holder: '', account_number: '', instructions: '' },
   'features.featured_products': true,
   'features.seller_registration': true,
-  'features.mandatory_moderation': true,
+  'features.mandatory_moderation': false,
   'features.email_notifications': true,
   'features.maintenance_mode': false,
   'help.faq': [
@@ -96,15 +96,15 @@ const DEFAULTS: PlatformSettings = {
     { q: '¿Hacen envíos internacionales?', a: 'Sí. Las tiendas despachan desde distintos países; en el checkout verás las transportadoras disponibles para tu país. Los envíos internacionales pueden estar sujetos a impuestos y aranceles de importación del país de destino.' },
     { q: '¿Cómo se calculan los impuestos?', a: 'Aplicamos el impuesto al consumo del país de destino (IVA, VAT, GST, ITBIS…) sobre el precio de los productos. Verás el detalle antes de confirmar la compra.' },
     { q: '¿Cómo sigo mi pedido?', a: 'En "Mi cuenta → Mis pedidos" verás el estado, la transportadora, el número de guía y el historial de eventos de cada envío. Los envíos con etiqueta se actualizan automáticamente.' },
-    { q: '¿Puedo devolver un producto?', a: 'Sí, según la política de cada tienda (hasta 30 días). Escríbele al vendedor desde tu pedido o reporta un problema.' },
-    { q: '¿Cómo vendo en NEXOVAX?', a: 'Crea una cuenta, completa el registro de tu tienda con tu país y tu identificación fiscal, y espera la verificación. Luego publica tus productos; pasan por moderación antes de mostrarse.' },
+    { q: '¿Puedo devolver un producto?', a: 'Sí. Todas las tiendas usan la política de devoluciones estándar de NexovaX (hasta 30 días desde la entrega). Pide la devolución desde tu pedido o reporta un problema.' },
+    { q: '¿Cómo vendo en NEXOVAX?', a: 'Crea una cuenta y completa el registro de tu tienda con tu país y tu identificación fiscal. Tu tienda queda activa al instante y tus productos se muestran en cuanto los publicas.' },
   ],
   'help.sellers': {
     sections: [
-      { title: 'Registra tu tienda', body: 'Crea una cuenta y completa el registro de tu tienda con tu país, tu identificación fiscal y la dirección desde donde despachas. El equipo verifica los datos antes de activar la tienda.' },
-      { title: 'Publica tus productos', body: 'Agrega fotos, descripción, atributos, variantes, precio, inventario y medidas del paquete. Cada publicación pasa por moderación antes de mostrarse en el catálogo.' },
+      { title: 'Registra tu tienda', body: 'Crea una cuenta y completa el registro de tu tienda con tu país, tu identificación fiscal y la dirección desde donde despachas. Tu tienda queda activa al instante; solo verificamos tu cuenta de cobro antes de habilitar retiros.' },
+      { title: 'Publica tus productos', body: 'Agrega fotos, descripción, atributos, variantes, precio, inventario y medidas del paquete. Al publicar, el producto aparece en el catálogo al instante.' },
       { title: 'Envía tus pedidos', body: 'Compra la etiqueta desde tu panel (se descuenta del envío que pagó el cliente) o despacha por tu cuenta y registra la guía: en ese caso recibes lo que el cliente pagó por el envío.' },
-      { title: 'Devoluciones', body: 'Revisa las solicitudes, recibe e inspecciona los productos. Puedes tener una política propia más favorable que la del marketplace desde Devoluciones en tu panel.' },
+      { title: 'Devoluciones', body: 'Revisa las solicitudes, recibe e inspecciona los productos. Todas las tiendas usan la política de devoluciones estándar de NexovaX.' },
     ],
   },
   'help.commissions': {
