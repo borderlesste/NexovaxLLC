@@ -791,7 +791,79 @@ export class AdminService {
       series,
       payouts: (await this.payouts({})).slice(0, 8),
       pendingTransfers: await this.pendingTransfers(),
+      taxes: await this.taxSummary(currency, period),
     };
+  }
+
+  // ------------------------------------------------------------------ tax remittances
+  /**
+   * Tax collected from customers sits in TAX_PAYABLE (a liability: money owed to the tax
+   * authority). Paying it is recorded as DEBIT TAX_PAYABLE / CREDIT BANK_CASH, so the posted
+   * balance of TAX_PAYABLE is always what is still to be declared and paid.
+   */
+  private async taxPayableBalance(currency: string, c?: PoolClient) {
+    const r = await this.db.one(
+      `select coalesce(sum(case when le.side = 'CREDIT' then le.amount else -le.amount end),0)::numeric(18,2)::text as b
+         from public.ledger_entries le join public.ledger_accounts la on la.id = le.account_id
+         join public.ledger_batches lb on lb.id = le.batch_id and lb.status = 'POSTED'
+        where la.definition_code = 'TAX_PAYABLE' and la.currency_code = $1`,
+      [currency],
+      c,
+    );
+    return r!.b as string;
+  }
+
+  async taxSummary(currency: string, period = '30 days') {
+    const [pending, paid, history] = await Promise.all([
+      this.taxPayableBalance(currency),
+      this.db.one(
+        `select coalesce(sum(debit_total),0)::numeric(18,2)::text as a from public.ledger_batches
+          where batch_type = 'TAX_REMITTANCE' and status = 'POSTED' and currency_code = $1 and posted_at >= now() - $2::interval`,
+        [currency, period],
+      ),
+      this.db.many(
+        `select lb.id, lb.public_number::text as number, (lb.debit_total)::numeric(18,2)::text as amount, lb.currency_code as currency, lb.posted_at as "paidAt",
+                lb.metadata->>'reference' as reference, lb.metadata->>'periodFrom' as "periodFrom", lb.metadata->>'periodTo' as "periodTo",
+                lb.metadata->>'notes' as notes, coalesce(up.display_name, u.email::text) as "recordedBy"
+           from public.ledger_batches lb left join public.users u on u.id = lb.actor_user_id left join public.user_profiles up on up.user_id = u.id
+          where lb.batch_type = 'TAX_REMITTANCE' and lb.status = 'POSTED' and lb.currency_code = $1
+          order by lb.posted_at desc limit 12`,
+        [currency],
+      ),
+    ]);
+    return { currency, pending, paidInPeriod: paid!.a, remittances: history };
+  }
+
+  async recordTaxRemittance(admin: RequestUser, dto: { amount: number; reference: string; periodFrom?: string; periodTo?: string; notes?: string; currency?: string }) {
+    const currency = dto.currency || (await this.settings.currency());
+    if (!SUPPORTED_CURRENCIES.includes(currency)) throw badRequest('CURRENCY_INVALID', 'Moneda no soportada.');
+    const amount = toMinor(dto.amount);
+    if (amount <= 0n) throw badRequest('AMOUNT_INVALID', 'El monto debe ser mayor que cero.');
+    if (!dto.reference?.trim()) throw badRequest('REFERENCE_REQUIRED', 'Indica la referencia del pago al fisco.');
+    if (dto.periodFrom && dto.periodTo && dto.periodFrom > dto.periodTo) throw badRequest('TAX_PERIOD_INVALID', 'La fecha inicial del período no puede ser posterior a la final.');
+    const id = await this.db.tx(async (c) => {
+      const acc = await this.db.one<{ id: string }>(`select public.get_or_create_ledger_account('TAX_PAYABLE',$1,null,null,null) as id`, [currency], c);
+      await this.db.exec(`select id from public.ledger_accounts where id = $1 for update`, [acc!.id], c);
+      const pending = toMinor(await this.taxPayableBalance(currency, c));
+      if (amount > pending)
+        throw conflict('TAX_REMITTANCE_EXCEEDS_PENDING', 'El monto supera el impuesto pendiente por declarar.');
+      const cash = await this.db.one<{ id: string }>(`select public.get_or_create_ledger_account('BANK_CASH',$1,null,null,null) as id`, [currency], c);
+      const corr = randomUUID();
+      const key = `tax-remittance:${corr}`;
+      const batch = await this.db.one<{ id: string }>(
+        `insert into public.ledger_batches (batch_type, status, currency_code, source_type, idempotency_key, actor_user_id, correlation_id, description, metadata)
+         values ('TAX_REMITTANCE','DRAFT',$1,'TAX_REMITTANCE',$2,$3,$4,$5,$6::jsonb) returning id`,
+        [currency, key, admin.id, corr, 'Pago de impuestos a la autoridad tributaria',
+         JSON.stringify({ reference: dto.reference.trim(), periodFrom: dto.periodFrom ?? null, periodTo: dto.periodTo ?? null, notes: dto.notes?.trim() || null })],
+        c,
+      );
+      const amt = fromMinor(amount);
+      await this.db.exec(`select public.add_ledger_entry($1,$2,'DEBIT',$3,$4,null,null,$5,'{}'::jsonb)`, [batch!.id, acc!.id, amt, `${key}:tax`, 'Impuesto pagado'], c);
+      await this.db.exec(`select public.add_ledger_entry($1,$2,'CREDIT',$3,$4,null,null,$5,'{}'::jsonb)`, [batch!.id, cash!.id, amt, `${key}:cash`, 'Salida de banco'], c);
+      await this.db.exec(`select public.post_ledger_batch($1)`, [batch!.id], c);
+      return batch!.id;
+    });
+    return { id, ...(await this.taxSummary(currency)) };
   }
 
   // ------------------------------------------------------------------ settings

@@ -61,6 +61,14 @@ export class TransferDto {
   @IsOptional() @IsPaymentReference() reference?: string;
   @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
+export class TaxRemittanceDto {
+  @ToNumber() @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El monto debe ser un número con hasta 2 decimales.' }) @Min(0.01) @Max(100000000) amount: number;
+  @IsPaymentReference() reference: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Fecha inválida.' }) periodFrom?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Fecha inválida.' }) periodTo?: string;
+  @IsOptional() @IsCleanText(0, 300) notes?: string;
+  @IsOptional() @Matches(/^[A-Z]{3}$/) currency?: string;
+}
 export class SettingsDto {
   @IsOptional() @IsObject() settings?: Record<string, any>;
   @IsOptional() @ToNumber() @IsNumber({ maxDecimalPlaces: 4 }, { message: 'La comisión debe ser un número.' }) @Min(0) @Max(0.5) commissionRate?: number;
@@ -290,6 +298,12 @@ export class AdminController {
   @Get('finance')
   finance(@Query('days') days?: string) {
     return this.admin.finance(Math.min(Math.max(Number(days) || 30, 7), 365));
+  }
+
+  @Roles('ADMIN')
+  @Post('finance/tax-remittances')
+  recordTaxRemittance(@CurrentUser() user: RequestUser, @Body() dto: TaxRemittanceDto) {
+    return this.admin.recordTaxRemittance(user, dto);
   }
 
   @Roles('ADMIN')
