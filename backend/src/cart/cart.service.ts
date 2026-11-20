@@ -6,7 +6,7 @@ import { SettingsService } from '../settings/settings.service';
 import { badRequest, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
 import { mediaUrl } from '../catalog/catalog.sql';
-import { PaymentsService } from '../payments/payments.service';
+import { BANK_TRANSFER_SQL, PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class CartService {
@@ -43,7 +43,7 @@ export class CartService {
         c,
       );
       if (pending)
-        throw conflict('CHECKOUT_PAYMENT_PENDING', 'Tienes un pago en proceso. Complétalo o espera su confirmación antes de modificar el carrito.');
+        throw conflict('CHECKOUT_PAYMENT_PENDING', 'Tienes un pago pendiente. Complétalo o cancélalo desde el carrito para poder modificarlo.');
       for (const s of open) {
         await this.db.exec(`select public.cancel_checkout_session($1, $2, 'CUSTOMER_EDITED_CART', null)`, [s.id, userId], c);
       }
@@ -140,11 +140,31 @@ export class CartService {
     return {
       id: cart.id,
       status: cart.status,
+      pendingPayment: cart.status === 'CHECKOUT_IN_PROGRESS' ? await this.pendingPayment(cart.id, client) : null,
       currency,
       groups: [...groups.values()],
       itemCount: count,
       subtotal: fromMinor(subtotal),
     };
+  }
+
+  /** The unpaid payment holding the cart (shown on /carrito so the buyer can finish or cancel it). */
+  private async pendingPayment(cartId: string, client?: Queryable) {
+    const p = await this.db.one(
+      `select cs.id as "checkoutId", p.status, p.provider_code as provider, p.environment, p.expected_amount::text as amount,
+              p.currency_code as currency, cs.expires_at as "expiresAt", ${BANK_TRANSFER_SQL} as "bankTransfer"
+         from public.checkout_sessions cs
+         join public.payments p on p.checkout_session_id = cs.id
+        where cs.cart_id = $1 and cs.status = 'PAYMENT_PENDING'
+          and p.status in ('REQUIRES_ACTION','REQUIRES_PAYMENT_METHOD','PROCESSING','AUTHORIZED')
+        order by p.created_at desc limit 1`,
+      [cartId],
+      client,
+    );
+    if (!p) return null;
+    const { status, ...rest } = p;
+    // A payment the processor is still clearing can't be withdrawn: the buyer waits for it.
+    return { ...rest, cancellable: status === 'REQUIRES_ACTION' || status === 'REQUIRES_PAYMENT_METHOD' };
   }
 
   async addItem(userId: string, variantId: string, quantity: number, mode: 'add' | 'set' = 'add') {

@@ -2785,5 +2785,15 @@
 "Ver recibo de compra": "Voir le reçu d’achat",
 "No encontramos este pedido.": "Nous n’avons pas trouvé cette commande.",
 "Tienes un mensaje nuevo": "Vous avez un nouveau message",
-"Ver": "Voir"
+"Ver": "Voir",
+"Ese pago ya se había completado: tu pedido está confirmado.": "Ce paiement avait déjà abouti : votre commande est confirmée.",
+"Pago cancelado. Ya puedes modificar tu carrito.": "Paiement annulé. Vous pouvez maintenant modifier votre panier.",
+"El pago se está procesando y no se puede cancelar. Espera su confirmación.": "Le paiement est en cours de traitement et ne peut pas être annulé. Attendez sa confirmation.",
+"Tienes una transferencia bancaria pendiente por {a}.": "Vous avez un virement bancaire en attente de {a}.",
+"Tienes un pago pendiente por {a}.": "Vous avez un paiement en attente de {a}.",
+"Tu carrito está reservado para ese pago. Si aún no enviaste la transferencia, cancélala para modificar el carrito.": "Votre panier est réservé pour ce paiement. Si vous n’avez pas encore envoyé le virement, annulez-le pour modifier le panier.",
+"Tu carrito está reservado para ese pago. Complétalo o cancélalo para modificar el carrito.": "Votre panier est réservé pour ce paiement. Finalisez-le ou annulez-le pour modifier le panier.",
+"El pago se está procesando. Podrás modificar el carrito cuando se confirme.": "Le paiement est en cours de traitement. Vous pourrez modifier le panier une fois confirmé.",
+"Ver pago": "Voir le paiement",
+"Cancelar pago": "Annuler le paiement"
 }

@@ -76,7 +76,7 @@ export class CheckoutController {
     return this.payments.capturePaypal(id, user.id);
   }
 
-  /** Cancels an unpaid card/PayPal payment and releases the reserved stock. */
+  /** Cancels an unpaid payment (card, PayPal or pending bank transfer) and releases the reserved stock. */
   @Post(':id/cancel')
   cancel(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.payments.cancelPending(id, user.id);

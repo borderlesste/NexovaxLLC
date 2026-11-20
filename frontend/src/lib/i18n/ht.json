@@ -2785,5 +2785,15 @@
 "Ver recibo de compra": "Wè resi acha a",
 "No encontramos este pedido.": "Nou pa jwenn kòmand sa a.",
 "Tienes un mensaje nuevo": "Ou gen yon nouvo mesaj",
-"Ver": "Wè"
+"Ver": "Wè",
+"Ese pago ya se había completado: tu pedido está confirmado.": "Peman sa a te deja fèt: kòmand ou konfime.",
+"Pago cancelado. Ya puedes modificar tu carrito.": "Peman an anile. Kounye a ou ka chanje panye ou.",
+"El pago se está procesando y no se puede cancelar. Espera su confirmación.": "Peman an ap trete, li pa ka anile. Tann konfimasyon li.",
+"Tienes una transferencia bancaria pendiente por {a}.": "Ou gen yon transfè labank {a} an atant.",
+"Tienes un pago pendiente por {a}.": "Ou gen yon peman {a} an atant.",
+"Tu carrito está reservado para ese pago. Si aún no enviaste la transferencia, cancélala para modificar el carrito.": "Panye ou rezève pou peman sa a. Si ou poko voye transfè a, anile l pou ou ka chanje panye a.",
+"Tu carrito está reservado para ese pago. Complétalo o cancélalo para modificar el carrito.": "Panye ou rezève pou peman sa a. Fini l oswa anile l pou ou ka chanje panye a.",
+"El pago se está procesando. Podrás modificar el carrito cuando se confirme.": "Peman an ap trete. W ap ka chanje panye a lè l konfime.",
+"Ver pago": "Wè peman an",
+"Cancelar pago": "Anile peman an"
 }

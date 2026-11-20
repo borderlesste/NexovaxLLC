@@ -129,7 +129,7 @@ const EN: Record<string, string> = {
   'Selecciona un tipo de problema.': 'Select a problem type.',
   'Selecciona una categoría válida.': 'Select a valid category.',
   'La categoría tiene productos. Muévelos antes de archivarla.': 'The category has products. Move them before archiving it.',
-  'Tienes un pago en proceso. Complétalo o espera su confirmación antes de modificar el carrito.': 'You have a payment in progress. Complete it or wait for confirmation before changing your cart.',
+  'Tienes un pago pendiente. Complétalo o cancélalo desde el carrito para poder modificarlo.': 'You have a pending payment. Complete it or cancel it from your cart to change your cart.',
   'Selecciona una dirección de envío válida.': 'Select a valid shipping address.',
   'Indica la ciudad.': 'Enter the city.',
   'Código de seguimiento inválido.': 'Invalid tracking code.',

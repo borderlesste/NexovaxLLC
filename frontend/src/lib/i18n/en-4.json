@@ -1276,5 +1276,15 @@
 "Ver recibo de compra": "View purchase receipt",
 "No encontramos este pedido.": "We couldn’t find this order.",
 "Tienes un mensaje nuevo": "You have a new message",
-"Ver": "View"
+"Ver": "View",
+"Ese pago ya se había completado: tu pedido está confirmado.": "That payment had already gone through: your order is confirmed.",
+"Pago cancelado. Ya puedes modificar tu carrito.": "Payment cancelled. You can now change your cart.",
+"El pago se está procesando y no se puede cancelar. Espera su confirmación.": "The payment is being processed and can’t be cancelled. Wait for its confirmation.",
+"Tienes una transferencia bancaria pendiente por {a}.": "You have a pending bank transfer of {a}.",
+"Tienes un pago pendiente por {a}.": "You have a pending payment of {a}.",
+"Tu carrito está reservado para ese pago. Si aún no enviaste la transferencia, cancélala para modificar el carrito.": "Your cart is reserved for that payment. If you haven’t sent the transfer yet, cancel it to change your cart.",
+"Tu carrito está reservado para ese pago. Complétalo o cancélalo para modificar el carrito.": "Your cart is reserved for that payment. Complete it or cancel it to change your cart.",
+"El pago se está procesando. Podrás modificar el carrito cuando se confirme.": "The payment is being processed. You can change your cart once it’s confirmed.",
+"Ver pago": "View payment",
+"Cancelar pago": "Cancel payment"
 }

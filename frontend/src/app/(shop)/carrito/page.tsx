@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, Minus, Plus, ShoppingCart, Store, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Clock, Minus, Plus, ShoppingCart, Store, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { del, errorMessage, get, put } from '@/lib/api';
+import { ApiError, del, errorMessage, get, post, put } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { money } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -21,8 +21,24 @@ export default function CartPage() {
     qc.setQueryData(['cart'], c);
     qc.invalidateQueries({ queryKey: ['me'] });
   };
-  const upd = useMutation({ mutationFn: (v: { id: string; quantity: number }) => put(`/cart/items/${v.id}`, { quantity: v.quantity }), onSuccess: onDone, onError: (e) => toast.error(errorMessage(e)) });
-  const rem = useMutation({ mutationFn: (id: string) => del(`/cart/items/${id}`), onSuccess: onDone, onError: (e) => toast.error(errorMessage(e)) });
+  // A pending payment locks the cart: reload it so the banner below offers to cancel that payment.
+  const onError = (e: unknown) => {
+    toast.error(errorMessage(e));
+    if (e instanceof ApiError && e.code === 'CHECKOUT_PAYMENT_PENDING') qc.invalidateQueries({ queryKey: ['cart'] });
+  };
+  const upd = useMutation({ mutationFn: (v: { id: string; quantity: number }) => put(`/cart/items/${v.id}`, { quantity: v.quantity }), onSuccess: onDone, onError });
+  const rem = useMutation({ mutationFn: (id: string) => del(`/cart/items/${id}`), onSuccess: onDone, onError });
+  const cancelPay = useMutation({
+    mutationFn: (checkoutId: string) => post(`/checkout/${checkoutId}/cancel`),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+      if (r?.status === 'PAID') toast.success(t('Ese pago ya se había completado: tu pedido está confirmado.'));
+      else if (r?.status === 'CANCELLED') toast.success(t('Pago cancelado. Ya puedes modificar tu carrito.'));
+      else toast.error(t('El pago se está procesando y no se puede cancelar. Espera su confirmación.'));
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
 
   if (loading) return <PageLoader />;
   if (!session)
@@ -34,10 +50,32 @@ export default function CartPage() {
   if (cart.isLoading) return <PageLoader />;
   const c = cart.data;
   const hasIssues = c?.groups.some((g: any) => g.items.some((i: any) => i.issue));
+  const pp = c?.pendingPayment;
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 lg:px-8">
       <Breadcrumbs items={[{ label: t('Carrito') }]} />
       <h1 className="mt-4 text-3xl font-extrabold">{t('Tu carrito')}</h1>
+      {pp && (
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center" data-pending-payment>
+          <Clock className="size-5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold">{pp.bankTransfer ? t('Tienes una transferencia bancaria pendiente por {a}.', { a: money(pp.amount) }) : t('Tienes un pago pendiente por {a}.', { a: money(pp.amount) })}</p>
+            <p className="mt-0.5">
+              {pp.cancellable
+                ? pp.bankTransfer
+                  ? t('Tu carrito está reservado para ese pago. Si aún no enviaste la transferencia, cancélala para modificar el carrito.')
+                  : t('Tu carrito está reservado para ese pago. Complétalo o cancélalo para modificar el carrito.')
+                : t('El pago se está procesando. Podrás modificar el carrito cuando se confirme.')}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild><Link href={`/checkout/confirmacion/${pp.checkoutId}`}>{t('Ver pago')}</Link></Button>
+            {pp.cancellable && (
+              <Button size="sm" disabled={cancelPay.isPending} onClick={() => cancelPay.mutate(pp.checkoutId)}>{t('Cancelar pago')}</Button>
+            )}
+          </div>
+        </div>
+      )}
       {!c?.groups.length ? (
         <div className="card mt-6"><Empty icon={<ShoppingCart />} title={t('Tu carrito está vacío')} description={t('Explora el catálogo y agrega productos de tus tiendas favoritas.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div>
       ) : (
@@ -83,7 +121,7 @@ export default function CartPage() {
               <div className="flex justify-between"><span className="text-muted">{t('Envío e impuestos')}</span><span className="text-muted">{t('Se calculan en el pago')}</span></div>
             </div>
             <div className="mt-4 flex justify-between border-t border-line pt-4 text-lg font-extrabold"><span>{t('Subtotal')}</span><span>{money(c.subtotal)}</span></div>
-            <Button size="lg" className="mt-5 w-full" asChild disabled={hasIssues}>
+            <Button size="lg" className="mt-5 w-full" asChild disabled={hasIssues || !!pp}>
               <Link href="/checkout">{t('Continuar al pago')}{' '}<ArrowRight /></Link>
             </Button>
             {hasIssues && <p className="mt-2 text-xs text-amber-700">{t('Corrige los productos marcados antes de continuar.')}</p>}

@@ -13,11 +13,15 @@ import { PaypalService } from './paypal.service';
 import { CardsService } from './cards.service';
 import { DisputeEvent, PaymentIncidentsService } from './incidents.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { paymentsLive } from '../common/live-orders';
 
 export type ProviderCode = 'STRIPE' | 'PAYPAL' | 'RD_SANDBOX';
 
 /** Card/PayPal payments are short-lived; bank transfers keep the reservation longer. */
 export const ONLINE_PAYMENT_TTL_MIN = 30;
+
+/** SQL: payment `p` is a bank transfer (its latest provider intent says so). */
+export const BANK_TRANSFER_SQL = `exists (select 1 from public.payment_provider_intents bi where bi.payment_id = p.id and bi.sanitized_metadata->>'method' = 'BANK_TRANSFER')`;
 
 interface CaptureEvidence {
   externalChargeId: string;
@@ -92,7 +96,7 @@ export class PaymentsService {
   /** Latest payment of a checkout owned by the user, with its provider intent. */
   private async paymentForCheckout(checkoutId: string, userId: string | null) {
     const p = await this.db.one(
-      `select p.id, p.status, p.provider_code, p.order_id, p.expected_amount::text as amount, p.currency_code, p.customer_id, p.checkout_session_id,
+      `select p.id, p.status, p.provider_code, p.environment, p.order_id, p.expected_amount::text as amount, p.currency_code, p.customer_id, p.checkout_session_id,
               i.id as intent_id, i.external_intent_id, i.provider_status
          from public.payments p
          left join lateral (select * from public.payment_provider_intents x where x.payment_id = p.id order by x.sequence_number desc limit 1) i on true
@@ -218,7 +222,14 @@ export class PaymentsService {
   async cancelPending(checkoutId: string, userId: string | null, reason = 'CUSTOMER_ABANDONED') {
     const p = await this.paymentForCheckout(checkoutId, userId);
     if (p.status === 'PAID') return { status: 'PAID', orderId: p.order_id };
-    if (!['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD'].includes(p.status) || !['STRIPE', 'PAYPAL'].includes(p.provider_code)) return { status: p.status };
+    if (!['REQUIRES_ACTION', 'REQUIRES_PAYMENT_METHOD'].includes(p.status) || !['STRIPE', 'PAYPAL', 'RD_SANDBOX'].includes(p.provider_code)) return { status: p.status };
+    // A TEST payment once real payments are live can never take real money (and the live
+    // keys can't even look it up): close it locally. Same for sandbox payments and bank
+    // transfers, which no processor holds: an admin confirms those by hand.
+    if (p.provider_code === 'RD_SANDBOX' || (p.environment === 'TEST' && paymentsLive())) {
+      await this.cancelLocally(p, reason);
+      return { status: 'CANCELLED' };
+    }
     if (p.provider_code === 'STRIPE' && p.external_intent_id) {
       const pi = await this.stripe.retrieveIntent(p.external_intent_id);
       if (pi.status === 'succeeded') return this.confirmStripe(checkoutId, p.customer_id);
@@ -270,12 +281,20 @@ export class PaymentsService {
     );
   }
 
-  /** Releases abandoned card/PayPal payments of a buyer so the cart can be edited again. */
+  /**
+   * Releases abandoned payments of a buyer so the cart can be edited again: unpaid card/PayPal
+   * payments, simulated (sandbox) card payments and, once real payments are live, any TEST
+   * payment. A pending bank transfer is kept (the buyer may already have sent the money): the
+   * buyer cancels it explicitly from the cart, or it expires.
+   */
   async releaseAbandoned(userId: string) {
     const rows = await this.db.many(
       `select p.checkout_session_id from public.payments p
-        where p.customer_id = $1 and p.provider_code in ('STRIPE','PAYPAL') and p.status in ('REQUIRES_ACTION','REQUIRES_PAYMENT_METHOD')`,
-      [userId],
+        where p.customer_id = $1 and p.status in ('REQUIRES_ACTION','REQUIRES_PAYMENT_METHOD')
+          and (p.provider_code in ('STRIPE','PAYPAL')
+               or (p.provider_code = 'RD_SANDBOX' and not ${BANK_TRANSFER_SQL})
+               or ($2::boolean and p.environment = 'TEST'))`,
+      [userId, paymentsLive()],
     );
     for (const r of rows) await this.cancelPending(r.checkout_session_id, userId).catch((e) => this.logger.warn(`release ${r.checkout_session_id}: ${e?.message}`));
   }
