@@ -5,6 +5,7 @@ import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { TaxService } from '../tax/tax.service';
 import { lineTax, normalizeTaxClass, shippingTax, TaxClass } from '../tax/tax-calc';
+import { StripeTaxLine, StripeTaxService } from '../tax/stripe-tax.service';
 import { Parcel, ShippingService } from '../shipping/shipping.service';
 import { CartService } from '../cart/cart.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
@@ -91,6 +92,7 @@ export class CheckoutService {
     private readonly payments: PaymentsService,
     private readonly coupons: CouponsService,
     private readonly affiliates: AffiliatesService,
+    private readonly stripeTax: StripeTaxService,
   ) {}
 
   // ------------------------------------------------------------------ pricing
@@ -195,6 +197,8 @@ export class CheckoutService {
     const promo = await this.coupons.evaluate(input.coupons ?? [], lines, userId);
     const discountOf = new Map<string, bigint>();
     for (const r of promo.results) for (const a of r.allocations) discountOf.set(a.key, (discountOf.get(a.key) ?? 0n) + a.discount);
+    const viaStripe = tax.calculationProvider === 'STRIPE_TAX' && !!address;
+    const stripeLines: (StripeTaxLine & { sellerId: string })[] = [];
     for (const g of cart.groups) {
       const items = g.items.filter((i: any) => i.purchasable);
       let subtotal = 0n;
@@ -206,12 +210,14 @@ export class CheckoutService {
         subtotal += gross;
         discount += d;
         taxAmount += lineTax(tax, classOf.get(i.productId) ?? 'STANDARD', toMinor(i.unitPrice), i.quantity, d).tax;
+        if (viaStripe) stripeLines.push({ reference: i.variantId, amount: gross - d, quantity: i.quantity, taxClass: classOf.get(i.productId) ?? 'STANDARD', sellerId: g.sellerId });
       }
       const coupon = promo.results.find((r) => r.sellerId === g.sellerId);
       const opt = optionsBySeller.get(g.sellerId)!;
       const chosen = opt.options.find((o) => o.code === input.shipping?.[g.sellerId]) ?? opt.options[0] ?? null;
       const shipping = chosen ? toMinor(chosen.amount) : 0n;
       taxAmount += shippingTax(tax, shipping).tax;
+      if (viaStripe) stripeLines.push({ reference: `ship:${g.sellerId}`, amount: shipping, shipping: true, sellerId: g.sellerId });
       // Inclusive countries: the listed amounts already contain the tax (shown as "includes").
       const groupTotal = subtotal - discount + shipping + (tax.pricesIncludeTax ? 0n : taxAmount);
       totals.subtotal += subtotal;
@@ -236,6 +242,20 @@ export class CheckoutService {
         total: fromMinor(groupTotal),
       });
     }
+    // Stripe Tax (e.g. US sales tax): exact tax for the address replaces the configured rates.
+    let effectiveRate = Number(tax.rate);
+    if (viaStripe) {
+      const r = await this.stripeTax.calculate(cart.currency, address, stripeLines, { cache: true });
+      totals.tax = 0n;
+      for (const g of groups as any[]) {
+        const t = stripeLines.filter((l) => l.sellerId === g.sellerId).reduce((a, l) => a + (r.byRef.get(l.reference) ?? 0n), 0n);
+        g.tax = fromMinor(t);
+        g.total = fromMinor(toMinor(g.subtotal) - toMinor(g.discount) + toMinor(g.shipping) + t);
+        totals.tax += t;
+      }
+      const base = totals.subtotal - totals.discount + totals.shipping;
+      effectiveRate = base > 0n ? Number((totals.tax * 1_000_000n) / base) / 1_000_000 : 0;
+    }
     const bt = await this.settings.get('payments.bank_transfer');
     const stripe = this.payments.providerFor('CARD');
     const paypal = this.payments.providerFor('PAYPAL');
@@ -244,7 +264,7 @@ export class CheckoutService {
       addressId: address?.id ?? null,
       destinationCountry: address?.country_code ?? null,
       groups,
-      tax: { name: tax.taxName, rate: Number(tax.rate), country: tax.countryCode, included: tax.pricesIncludeTax, appliesToShipping: tax.appliesToShipping },
+      tax: { name: tax.taxName, rate: effectiveRate, country: tax.countryCode, included: tax.pricesIncludeTax, appliesToShipping: tax.appliesToShipping, provider: tax.calculationProvider },
       subtotal: fromMinor(totals.subtotal),
       discount: fromMinor(totals.discount),
       coupons: promo.results.map((r) => ({ code: r.code, sellerId: r.sellerId, discount: fromMinor(r.discount) })),
@@ -509,7 +529,7 @@ export class CheckoutService {
         }
       }
 
-      await this.calculate(c, sessionId, currency, items, shippingBySeller, corr, address.country_code, reserved, userId, shippingLines);
+      await this.calculate(c, sessionId, currency, items, shippingBySeller, corr, address.country_code, reserved, userId, shippingLines, address);
 
       // ---- inventory reservations
       for (const a of allocations) {
@@ -579,14 +599,17 @@ export class CheckoutService {
     });
 
     const result = await this.resultFor(checkoutId, userId);
-    if (result.orderId) this.mail.fire(() => this.mail.orderConfirmed(result.orderId));
+    if (result.orderId) {
+      this.mail.fire(() => this.mail.orderConfirmed(result.orderId!));
+      this.stripeTax.fire(result.orderId);
+    }
     else if (result.bankTransfer && result.paymentId) this.mail.fire(() => this.mail.transferInstructions(result.paymentId, result.bankTransfer!));
     return result;
   }
 
   /** Writes calculation run + immutable snapshots + commission evidence, then finalizes. */
   private async calculate(c: PoolClient, sessionId: string, currency: string, items: any[], shippingBySeller: Map<string, Minor>, corr: string, destinationCountry: string,
-    coupons: (CouponResult & { reservationId: string })[] = [], customerId?: string, shippingLines: ShippingTaxLine[] = []) {
+    coupons: (CouponResult & { reservationId: string })[] = [], customerId?: string, shippingLines: ShippingTaxLine[] = [], address?: any) {
     const taxInfo = await this.tax.forCountry(destinationCountry, c);
     const taxEvidence = {
       code: taxInfo.taxName, rate: taxInfo.rate, reducedRate: taxInfo.reducedRate, country: destinationCountry, source: 'marketplace_tax_rates',
@@ -617,6 +640,24 @@ export class CheckoutService {
         tax: lt.tax, taxRate: lt.rate, taxClass: lt.taxClass, commission: com.amount, commissionRaw: com.raw, entitlement: net - com.amount,
         item: it, rule, base: com.base, referral: 0n,
       });
+    }
+    // Stripe Tax (e.g. US sales tax): exact tax per line and per shipping group for the address.
+    let stripeCalculationId: string | null = null;
+    if (taxInfo.calculationProvider === 'STRIPE_TAX' && address) {
+      const r = await this.stripeTax.calculate(currency, address, [
+        ...lines.map((l) => ({ reference: l.key, amount: l.net, quantity: l.quantity, taxClass: l.taxClass })),
+        ...shippingLines.map((x) => ({ reference: `ship:${x.groupId}`, amount: x.amount, shipping: true })),
+      ]);
+      stripeCalculationId = r.id;
+      const eff = (t: Minor, b: Minor) => (b > 0n ? (Number((t * 1_000_000n) / b) / 1_000_000).toFixed(6).replace(/0+$/, '').replace(/\.$/, '') : '0');
+      for (const l of lines) {
+        l.tax = r.byRef.get(l.key) ?? 0n;
+        l.taxRate = eff(l.tax, l.net);
+      }
+      for (const x of shippingLines) {
+        x.tax = r.byRef.get(`ship:${x.groupId}`) ?? 0n;
+        x.rate = eff(x.tax, x.amount);
+      }
     }
     // Affiliate commission (funded by the store): per store, when the buyer came through an affiliate link.
     const referrals: { sellerId: string; r: NonNullable<Awaited<ReturnType<AffiliatesService['forCheckout']>>> }[] = [];
@@ -739,6 +780,7 @@ export class CheckoutService {
     const hasShippingTax = shippingLines.some((x) => x.tax > 0n);
     const globalTax = {
       ...taxEvidence,
+      ...(stripeCalculationId ? { provider: 'STRIPE_TAX', stripeCalculationId } : {}),
       ...(hasShippingTax
         ? {
             snapshots: lines.map((l) => ({ checkoutItemId: l.key, taxClass: l.taxClass, rate: l.taxRate, base: fromMinor(l.net), amount: fromMinor(l.tax) })),

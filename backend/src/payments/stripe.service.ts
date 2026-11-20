@@ -32,6 +32,11 @@ export class StripeService {
     return this.client;
   }
 
+  /** Stripe client for other modules (e.g. Stripe Tax). Throws when Stripe isn't configured. */
+  get api(): Stripe {
+    return this.stripe;
+  }
+
   async createIntent(input: { amount: string; currency: string; paymentId: string; checkoutId: string; customerEmail?: string; description: string; customerId?: string; saveCard?: boolean; paymentMethodId?: string }) {
     return this.stripe.paymentIntents.create(
       {

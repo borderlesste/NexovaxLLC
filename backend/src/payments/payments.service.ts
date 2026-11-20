@@ -6,6 +6,7 @@ import { AppError, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
 import { postSaleAllocation } from '../checkout/sale-ledger';
 import { MailService } from '../mail/mail.service';
+import { StripeTaxService } from '../tax/stripe-tax.service';
 import { orderRef } from '../common/refs';
 import { fromStripeAmount, StripeService } from './stripe.service';
 import { PaypalService } from './paypal.service';
@@ -47,6 +48,7 @@ export class PaymentsService {
     private readonly cards: CardsService,
     private readonly incidents: PaymentIncidentsService,
     private readonly notifications: NotificationsService,
+    private readonly stripeTax: StripeTaxService,
   ) {}
 
   providerFor(method: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER'): { code: ProviderCode; environment: 'TEST' | 'LIVE' } | null {
@@ -202,7 +204,10 @@ export class PaymentsService {
       await this.db.exec(`select public.nx_pin_chargeback_policies($1)`, [r!.order_id], c);
       return { orderId: r!.order_id as string, created: true };
     });
-    if (result.created) this.mail.fire(() => this.mail.orderConfirmed(result.orderId));
+    if (result.created) {
+      this.mail.fire(() => this.mail.orderConfirmed(result.orderId));
+      this.stripeTax.fire(result.orderId);
+    }
     return result.orderId;
   }
 

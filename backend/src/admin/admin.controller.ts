@@ -81,6 +81,7 @@ export class TaxRateDto {
   @IsOptional() @ToNumber() @IsNumber({ maxDecimalPlaces: 4 }, { message: 'La tasa debe ser un número.' }) @Min(0) @Max(0.99) reducedRate?: number | null;
   @IsOptional() @IsBoolean() appliesToShipping?: boolean;
   @IsOptional() @IsBoolean() pricesIncludeTax?: boolean;
+  @IsOptional() @IsIn(['RATES', 'STRIPE_TAX']) calculationProvider?: 'RATES' | 'STRIPE_TAX';
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsCleanText(0, 300) notes?: string;
 }

@@ -2711,5 +2711,8 @@
 "Reducida": "Réduite",
 "Exenta (sin impuesto)": "Exonérée (sans taxe)",
 "Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.": "Définit la taxe que paie le produit dans chaque pays. En cas de doute, laissez celle de la catégorie.",
-"Según la categoría ({a})": "Selon la catégorie ({a})"
+"Según la categoría ({a})": "Selon la catégorie ({a})",
+"Stripe Tax": "Stripe Tax",
+"Stripe calcula el impuesto exacto por dirección, solo en los estados donde te registraste en Stripe. Pensado para EE. UU.": "Stripe calcule la taxe exacte selon l’adresse, uniquement dans les États où vous êtes enregistré dans Stripe. Prévu pour les États-Unis.",
+"Stripe Tax: actívalo primero en tu panel de Stripe y registra allí los estados donde debes cobrar. Con el interruptor encendido, Stripe calcula el impuesto de ese país por dirección exacta (las tasas de esta fila no se usan) y cada venta y reembolso queda en sus reportes fiscales.": "Stripe Tax : activez-le d’abord dans votre tableau de bord Stripe et enregistrez-y les États où vous devez collecter. Interrupteur activé, Stripe calcule la taxe de ce pays selon l’adresse exacte (les taux de cette ligne ne sont pas utilisés) et chaque vente et remboursement figure dans ses rapports fiscaux."
 }

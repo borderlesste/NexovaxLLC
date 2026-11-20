@@ -1,7 +1,7 @@
 import { excludeRate, lineTax, rateFor, shippingTax } from '../src/tax/tax-calc';
 import type { TaxRate } from '../src/tax/tax.service';
 
-const base: TaxRate = { countryCode: 'DO', taxName: 'ITBIS', rate: '0.18', reducedRate: '0.16', appliesToShipping: false, pricesIncludeTax: false, isActive: true, notes: null };
+const base: TaxRate = { countryCode: 'DO', taxName: 'ITBIS', rate: '0.18', reducedRate: '0.16', appliesToShipping: false, pricesIncludeTax: false, calculationProvider: 'RATES', isActive: true, notes: null };
 
 describe('tax calculation', () => {
   it('adds the tax on top when prices exclude it', () => {

@@ -38,6 +38,7 @@ import { AdminController } from './admin/admin.controller';
 import { JobsService } from './jobs.service';
 import { MailService } from './mail/mail.service';
 import { TaxService } from './tax/tax.service';
+import { StripeTaxService } from './tax/stripe-tax.service';
 import { ShippoService } from './shipping/shippo.service';
 import { ShippingService } from './shipping/shipping.service';
 import { WebhooksController } from './shipping/webhooks.controller';
@@ -105,6 +106,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     JobsService,
     MailService,
     TaxService,
+    StripeTaxService,
     ShippoService,
     ShippingService,
     StripeService,

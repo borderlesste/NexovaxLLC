@@ -22,6 +22,7 @@ import { mediaUrl } from '../catalog/catalog.sql';
 import { postSaleAllocation } from '../checkout/sale-ledger';
 import { attributeInput, attributeOptions } from '../common/attributes';
 import { MailService } from '../mail/mail.service';
+import { StripeTaxService } from '../tax/stripe-tax.service';
 import { StripeService } from '../payments/stripe.service';
 import { PaypalService } from '../payments/paypal.service';
 
@@ -46,6 +47,7 @@ export class AdminService {
     private readonly stripe: StripeService,
     private readonly paypal: PaypalService,
     private readonly notifications: NotificationsService,
+    private readonly stripeTax: StripeTaxService,
   ) {}
 
   // ------------------------------------------------------------------ dashboard
@@ -712,6 +714,7 @@ export class AdminService {
       return r!.order_id;
     });
     this.mail.fire(() => this.mail.orderConfirmed(orderId));
+    this.stripeTax.fire(orderId);
     return { orderId };
   }
 

@@ -10,6 +10,7 @@ import { AnalyticsService } from './analytics/analytics.service';
 import { AlertsService } from './analytics/alerts.service';
 import { RecommendationsService } from './analytics/recommendations.service';
 import { PoliciesService } from './account/policies.service';
+import { StripeTaxService } from './tax/stripe-tax.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -28,7 +29,20 @@ export class JobsService {
     private readonly alerts: AlertsService,
     private readonly recommendations: RecommendationsService,
     private readonly policies: PoliciesService,
+    private readonly stripeTax: StripeTaxService,
   ) {}
+
+  /** Stripe Tax: record paid orders and refunds in Stripe's tax reports (retry). */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async syncStripeTax() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const n = await this.stripeTax.sync();
+      if (n) this.logger.log(`Stripe Tax refunds reversed: ${n}`);
+    } catch (e: any) {
+      this.logger.warn(`syncStripeTax: ${e.message}`);
+    }
+  }
 
   /** Shipping settlements that failed at dispatch time (retry). */
   @Cron(CronExpression.EVERY_HOUR)

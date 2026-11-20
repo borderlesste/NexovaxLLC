@@ -2711,5 +2711,8 @@
 "Reducida": "Redwi",
 "Exenta (sin impuesto)": "Egzante (san taks)",
 "Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.": "Li defini ki taks pwodwi a peye nan chak peyi. Si ou pa konnen, kite l selon kategori a.",
-"Según la categoría ({a})": "Selon kategori a ({a})"
+"Según la categoría ({a})": "Selon kategori a ({a})",
+"Stripe Tax": "Stripe Tax",
+"Stripe calcula el impuesto exacto por dirección, solo en los estados donde te registraste en Stripe. Pensado para EE. UU.": "Stripe kalkile taks egzak la selon adrès la, sèlman nan eta kote ou anrejistre nan Stripe. Se pou Etazini.",
+"Stripe Tax: actívalo primero en tu panel de Stripe y registra allí los estados donde debes cobrar. Con el interruptor encendido, Stripe calcula el impuesto de ese país por dirección exacta (las tasas de esta fila no se usan) y cada venta y reembolso queda en sus reportes fiscales.": "Stripe Tax: aktive l anvan nan panèl Stripe ou epi anrejistre la eta kote ou dwe touche taks. Lè entèriptè a limen, Stripe kalkile taks peyi sa a selon adrès egzak la (to ki nan liy sa a pa sèvi) epi chak vant ak ranbousman parèt nan rapò fiskal li yo."
 }

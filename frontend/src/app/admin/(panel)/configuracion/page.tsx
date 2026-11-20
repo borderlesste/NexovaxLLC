@@ -45,6 +45,7 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
         countryCode: r.countryCode, taxName: r.taxName, rate: Number(r.ratePct || 0) / 100, isActive: r.isActive, notes: r.notes || undefined,
         reducedRate: r.reducedPct !== '' && r.reducedPct != null ? Number(r.reducedPct) / 100 : null,
         appliesToShipping: !!r.appliesToShipping, pricesIncludeTax: !!r.pricesIncludeTax,
+        calculationProvider: r.calculationProvider === 'STRIPE_TAX' ? 'STRIPE_TAX' : 'RATES',
       });
       toast.success(t('Impuesto de {c} guardado.', { c: countryName(r.countryCode) }));
       onChanged();
@@ -72,9 +73,10 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
   return (
     <Card>
       <CardHeader icon={<Percent />} title={t('Impuestos por país de destino')} subtitle={t('Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.')} />
+      <p className="mx-5 mt-4 rounded-lg bg-surface px-4 py-3 text-xs text-muted">{t('Stripe Tax: actívalo primero en tu panel de Stripe y registra allí los estados donde debes cobrar. Con el interruptor encendido, Stripe calcula el impuesto de ese país por dirección exacta (las tasas de esta fila no se usan) y cada venta y reembolso queda en sus reportes fiscales.')}</p>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] text-sm">
-          <thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('País')}</th><th>{t('Impuesto')}</th><th className="w-28">{t('Tasa')}</th><th className="w-28">{t('Tasa reducida')}</th><th title={t('El cargo de envío también paga impuesto.')}>{t('Grava envío')}</th><th title={t('Los precios publicados ya incluyen el impuesto para compradores de este país: se desglosa, no se suma.')}>{t('Precio con impuesto incluido')}</th><th>{t('Activo')}</th><th className="w-40" /></tr></thead>
+        <table className="w-full min-w-[1080px] text-sm">
+          <thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('País')}</th><th>{t('Impuesto')}</th><th className="w-28">{t('Tasa')}</th><th className="w-28">{t('Tasa reducida')}</th><th title={t('El cargo de envío también paga impuesto.')}>{t('Grava envío')}</th><th title={t('Los precios publicados ya incluyen el impuesto para compradores de este país: se desglosa, no se suma.')}>{t('Precio con impuesto incluido')}</th><th title={t('Stripe calcula el impuesto exacto por dirección, solo en los estados donde te registraste en Stripe. Pensado para EE. UU.')}>{t('Stripe Tax')}</th><th>{t('Activo')}</th><th className="w-40" /></tr></thead>
           <tbody className="divide-y divide-line">
             {sorted.map((r) => {
               const upd = (k: string, v: any) => setRows((rs) => rs.map((x) => (x.countryCode === r.countryCode ? { ...x, [k]: v } : x)));
@@ -86,6 +88,7 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
                   <td className="pr-3"><Input rule="percent" inputMode="decimal" value={r.reducedPct} placeholder={r.ratePct} onChange={(e) => upd('reducedPct', e.target.value.replace(/[^\d.]/g, ''))} suffix="%" className="h-9" aria-label={t('Tasa reducida')} /></td>
                   <td><Switch checked={!!r.appliesToShipping} onCheckedChange={(v) => upd('appliesToShipping', v)} /></td>
                   <td><Switch checked={!!r.pricesIncludeTax} onCheckedChange={(v) => upd('pricesIncludeTax', v)} /></td>
+                  <td><Switch checked={r.calculationProvider === 'STRIPE_TAX'} onCheckedChange={(v) => upd('calculationProvider', v ? 'STRIPE_TAX' : 'RATES')} /></td>
                   <td><Switch checked={!!r.isActive} onCheckedChange={(v) => upd('isActive', v)} /></td>
                   <td className="pr-5 text-right">
                     <Button size="sm" variant="outline" loading={busy === r.countryCode} onClick={() => saveRow(r)}>{t('Guardar')}</Button>
