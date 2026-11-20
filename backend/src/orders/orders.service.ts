@@ -12,6 +12,7 @@ import { fromMinor, toMinor } from '../common/money';
 import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
 import { ShippingSettlementService } from '../shipping/shipping-settlement.service';
 import { CANCELLABLE_SQL, CancellationsService } from './cancellations.service';
+import { config } from '../config';
 
 export type OrderScope = { kind: 'customer'; userId: string } | { kind: 'seller'; sellerId: string } | { kind: 'admin' };
 
@@ -692,8 +693,9 @@ export class OrdersService {
   /** On delivery, evaluates payout policy and releases seller funds from pending to available. */
   private async releaseDeliveredFunds(c: PoolClient, orderId: string) {
     const sos = await this.db.many(
-      `select id from public.seller_orders where order_id = $1 and fulfillment_status in ('DELIVERED','PARTIALLY_RETURNED')`,
-      [orderId],
+      `select so.id from public.seller_orders so where so.order_id = $1 and so.fulfillment_status in ('DELIVERED','PARTIALLY_RETURNED')
+          and ${SAME_PAYMENT_ENV}`,
+      [orderId, config.paymentEnvironment],
       c,
     );
     for (const so of sos) {
@@ -722,14 +724,21 @@ export class OrdersService {
           and ($1::uuid is null or so.seller_id = $1::uuid)
           and (per.id is null or (per.status not in ('RELEASED','CANCELLED') and (per.status = 'BLOCKED' or per.hold_until is null or per.hold_until <= now())))
           and public.seller_order_pending_ledger_balance(so.id) > 0
+          and ${SAME_PAYMENT_ENV}
         group by so.order_id order by max(per.evaluated_at) asc nulls first
         limit 100`,
-      [sellerId ?? null],
+      [sellerId ?? null, config.paymentEnvironment],
     );
     for (const r of rows) await this.db.tx((c) => this.releaseDeliveredFunds(c, r.order_id)).catch(() => undefined);
     return rows.length;
   }
 }
+
+/**
+ * Funds are only released for orders paid in the environment the API runs in ($2): a TEST payment
+ * (Stripe test mode, sandbox) must never become real money for a store once the API runs LIVE.
+ */
+const SAME_PAYMENT_ENV = `coalesce((select p.environment from public.payments p where p.order_id = so.order_id order by p.created_at desc limit 1), $2) = $2`;
 
 function statusFilter(status: string, add: (v: unknown) => string) {
   switch (status) {
