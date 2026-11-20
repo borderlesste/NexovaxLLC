@@ -18,6 +18,7 @@ import { Dialog, Empty } from '@/components/ui/misc';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { ProductImage } from '@/components/shop/product-card';
 import { CancellationPanel, CancelPurchaseDialog } from './cancellation';
+import { OrderIssuesCard } from './order-issues';
 
 type Role = 'customer' | 'seller' | 'admin';
 
@@ -267,11 +268,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
           </dl>
           {role === 'customer' && <Button variant="outline" className="mt-4 w-full" asChild><Link href={`/cuenta/pedidos/${order.id}/recibo`} data-receipt-link><FileText /> {t('Ver recibo de compra')}</Link></Button>}
         </div>
-        <div className="card p-5">
-          <p className="text-lg font-bold">{t('Incidencias y mensajes')}</p>
-          <div className="mt-3 flex items-start gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800"><CheckCircle2 className="size-5 shrink-0" /><span><b>{t('Estado: sin incidencias.')}</b><br />{t('El pedido avanza según lo programado.')}</span></div>
-          {role === 'customer' && <Button variant="outline" className="mt-3 w-full" asChild><Link href={`/ayuda/reportar?pedido=${order.number}`}><AlertCircle /> {t('Reportar un problema')}</Link></Button>}
-        </div>
+        <OrderIssuesCard order={order} role={role} onContactSeller={contactSeller} />
       </aside>
 
       {shipFor && <ShipDialog so={shipFor} onClose={() => setShipFor(null)} onDone={() => { setShipFor(null); onChanged(); }} />}

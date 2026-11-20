@@ -7,7 +7,7 @@ import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { clampPage, clampPageSize } from '../common/paging';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { CARRIERS, ShippingService } from '../shipping/shipping.service';
-import { orderRef, parseOrderRef, paymentRef } from '../common/refs';
+import { orderRef, parseOrderRef, paymentRef, returnRef, ticketRef } from '../common/refs';
 import { fromMinor, toMinor } from '../common/money';
 import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
 import { ShippingSettlementService } from '../shipping/shipping-settlement.service';
@@ -28,6 +28,16 @@ const TRACKING_LABELS: Record<string, string> = {
   FAILURE: 'Entrega fallida',
   RETURNED: 'Devuelto al remitente',
 };
+
+const RETURN_LABELS: Record<string, string> = {
+  REQUESTED: 'Solicitada', UNDER_REVIEW: 'En revisión', APPROVED: 'Aprobada', AWAITING_SHIPMENT: 'Esperando envío del cliente', IN_TRANSIT: 'En camino a la tienda',
+  RECEIVED: 'Recibida por la tienda', INSPECTING: 'En inspección', REFUND_PENDING: 'Reembolso pendiente', CLOSED: 'Cerrada', REJECTED: 'Rechazada', CANCELLED: 'Cancelada',
+};
+const RETURN_OPEN = ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'AWAITING_SHIPMENT', 'IN_TRANSIT', 'RECEIVED', 'INSPECTING', 'REFUND_PENDING'];
+const TICKET_LABELS: Record<string, string> = {
+  OPEN: 'Pendiente', IN_PROGRESS: 'En proceso', PENDING_CUSTOMER: 'Esperando al usuario', PENDING_INTERNAL: 'En revisión interna', RESOLVED: 'Resuelto', CLOSED: 'Cerrado', CANCELLED: 'Cancelado',
+};
+const DISPUTE_OPEN = ['OPEN', 'UNDER_REVIEW', 'INQUIRY_OPEN'];
 
 @Injectable()
 export class OrdersService {
@@ -231,6 +241,7 @@ export class OrdersService {
     ]);
 
     const cancellations = await this.cancellations.forOrder(o.id, scope.kind === 'admin' ? 'staff' : scope.kind);
+    const activity = await this.orderActivity(scope, o.id, sellerFilter);
     const timeline = this.buildTimeline(o, shipments);
     // A seller only sees its own part of a multi-store order: its seller-order totals,
     // never the whole basket, and no payment instrument details.
@@ -323,6 +334,53 @@ export class OrdersService {
           })),
       })),
       timeline,
+      ...activity,
+    };
+  }
+
+  /**
+   * Real incidents and conversations of an order for the "Incidencias y mensajes" card:
+   * returns, problem reports (buyer and staff only), bank disputes (store and staff only)
+   * and the buyer-store conversations about the order.
+   */
+  private async orderActivity(scope: OrderScope, orderId: string, sellerId: string | null) {
+    const [returns, tickets, disputes, conversations] = await Promise.all([
+      this.db.many(
+        `select rr.id, rr.public_number, rr.status, rr.seller_id, coalesce(rr.updated_at, rr.requested_at) as at
+           from public.return_requests rr where rr.order_id = $1 and ($2::uuid is null or rr.seller_id = $2) order by rr.requested_at desc limit 20`,
+        [orderId, sellerId],
+      ),
+      scope.kind === 'seller'
+        ? Promise.resolve([])
+        : this.db.many(
+            `select t.id, t.public_number, t.status, t.subject, t.updated_at as at from public.support_tickets t
+              where t.order_id = $1 and ($2::uuid is null or t.requester_user_id = $2) order by t.created_at desc limit 20`,
+            [orderId, scope.kind === 'customer' ? scope.userId : null],
+          ),
+      scope.kind === 'customer'
+        ? Promise.resolve([])
+        : this.db.many(`select d.id, d.status, d.reason_code, d.disputed_amount::text as amount, d.currency_code, d.updated_at as at from public.payment_disputes d where d.order_id = $1 order by d.created_at desc limit 10`, [orderId]),
+      this.db.many(
+        `select c.id, c.status, c.seller_id, coalesce(ssp.display_name, s.slug) as store, coalesce(c.last_message_at, c.created_at) as at,
+                (select count(*) from public.conversation_messages m where m.conversation_id = c.id and m.status = 'SENT')::int as messages,
+                ${scope.kind === 'customer' ? `(select count(*) from public.conversation_messages m
+                   where m.conversation_id = c.id and m.status = 'SENT' and m.sender_user_id is distinct from $3
+                     and m.sequence_number > coalesce((select lr.sequence_number from public.conversation_participants cp
+                                                        join public.conversation_messages lr on lr.id = cp.last_read_message_id
+                                                       where cp.conversation_id = c.id and cp.user_id = $3), 0))::int` : 'null::int'} as unread
+           from public.conversations c left join public.sellers s on s.id = c.seller_id left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+          where c.order_id = $1 and ($2::uuid is null or c.seller_id = $2) and c.status <> 'ARCHIVED'
+          order by coalesce(c.last_message_at, c.created_at) desc limit 10`,
+        scope.kind === 'customer' ? [orderId, sellerId, scope.userId] : [orderId, sellerId],
+      ),
+    ]);
+    return {
+      issues: [
+        ...returns.map((r: any) => ({ kind: 'RETURN', id: r.id, ref: returnRef(r.public_number), sellerId: r.seller_id, status: r.status, statusLabel: RETURN_LABELS[r.status] ?? r.status, open: RETURN_OPEN.includes(r.status), at: r.at })),
+        ...tickets.map((r: any) => ({ kind: 'TICKET', id: r.id, ref: ticketRef(r.public_number), title: r.subject, status: r.status, statusLabel: TICKET_LABELS[r.status] ?? r.status, open: !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(r.status), at: r.at })),
+        ...disputes.map((r: any) => ({ kind: 'DISPUTE', id: r.id, status: r.status, statusLabel: DISPUTE_OPEN.includes(r.status) ? 'Abierta' : 'Cerrada', amount: r.amount, currency: r.currency_code, open: DISPUTE_OPEN.includes(r.status), at: r.at })),
+      ],
+      conversations: conversations.map((c: any) => ({ id: c.id, sellerId: c.seller_id, store: c.store, lastMessageAt: c.at, messages: c.messages, unread: c.unread })),
     };
   }
 
