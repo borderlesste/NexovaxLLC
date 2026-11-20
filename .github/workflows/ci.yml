@@ -1,0 +1,57 @@
+# Checks every push to main and every pull request: types, API tests and both builds.
+# Nothing is deployed from here (Vercel and Render deploy on their own).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (NestJS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @rd/backend...
+      - name: Typecheck
+        run: pnpm --filter @rd/backend typecheck
+      - name: Tests
+        run: pnpm --filter @rd/backend test
+      - name: Build
+        run: pnpm --filter @rd/backend build
+
+  web:
+    name: Web (Next.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Public placeholders: the build only needs them to exist.
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @rd/frontend...
+      - name: Typecheck
+        run: pnpm --filter @rd/frontend typecheck
+      - name: Build
+        run: pnpm --filter @rd/frontend build
