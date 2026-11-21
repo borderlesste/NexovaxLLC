@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowRight, Clock, Minus, Plus, ShoppingCart, Store, Tra
 import { toast } from 'sonner';
 import { ApiError, del, errorMessage, get, post, put } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { guestCart, useGuestCart } from '@/lib/guest-cart';
 import { money } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,11 @@ import { t } from '@/lib/i18n';
 export default function CartPage() {
   const { session, loading } = useAuth();
   const qc = useQueryClient();
+  const guest = !loading && !session;
+  const lines = useGuestCart();
   const cart = useQuery({ queryKey: ['cart'], queryFn: () => get('/cart'), enabled: !!session });
+  // Without an account the cart lives in this browser; the API prices it (stock, availability).
+  const guestQ = useQuery({ queryKey: ['guest-cart', lines], queryFn: () => post('/cart/preview', { items: lines }), enabled: guest && lines.length > 0, placeholderData: (p) => p });
   const onDone = (c: any) => {
     qc.setQueryData(['cart'], c);
     qc.invalidateQueries({ queryKey: ['me'] });
@@ -27,8 +32,11 @@ export default function CartPage() {
     toast.error(errorMessage(e));
     if (e instanceof ApiError && e.code === 'CHECKOUT_PAYMENT_PENDING') qc.invalidateQueries({ queryKey: ['cart'] });
   };
-  const upd = useMutation({ mutationFn: (v: { id: string; quantity: number }) => put(`/cart/items/${v.id}`, { quantity: v.quantity }), onSuccess: onDone, onError });
-  const rem = useMutation({ mutationFn: (id: string) => del(`/cart/items/${id}`), onSuccess: onDone, onError });
+  const updUser = useMutation({ mutationFn: (v: { id: string; quantity: number }) => put(`/cart/items/${v.id}`, { quantity: v.quantity }), onSuccess: onDone, onError });
+  const remUser = useMutation({ mutationFn: (id: string) => del(`/cart/items/${id}`), onSuccess: onDone, onError });
+  // Guest lines are keyed by variant id.
+  const upd = guest ? { isPending: false, mutate: (v: { id: string; quantity: number }) => guestCart.set(v.id, v.quantity) } : updUser;
+  const rem = guest ? { mutate: (id: string) => guestCart.remove(id) } : remUser;
   const cancelPay = useMutation({
     mutationFn: (checkoutId: string) => post(`/checkout/${checkoutId}/cancel`),
     onSuccess: (r: any) => {
@@ -42,14 +50,8 @@ export default function CartPage() {
   });
 
   if (loading) return <PageLoader />;
-  if (!session)
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-16">
-        <div className="card"><Empty icon={<ShoppingCart />} title={t('Inicia sesión para ver tu carrito')} action={<Button asChild><Link href="/auth/iniciar-sesion?next=/carrito">{t('Iniciar sesión')}</Link></Button>} /></div>
-      </div>
-    );
-  if (cart.isLoading) return <PageLoader />;
-  const c = cart.data;
+  if ((guest ? guestQ.isLoading && lines.length > 0 : cart.isLoading)) return <PageLoader />;
+  const c = guest ? (lines.length ? guestQ.data : { groups: [], itemCount: 0, subtotal: '0.00' }) : cart.data;
   const hasIssues = c?.groups.some((g: any) => g.items.some((i: any) => i.issue));
   const pp = c?.pendingPayment;
   return (
@@ -124,9 +126,21 @@ export default function CartPage() {
               <div className="flex justify-between"><span className="text-muted">{t('Envío e impuestos')}</span><span className="text-muted">{t('Se calculan en el pago')}</span></div>
             </div>
             <div className="mt-4 flex justify-between border-t border-line pt-4 text-lg font-extrabold"><span>{t('Subtotal')}</span><span>{money(c.subtotal)}</span></div>
-            <Button size="lg" className="mt-5 w-full" asChild disabled={hasIssues || !!pp}>
-              <Link href="/checkout">{t('Continuar al pago')}{' '}<ArrowRight /></Link>
-            </Button>
+            {guest ? (
+              <>
+                <Button size="lg" className="mt-5 w-full" asChild disabled={hasIssues}>
+                  <Link href="/auth/iniciar-sesion?next=/checkout">{t('Inicia sesión para pagar')}{' '}<ArrowRight /></Link>
+                </Button>
+                <p className="mt-2 text-center text-xs text-muted">
+                  {t('Tu carrito se guarda en este navegador y pasa a tu cuenta al iniciar sesión.')}{' '}
+                  <Link href="/auth/registrarse?next=/checkout" className="font-semibold text-brand-700">{t('Crear cuenta')}</Link>
+                </p>
+              </>
+            ) : (
+              <Button size="lg" className="mt-5 w-full" asChild disabled={hasIssues || !!pp}>
+                <Link href="/checkout">{t('Continuar al pago')}{' '}<ArrowRight /></Link>
+              </Button>
+            )}
             {hasIssues && <p className="mt-2 text-xs text-amber-700">{t('Corrige los productos marcados antes de continuar.')}</p>}
             <Link href="/catalogo" className="mt-3 block text-center text-sm font-semibold text-brand-700">{t('Seguir comprando')}</Link>
           </div>

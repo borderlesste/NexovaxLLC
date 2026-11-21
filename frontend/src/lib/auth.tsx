@@ -1,10 +1,12 @@
 'use client';
 import { t, getLocale, switchLocale } from '@/lib/i18n';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { ApiError, get, postWithCaptcha, setSellerContext } from './api';
+import { ApiError, get, post, postWithCaptcha, setSellerContext } from './api';
+import { guestCart } from './guest-cart';
+import { toast } from 'sonner';
 import { can as canRole, type Permission } from './permissions';
 
 
@@ -112,6 +114,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [qc],
   );
   useEffect(() => setSellerContext(seller?.id ?? null), [seller?.id]);
+  // After sign-in, the guest cart (kept in this browser) moves into the account's cart.
+  const merging = useRef<string | null>(null);
+  useEffect(() => {
+    if (!me || merging.current === me.id) return;
+    merging.current = me.id;
+    const items = guestCart.lines();
+    if (!items.length) return;
+    post<{ cart: any; skipped: string[] }>('/cart/merge', { items })
+      .then((r) => {
+        guestCart.clear();
+        qc.setQueryData(['cart'], r.cart);
+        qc.invalidateQueries({ queryKey: ['me'] });
+        qc.invalidateQueries({ queryKey: ['checkout-quote'] });
+        if (r.skipped?.length) toast.warning(t('Algunos productos de tu carrito ya no estaban disponibles y no se agregaron.'));
+      })
+      .catch(() => {
+        merging.current = null; // retried on the next load; the guest cart is kept
+      });
+  }, [me, qc]);
+
   // Apply the account's saved language once per browser (an explicit choice is kept in the cookie).
   useEffect(() => {
     const saved = (me as any)?.locale;

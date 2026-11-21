@@ -2995,5 +2995,8 @@
 "Al pagar se confirman el envío, su costo y los impuestos con tu dirección.": "Au paiement, la livraison, son coût et les taxes sont confirmés avec votre adresse.",
 "Tu dirección está en {a}; navegabas con destino {d}. Calculamos el envío, los impuestos y la disponibilidad para {a}.": "Votre adresse se trouve dans ce pays : {a} ; vous naviguiez avec la destination {d}. La livraison, les taxes et la disponibilité sont calculées pour {a}.",
 "Usar {a} como destino": "Utiliser {a} comme destination",
-"Cómo usamos tu ubicación": "Comment nous utilisons votre position"
+"Cómo usamos tu ubicación": "Comment nous utilisons votre position",
+"Inicia sesión para pagar": "Connectez-vous pour payer",
+"Tu carrito se guarda en este navegador y pasa a tu cuenta al iniciar sesión.": "Votre panier est enregistré dans ce navigateur et rejoint votre compte à la connexion.",
+"Algunos productos de tu carrito ya no estaban disponibles y no se agregaron.": "Certains produits de votre panier n’étaient plus disponibles et n’ont pas été ajoutés."
 }

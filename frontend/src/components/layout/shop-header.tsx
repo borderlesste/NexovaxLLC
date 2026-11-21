@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/misc';
 import { CategoryIcon } from '@/components/shop/category-icon';
 import { useAuth } from '@/lib/auth';
+import { useGuestCart } from '@/lib/guest-cart';
 import { roleList } from '@/lib/permissions';
 import { get } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -190,7 +191,9 @@ export function UserMenu() {
 }
 
 export function ShopHeader() {
-  const { me, loading } = useAuth();
+  const { me, loading, session } = useAuth();
+  const guest = useGuestCart();
+  const cartCount = me ? me.counts.cart_items : session ? undefined : guest.reduce((a, l) => a + l.quantity, 0);
   const pathname = usePathname();
   const [mobile, setMobile] = useState(false);
   useEffect(() => setMobile(false), [pathname]);
@@ -211,7 +214,8 @@ export function ShopHeader() {
             </Link>
           ))}
         </nav>
-        <DeliveryCountrySelector className="ml-auto hidden shrink-0 md:flex" />
+        <DeliveryCountrySelector className="ml-auto hidden shrink-0 2xl:flex" />
+        <DeliveryCountrySelector codeOnly className="ml-auto hidden shrink-0 md:flex 2xl:hidden" />
         <SearchBox className="hidden w-full max-w-md md:ml-2 md:block" />
         <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1 md:ml-2">
           <LanguageSwitcher className="hidden sm:flex" />
@@ -221,7 +225,7 @@ export function ShopHeader() {
           </Link>
           <Link href="/carrito" className="relative rounded-lg p-2 hover:bg-brand-50" aria-label={t('Carrito')}>
             <ShoppingCart className="size-5" />
-            <CountBadge n={me?.counts.cart_items} />
+            <CountBadge n={cartCount} />
           </Link>
           {me && (
             <Link href="/cuenta/mensajes" className="relative hidden rounded-lg p-2 hover:bg-brand-50 sm:block" aria-label={t('Mensajes')}>

@@ -238,5 +238,8 @@
 "Al pagar se confirman el envío, su costo y los impuestos con tu dirección.": "At checkout, shipping, its cost and taxes are confirmed with your address.",
 "Tu dirección está en {a}; navegabas con destino {d}. Calculamos el envío, los impuestos y la disponibilidad para {a}.": "Your address is in {a}; you were browsing with {d} as destination. Shipping, taxes and availability are calculated for {a}.",
 "Usar {a} como destino": "Use {a} as destination",
-"Cómo usamos tu ubicación": "How we use your location"
+"Cómo usamos tu ubicación": "How we use your location",
+"Inicia sesión para pagar": "Sign in to pay",
+"Tu carrito se guarda en este navegador y pasa a tu cuenta al iniciar sesión.": "Your cart is saved in this browser and moves to your account when you sign in.",
+"Algunos productos de tu carrito ya no estaban disponibles y no se agregaron.": "Some products in your cart were no longer available and weren’t added."
 }

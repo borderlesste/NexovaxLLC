@@ -2995,5 +2995,8 @@
 "Al pagar se confirman el envío, su costo y los impuestos con tu dirección.": "Lè w ap peye, livrezon an, pri li ak taks yo konfime ak adrès ou.",
 "Tu dirección está en {a}; navegabas con destino {d}. Calculamos el envío, los impuestos y la disponibilidad para {a}.": "Adrès ou nan {a}; ou t ap navige ak destinasyon {d}. Nou kalkile livrezon, taks ak disponiblite pou {a}.",
 "Usar {a} como destino": "Itilize {a} kòm destinasyon",
-"Cómo usamos tu ubicación": "Kijan nou itilize kote ou ye"
+"Cómo usamos tu ubicación": "Kijan nou itilize kote ou ye",
+"Inicia sesión para pagar": "Konekte pou w peye",
+"Tu carrito se guarda en este navegador y pasa a tu cuenta al iniciar sesión.": "Panye ou sere nan navigatè sa a epi l ap pase nan kont ou lè w konekte.",
+"Algunos productos de tu carrito ya no estaban disponibles y no se agregaron.": "Kèk pwodui nan panye ou pa t disponib ankò, yo pa t ajoute."
 }

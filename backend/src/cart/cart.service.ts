@@ -77,75 +77,62 @@ export class CartService {
     const marketplaceCurrency = await this.settings.currency();
     const currency = cart?.currency_code ?? marketplaceCurrency;
     if (!cart || (cart.status === 'ACTIVE' && cart.currency_code !== marketplaceCurrency)) return emptyCart(marketplaceCurrency);
-    const rows = await this.db.many(
-      `select ci.id, ci.quantity::int as quantity, ci.variant_id, ci.product_id, ci.seller_id,
-              p.title, p.slug, p.status as product_status, v.sku, v.title as variant_title, v.status as variant_status,
-              s.slug as seller_slug, coalesce(ssp.display_name, s.slug) as seller_name, s.status as seller_status,
-              ap.amount as unit_price, ap.compare_at_amount,
-              coalesce((select sum(ii.available_to_sell) from public.inventory_items ii where ii.variant_id = v.id and ii.status='ACTIVE'),0)::int as stock,
-              (select pm.asset_id from public.product_media pm where pm.product_id = p.id
-                 order by (pm.variant_id = v.id) desc nulls last, pm.is_primary desc, pm.sort_order limit 1) as image_id,
-              coalesce((select json_object_agg(po.name, pov.label order by po.sort_order)
-                          from public.variant_option_assignments voa
-                          join public.product_option_values pov on pov.id = voa.option_value_id
-                          join public.product_options po on po.id = voa.option_id
-                         where voa.variant_id = v.id), '{}') as attributes
-         from public.cart_items ci
-         join public.products p on p.id = ci.product_id
-         join public.product_variants v on v.id = ci.variant_id
-         join public.sellers s on s.id = ci.seller_id
-         left join public.seller_store_profiles ssp on ssp.seller_id = s.id
-         left join lateral (
-           select vpv.amount, vpv.compare_at_amount from public.variant_price_versions vpv
-            where vpv.variant_id = v.id and vpv.currency_code = $2 and vpv.status = 'ACTIVE'
-              and vpv.effective_from <= now() and (vpv.effective_to is null or vpv.effective_to > now())
-            order by vpv.effective_from desc limit 1) ap on true
-        where ci.cart_id = $1 and ci.status = 'ACTIVE'
-        order by ci.created_at`,
-      [cart.id, currency],
-      client,
-    );
-    const groups = new Map<string, any>();
-    let subtotal = 0n;
-    let count = 0;
-    for (const r of rows) {
-      const purchasable =
-        r.product_status === 'ACTIVE' && r.variant_status === 'ACTIVE' && r.seller_status === 'ACTIVE' && r.unit_price != null;
-      const line = toMinor(r.unit_price ?? 0) * BigInt(r.quantity);
-      if (purchasable) {
-        subtotal += line;
-        count += r.quantity;
-      }
-      if (!groups.has(r.seller_id))
-        groups.set(r.seller_id, { sellerId: r.seller_id, sellerSlug: r.seller_slug, sellerName: r.seller_name, items: [] });
-      groups.get(r.seller_id).items.push({
-        id: r.id,
-        productId: r.product_id,
-        variantId: r.variant_id,
-        slug: r.slug,
-        title: r.title,
-        variantTitle: r.variant_title,
-        sku: r.sku,
-        attributes: r.attributes,
-        quantity: r.quantity,
-        unitPrice: r.unit_price,
-        compareAtPrice: r.compare_at_amount,
-        lineTotal: fromMinor(line),
-        stock: r.stock,
-        imageUrl: r.image_id ? mediaUrl(r.image_id) : null,
-        purchasable,
-        issue: !purchasable ? 'Este producto ya no está disponible.' : r.quantity > r.stock ? `Solo quedan ${r.stock} unidades.` : null,
-      });
-    }
+    const rows = await this.db.many(cartLinesSql(`public.cart_items`, `where ci.cart_id = $1 and ci.status = 'ACTIVE'`), [cart.id, currency], client);
     return {
       id: cart.id,
       status: cart.status,
       pendingPayment: cart.status === 'CHECKOUT_IN_PROGRESS' ? await this.pendingPayment(cart.id, client) : null,
+      ...summarize(rows),
       currency,
-      groups: [...groups.values()],
-      itemCount: count,
-      subtotal: fromMinor(subtotal),
     };
+  }
+
+  /**
+   * Prices a guest cart kept in the visitor's browser (no account yet): same shape as getCart, with
+   * the variant id as the line id. Nothing is stored; checkout still requires signing in.
+   */
+  async preview(items: { variantId: string; quantity: number }[]) {
+    const currency = await this.settings.currency();
+    const merged = new Map<string, number>();
+    for (const i of items.slice(0, MAX_GUEST_LINES)) merged.set(i.variantId, Math.min(999, (merged.get(i.variantId) ?? 0) + i.quantity));
+    if (!merged.size) return { ...emptyCart(currency), guest: true };
+    const rows = await this.db.many(
+      cartLinesSql(
+        `(select r.variant_id as id, r.quantity, r.variant_id, v.product_id, p.seller_id, now() + make_interval(secs => r.ord::int) as created_at
+            from unnest($1::uuid[], $3::int[]) with ordinality as r(variant_id, quantity, ord)
+            join public.product_variants v on v.id = r.variant_id
+            join public.products p on p.id = v.product_id and p.published_at is not null)`,
+        '',
+      ),
+      [[...merged.keys()], currency, [...merged.values()]],
+    );
+    return { id: null, status: 'ACTIVE', pendingPayment: null, ...summarize(rows), currency, guest: true };
+  }
+
+  /**
+   * Moves a guest cart into the account after sign-in. Quantities add to what the account already
+   * has and are capped at the stock; lines that can't be added are reported, not fatal.
+   */
+  async merge(userId: string, items: { variantId: string; quantity: number }[]) {
+    const skipped: string[] = [];
+    for (const i of items.slice(0, MAX_GUEST_LINES)) {
+      try {
+        await this.addItem(userId, i.variantId, i.quantity, 'add');
+      } catch (e: any) {
+        if (e?.code === 'INSUFFICIENT_INVENTORY') {
+          const stock = await this.db.one<{ s: number; have: number }>(
+            `select coalesce((select sum(available_to_sell) from public.inventory_items where variant_id = $2 and status = 'ACTIVE'),0)::int as s,
+                    coalesce((select ci.quantity from public.cart_items ci join public.carts c on c.id = ci.cart_id
+                               where c.customer_id = $1 and c.status = 'ACTIVE' and ci.variant_id = $2 and ci.status = 'ACTIVE'),0)::int as have`,
+            [userId, i.variantId],
+          );
+          if (stock && stock.s > stock.have) { await this.addItem(userId, i.variantId, stock.s, 'set').catch(() => skipped.push(i.variantId)); continue; }
+        }
+        if (e?.code === 'CHECKOUT_PAYMENT_PENDING') throw e;
+        skipped.push(i.variantId);
+      }
+    }
+    return { cart: await this.getCart(userId), skipped };
   }
 
   /** The unpaid payment holding the cart (shown on /carrito so the buyer can finish or cancel it). */
@@ -226,6 +213,72 @@ export class CartService {
     });
     return this.getCart(userId);
   }
+}
+
+export const MAX_GUEST_LINES = 50;
+
+/** Cart lines with product, price, stock and image; `source` yields id, quantity, variant_id, product_id, seller_id, created_at. */
+function cartLinesSql(source: string, where: string) {
+  return `select ci.id, ci.quantity::int as quantity, ci.variant_id, ci.product_id, ci.seller_id,
+              p.title, p.slug, p.status as product_status, v.sku, v.title as variant_title, v.status as variant_status,
+              s.slug as seller_slug, coalesce(ssp.display_name, s.slug) as seller_name, s.status as seller_status,
+              ap.amount as unit_price, ap.compare_at_amount,
+              coalesce((select sum(ii.available_to_sell) from public.inventory_items ii where ii.variant_id = v.id and ii.status='ACTIVE'),0)::int as stock,
+              (select pm.asset_id from public.product_media pm where pm.product_id = p.id
+                 order by (pm.variant_id = v.id) desc nulls last, pm.is_primary desc, pm.sort_order limit 1) as image_id,
+              coalesce((select json_object_agg(po.name, pov.label order by po.sort_order)
+                          from public.variant_option_assignments voa
+                          join public.product_option_values pov on pov.id = voa.option_value_id
+                          join public.product_options po on po.id = voa.option_id
+                         where voa.variant_id = v.id), '{}') as attributes
+         from ${source} ci
+         join public.products p on p.id = ci.product_id
+         join public.product_variants v on v.id = ci.variant_id
+         join public.sellers s on s.id = ci.seller_id
+         left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+         left join lateral (
+           select vpv.amount, vpv.compare_at_amount from public.variant_price_versions vpv
+            where vpv.variant_id = v.id and vpv.currency_code = $2 and vpv.status = 'ACTIVE'
+              and vpv.effective_from <= now() and (vpv.effective_to is null or vpv.effective_to > now())
+            order by vpv.effective_from desc limit 1) ap on true
+        ${where}
+        order by ci.created_at`;
+}
+
+function summarize(rows: any[]) {
+  const groups = new Map<string, any>();
+  let subtotal = 0n;
+  let count = 0;
+  for (const r of rows) {
+    const purchasable =
+      r.product_status === 'ACTIVE' && r.variant_status === 'ACTIVE' && r.seller_status === 'ACTIVE' && r.unit_price != null;
+    const line = toMinor(r.unit_price ?? 0) * BigInt(r.quantity);
+    if (purchasable) {
+      subtotal += line;
+      count += r.quantity;
+    }
+    if (!groups.has(r.seller_id))
+      groups.set(r.seller_id, { sellerId: r.seller_id, sellerSlug: r.seller_slug, sellerName: r.seller_name, items: [] });
+    groups.get(r.seller_id).items.push({
+      id: r.id,
+      productId: r.product_id,
+      variantId: r.variant_id,
+      slug: r.slug,
+      title: r.title,
+      variantTitle: r.variant_title,
+      sku: r.sku,
+      attributes: r.attributes,
+      quantity: r.quantity,
+      unitPrice: r.unit_price,
+      compareAtPrice: r.compare_at_amount,
+      lineTotal: fromMinor(line),
+      stock: r.stock,
+      imageUrl: r.image_id ? mediaUrl(r.image_id) : null,
+      purchasable,
+      issue: !purchasable ? 'Este producto ya no está disponible.' : r.quantity > r.stock ? `Solo quedan ${r.stock} unidades.` : null,
+    });
+  }
+  return { groups: [...groups.values()], itemCount: count, subtotal: fromMinor(subtotal) };
 }
 
 function emptyCart(currency: string) {

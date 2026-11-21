@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { errorMessage, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { guestCart } from '@/lib/guest-cart';
 
 export function useRequireAuth() {
   const { session } = useAuth();
@@ -19,7 +20,7 @@ export function useRequireAuth() {
 
 export function useAddToCart() {
   const qc = useQueryClient();
-  const requireAuth = useRequireAuth();
+  const { session } = useAuth();
   const m = useMutation({
     mutationFn: (v: { variantId: string; quantity: number }) => post('/cart/items', v),
     onSuccess: (cart) => {
@@ -32,7 +33,13 @@ export function useAddToCart() {
   return {
     ...m,
     add: (variantId: string, quantity = 1) => {
-      if (!requireAuth()) return Promise.resolve(null);
+      // Without an account the product goes to the browser's guest cart; paying asks to sign in.
+      if (!session) {
+        guestCart.add(variantId, quantity);
+        qc.invalidateQueries({ queryKey: ['guest-cart'] });
+        toast.success(t('Producto agregado al carrito.'));
+        return Promise.resolve({ guest: true });
+      }
       return m.mutateAsync({ variantId, quantity }).catch(() => null);
     },
   };

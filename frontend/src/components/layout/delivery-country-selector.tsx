@@ -14,7 +14,7 @@ const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCas
  * marks it as suggested when it comes from the IP or the marketplace default. Changing it never
  * changes the language.
  */
-export function DeliveryCountrySelector({ className, compact }: { className?: string; compact?: boolean }) {
+export function DeliveryCountrySelector({ className, compact, codeOnly }: { className?: string; compact?: boolean; codeOnly?: boolean }) {
   const { context, setCountry } = useDelivery();
   const all = useCountries();
   const [open, setOpen] = useState(false);
@@ -45,7 +45,9 @@ export function DeliveryCountrySelector({ className, compact }: { className?: st
         data-delivery-country={current}
       >
         <MapPin className="size-4 shrink-0 text-brand-600" />
-        {compact ? (
+        {codeOnly ? (
+          <span className="text-sm font-semibold">{current}</span>
+        ) : compact ? (
           <span className="text-sm font-semibold">{name}</span>
         ) : (
           <span className="leading-tight">
