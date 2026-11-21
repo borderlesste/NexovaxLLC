@@ -8,6 +8,16 @@ export const CONSENT_EVENT = 'nx:consent';
 export const OPEN_CONSENT_EVENT = 'nx:consent-open';
 
 export type Consent = { analytics: boolean; at: number; v: number };
+/** Essential cookie that only says "already answered", so the server knows whether to render the banner. */
+export const CONSENT_COOKIE = 'nx_consent';
+
+export function markConsentCookie() {
+  try {
+    document.cookie = `${CONSENT_COOKIE}=1; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+  } catch {
+    /* cookies unavailable */
+  }
+}
 
 export function getConsent(): Consent | null {
   try {
@@ -27,6 +37,7 @@ export function setConsent(analytics: boolean) {
   } catch {
     /* storage unavailable */
   }
+  markConsentCookie();
   window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: { analytics } }));
 }
 

@@ -17,7 +17,7 @@ async function Hero({ preview }: { preview: any[] }) {
       <div className="absolute -right-24 -top-32 size-[420px] rounded-full bg-brand-200/50 blur-3xl" />
       <div className="relative mx-auto grid grid-cols-1 max-w-[1400px] items-center gap-6 px-4 py-5 lg:grid-cols-[1.8fr_1fr] lg:px-8 lg:py-5">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2.5 py-1 text-xs font-semibold text-accent-600">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2.5 py-1 text-xs font-semibold text-accent-700">
             <Globe2 className="size-3.5" /> {t('Tiendas de todo el mundo, un solo carrito')}
           </span>
           <h1 className="mt-2.5 text-xl font-extrabold leading-tight tracking-tight text-balance text-brand-950 sm:text-[26px]">
@@ -47,7 +47,7 @@ async function Hero({ preview }: { preview: any[] }) {
             <div className="grid grid-cols-4 gap-2">
               {(preview.length ? preview : Array.from({ length: 4 })).slice(0, 4).map((p: any, i) => (
                 <div key={i} className="rounded-lg bg-surface p-1.5">
-                  <ProductImage src={p?.imageUrl} alt={p?.title ?? ''} className="aspect-square w-full rounded-md" />
+                  <ProductImage src={p?.imageUrl} alt={p?.title ?? ''} sizes="80px" className="aspect-square w-full rounded-md" />
                   <div className="mt-1 h-1.5 w-3/4 rounded bg-brand-100" />
                 </div>
               ))}
@@ -86,12 +86,12 @@ export default async function HomePage() {
             ))}
             <Link href="/catalogo" className="card flex flex-col items-center gap-2 px-2 py-4 text-center transition hover:-translate-y-0.5">
               <LayoutGrid className="size-8 text-brand-600" strokeWidth={1.6} />
-              <span className="text-sm font-semibold">{t('Más')}</span>
+              <span className="text-sm font-semibold">{t('Más categorías')}</span>
             </Link>
           </div>
         </section>
 
-        <Recommendations context="home" limit={12} className="mt-12" />
+        <Recommendations context="home" limit={12} className="mt-12" reserveSpace />
 
         {featuredOn && <section className="mt-12" data-featured-section>
           <div className="mb-5 flex items-end justify-between">

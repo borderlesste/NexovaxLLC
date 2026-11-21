@@ -1,4 +1,5 @@
-import { Controller, Get, Param, ParseUUIDPipe, Res } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, Res } from '@nestjs/common';
+import sharp from 'sharp';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser, isStaff, Public, RequestUser } from '../auth/auth';
@@ -6,6 +7,10 @@ import { DbService } from '../db/db.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { forbidden, notFound } from '../common/errors';
 import { config } from '../config';
+
+/** Widths the web can ask for (`?w=`): resized copies of public images, so a 270 px card doesn't download a 1448 px photo. */
+export const MEDIA_WIDTHS = [96, 160, 320, 480, 640, 960, 1280] as const;
+const RESIZABLE = /^image\/(jpeg|png|webp|avif)$/;
 
 /** Small in-memory LRU for hot catalog images. */
 class Lru {
@@ -43,7 +48,7 @@ export class MediaController {
 
   @Public()
   @Get(':id')
-  async get(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response, @CurrentUser() user?: RequestUser) {
+  async get(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response, @CurrentUser() user?: RequestUser, @Query('w') w?: string) {
     const asset = await this.db.one<{
       storage_bucket: string;
       storage_key: string;
@@ -66,11 +71,28 @@ export class MediaController {
       hit = { buf, type: asset.mime_type };
       if (asset.visibility === 'PUBLIC') this.cache.set(id, hit);
     }
+    // Resized copy (public images only; unknown widths and other files are served as they are).
+    const width = Number(w);
+    if (asset.visibility === 'PUBLIC' && (MEDIA_WIDTHS as readonly number[]).includes(width) && RESIZABLE.test(hit.type)) {
+      const key = `${id}:w${width}`;
+      let small = this.cache.get(key);
+      if (!small) {
+        try {
+          const buf = await sharp(hit.buf, { failOn: 'none', pages: 1 }).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+          small = buf.length < hit.buf.length ? { buf, type: 'image/webp' } : hit;
+        } catch {
+          small = hit;
+        }
+        this.cache.set(key, small);
+      }
+      hit = small;
+    }
     res.setHeader('Content-Type', hit.type);
     res.setHeader('Content-Length', String(hit.buf.length));
     res.setHeader(
       'Cache-Control',
-      asset.visibility === 'PUBLIC' ? 'public, max-age=604800, immutable' : 'private, max-age=300',
+      // Asset ids never change content (a new photo gets a new id), so public copies can be cached for a year.
+      asset.visibility === 'PUBLIC' ? 'public, max-age=31536000, immutable' : 'private, max-age=300',
     );
     res.end(hit.buf);
   }

@@ -3,14 +3,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Cookie } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { getConsent, OPEN_CONSENT_EVENT, setConsent } from '@/lib/consent';
+import { getConsent, markConsentCookie, OPEN_CONSENT_EVENT, setConsent } from '@/lib/consent';
 import { Button } from '@/components/ui/button';
 
-/** Asks once for analytics cookies; reopened from "Preferencias de cookies" in the footer. */
-export function CookieBanner() {
-  const [open, setOpen] = useState(false);
+/**
+ * Asks once for analytics cookies; reopened from "Preferencias de cookies" in the footer.
+ * `initialOpen` comes from the server (no nx_consent cookie yet), so first-time visitors get the banner
+ * in the HTML instead of it popping in after the scripts load.
+ */
+export function CookieBanner({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
   useEffect(() => {
-    if (!getConsent()) setOpen(true);
+    if (getConsent()) {
+      markConsentCookie(); // visitors who answered before the cookie existed
+      setOpen(false);
+    } else setOpen(true);
     const reopen = () => setOpen(true);
     window.addEventListener(OPEN_CONSENT_EVENT, reopen);
     return () => window.removeEventListener(OPEN_CONSENT_EVENT, reopen);
@@ -26,7 +33,7 @@ export function CookieBanner() {
         <Cookie className="hidden size-8 shrink-0 text-brand-600 sm:block" />
         <p className="flex-1 text-sm text-muted">
           {t('Usamos cookies esenciales para que el sitio funcione. Con tu permiso, también medimos qué productos visitas para mejorar las recomendaciones; las tiendas solo ven cifras totales, nunca quién eres.')}{' '}
-          <Link href="/ayuda#cookies" className="font-semibold text-brand-700">{t('Más información')}</Link>
+          <Link href="/ayuda#cookies" className="font-semibold text-brand-700">{t('Más información sobre cookies')}</Link>
         </p>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={() => choose(false)} data-cookie-essential>{t('Solo necesarias')}</Button>

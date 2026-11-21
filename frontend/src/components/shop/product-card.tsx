@@ -23,15 +23,40 @@ export interface ProductCardData {
   seller: { name: string; slug: string; verified?: boolean };
 }
 
-export function ProductImage({ src, alt, className }: { src?: string | null; alt: string; className?: string }) {
+/** Widths the API resizes to (MEDIA_WIDTHS in backend/src/media/media.controller.ts). */
+const MEDIA_WIDTHS = [160, 320, 480, 640, 960, 1280];
+/** Product cards: 2 columns on phones up to 6 on wide screens. */
+export const CARD_SIZES = '(min-width: 1280px) 15vw, (min-width: 1024px) 24vw, (min-width: 640px) 32vw, 48vw';
+
+/**
+ * Catalog image. Our own media (/api/media/<id>) gets a srcSet of resized copies so the browser downloads
+ * only the size it shows; `sizes` says how wide it is displayed. `priority` is for the first, visible image.
+ */
+export function ProductImage({ src, alt, className, sizes, priority }: { src?: string | null; alt: string; className?: string; sizes?: string; priority?: boolean }) {
   const [err, setErr] = useState(false);
+  // Fixed-size thumbnails (size-10 … size-28) need only that many pixels; anything else is a card.
+  const fixed = /(?:^|\s)size-(\d+)(?:\s|$)/.exec(className ?? '');
+  sizes ??= fixed ? `${Number(fixed[1]) * 4}px` : CARD_SIZES;
   if (!src || err)
     return (
       <div className={cn('grid place-items-center bg-gradient-to-br from-brand-50 to-brand-100 text-brand-300', className)}>
         <ImageOff className="size-8" />
       </div>
     );
-  return <img src={src} alt={alt} loading="lazy" onError={() => setErr(true)} className={cn('object-contain', className)} />;
+  const own = /^\/api\/media\/[0-9a-f-]{36}$/i.test(src);
+  return (
+    <img
+      src={own ? `${src}?w=640` : src}
+      srcSet={own ? MEDIA_WIDTHS.map((w) => `${src}?w=${w} ${w}w`).join(', ') : undefined}
+      sizes={own ? sizes : undefined}
+      alt={alt}
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : undefined}
+      decoding="async"
+      onError={() => setErr(true)}
+      className={cn('object-contain', className)}
+    />
+  );
 }
 
 export function Stars({ value, count, size = 'sm' }: { value: number; count?: number; size?: 'sm' | 'md' }) {

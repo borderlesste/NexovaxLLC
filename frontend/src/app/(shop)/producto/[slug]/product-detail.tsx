@@ -98,13 +98,13 @@ export function ProductDetail({ initial }: { initial: any }) {
             <div className="hidden w-20 shrink-0 flex-col gap-2 sm:flex">
               {images.map((im: any, i: number) => (
                 <button key={i} onClick={() => setImg(i)} className={cn('overflow-hidden rounded-xl border-2 bg-white', i === img ? 'border-brand-600' : 'border-line')}>
-                  <ProductImage src={im.url} alt={im.alt} className="aspect-square w-full" />
+                  <ProductImage src={im.url} alt={im.alt} sizes="96px" className="aspect-square w-full" />
                 </button>
               ))}
             </div>
             <div className="relative flex-1">
               <div className="card relative overflow-hidden bg-brand-50/40">
-                <ProductImage src={images[img]?.url} alt={p.title} className="aspect-square w-full" />
+                <ProductImage src={images[img]?.url} alt={p.title} sizes="(min-width: 1024px) 45vw, 100vw" priority={img === 0} className="aspect-square w-full" />
                 <button onClick={() => fav.toggle(p.id)} className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-white shadow" aria-label={t('Favorito')}>
                   <Heart className={cn('size-5', p.isFavorite && 'fill-brand-600 text-brand-600')} />
                 </button>
@@ -310,7 +310,7 @@ export function ProductDetail({ initial }: { initial: any }) {
       </div>
 
       <Dialog open={zoom} onOpenChange={setZoom} title={p.title} size="xl">
-        <ProductImage src={images[img]?.url} alt={p.title} className="mx-auto max-h-[70vh] w-full" />
+        <ProductImage src={images[img]?.url} alt={p.title} sizes="100vw" className="mx-auto max-h-[70vh] w-full" />
       </Dialog>
       <Dialog open={askOpen} onOpenChange={setAskOpen} title={t('Preguntar al vendedor')} description={`${p.seller.name} · ${p.title}`}
         footer={<><Button variant="secondary" onClick={() => setAskOpen(false)}>{t('Cancelar')}</Button><Button onClick={ask} loading={asking} disabled={question.trim().length < 3}>{t('Enviar mensaje')}</Button></>}>

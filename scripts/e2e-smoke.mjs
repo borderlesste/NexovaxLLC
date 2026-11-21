@@ -64,7 +64,7 @@ async function open(lang, who) {
   const page = await ctx.newPage();
   const tag = `[${lang}${who ? ` ${who}` : ''}]`;
   page.on('pageerror', (e) => fail(`${tag} exception: ${e.message.slice(0, 200)} @ ${page.url()}`));
-  page.on('console', (m) => m.type() === 'error' && !fromTurnstile(m) && !/favicon|Failed to load resource|Download the React DevTools/.test(m.text()) && fail(`${tag} console: ${m.text().slice(0, 200)} @ ${page.url()}`));
+  page.on('console', (m) => m.type() === 'error' && !fromTurnstile(m) && !/favicon|Failed to load resource|Download the React DevTools|_vercel\/insights/.test(m.text()) && fail(`${tag} console: ${m.text().slice(0, 200)} @ ${page.url()}`));
   page.on('response', (r) => r.url().includes('/api/') && r.status() >= 500 && fail(`${tag} API ${r.status()} ${r.url().replace(BASE, '')}`));
   return { ctx, page, tag };
 }

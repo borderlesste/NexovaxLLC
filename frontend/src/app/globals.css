@@ -21,6 +21,8 @@
   --color-accent-400: #f8a541;
   --color-accent-500: #f5901a;
   --color-accent-600: #dd7a0b;
+  /* Text on light backgrounds (accent-600 is too light for small text: 2.9:1 on accent-50). */
+  --color-accent-700: #a35400;
 
   --color-ink: #0f172a;
   --color-muted: #5f6b7d;

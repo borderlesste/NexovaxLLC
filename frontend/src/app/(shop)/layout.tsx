@@ -1,16 +1,18 @@
 import { ShopHeader } from '@/components/layout/shop-header';
 import { ShopFooter } from '@/components/layout/shop-footer';
 import { RefTracker } from '@/components/affiliates/ref-tracker';
+import { cookies } from 'next/headers';
 import { CookieBanner } from '@/components/layout/cookie-banner';
 
-export default function ShopLayout({ children }: { children: React.ReactNode }) {
+export default async function ShopLayout({ children }: { children: React.ReactNode }) {
+  const answered = (await cookies()).has('nx_consent');
   return (
     <div className="flex min-h-dvh flex-col bg-surface">
       <ShopHeader />
       <RefTracker />
       <main className="flex-1">{children}</main>
       <ShopFooter />
-      <CookieBanner />
+      <CookieBanner initialOpen={!answered} />
     </div>
   );
 }

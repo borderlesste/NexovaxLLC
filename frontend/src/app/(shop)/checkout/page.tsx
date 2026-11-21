@@ -217,7 +217,7 @@ export default function CheckoutPage() {
                             <p className="flex flex-wrap items-center gap-1.5 font-bold">
                               {t(r.serviceName)}
                               {r.attributes?.includes('CHEAPEST') && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">{t('Más económico')}</span>}
-                              {r.attributes?.includes('FASTEST') && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-600">{t('Más rápido')}</span>}
+                              {r.attributes?.includes('FASTEST') && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">{t('Más rápido')}</span>}
                             </p>
                             <p className="text-muted">{r.estimatedDays ? t('Entrega estimada: {n} días', { n: r.estimatedDays }) : t(r.description)}</p>
                           </div>
