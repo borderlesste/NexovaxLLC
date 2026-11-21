@@ -242,6 +242,7 @@ export class OrdersService {
 
     const cancellations = await this.cancellations.forOrder(o.id, scope.kind === 'admin' ? 'staff' : scope.kind);
     const activity = await this.orderActivity(scope, o.id, sellerFilter);
+    const history = await this.orderHistory(scope, o, sellerOrders, cancellations, activity.issues);
     const timeline = this.buildTimeline(o, shipments);
     // A seller only sees its own part of a multi-store order: its seller-order totals,
     // never the whole basket, and no payment instrument details.
@@ -335,7 +336,64 @@ export class OrdersService {
       })),
       timeline,
       ...activity,
+      history,
     };
+  }
+
+  /**
+   * What happened to the order, newest first: placed, paid, prepared by the store, cancellation,
+   * refunds, returns and completion. Carrier events are added by the client from the shipments.
+   * A store only sees the history of its own part of the order.
+   */
+  private async orderHistory(scope: OrderScope, o: any, sellerOrders: any[], cancellations: Record<string, any>, issues: any[]) {
+    const multi = sellerOrders.length > 1 && scope.kind !== 'seller';
+    const storeOf = new Map(sellerOrders.map((so: any) => [so.id, so.name]));
+    const ids = sellerOrders.map((so: any) => so.id);
+    const [orderRows, storeRows, refunds] = await Promise.all([
+      this.db.many(
+        `select state_dimension as d, from_status as f, to_status as t, changed_at as at from public.order_state_history
+          where order_id = $1 and state_dimension in ('PAYMENT','LIFECYCLE') order by changed_at`,
+        [o.id],
+      ),
+      this.db.many(
+        `select seller_order_id as so, state_dimension as d, from_status as f, to_status as t, changed_at as at from public.seller_order_state_history
+          where seller_order_id = any($1::uuid[]) and state_dimension in ('FULFILLMENT','LIFECYCLE') order by changed_at`,
+        [ids],
+      ),
+      this.db.many(
+        `select f.refund_amount::text as amount, f.currency_code, f.status, coalesce(f.completed_at, f.updated_at) as at from public.refunds f
+          where f.order_id = $1 and f.status = 'COMPLETED' and ($2::uuid[] is null or f.seller_order_id = any($2::uuid[])) order by f.created_at`,
+        [o.id, scope.kind === 'seller' ? ids : null],
+      ).catch(() => [] as any[]),
+    ]);
+    const out: { code: string; label: string; detail?: string | null; amount?: string; currency?: string; at: string; tone: 'ok' | 'info' | 'warn' }[] = [];
+    const store = (soId: string) => (multi ? storeOf.get(soId) ?? null : null);
+    out.push({ code: 'PLACED', label: 'Pedido realizado', at: o.placed_at, tone: 'info' });
+    if (scope.kind !== 'seller') {
+      for (const r of orderRows) {
+        if (r.d === 'PAYMENT' && r.t === 'PAID') out.push({ code: 'PAID', label: 'Pago confirmado', at: r.at, tone: 'ok' });
+        if (r.d === 'PAYMENT' && r.t === 'FAILED') out.push({ code: 'PAYMENT_FAILED', label: 'El pago no se pudo completar', at: r.at, tone: 'warn' });
+        if (r.d === 'LIFECYCLE' && r.t === 'CANCELLED') out.push({ code: 'CANCELLED', label: 'Pedido cancelado', at: r.at, tone: 'warn' });
+        if (r.d === 'LIFECYCLE' && ['COMPLETED', 'CLOSED'].includes(r.t) && !out.some((e) => e.code === 'COMPLETED')) out.push({ code: 'COMPLETED', label: 'Pedido completado', at: r.at, tone: 'ok' });
+      }
+    } else if (o.paid_at) out.push({ code: 'PAID', label: 'Pago confirmado', at: o.paid_at, tone: 'ok' });
+    for (const r of storeRows) {
+      if (r.d === 'FULFILLMENT' && ['FULFILLED', 'PARTIALLY_FULFILLED'].includes(r.t) && r.f === 'UNFULFILLED')
+        out.push({ code: 'PREPARED', label: 'La tienda preparó el pedido', detail: store(r.so), at: r.at, tone: 'info' });
+      if (r.d === 'FULFILLMENT' && r.t === 'UNFULFILLED' && r.f && r.f !== 'UNFULFILLED')
+        out.push({ code: 'UNPREPARED', label: 'La tienda anuló la preparación', detail: store(r.so), at: r.at, tone: 'warn' });
+      if ((scope.kind === 'seller' || multi) && r.d === 'LIFECYCLE' && r.t === 'CANCELLED') out.push({ code: 'CANCELLED', label: multi ? 'Parte del pedido cancelada' : 'Pedido cancelado', detail: store(r.so), at: r.at, tone: 'warn' });
+    }
+    for (const [soId, c] of Object.entries(cancellations)) {
+      if (c.createdAt && c.status !== 'CANCELLED' && c.decidedAt && +new Date(c.decidedAt) - +new Date(c.createdAt) > 1000)
+        out.push({ code: 'CANCEL_REQUESTED', label: 'Cancelación solicitada', detail: store(soId), at: c.createdAt, tone: 'warn' });
+      else if (c.createdAt && c.status === 'REQUESTED') out.push({ code: 'CANCEL_REQUESTED', label: 'Cancelación solicitada', detail: store(soId), at: c.createdAt, tone: 'warn' });
+      if (c.decidedAt && c.status === 'REJECTED') out.push({ code: 'CANCEL_REJECTED', label: 'Cancelación rechazada', detail: store(soId), at: c.decidedAt, tone: 'info' });
+    }
+    for (const f of refunds) out.push({ code: 'REFUNDED', label: 'Reembolso realizado', amount: f.amount, currency: f.currency_code, at: f.at, tone: 'ok' });
+    for (const i of issues)
+      if (i.kind === 'RETURN') out.push({ code: 'RETURN', label: 'Devolución solicitada', detail: i.ref, at: i.requestedAt ?? i.at, tone: 'warn' });
+    return out.filter((e) => e.at).sort((a, b) => +new Date(b.at) - +new Date(a.at));
   }
 
   /**
@@ -346,7 +404,7 @@ export class OrdersService {
   private async orderActivity(scope: OrderScope, orderId: string, sellerId: string | null) {
     const [returns, tickets, disputes, conversations] = await Promise.all([
       this.db.many(
-        `select rr.id, rr.public_number, rr.status, rr.seller_id, coalesce(rr.updated_at, rr.requested_at) as at
+        `select rr.id, rr.public_number, rr.status, rr.seller_id, rr.requested_at, coalesce(rr.updated_at, rr.requested_at) as at
            from public.return_requests rr where rr.order_id = $1 and ($2::uuid is null or rr.seller_id = $2) order by rr.requested_at desc limit 20`,
         [orderId, sellerId],
       ),
@@ -376,7 +434,7 @@ export class OrdersService {
     ]);
     return {
       issues: [
-        ...returns.map((r: any) => ({ kind: 'RETURN', id: r.id, ref: returnRef(r.public_number), sellerId: r.seller_id, status: r.status, statusLabel: RETURN_LABELS[r.status] ?? r.status, open: RETURN_OPEN.includes(r.status), at: r.at })),
+        ...returns.map((r: any) => ({ kind: 'RETURN', id: r.id, ref: returnRef(r.public_number), sellerId: r.seller_id, status: r.status, statusLabel: RETURN_LABELS[r.status] ?? r.status, open: RETURN_OPEN.includes(r.status), at: r.at, requestedAt: r.requested_at })),
         ...tickets.map((r: any) => ({ kind: 'TICKET', id: r.id, ref: ticketRef(r.public_number), title: r.subject, status: r.status, statusLabel: TICKET_LABELS[r.status] ?? r.status, open: !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(r.status), at: r.at })),
         ...disputes.map((r: any) => ({ kind: 'DISPUTE', id: r.id, status: r.status, statusLabel: DISPUTE_OPEN.includes(r.status) ? 'Abierta' : 'Cerrada', amount: r.amount, currency: r.currency_code, open: DISPUTE_OPEN.includes(r.status), at: r.at })),
       ],

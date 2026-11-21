@@ -115,5 +115,21 @@
 "No hay mensajes sobre este pedido.": "No messages about this order.",
 "Reporte {n}": "Report {n}",
 "Revisa el detalle abajo.": "See the details below.",
-"Sin incidencias abiertas.": "No open issues."
+"Sin incidencias abiertas.": "No open issues.",
+"Pedido realizado": "Order placed",
+"El pago no se pudo completar": "The payment couldn’t be completed",
+"Pedido cancelado": "Order cancelled",
+"Pedido completado": "Order completed",
+"La tienda preparó el pedido": "The store prepared the order",
+"La tienda anuló la preparación": "The store undid the preparation",
+"Parte del pedido cancelada": "Part of the order cancelled",
+"Reembolso realizado": "Refund issued",
+"Devolución solicitada": "Return requested",
+"Todavía no hay eventos.": "No events yet.",
+"Este pedido no se enviará.": "This order won’t be shipped.",
+"El envío empieza cuando se confirme el pago.": "Shipping starts once the payment is confirmed.",
+"Listo para despacho": "Ready to ship",
+"La tienda preparó el pedido. Verás aquí los eventos de la transportadora cuando lo entregue.": "The store prepared the order. You’ll see the carrier’s events here once it’s handed over.",
+"Esperando que la tienda prepare el pedido": "Waiting for the store to prepare the order",
+"Verás aquí los eventos de la transportadora cuando se despache.": "You’ll see the carrier’s events here once it ships."
 }

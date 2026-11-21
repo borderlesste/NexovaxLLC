@@ -2912,5 +2912,21 @@
 "No hay mensajes sobre este pedido.": "Pa gen mesaj sou kòmand sa a.",
 "Reporte {n}": "Rapò {n}",
 "Revisa el detalle abajo.": "Gade detay yo anba a.",
-"Sin incidencias abiertas.": "Pa gen pwoblèm ouvè."
+"Sin incidencias abiertas.": "Pa gen pwoblèm ouvè.",
+"Pedido realizado": "Kòmand pase",
+"El pago no se pudo completar": "Peman an pa t ka fèt",
+"Pedido cancelado": "Kòmand anile",
+"Pedido completado": "Kòmand fini",
+"La tienda preparó el pedido": "Boutik la prepare kòmand lan",
+"La tienda anuló la preparación": "Boutik la anile preparasyon an",
+"Parte del pedido cancelada": "Yon pati nan kòmand lan anile",
+"Reembolso realizado": "Ranbousman fèt",
+"Devolución solicitada": "Retou mande",
+"Todavía no hay eventos.": "Poko gen evènman.",
+"Este pedido no se enviará.": "Kòmand sa a p ap voye.",
+"El envío empieza cuando se confirme el pago.": "Livrezon an kòmanse lè peman an konfime.",
+"Listo para despacho": "Pare pou voye",
+"La tienda preparó el pedido. Verás aquí los eventos de la transportadora cuando lo entregue.": "Boutik la prepare kòmand lan. W ap wè evènman transpòtè a isit la lè li remèt li.",
+"Esperando que la tienda prepare el pedido": "N ap tann boutik la prepare kòmand lan",
+"Verás aquí los eventos de la transportadora cuando se despache.": "W ap wè evènman transpòtè a isit la lè li voye."
 }

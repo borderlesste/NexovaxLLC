@@ -208,28 +208,28 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="card p-5">
             <p className="flex items-center gap-2 text-lg font-bold"><Clock className="size-5 text-brand-600" /> {t('Historial de eventos')}</p>
-            {events.length === 0 && order.paidAt ? (
-              <ul className="mt-4 space-y-3 text-sm">
-                <li className="flex gap-3"><CheckCircle2 className="size-5 text-emerald-500" /><span><b>{t('Pago confirmado')}</b><br /><span className="text-muted">{fmtDateTime(order.paidAt)}</span></span></li>
-              </ul>
-            ) : (
-              <ol className="relative mt-4 space-y-4 border-l-2 border-brand-200 pl-5">
-                {events.map((e: any, i: number) => (
-                  <li key={i} className="relative text-sm">
-                    <span className={cn('absolute -left-[27px] top-0.5 grid size-5 place-items-center rounded-full', i === 0 ? 'bg-brand-600 text-white' : 'bg-emerald-500 text-white')}><Check className="size-3" /></span>
-                    <p className="font-bold">{t(e.label)}</p>
-                    <p className="text-muted">{e.detail ? t(e.detail) : ''}{e.city ? ` · ${e.city}` : ''}</p>
-                    <p className="text-xs text-muted">{fmtDateTime(e.at)}</p>
-                  </li>
-                ))}
-                {order.paidAt && (
-                  <li className="relative text-sm">
-                    <span className="absolute -left-[27px] top-0.5 grid size-5 place-items-center rounded-full bg-emerald-500 text-white"><Check className="size-3" /></span>
-                    <p className="font-bold">{t('Pago confirmado')}</p><p className="text-muted">{t('Tu pago fue procesado correctamente.')}</p><p className="text-xs text-muted">{fmtDateTime(order.paidAt)}</p>
-                  </li>
-                )}
-              </ol>
-            )}
+            {(() => {
+              // Order history from the API plus the carrier events of every shipment, newest first.
+              const rows = [
+                ...(order.history ?? []).map((h: any) => ({ ...h, detail: h.amount ? money(h.amount, h.currency) : h.detail ? t(h.detail) : null })),
+                ...events.map((e: any) => ({ code: e.status, label: e.label, detail: [e.detail ? t(e.detail) : null, e.city, order.sellerOrders.length > 1 ? e.seller : null].filter(Boolean).join(' · '), at: e.at, tone: ['EXCEPTION', 'FAILURE', 'RETURNED'].includes(e.status) ? 'warn' : e.status === 'DELIVERED' ? 'ok' : 'info' })),
+              ].sort((x: any, y: any) => +new Date(y.at) - +new Date(x.at));
+              if (!rows.length) return <p className="mt-4 text-sm text-muted">{t('Todavía no hay eventos.')}</p>;
+              return (
+                <ol className="relative mt-4 space-y-4 border-l-2 border-line pl-5" data-order-history>
+                  {rows.map((e: any, i: number) => (
+                    <li key={`${e.code}-${i}`} className="relative text-sm">
+                      <span className={cn('absolute -left-[27px] top-0.5 grid size-5 place-items-center rounded-full text-white', e.tone === 'warn' ? 'bg-amber-500' : e.tone === 'ok' ? 'bg-emerald-500' : 'bg-brand-600', i === 0 && 'ring-4 ring-brand-100')}>
+                        {e.tone === 'warn' ? <AlertCircle className="size-3" /> : <Check className="size-3" />}
+                      </span>
+                      <p className="font-bold">{t(e.label)}</p>
+                      {e.detail && <p className="text-muted">{e.detail}</p>}
+                      <p className="text-xs text-muted">{fmtDateTime(e.at)}</p>
+                    </li>
+                  ))}
+                </ol>
+              );
+            })()}
           </div>
           <RouteCard order={order} lastEvent={lastEvent} />
         </div>
@@ -372,6 +372,18 @@ function RouteCard({ order, lastEvent }: { order: any; lastEvent: any }) {
   const doneCount = steps.filter((s: any) => s.done).length;
   const progress = Math.max(0.06, Math.min(1, (doneCount - 1) / (steps.length - 1)));
   const place = (p: any) => [p?.city, countryName(p?.countryCode)].filter(Boolean).join(', ');
+  const cancelled = ['CANCELLED', 'REFUNDED'].includes(order.status) || order.lifecycleStatus === 'CANCELLED';
+  const prepared = order.sellerOrders.some((x: any) => ['FULFILLED', 'PARTIALLY_FULFILLED'].includes(x.fulfillmentStatus));
+  // What the package is doing now, from the carrier when there is a shipment, otherwise from the order.
+  const state = lastEvent
+    ? { title: t(lastEvent.label), detail: [lastEvent.detail ? t(lastEvent.detail) : null, lastEvent.city, fmtDateTime(lastEvent.at)].filter(Boolean).join(' · ') }
+    : cancelled
+      ? { title: t('Pedido cancelado'), detail: t('Este pedido no se enviará.') }
+      : !order.paidAt
+        ? { title: t('Esperando pago'), detail: t('El envío empieza cuando se confirme el pago.') }
+        : prepared
+          ? { title: t('Listo para despacho'), detail: t('La tienda preparó el pedido. Verás aquí los eventos de la transportadora cuando lo entregue.') }
+          : { title: t('Esperando que la tienda prepare el pedido'), detail: t('Verás aquí los eventos de la transportadora cuando se despache.') };
   return (
     <div className="card p-5">
       <p className="flex items-center gap-2 text-lg font-bold"><MapPin className="size-5 text-brand-600" /> {t('Ruta del paquete')}</p>
@@ -381,9 +393,9 @@ function RouteCard({ order, lastEvent }: { order: any; lastEvent: any }) {
           <p className="font-bold">{from ? place(from) : '—'}</p>
         </div>
         <div className="relative mx-2 h-2 flex-1 rounded-full bg-line">
-          <span className="absolute inset-y-0 left-0 rounded-full bg-brand-600 transition-all" style={{ width: `${progress * 100}%` }} />
-          <span className="absolute -top-2.5 grid size-7 -translate-x-1/2 place-items-center rounded-full bg-white shadow ring-2 ring-brand-600" style={{ left: `${progress * 100}%` }}>
-            <Truck className="size-4 text-brand-600" />
+          <span className={cn('absolute inset-y-0 left-0 rounded-full transition-all', cancelled ? 'bg-gray-300' : 'bg-brand-600')} style={{ width: `${(cancelled ? 0.06 : progress) * 100}%` }} />
+          <span className={cn('absolute -top-2.5 grid size-7 -translate-x-1/2 place-items-center rounded-full bg-white shadow ring-2', cancelled ? 'ring-gray-300' : 'ring-brand-600')} style={{ left: `${(cancelled ? 0.06 : progress) * 100}%` }}>
+            <Truck className={cn('size-4', cancelled ? 'text-gray-400' : 'text-brand-600')} />
           </span>
         </div>
         <div className="min-w-0 text-right text-sm">
@@ -391,13 +403,11 @@ function RouteCard({ order, lastEvent }: { order: any; lastEvent: any }) {
           <p className="font-bold">{to ? place(to) : '—'}</p>
         </div>
       </div>
-      <div className="mt-5 flex items-center gap-3 rounded-xl bg-brand-50 p-3 text-sm">
-        <Truck className="size-6 shrink-0 text-brand-600" />
+      <div className={cn('mt-5 flex items-center gap-3 rounded-xl p-3 text-sm', cancelled && !lastEvent ? 'bg-surface' : 'bg-brand-50')}>
+        <Truck className={cn('size-6 shrink-0', cancelled && !lastEvent ? 'text-muted' : 'text-brand-600')} />
         <div>
-          <b>{lastEvent ? t(lastEvent.label) : order.paymentStatus === 'PAID' ? t('Esperando despacho del vendedor') : t('Esperando pago')}</b>
-          <p className="text-muted">
-            {lastEvent ? [lastEvent.detail ? t(lastEvent.detail) : null, lastEvent.city, fmtDateTime(lastEvent.at)].filter(Boolean).join(' · ') : t('Mostramos los eventos confirmados por la transportadora.')}
-          </p>
+          <b>{state.title}</b>
+          <p className="text-muted">{state.detail}</p>
         </div>
       </div>
     </div>

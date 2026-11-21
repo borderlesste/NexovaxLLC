@@ -2912,5 +2912,21 @@
 "No hay mensajes sobre este pedido.": "Aucun message sur cette commande.",
 "Reporte {n}": "Signalement {n}",
 "Revisa el detalle abajo.": "Consultez le détail ci-dessous.",
-"Sin incidencias abiertas.": "Aucun incident ouvert."
+"Sin incidencias abiertas.": "Aucun incident ouvert.",
+"Pedido realizado": "Commande passée",
+"El pago no se pudo completar": "Le paiement n’a pas pu aboutir",
+"Pedido cancelado": "Commande annulée",
+"Pedido completado": "Commande terminée",
+"La tienda preparó el pedido": "La boutique a préparé la commande",
+"La tienda anuló la preparación": "La boutique a annulé la préparation",
+"Parte del pedido cancelada": "Une partie de la commande a été annulée",
+"Reembolso realizado": "Remboursement effectué",
+"Devolución solicitada": "Retour demandé",
+"Todavía no hay eventos.": "Aucun événement pour l’instant.",
+"Este pedido no se enviará.": "Cette commande ne sera pas expédiée.",
+"El envío empieza cuando se confirme el pago.": "L’expédition commence une fois le paiement confirmé.",
+"Listo para despacho": "Prêt à expédier",
+"La tienda preparó el pedido. Verás aquí los eventos de la transportadora cuando lo entregue.": "La boutique a préparé la commande. Vous verrez ici les événements du transporteur dès sa remise.",
+"Esperando que la tienda prepare el pedido": "En attente de la préparation par la boutique",
+"Verás aquí los eventos de la transportadora cuando se despache.": "Vous verrez ici les événements du transporteur dès l’expédition."
 }
