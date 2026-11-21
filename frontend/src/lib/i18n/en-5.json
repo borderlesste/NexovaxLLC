@@ -265,5 +265,15 @@
 "URL del feed": "Feed URL",
 "Usar el nombre de la tienda como marca": "Use the store name as brand",
 "Usamos cookies esenciales para que el sitio funcione. Con tu permiso, también medimos qué productos visitas para mejorar las recomendaciones y cómo se usa el sitio (Google Analytics, sin publicidad); las tiendas solo ven cifras totales, nunca quién eres.": "We use essential cookies to make the site work. With your permission, we also measure which products you visit to improve recommendations and how the site is used (Google Analytics, no advertising); stores only see totals, never who you are.",
-"Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.": "Google Analytics: if you accept, we also measure in aggregate how the site is browsed (pages viewed, products, carts and purchases) with Google Analytics, through its _ga cookies. We do not turn on Google advertising or personalized ads. If you do not accept or withdraw your permission, it does not load and we delete those cookies."
+"Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.": "Google Analytics: if you accept, we also measure in aggregate how the site is browsed (pages viewed, products, carts and purchases) with Google Analytics, through its _ga cookies. We do not turn on Google advertising or personalized ads. If you do not accept or withdraw your permission, it does not load and we delete those cookies.",
+"Política de envíos": "Shipping policy",
+"Política de devoluciones": "Return policy",
+"Plazo para devolver": "Return window",
+"Cargo por reposición": "Restocking fee",
+"Sin cargo": "No fee",
+"Después de que la tienda recibe e inspecciona el producto": "After the store receives and inspects the item",
+"Cuando la tienda confirma la recepción del producto": "When the store confirms it received the item",
+"Condiciones vigentes": "Current conditions",
+"Página pública informativa: no hay que aceptarla. Se muestra en {url} y en el pie de página.": "Public information page: it does not need to be accepted. It is shown at {url} and in the footer.",
+"Ver página pública": "View public page"
 }

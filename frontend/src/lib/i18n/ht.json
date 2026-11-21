@@ -3023,5 +3023,16 @@
 "URL del feed": "URL flux la",
 "Usar el nombre de la tienda como marca": "Sèvi ak non boutik la kòm mak",
 "Usamos cookies esenciales para que el sitio funcione. Con tu permiso, también medimos qué productos visitas para mejorar las recomendaciones y cómo se usa el sitio (Google Analytics, sin publicidad); las tiendas solo ven cifras totales, nunca quién eres.": "Nou itilize bonbon esansyèl pou sit la mache. Avèk pèmisyon ou, nou mezire tou ki pwodui ou vizite pou amelyore rekòmandasyon yo ak kijan moun itilize sit la (Google Analytics, san piblisite); boutik yo wè sèlman total, yo pa janm konnen kiyès ou ye.",
-"Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.": "Google Analytics: si ou aksepte, nou mezire tou an jeneral kijan moun navige sou sit la (paj yo gade, pwodui, panye ak acha) ak Google Analytics, atravè bonbon _ga li yo. Nou pa aktive piblisite ni anons pèsonalize Google. Si ou pa aksepte oswa ou retire pèmisyon ou, li pa chaje epi nou efase bonbon sa yo."
+"Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.": "Google Analytics: si ou aksepte, nou mezire tou an jeneral kijan moun navige sou sit la (paj yo gade, pwodui, panye ak acha) ak Google Analytics, atravè bonbon _ga li yo. Nou pa aktive piblisite ni anons pèsonalize Google. Si ou pa aksepte oswa ou retire pèmisyon ou, li pa chaje epi nou efase bonbon sa yo.",
+"Edita los términos, la privacidad, los términos para vendedores y las políticas de envíos y devoluciones. Cada cambio se publica como una versión nueva y queda registrado quién la publicó y quiénes la aceptaron.": "Modifye tèm yo, konfidansyalite, kondisyon pou machann ak règ livrezon ak retou yo. Chak chanjman pibliye kòm yon nouvo vèsyon, epi yo anrejistre kiyès ki pibliye l ak kiyès ki aksepte l.",
+"Política de envíos": "Règ pou livrezon",
+"Política de devoluciones": "Règ pou retou",
+"Plazo para devolver": "Delè pou retounen",
+"Cargo por reposición": "Frè pou remèt nan estòk",
+"Sin cargo": "San frè",
+"Después de que la tienda recibe e inspecciona el producto": "Apre boutik la resevwa epi tcheke pwodwi a",
+"Cuando la tienda confirma la recepción del producto": "Lè boutik la konfime li resevwa pwodwi a",
+"Condiciones vigentes": "Kondisyon k ap aplike kounye a",
+"Página pública informativa: no hay que aceptarla. Se muestra en {url} y en el pie de página.": "Paj piblik enfòmasyon: pa gen pou aksepte l. Li parèt nan {url} ak anba paj la.",
+"Ver página pública": "Wè paj piblik la"
 }

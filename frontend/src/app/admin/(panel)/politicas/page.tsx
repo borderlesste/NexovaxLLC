@@ -67,7 +67,7 @@ export default function PoliciesPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Ajustes') }, { label: t('Políticas legales') }]} title={t('Políticas legales')}
-        description={t('Edita los términos, la privacidad y los términos para vendedores. Cada cambio se publica como una versión nueva y queda registrado quién la publicó y quiénes la aceptaron.')} />
+        description={t('Edita los términos, la privacidad, los términos para vendedores y las políticas de envíos y devoluciones. Cada cambio se publica como una versión nueva y queda registrado quién la publicó y quiénes la aceptaron.')} />
       <div className="mb-5 inline-flex flex-wrap gap-1 rounded-xl border border-line bg-white p-1">
         {q.data?.map((p) => (
           <button key={p.code} onClick={() => { setCode(p.code); setLang('es'); }} data-policy-tab={p.code}
@@ -98,13 +98,14 @@ export default function PoliciesPage() {
                 </Field>
                 {lang !== 'es' && !filled(lang) && <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted">{t('Si lo dejas vacío, quienes usan este idioma verán el texto en español.')}</p>}
               </div>
-              <label className="mt-5 flex items-start gap-2 rounded-xl border border-line p-4 text-sm">
+              {pol.acceptanceMode !== 'NONE' && <label className="mt-5 flex items-start gap-2 rounded-xl border border-line p-4 text-sm">
                 <input type="checkbox" checked={reaccept} onChange={(e) => setReaccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" data-policy-reaccept />
                 <span><b className="block">{t('Pedir que todos la acepten de nuevo')}</b>
                   <span className="text-muted">{pol.code === 'SELLER_TERMS'
                     ? t('Cada tienda verá un aviso para aceptar la nueva versión la próxima vez que entre. Úsalo para cambios importantes (comisión, obligaciones).')
                     : t('Cada cuenta verá un aviso para aceptar la nueva versión la próxima vez que entre. Úsalo para cambios importantes; para correcciones menores déjalo sin marcar.')}</span></span>
-              </label>
+              </label>}
+              {pol.acceptanceMode === 'NONE' && <p className="mt-5 rounded-xl border border-line p-4 text-sm text-muted">{t('Página pública informativa: no hay que aceptarla. Se muestra en {url} y en el pie de página.', { url: `/${pol.slug}` })}</p>}
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
                 <span className="text-sm font-semibold">{t('Entra en vigor')}</span>
                 <div className="flex flex-wrap items-center gap-2">
@@ -137,7 +138,7 @@ export default function PoliciesPage() {
               ))}
             </ul>
             <div className="border-t border-line p-4">
-              <Button variant="outline" size="sm" asChild><Link href={`/ayuda#${pol.slug}`} target="_blank"><ExternalLink /> {t('Ver en el centro de ayuda')}</Link></Button>
+              <Button variant="outline" size="sm" asChild><Link href={pol.acceptanceMode === 'NONE' ? `/${pol.slug}` : `/ayuda#${pol.slug}`} target="_blank"><ExternalLink /> {pol.acceptanceMode === 'NONE' ? t('Ver página pública') : t('Ver en el centro de ayuda')}</Link></Button>
             </div>
           </Card>
         </div>

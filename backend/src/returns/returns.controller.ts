@@ -5,7 +5,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Transform, Type, plainToInstance } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, Min, ValidateNested } from 'class-validator';
 import type { Response } from 'express';
-import { CurrentUser, RequestUser, Roles, requireSeller } from '../auth/auth';
+import { CurrentUser, Public, RequestUser, Roles, requireSeller } from '../auth/auth';
 import { IsCleanMultiline, IsCleanText, IsTrackingNumber } from '../common/validators';
 import { ATTACHMENT_UPLOAD, sendAttachment } from '../messaging/messaging.controller';
 import { MAX_MESSAGE_FILES } from '../messaging/messaging.service';
@@ -138,6 +138,14 @@ export class ReturnsController {
   @Get('returns/:id/evidence/:assetId')
   async evidence(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('assetId', ParseUUIDPipe) assetId: string, @Res() res: Response) {
     sendAttachment(res, await this.returns.evidenceFile(u, id, assetId));
+  }
+
+  /** Public: the marketplace return conditions in force (shown on /politica-de-devoluciones). */
+  @Public()
+  @Get('returns/policy')
+  async publicPolicy() {
+    const p = await this.policies.global();
+    return { windowDays: p.windowDays, labelPayer: p.labelPayer, shippingRefund: p.shippingRefund, restockingFeePercent: p.restockingFeePercent, inspectionRequired: p.inspectionRequired, requireEvidence: p.requireEvidence };
   }
 
   // ---- seller

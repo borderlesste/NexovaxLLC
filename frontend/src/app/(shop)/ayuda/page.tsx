@@ -32,7 +32,8 @@ export default async function HelpPage() {
   const en = locale === 'en';
   const has = await getHas();
   const help = await serverGet<Help>('/help', 30);
-  const policies = await serverGet<any[]>('/policies', 300);
+  // Returns and shipping have their own public pages (linked from the topic cards).
+  const policies = (await serverGet<any[]>('/policies', 300))?.filter((p) => !['RETURN_POLICY', 'SHIPPING_POLICY'].includes(p.code));
   // English: the admin's own translation, else the automatic one.
   // French / Creole: our translation when the text is the stock one, else the English version, else Spanish.
   const tr = (es: string, eng?: string | null, own?: string | null) => (locale === 'es' ? es : en ? eng || t(es) : own || (has(es) ? t(es) : eng || es));
@@ -51,9 +52,11 @@ export default async function HelpPage() {
         </div>
       </div>
       <div id="guias" className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {TOPICS.map(([I, title, d]) => (
-          <div key={title} className="card p-5"><I className="size-8 text-brand-600" /><p className="mt-3 text-lg font-bold">{t(title)}</p><p className="text-sm text-muted">{t(d)}</p></div>
-        ))}
+        {TOPICS.map(([I, title, d]) => {
+          const body = <><I className="size-8 text-brand-600" /><p className="mt-3 text-lg font-bold">{t(title)}</p><p className="text-sm text-muted">{t(d)}</p></>;
+          const href = title === 'Envíos' ? '/politica-de-envios' : title === 'Devoluciones' ? '/politica-de-devoluciones' : null;
+          return href ? <Link key={title} href={href} className="card block p-5 hover:border-brand-300">{body}</Link> : <div key={title} className="card p-5">{body}</div>;
+        })}
       </div>
       <section id="faq" className="card mt-8 scroll-mt-24 p-6">
         <h2 className="flex items-center gap-2 text-2xl font-extrabold"><BookOpen className="size-6 text-brand-600" /> {t('Preguntas frecuentes')}</h2>

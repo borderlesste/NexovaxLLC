@@ -11,7 +11,7 @@ import { SOCIAL_ICONS, SOCIAL_NAMES } from './social-icons';
 const cols = [
   { title: 'Marketplace', links: [['Inicio', '/'], ['Categorías', '/catalogo'], ['Ofertas', '/catalogo?onSale=true'], ['Vendedores', '/vendedores']] },
   { title: 'Vendedores', links: [['Vender en la plataforma', '/vendedor/registro'], ['Planes y comisiones', '/ayuda#comisiones'], ['Ayuda para vendedores', '/ayuda#vendedores']] },
-  { title: 'Ayuda', links: [['Centro de ayuda', '/ayuda'], ['Preguntas frecuentes', '/ayuda#faq'], ['Reportar un problema', '/ayuda/reportar']] },
+  { title: 'Ayuda', links: [['Centro de ayuda', '/ayuda'], ['Preguntas frecuentes', '/ayuda#faq'], ['Política de envíos', '/politica-de-envios'], ['Política de devoluciones', '/politica-de-devoluciones'], ['Reportar un problema', '/ayuda/reportar']] },
 ];
 
 export function ShopFooter() {
@@ -51,6 +51,8 @@ export function ShopFooter() {
           <span className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
             <Link href="/ayuda#terminos">{t('Términos y condiciones')}</Link>
             <Link href="/ayuda#privacidad">{t('Privacidad')}</Link>
+            <Link href="/politica-de-devoluciones">{t('Devoluciones')}</Link>
+            <Link href="/politica-de-envios">{t('Envíos')}</Link>
             <Link href="/ayuda#cookies">{t('Cookies')}</Link>
             <button type="button" onClick={openConsent} className="hover:text-white" data-cookie-prefs>{t('Preferencias de cookies')}</button>
             <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" title="CC BY 4.0">{t('Datos geográficos: GeoNames')}</a>

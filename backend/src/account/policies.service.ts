@@ -4,9 +4,12 @@ import { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
 import { badRequest } from '../common/errors';
 
-export type PolicyCode = 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY' | 'SELLER_TERMS';
+export type PolicyCode = 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY' | 'SELLER_TERMS' | 'RETURN_POLICY' | 'SHIPPING_POLICY';
 /** What every account accepts; SELLER_TERMS is accepted per store at onboarding. */
 export const USER_POLICIES: PolicyCode[] = ['TERMS_OF_SERVICE', 'PRIVACY_POLICY'];
+/** Informational public pages (returns, shipping): published and versioned, never accepted. */
+export const PUBLIC_POLICIES: PolicyCode[] = ['RETURN_POLICY', 'SHIPPING_POLICY'];
+export const EDITABLE_POLICIES: PolicyCode[] = [...USER_POLICIES, 'SELLER_TERMS', ...PUBLIC_POLICIES];
 
 export interface AcceptanceContext {
   method: 'REGISTRATION' | 'LOGIN_GATE' | 'SELLER_ONBOARDING' | 'EXPLICIT_CHECKBOX';
@@ -35,7 +38,7 @@ export class PoliciesService {
          left join public.policy_version_localizations l on l.policy_version_id = v.id and l.locale = $1
          join public.policy_version_localizations d on d.policy_version_id = v.id and d.locale = p.default_locale
         where p.status = 'ACTIVE' and ($2::text[] is null or p.code = any($2))
-        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS'], p.code::text)`,
+        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS','RETURN_POLICY','SHIPPING_POLICY'], p.code::text)`,
       [locale, codes ?? null],
     );
     return rows.map((r: any) => ({ code: r.code as PolicyCode, slug: r.slug, versionId: r.version_id, version: r.version_number, effectiveAt: r.effective_at, title: r.title, text: r.text }));
@@ -47,7 +50,7 @@ export class PoliciesService {
    * "requires re-acceptance" or the person never accepted any version of that policy.
    */
   async pending(userId: string, locale: string) {
-    const cur = await this.current(locale);
+    const cur = await this.current(locale, [...USER_POLICIES, 'SELLER_TERMS']);
     const stores = await this.db.many<{ id: string; name: string }>(
       `select s.id, coalesce(ssp.display_name, s.slug) as name from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
         where s.status not in ('CLOSED','DELETED')
@@ -98,7 +101,7 @@ export class PoliciesService {
     const pols = await this.db.many(
       `select p.id, p.code, p.slug, p.default_locale, p.current_published_version_id as current_id, pt.name as type_name, pt.acceptance_mode, pt.audience
          from public.policies p join public.policy_types pt on pt.code = p.policy_type_code where p.status = 'ACTIVE'
-        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS'], p.code::text)`,
+        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS','RETURN_POLICY','SHIPPING_POLICY'], p.code::text)`,
     );
     const out = [];
     for (const p of pols) {
@@ -115,7 +118,7 @@ export class PoliciesService {
         [p.id],
       );
       out.push({
-        code: p.code, slug: p.slug, name: p.type_name, audience: p.audience, defaultLocale: p.default_locale,
+        code: p.code, slug: p.slug, name: p.type_name, audience: p.audience, acceptanceMode: p.acceptance_mode, defaultLocale: p.default_locale,
         localizations: Object.fromEntries(locs.map((l: any) => [l.locale, { title: l.title, text: l.text }])),
         versions: versions.map((v: any) => ({ id: v.id, version: v.version_number, status: v.status, scheduledAt: v.scheduled_at, requiresReacceptance: v.requires_reacceptance, effectiveAt: v.effective_at, publishedAt: v.published_at, publishedBy: v.published_by, acceptances: v.acceptances, current: v.id === p.current_id })),
       });
@@ -151,7 +154,7 @@ export class PoliciesService {
       const v = (await this.db.one<{ id: string; n: number }>(
         `insert into public.policy_versions (policy_id, version_number, requires_reacceptance, created_by_user_id)
          values ($1, (select coalesce(max(version_number),0)+1 from public.policy_versions where policy_id = $1), $2, $3) returning id, version_number as n`,
-        [pol.id, !!input.requiresReacceptance, adminId],
+        [pol.id, !!input.requiresReacceptance && !PUBLIC_POLICIES.includes(code as PolicyCode), adminId],
         c,
       ))!;
       for (const [l, t] of locs)

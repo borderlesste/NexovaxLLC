@@ -3023,5 +3023,16 @@
 "URL del feed": "URL du flux",
 "Usar el nombre de la tienda como marca": "Utiliser le nom de la boutique comme marque",
 "Usamos cookies esenciales para que el sitio funcione. Con tu permiso, también medimos qué productos visitas para mejorar las recomendaciones y cómo se usa el sitio (Google Analytics, sin publicidad); las tiendas solo ven cifras totales, nunca quién eres.": "Nous utilisons des cookies essentiels au fonctionnement du site. Avec votre permission, nous mesurons aussi les produits que vous consultez pour améliorer les recommandations et l’utilisation du site (Google Analytics, sans publicité) ; les boutiques ne voient que des totaux, jamais qui vous êtes.",
-"Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.": "Google Analytics : si vous acceptez, nous mesurons aussi de façon agrégée la navigation sur le site (pages vues, produits, paniers et achats) avec Google Analytics, via ses cookies _ga. Nous n’activons ni la publicité ni les annonces personnalisées de Google. Si vous refusez ou retirez votre permission, il ne se charge pas et nous supprimons ces cookies."
+"Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.": "Google Analytics : si vous acceptez, nous mesurons aussi de façon agrégée la navigation sur le site (pages vues, produits, paniers et achats) avec Google Analytics, via ses cookies _ga. Nous n’activons ni la publicité ni les annonces personnalisées de Google. Si vous refusez ou retirez votre permission, il ne se charge pas et nous supprimons ces cookies.",
+"Edita los términos, la privacidad, los términos para vendedores y las políticas de envíos y devoluciones. Cada cambio se publica como una versión nueva y queda registrado quién la publicó y quiénes la aceptaron.": "Modifiez les conditions, la confidentialité, les conditions vendeur et les politiques de livraison et de retour. Chaque modification est publiée comme une nouvelle version, avec qui l’a publiée et qui l’a acceptée.",
+"Política de envíos": "Politique de livraison",
+"Política de devoluciones": "Politique de retour",
+"Plazo para devolver": "Délai de retour",
+"Cargo por reposición": "Frais de remise en stock",
+"Sin cargo": "Aucuns frais",
+"Después de que la tienda recibe e inspecciona el producto": "Après réception et inspection du produit par la boutique",
+"Cuando la tienda confirma la recepción del producto": "Lorsque la boutique confirme la réception du produit",
+"Condiciones vigentes": "Conditions en vigueur",
+"Página pública informativa: no hay que aceptarla. Se muestra en {url} y en el pie de página.": "Page publique d’information : elle n’a pas besoin d’être acceptée. Elle s’affiche sur {url} et dans le pied de page.",
+"Ver página pública": "Voir la page publique"
 }

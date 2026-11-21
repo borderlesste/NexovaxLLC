@@ -3,7 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
-import { PoliciesService } from './policies.service';
+import { EDITABLE_POLICIES, PoliciesService, PolicyCode } from './policies.service';
 
 class PolicyTextDto {
   @IsOptional() @IsString() @MaxLength(120) title?: string;
@@ -36,7 +36,7 @@ export class PoliciesAdminController {
 
   @Post(':code/versions')
   publish(@CurrentUser() u: RequestUser, @Param('code') code: string, @Body() dto: PublishPolicyDto) {
-    if (!['TERMS_OF_SERVICE', 'PRIVACY_POLICY', 'SELLER_TERMS'].includes(code)) return this.policies.publishVersion(u.id, '__invalid__', dto as any);
+    if (!EDITABLE_POLICIES.includes(code as PolicyCode)) return this.policies.publishVersion(u.id, '__invalid__', dto as any);
     return this.policies.publishVersion(u.id, code, dto as any);
   }
 
