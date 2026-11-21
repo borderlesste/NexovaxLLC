@@ -9,7 +9,7 @@ import { mediaUrl } from '../catalog/catalog.sql';
 import { MailService } from '../mail/mail.service';
 import { config } from '../config';
 import { assertPasswordAcceptable } from '../common/password';
-import { normalizeAddress, REAL_COUNTRY, resolveCityId } from '../common/geo';
+import { normalizeAddress, normalizeCountry, REAL_COUNTRY, resolveCityId } from '../common/geo';
 
 export interface AddressInput {
   label?: string;
@@ -102,7 +102,7 @@ export class AccountService {
 
   async me(user: RequestUser) {
     const p = await this.db.one(
-      `select u.id, u.email::text as email, u.status, u.created_at, u.email_verified_at, u.locale,
+      `select u.id, u.email::text as email, u.status, u.created_at, u.email_verified_at, u.locale, u.delivery_country,
               up.first_name, up.last_name, up.display_name, up.phone, up.avatar_asset_id
          from public.users u left join public.user_profiles up on up.user_id = u.id where u.id = $1`,
       [user.id],
@@ -131,6 +131,7 @@ export class AccountService {
       displayName: p.display_name ?? ([p.first_name, p.last_name].filter(Boolean).join(' ') || p.email),
       phone: p.phone,
       locale: (LOCALES as readonly string[]).includes(p.locale) ? p.locale : 'es',
+      deliveryCountry: p.delivery_country ?? null,
       avatarUrl: p.avatar_asset_id ? mediaUrl(p.avatar_asset_id) : null,
       roles: user.roles,
       sellers: user.sellers,
@@ -169,6 +170,14 @@ export class AccountService {
     if (!(LOCALES as readonly string[]).includes(locale)) throw badRequest('LOCALE_INVALID', 'Idioma no soportado.');
     await this.db.exec(`update public.users set locale = $2 where id = $1`, [user.id, locale]);
     return { locale };
+  }
+
+  /** Saved browsing destination (country only); null clears it. */
+  async setDeliveryCountry(user: RequestUser, country: string | null) {
+    const cc = country ? await normalizeCountry(this.db, country) : null;
+    await this.db.exec(`update public.users set delivery_country = $2 where id = $1`, [user.id, cc]);
+    invalidateUserCache(user.id);
+    return { deliveryCountry: cc };
   }
 
   async changePassword(user: RequestUser, password: string) {

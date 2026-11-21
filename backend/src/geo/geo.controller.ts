@@ -1,7 +1,10 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { Public } from '../auth/auth';
+import { CurrentUser, Public, RequestUser } from '../auth/auth';
+import { SettingsService } from '../settings/settings.service';
+import { resolveDeliveryContext } from './delivery-context';
 import { badRequest } from '../common/errors';
 import { countryGeo, matchRegion, normalizeCountry, REAL_COUNTRY, regionValue } from '../common/geo';
 import { DbService } from '../db/db.service';
@@ -25,7 +28,20 @@ const postalExample = (fmt: string | null) => {
 @Throttle({ default: { limit: 120, ttl: 60_000 } })
 @Controller('geo')
 export class GeoController {
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly settings: SettingsService,
+  ) {}
+
+  /**
+   * Browsing destination (NX-GEO-001): explicit choice > account preference > IP country > default.
+   * An estimate to guide browsing, never a confirmed address. Per-visitor: not cacheable.
+   */
+  @Get('context')
+  async context(@Req() req: any, @Res({ passthrough: true }) res: Response, @CurrentUser() user?: RequestUser) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return resolveDeliveryContext(this.db, this.settings, req, user?.id);
+  }
 
   @Get('countries/:code')
   async country(@Param('code') code: string) {

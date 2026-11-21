@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageLoader, Switch } from '@/components/ui/misc';
 import { CountrySelect } from '@/components/shop/geo-fields';
 import { RateZone } from '@/components/admin/rate-zone';
+import { DeliveryCountryCard } from '@/components/admin/delivery-country-card';
 import { HelpEditor } from '@/components/admin/help-editor';
 import { SeoEditor } from '@/components/admin/seo-editor';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
@@ -141,6 +142,7 @@ export default function SettingsPage() {
       const r = await put('/admin/settings', { settings: changed, commissionRate });
       qc.setQueryData(['admin-settings'], r);
       qc.invalidateQueries({ queryKey: ['public-config'] });
+      qc.invalidateQueries({ queryKey: ['geo-context'] });
       toast.success(t('Configuración guardada. Cada cambio queda versionado y auditado.'));
       if (changed['marketplace.currency'] || changed['marketplace.locale']) setTimeout(() => window.location.reload(), 600);
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
@@ -183,6 +185,11 @@ export default function SettingsPage() {
                 </div>
                 <p className="px-5 pb-5 text-xs text-muted">{t('El marketplace opera en una sola moneda. Los pedidos anteriores conservan su moneda original. Los impuestos se configuran por país en la pestaña Impuestos.')}</p>
               </Card>
+              <DeliveryCountryCard
+                value={s['geo.delivery'] ?? { ipDetection: true, showSelector: true, countries: [] }}
+                defaultCountry={s['marketplace.default_country']}
+                onChange={(v) => set('geo.delivery', v)}
+              />
               <Card>
                 <CardHeader icon={<Settings />} title={t('Opciones del marketplace')} subtitle={t('Controla las funcionalidades principales de tu plataforma.')} />
                 <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">

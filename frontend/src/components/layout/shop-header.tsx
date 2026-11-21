@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Logo } from './logo';
 import { LanguageSwitcher } from './language-switcher';
+import { DeliveryCountrySelector } from './delivery-country-selector';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/misc';
@@ -210,7 +211,8 @@ export function ShopHeader() {
             </Link>
           ))}
         </nav>
-        <SearchBox className="ml-auto hidden w-full max-w-md md:block" />
+        <DeliveryCountrySelector className="ml-auto hidden shrink-0 md:flex" />
+        <SearchBox className="hidden w-full max-w-md md:ml-2 md:block" />
         <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1 md:ml-2">
           <LanguageSwitcher className="hidden sm:flex" />
           <Link href="/cuenta/favoritos" className="relative hidden rounded-lg p-2 hover:bg-brand-50 sm:block" aria-label={t('Favoritos')}>
@@ -248,6 +250,10 @@ export function ShopHeader() {
             <div className="flex items-center justify-between rounded-lg px-3 py-1 text-sm font-semibold sm:hidden">
               <span>Idioma / Language</span>
               <LanguageSwitcher />
+            </div>
+            <div className="flex items-center justify-between rounded-lg px-3 py-1 text-sm font-semibold md:hidden">
+              <span>{t('Enviar a')}</span>
+              <DeliveryCountrySelector compact />
             </div>
             {[{ href: '/', label: t('Inicio') }, { href: '/catalogo', label: t('Categorías') }, ...NAV.slice(1), { href: '/cuenta/favoritos', label: 'Favoritos' }].map((n) => (
               <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 text-sm font-semibold hover:bg-brand-50">{t(n.label)}</Link>

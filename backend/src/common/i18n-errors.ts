@@ -324,6 +324,8 @@ const EN: Record<string, string> = {
   'CVC inválido.': 'Invalid CVC.',
   'Valor inválido.': 'Invalid value.',
   'Ajuste desconocido.': 'Unknown setting.',
+  'Configuración de país de entrega inválida.': 'Invalid delivery country settings.',
+  'El país predeterminado debe estar entre los destinos ofrecidos.': 'The default country must be one of the offered destinations.',
   'El nombre del marketplace no es válido.': 'The marketplace name is not valid.',
   'Revisa las tarifas de envío: nombre con letras, montos numéricos (máx. 2 decimales) y días enteros (0 a 120).': 'Check the shipping rates: a name with letters, numeric amounts (max. 2 decimals) and whole days (0 to 120).',
   'Revisa los datos de transferencia bancaria.': 'Check the bank transfer details.',

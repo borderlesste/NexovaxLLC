@@ -29,6 +29,21 @@ function visitorIp(req: NextRequest): string | null {
   return ip && isIP(ip) ? ip : null;
 }
 
+/**
+ * Country the edge estimated from the visitor's IP (NX-GEO-001), forwarded to the API to suggest a
+ * delivery destination. Read only from the header your edge sets (GEO_COUNTRY_HEADER):
+ * `x-vercel-ip-country` on Vercel (default there), `cf-ipcountry` behind Cloudflare. Only the
+ * two-letter code travels; the API trusts it only with PROXY_SHARED_SECRET.
+ */
+const FORWARD_COUNTRY = 'x-nx-ip-country';
+
+function visitorCountry(req: NextRequest): string | null {
+  const name = (process.env.GEO_COUNTRY_HEADER ?? (process.env.VERCEL ? 'x-vercel-ip-country' : '')).trim().toLowerCase();
+  if (!name) return null;
+  const v = req.headers.get(name)?.trim().toUpperCase();
+  return v && /^[A-Z]{2}$/.test(v) ? v : null;
+}
+
 const PATHNAME = 'x-nx-pathname';
 
 export function middleware(req: NextRequest) {
@@ -39,11 +54,12 @@ export function middleware(req: NextRequest) {
   }
   headers.delete(FORWARD_SECRET);
   headers.delete(FORWARD_IP);
+  headers.delete(FORWARD_COUNTRY);
   const secret = process.env.PROXY_SHARED_SECRET?.trim();
   const ip = visitorIp(req);
-  if (secret && ip) {
-    headers.set(FORWARD_SECRET, secret);
-    headers.set(FORWARD_IP, ip);
-  }
+  const country = visitorCountry(req);
+  if (secret && (ip || country)) headers.set(FORWARD_SECRET, secret);
+  if (secret && ip) headers.set(FORWARD_IP, ip);
+  if (secret && country) headers.set(FORWARD_COUNTRY, country);
   return NextResponse.next({ request: { headers } });
 }

@@ -934,7 +934,7 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
@@ -942,6 +942,22 @@ export class AdminService {
       typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
     validateHelpAndSocial(s);
     validateSeo(s);
+    const g = s['geo.delivery'];
+    if (g != null) {
+      if (typeof g !== 'object' || typeof g.ipDetection !== 'boolean' || typeof g.showSelector !== 'boolean' || !Array.isArray(g.countries) || g.countries.length > 300)
+        throw badRequest('SETTING_INVALID', 'Configuración de país de entrega inválida.');
+      const list: string[] = [];
+      for (const c of g.countries) {
+        const cc = await normalizeCountry(this.db, String(c));
+        if (!list.includes(cc)) list.push(cc);
+      }
+      s['geo.delivery'] = { ipDetection: g.ipDetection, showSelector: g.showSelector, countries: list };
+    }
+    if (g != null || s['marketplace.default_country'] != null) {
+      const offered = (s['geo.delivery'] ?? (await this.settings.get('geo.delivery')))?.countries ?? [];
+      const def = s['marketplace.default_country'] ?? (await this.settings.get('marketplace.default_country'));
+      if (offered.length && !offered.includes(def)) throw badRequest('DEFAULT_COUNTRY_NOT_OFFERED', 'El país predeterminado debe estar entre los destinos ofrecidos.');
+    }
     if (s['marketplace.name'] != null && !text(s['marketplace.name'], 2, 60, /\p{L}/u)) throw badRequest('NAME_INVALID', 'El nombre del marketplace no es válido.');
     if (s['marketplace.support_email'] != null && !text(s['marketplace.support_email'], 6, 254, /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/))
       throw badRequest('EMAIL_INVALID', 'Correo electrónico inválido.');

@@ -31,6 +31,10 @@ export class AcceptPoliciesDto {
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsUUID('all', { each: true }) versionIds: string[];
 }
 
+export class DeliveryCountryDto {
+  @IsOptional() @IsString() @Matches(/^[A-Za-z]{2}$/) country?: string | null;
+}
+
 export class LocaleDto {
   @IsIn(['es', 'en', 'fr', 'ht']) locale: string;
 }
@@ -159,6 +163,11 @@ export class AccountController {
   @Put('me/password')
   changePassword(@CurrentUser() user: RequestUser, @Body() dto: PasswordDto) {
     return this.account.changePassword(user, dto.password);
+  }
+
+  @Put('me/delivery-country')
+  setDeliveryCountry(@CurrentUser() user: RequestUser, @Body() dto: DeliveryCountryDto) {
+    return this.account.setDeliveryCountry(user, dto.country ?? null);
   }
 
   @Put('me/locale')

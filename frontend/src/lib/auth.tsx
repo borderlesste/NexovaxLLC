@@ -25,6 +25,8 @@ export interface Me {
   lastName?: string;
   phone?: string;
   locale?: 'es' | 'en' | 'fr' | 'ht';
+  /** Saved browsing destination (ISO alpha-2), or null. */
+  deliveryCountry?: string | null;
   avatarUrl?: string | null;
   memberSince: string;
   roles: Role[];

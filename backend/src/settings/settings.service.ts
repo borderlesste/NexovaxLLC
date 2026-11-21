@@ -76,6 +76,16 @@ export interface SeoSettings {
   noindex: boolean;
 }
 
+/** Delivery-country context (NX-GEO-001): how the browsing destination is suggested. */
+export interface GeoDeliverySettings {
+  /** Use the country the hosting edge estimates from the visitor's IP (never the IP itself). */
+  ipDetection: boolean;
+  /** Show the "Enviar a" selector in the store header. */
+  showSelector: boolean;
+  /** Destinations offered in the selector (ISO alpha-2); empty = every country in the catalog. */
+  countries: string[];
+}
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
@@ -97,6 +107,7 @@ export interface PlatformSettings {
   'help.commissions': HelpCommissions;
   'social.links': SocialLink[];
   'seo.defaults': SeoSettings;
+  'geo.delivery': GeoDeliverySettings;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -142,6 +153,7 @@ const DEFAULTS: PlatformSettings = {
     siteName: '', title: '', titleTemplate: '', description: '', keywords: '', canonicalUrl: '', ogImage: '', ogImageAlt: '',
     twitterHandle: '', twitterCard: 'summary_large_image', googleVerification: '', bingVerification: '', noindex: false,
   },
+  'geo.delivery': { ipDetection: true, showSelector: true, countries: [] },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */

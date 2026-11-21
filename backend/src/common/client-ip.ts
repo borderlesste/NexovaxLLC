@@ -42,6 +42,13 @@ function isPrivate(ip: string) {
   );
 }
 
+/** True when the request came through our web proxy (it carries the shared secret). */
+export function fromTrustedProxy(req: any) {
+  const v = req.headers?.[PROXY_SECRET_HEADER];
+  const sent = (Array.isArray(v) ? v[0] : v)?.trim() as string | undefined;
+  return !!(config.proxySharedSecret && sent && sameSecret(sent, config.proxySharedSecret));
+}
+
 export function resolveClientIp(req: any): ClientIp {
   const header = (name: string) => {
     const v = req.headers?.[name];
