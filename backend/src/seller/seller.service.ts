@@ -467,6 +467,10 @@ export class SellerService {
       );
       if (!location) throw conflict('NO_INVENTORY_LOCATION', 'Configura tu almacén antes de crear productos.');
       const keptVariantIds: string[] = [];
+      // Only one live default per product (uq_product_variants_default): clear it first so the
+      // first variant of this save can take it, even when variants were added, removed or reordered.
+      if (productId)
+        await this.db.exec(`update public.product_variants set is_default = false where product_id = $1 and is_default`, [product.id], c);
       for (const [idx, v] of input.variants.entries()) {
         const entries = Object.entries(v.optionValues ?? {}).filter(([, val]) => val);
         const combinationKey = entries.length
