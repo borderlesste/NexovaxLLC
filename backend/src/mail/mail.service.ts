@@ -312,6 +312,24 @@ export class MailService {
       const country = countryName(o.country_code, l);
       const address = [o.recipient_name, o.line1, o.line2, [o.city, o.region, o.postal_code].filter(Boolean).join(', '), country].filter(Boolean);
       const receiptUrl = `${webUrl()}/cuenta/pedidos/${orderId}/recibo`;
+      // Names the store(s) that sold the order: "La tienda X ya fue notificada" / "Las tiendas X y Y ya fueron notificadas".
+      const storeRows = await this.db.many(
+        `select coalesce(ssp.display_name, s.slug) as store from public.seller_orders so join public.sellers s on s.id = so.seller_id
+           left join public.seller_store_profiles ssp on ssp.seller_id = s.id where so.order_id = $1 order by so.created_at`,
+        [orderId],
+      );
+      const names = storeRows.map((r) => `<b>${esc(r.store)}</b>`);
+      const join = (and: string) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]}`);
+      const one = names.length === 1;
+      const storesNotified = !names.length
+        ? { es: 'Las tiendas ya fueron notificadas y te avisaremos cuando tus productos vayan en camino.', en: 'The stores have been notified and we’ll let you know when your items ship.',
+            fr: 'Les boutiques ont été prévenues et nous vous avertirons quand vos articles seront expédiés.', ht: 'Boutik yo resevwa avi epi n ap fè w konnen lè atik ou yo pati.' }
+        : {
+            es: one ? `La tienda ${join('y')} ya fue notificada y te avisaremos cuando tus productos vayan en camino.` : `Las tiendas ${join('y')} ya fueron notificadas y te avisaremos cuando tus productos vayan en camino.`,
+            en: one ? `The store ${join('and')} has been notified and we’ll let you know when your items ship.` : `The stores ${join('and')} have been notified and we’ll let you know when your items ship.`,
+            fr: one ? `La boutique ${join('et')} a été prévenue et nous vous avertirons quand vos articles seront expédiés.` : `Les boutiques ${join('et')} ont été prévenues et nous vous avertirons quand vos articles seront expédiés.`,
+            ht: one ? `Boutik ${join('ak')} resevwa avi epi n ap fè w konnen lè atik ou yo pati.` : `Boutik ${join('ak')} resevwa avi epi n ap fè w konnen lè atik ou yo pati.`,
+          };
       const discount = Number(o.discount ?? 0);
       const taxRate = o.tax_rate != null && o.tax_rate !== '' && Number(o.tax_rate) > 0 ? +(Number(o.tax_rate) * 100).toFixed(2) : null;
       await this.send({
@@ -327,8 +345,8 @@ export class MailService {
           preheader: t(`Total pagado ${money(o.total, cur, l)}. Te avisaremos cuando se envíe.`, `Total paid ${money(o.total, cur, l)}. We’ll let you know when it ships.`, `Total payé ${money(o.total, cur, l)}. Nous vous préviendrons de son expédition.`, `Total peye ${money(o.total, cur, l)}. N ap fè w konnen lè l pati.`),
           title: t('¡Gracias por tu compra!', 'Thanks for your order!', 'Merci pour votre commande !', 'Mèsi pou kòmand ou!'),
           body:
-            p(t(`Hola ${esc(u.name)}, recibimos el pago de tu pedido <b>${ref}</b>. Las tiendas ya fueron notificadas y te avisaremos cuando tus productos vayan en camino.`,
-                `Hi ${esc(u.name)}, we received the payment for order <b>${ref}</b>. The stores have been notified and we’ll let you know when your items ship.`, `Bonjour ${esc(u.name)}, nous avons reçu le paiement de la commande <b>${ref}</b>. Les boutiques ont été prévenues et nous vous avertirons quand vos articles seront expédiés.`, `Bonjou ${esc(u.name)}, nou resevwa peman kòmand <b>${ref}</b>. Boutik yo resevwa avi epi n ap fè w konnen lè atik ou yo pati.`)) +
+            p(t(`Hola ${esc(u.name)}, recibimos el pago de tu pedido <b>${ref}</b>. ${storesNotified.es}`,
+                `Hi ${esc(u.name)}, we received the payment for order <b>${ref}</b>. ${storesNotified.en}`, `Bonjour ${esc(u.name)}, nous avons reçu le paiement de la commande <b>${ref}</b>. ${storesNotified.fr}`, `Bonjou ${esc(u.name)}, nou resevwa peman kòmand <b>${ref}</b>. ${storesNotified.ht}`)) +
             itemsTable(items, cur, l) +
             rows(
               [
