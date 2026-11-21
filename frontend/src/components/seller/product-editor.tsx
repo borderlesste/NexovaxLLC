@@ -15,6 +15,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { getLocale, t } from '@/lib/i18n';
 import { ShippingDimensions } from '@/components/seller/shipping-dimensions';
+import { DestinationsCard, type DestinationDraft } from '@/components/seller/destinations-card';
 import { isColorOption, presetsFor, quickOptions, sameOption, sameWord, swatchFor } from '@/lib/variant-words';
 
 interface Opt { name: string; values: { label: string; swatch?: string | null }[] }
@@ -37,6 +38,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
   const moderation = useQuery({ queryKey: ['public-config'], queryFn: () => get<any>('/config/public'), staleTime: 60_000 }).data?.productModeration === true;
   const [loaded, setLoaded] = useState(!productId);
+  const [dest, setDest] = useState<DestinationDraft>({ mode: 'ALL', countries: [] });
   const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', taxClass: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
   const [options, setOptions] = useState<Opt[]>([]);
   const [variants, setVariants] = useState<Var[]>([{ key: 'default', optionValues: {}, sku: '', price: '', compareAtPrice: '', stock: '0', active: true }]);
@@ -114,9 +116,16 @@ export function ProductEditor({ productId }: { productId?: string }) {
     if (!f.title.trim() || !effectiveCategory || f.description.trim().length < 10) return toast.error(t('Completa nombre, categoría y una descripción (mínimo 10 caracteres).'));
     if (variants.some((v) => v.active && (!v.sku.trim() || !(Number(v.price) > 0)))) return toast.error(t('Cada variante necesita SKU y precio mayor que cero.'));
     if (![ship.weightKg, ship.lengthCm, ship.widthCm, ship.heightCm].every((x) => Number(x) > 0)) return toast.error(t('Indica el peso y las dimensiones del paquete (sección Envío y dimensiones).'));
+    if (!productId && dest.mode !== 'ALL' && !dest.countries.length) return toast.error(t('Elige al menos un país en Destinos de este producto.'));
     setSaving(action === 'SUBMIT' ? 'submit' : 'draft');
     try {
       const r = productId ? await put(`/seller/products/${productId}`, payload(action)) : await post('/seller/products', payload(action));
+      if (!productId && dest.mode !== 'ALL') {
+        // The product exists now: store where it ships. If this fails the product stays saved and
+        // the seller can retry from the edit page, where the same card is shown.
+        await put(`/seller/products/${r.id}/destinations`, dest).catch((e) => toast.error(errorMessage(e)));
+        qc.invalidateQueries({ queryKey: ['availability'] });
+      }
       qc.invalidateQueries({ queryKey: ['seller-products'] });
       qc.setQueryData(['seller-product', r.id], r);
       toast.success(action === 'SUBMIT' ? (r.status === 'ACTIVE' ? t('Producto publicado.') : t('Producto enviado a revisión.')) : t('Borrador guardado.'));
@@ -335,6 +344,8 @@ export function ProductEditor({ productId }: { productId?: string }) {
             <CardHeader icon={<Truck />} title={t('Envío y dimensiones')} subtitle={t('Información para el cálculo y la gestión del envío.')} />
             <ShippingDimensions value={ship} onChange={setShip} />
           </Card>
+
+          {productId ? <DestinationsCard productId={productId} /> : <DestinationsCard draft={dest} onDraftChange={setDest} />}
 
           <Card>
             <CardHeader icon={<Layers />} title={t('Organización y estado')} subtitle={t('Visibilidad y estado del producto en el marketplace.')} />
