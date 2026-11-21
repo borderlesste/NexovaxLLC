@@ -36,6 +36,9 @@ const senderFrom = () => {
   const name = mailRuntime.name.replace(/["<>\r\n]/g, '').trim() || 'NEXOVAX';
   return `${name} <${addr}>`;
 };
+/** Marketplace name from Configuración (raw for subjects/plain text, escaped for HTML bodies). */
+const brand = () => mailRuntime.name.trim() || 'NEXOVAX';
+const brandHtml = () => esc(brand());
 const tr = (l: Locale) => (es: string, en: string, fr?: string, ht?: string) =>
   l === 'en' ? en : l === 'fr' ? fr ?? en : l === 'ht' ? ht ?? fr ?? en : es;
 
@@ -173,15 +176,15 @@ export class MailService {
       entityId: userId,
       message: layout({
         locale: u.locale,
-        subject: t('¡Bienvenido a NEXOVAX!', 'Welcome to NEXOVAX!', 'Bienvenue sur NEXOVAX !', 'Byenvini sou NEXOVAX!'),
+        subject: t(`¡Bienvenido a ${brand()}!`, `Welcome to ${brand()}!`, `Bienvenue sur ${brand()} !`, `Byenvini sou ${brand()}!`),
         preheader: t('Tu cuenta está lista. Descubre tiendas de todo el mundo.', 'Your account is ready. Discover stores from around the world.', 'Votre compte est prêt. Découvrez des boutiques du monde entier.', 'Kont ou pare. Dekouvri boutik toupatou nan mond lan.'),
         title: t(`¡Hola, ${u.name}!`, `Hi ${u.name}!`, `Bonjour ${u.name} !`, `Bonjou ${u.name}!`),
         body:
-          p(t('Tu cuenta en <b>NEXOVAX</b> fue creada con éxito. Ya puedes comprar en múltiples tiendas con un solo carrito, guardar favoritos y seguir tus pedidos.',
-              'Your <b>NEXOVAX</b> account is ready. Shop from multiple stores with a single cart, save favorites and track your orders.', 'Votre compte <b>NEXOVAX</b> est prêt. Achetez dans plusieurs boutiques avec un seul panier, enregistrez vos favoris et suivez vos commandes.', 'Kont <b>NEXOVAX</b> ou pare. Achte nan plizyè boutik ak yon sèl panye, sere favori ou epi swiv kòmand ou yo.')) +
+          p(t(`Tu cuenta en <b>${brandHtml()}</b> fue creada con éxito. Ya puedes comprar en múltiples tiendas con un solo carrito, guardar favoritos y seguir tus pedidos.`,
+              `Your <b>${brandHtml()}</b> account is ready. Shop from multiple stores with a single cart, save favorites and track your orders.`, `Votre compte <b>${brandHtml()}</b> est prêt. Achetez dans plusieurs boutiques avec un seul panier, enregistrez vos favoris et suivez vos commandes.`, `Kont <b>${brandHtml()}</b> ou pare. Achte nan plizyè boutik ak yon sèl panye, sere favori ou epi swiv kòmand ou yo.`)) +
           p(t('¿Tienes un negocio? También puedes abrir tu tienda y vender a clientes de todo el mundo.', 'Own a business? Open your store and sell to customers worldwide.', 'Vous avez une entreprise ? Ouvrez votre boutique et vendez à des clients du monde entier.', 'Ou gen yon biznis? Louvri boutik ou epi vann bay kliyan toupatou nan mond lan.')),
         cta: { label: t('Explorar productos', 'Browse products', 'Parcourir les produits', 'Gade pwodwi yo'), url: `${webUrl()}/catalogo` },
-        text: t('Tu cuenta en NEXOVAX fue creada con éxito.', 'Your NEXOVAX account is ready.', 'Votre compte NEXOVAX est prêt.', 'Kont NEXOVAX ou pare.'),
+        text: t(`Tu cuenta en ${brand()} fue creada con éxito.`, `Your ${brand()} account is ready.`, `Votre compte ${brand()} est prêt.`, `Kont ${brand()} ou pare.`),
       }),
     });
   }
@@ -199,15 +202,15 @@ export class MailService {
       entityId: userId,
       message: layout({
         locale: l,
-        subject: t('Confirma tu correo en NEXOVAX', 'Confirm your NEXOVAX e-mail', 'Confirmez votre e-mail NEXOVAX', 'Konfime imèl NEXOVAX ou'),
+        subject: t(`Confirma tu correo en ${brand()}`, `Confirm your ${brand()} e-mail`, `Confirmez votre e-mail ${brand()}`, `Konfime imèl ${brand()} ou`),
         preheader: t('Un paso más para activar tu cuenta.', 'One more step to activate your account.', 'Plus qu’une étape pour activer votre compte.', 'Yon sèl etap ki rete pou aktive kont ou.'),
         title: t(`¡Hola${u?.name ? `, ${u.name}` : ''}!`, `Hi${u?.name ? ` ${u.name}` : ''}!`, `Bonjour${u?.name ? ` ${u.name}` : ''} !`, `Bonjou${u?.name ? ` ${u.name}` : ''}!`),
         body:
-          p(t('Gracias por registrarte en <b>NEXOVAX</b>. Confirma que este correo te pertenece para activar tu cuenta.',
-              'Thanks for signing up to <b>NEXOVAX</b>. Confirm this e-mail belongs to you to activate your account.', 'Merci de vous être inscrit sur <b>NEXOVAX</b>. Confirmez que cet e-mail vous appartient pour activer votre compte.', 'Mèsi paske w enskri sou <b>NEXOVAX</b>. Konfime imèl sa a se pou ou pou aktive kont ou.')) +
+          p(t(`Gracias por registrarte en <b>${brandHtml()}</b>. Confirma que este correo te pertenece para activar tu cuenta.`,
+              `Thanks for signing up to <b>${brandHtml()}</b>. Confirm this e-mail belongs to you to activate your account.`, `Merci de vous être inscrit sur <b>${brandHtml()}</b>. Confirmez que cet e-mail vous appartient pour activer votre compte.`, `Mèsi paske w enskri sou <b>${brandHtml()}</b>. Konfime imèl sa a se pou ou pou aktive kont ou.`)) +
           p(`<span style="color:#64748b;font-size:13px">${t('El enlace solo puede usarse una vez y vence pronto. Si no creaste esta cuenta, ignora este correo.', 'The link can be used once and expires soon. If you didn’t create this account, ignore this e-mail.', 'Le lien ne peut être utilisé qu’une fois et expire bientôt. Si vous n’avez pas créé ce compte, ignorez cet e-mail.', 'Ou ka itilize lyen an yon sèl fwa epi l ap ekspire talè. Si se pa ou ki kreye kont sa a, inyore imèl sa a.')}</span>`),
         cta: { label: t('Confirmar correo', 'Confirm e-mail', 'Confirmer l’e-mail', 'Konfime imèl'), url: link },
-        text: t('Confirma tu correo para activar tu cuenta de NEXOVAX.', 'Confirm your e-mail to activate your NEXOVAX account.', 'Confirmez votre e-mail pour activer votre compte NEXOVAX.', 'Konfime imèl ou pou aktive kont NEXOVAX ou.'),
+        text: t(`Confirma tu correo para activar tu cuenta de ${brand()}.`, `Confirm your e-mail to activate your ${brand()} account.`, `Confirmez votre e-mail pour activer votre compte ${brand()}.`, `Konfime imèl ou pou aktive kont ${brand()} ou.`),
       }),
     });
   }
@@ -225,7 +228,7 @@ export class MailService {
       entityId: userId,
       message: layout({
         locale: l,
-        subject: t('Restablece tu contraseña de NEXOVAX', 'Reset your NEXOVAX password', 'Réinitialisez votre mot de passe NEXOVAX', 'Chanje modpas NEXOVAX ou'),
+        subject: t(`Restablece tu contraseña de ${brand()}`, `Reset your ${brand()} password`, `Réinitialisez votre mot de passe ${brand()}`, `Chanje modpas ${brand()} ou`),
         preheader: t('Usa este enlace para crear una nueva contraseña.', 'Use this link to create a new password.', 'Utilisez ce lien pour créer un nouveau mot de passe.', 'Itilize lyen sa a pou kreye yon nouvo modpas.'),
         title: t('Restablecer contraseña', 'Reset your password', 'Réinitialisez votre mot de passe', 'Chanje modpas ou'),
         body:
@@ -256,7 +259,7 @@ export class MailService {
       SETTINGS: ['Configuración de la tienda', 'Store settings', 'Paramètres de la boutique', 'Paramèt boutik la'],
     };
     const list = areas.map((a) => `<li>${esc(t(...(label[a] ?? [a, a, a, a])))}</li>`).join('');
-    const storeName = store?.store ?? 'NEXOVAX';
+    const storeName = store?.store ?? mailRuntime.name;
     const who = inviter?.name ?? storeName;
     await this.send({
       template: 'SELLER_TEAM_INVITATION',
@@ -271,14 +274,14 @@ export class MailService {
         preheader: t(`${who} quiere que le ayudes a gestionar su tienda.`, `${who} wants you to help run their store.`, `${who} souhaite que vous l’aidiez à gérer sa boutique.`, `${who} vle ou ede l jere boutik li.`),
         title: t('Invitación al equipo', 'Team invitation', 'Invitation à l’équipe', 'Envitasyon nan ekip la'),
         body:
-          p(t(`<b>${esc(who)}</b> te invitó a unirte al equipo de la tienda <b>${esc(storeName)}</b> en NEXOVAX. Podrás trabajar en:`,
-              `<b>${esc(who)}</b> invited you to join the <b>${esc(storeName)}</b> store team on NEXOVAX. You'll be able to work on:`,
-              `<b>${esc(who)}</b> vous a invité à rejoindre l’équipe de la boutique <b>${esc(storeName)}</b> sur NEXOVAX. Vous pourrez gérer :`,
-              `<b>${esc(who)}</b> envite w antre nan ekip boutik <b>${esc(storeName)}</b> sou NEXOVAX. W ap ka travay sou:`)) +
+          p(t(`<b>${esc(who)}</b> te invitó a unirte al equipo de la tienda <b>${esc(storeName)}</b> en ${brandHtml()}. Podrás trabajar en:`,
+              `<b>${esc(who)}</b> invited you to join the <b>${esc(storeName)}</b> store team on ${brandHtml()}. You'll be able to work on:`,
+              `<b>${esc(who)}</b> vous a invité à rejoindre l’équipe de la boutique <b>${esc(storeName)}</b> sur ${brandHtml()}. Vous pourrez gérer :`,
+              `<b>${esc(who)}</b> envite w antre nan ekip boutik <b>${esc(storeName)}</b> sou ${brandHtml()}. W ap ka travay sou:`)) +
           `<ul style="margin:0 0 14px;padding-left:20px">${list}</ul>` +
           p(`<span style="color:#64748b;font-size:13px">${t(`Inicia sesión o crea tu cuenta con este mismo correo (${esc(email)}) para aceptar. La invitación vence en 7 días.`, `Sign in or create your account with this same e-mail (${esc(email)}) to accept. The invitation expires in 7 days.`, `Connectez-vous ou créez votre compte avec cet e-mail (${esc(email)}) pour accepter. L’invitation expire dans 7 jours.`, `Konekte oswa kreye kont ou ak menm imèl sa a (${esc(email)}) pou aksepte. Envitasyon an ekspire nan 7 jou.`)}</span>`),
         cta: { label: t('Aceptar invitación', 'Accept invitation', 'Accepter l’invitation', 'Aksepte envitasyon an'), url: link },
-        text: t(`${who} te invitó al equipo de ${storeName} en NEXOVAX. Acepta aquí: ${link}`, `${who} invited you to the ${storeName} team on NEXOVAX. Accept here: ${link}`, `${who} vous a invité dans l’équipe de ${storeName} sur NEXOVAX. Acceptez ici : ${link}`, `${who} envite w nan ekip ${storeName} sou NEXOVAX. Aksepte la a: ${link}`),
+        text: t(`${who} te invitó al equipo de ${storeName} en ${brand()}. Acepta aquí: ${link}`, `${who} invited you to the ${storeName} team on ${brand()}. Accept here: ${link}`, `${who} vous a invité dans l’équipe de ${storeName} sur ${brand()}. Acceptez ici : ${link}`, `${who} envite w nan ekip ${storeName} sou ${brand()}. Aksepte la a: ${link}`),
       }),
     });
   }
@@ -288,8 +291,9 @@ export class MailService {
   /** Buyer confirmation + one "new sale" e-mail per seller. Call once the payment is captured. */
   async orderConfirmed(orderId: string) {
     const o = await this.db.one(
-      `select o.id, o.public_number, o.customer_id, o.currency_code, ofs.product_net_amount::text as subtotal, ofs.shipping_total::text as shipping,
-              ofs.tax_total::text as tax, ofs.grand_total::text as total, ofs.calculation_breakdown->'tax'->>'code' as tax_name,
+      `select o.id, o.public_number, o.customer_id, o.currency_code, ofs.product_net_amount::text as subtotal, ofs.product_gross_amount::text as gross_subtotal, ofs.discount_total::text as discount,
+              ofs.shipping_total::text as shipping, ofs.tax_total::text as tax, ofs.grand_total::text as total,
+              ofs.calculation_breakdown->'tax'->>'code' as tax_name, ofs.calculation_breakdown->'tax'->>'rate' as tax_rate,
               a.recipient_name, a.line1, a.line2, a.city, a.region, a.postal_code, a.country_code
          from public.orders o
          left join public.order_financial_snapshots ofs on ofs.order_id = o.id
@@ -308,6 +312,8 @@ export class MailService {
       const country = countryName(o.country_code, l);
       const address = [o.recipient_name, o.line1, o.line2, [o.city, o.region, o.postal_code].filter(Boolean).join(', '), country].filter(Boolean);
       const receiptUrl = `${webUrl()}/cuenta/pedidos/${orderId}/recibo`;
+      const discount = Number(o.discount ?? 0);
+      const taxRate = o.tax_rate != null && o.tax_rate !== '' && Number(o.tax_rate) > 0 ? +(Number(o.tax_rate) * 100).toFixed(2) : null;
       await this.send({
         template: 'ORDER_CONFIRMED',
         dedupeKey: `order-confirmed:${orderId}`,
@@ -326,9 +332,10 @@ export class MailService {
             itemsTable(items, cur, l) +
             rows(
               [
-                [t('Subtotal', 'Subtotal', 'Sous-total', 'Sou-total'), esc(money(o.subtotal, cur, l))],
+                [t('Productos', 'Products', 'Produits', 'Pwodwi'), esc(money(discount > 0 ? o.gross_subtotal ?? o.subtotal : o.subtotal, cur, l))],
+                ...(discount > 0 ? [[t('Descuento por cupón', 'Coupon discount', 'Remise du coupon', 'Rabè koupon'), esc(money(-discount, cur, l))] as [string, string]] : []),
                 [t('Envío', 'Shipping', 'Livraison', 'Livrezon'), esc(money(o.shipping, cur, l))],
-                [o.tax_name || t('Impuestos', 'Tax', 'Taxes', 'Taks'), esc(money(o.tax, cur, l))],
+                [`${o.tax_name || t('Impuestos', 'Tax', 'Taxes', 'Taks')}${taxRate ? ` (${taxRate} %)` : ''}`, esc(money(o.tax, cur, l))],
                 [t('Total pagado', 'Total paid', 'Total payé', 'Total peye'), esc(money(o.total, cur, l))],
               ],
               { boldLast: true },
@@ -596,13 +603,13 @@ export class MailService {
       entityId: sellerId,
       message: layout({
         locale: s.locale,
-        subject: t(`¡${s.store} ya está activa en NEXOVAX!`, `${s.store} is now live on NEXOVAX!`, `${s.store} est maintenant en ligne sur NEXOVAX !`, `${s.store} an liy sou NEXOVAX kounye a!`),
+        subject: t(`¡${s.store} ya está activa en ${brand()}!`, `${s.store} is now live on ${brand()}!`, `${s.store} est maintenant en ligne sur ${brand()} !`, `${s.store} an liy sou ${brand()} kounye a!`),
         preheader: t('Ya puedes publicar tus productos.', 'You can start publishing your products.', 'Vous pouvez dès maintenant publier vos produits.', 'Ou ka kòmanse pibliye pwodwi ou yo.'),
         title: t('¡Tu tienda está activa!', 'Your store is live!', 'Votre boutique est en ligne !', 'Boutik ou an liy!'),
         body: p(t(`Hola ${esc(s.name)}, <b>${esc(s.store)}</b> ya está activa. Publica tus productos y aparecerán en el marketplace al instante. Para recibir tus ganancias, agrega una cuenta de cobro: la verificaremos antes de habilitar los retiros.`,
                   `Hi ${esc(s.name)}, <b>${esc(s.store)}</b> is now live. Publish your products and they will appear on the marketplace right away. To receive your earnings, add a payout account: we’ll verify it before enabling withdrawals.`, `Bonjour ${esc(s.name)}, <b>${esc(s.store)}</b> est maintenant en ligne. Publiez vos produits et ils apparaîtront aussitôt sur la marketplace. Pour recevoir vos gains, ajoutez un compte de versement : nous le vérifierons avant d’activer les retraits.`, `Bonjou ${esc(s.name)}, <b>${esc(s.store)}</b> an liy kounye a. Pibliye pwodwi ou yo epi y ap parèt sou maketplas la touswit. Pou resevwa lajan ou, ajoute yon kont peman: n ap verifye l anvan nou aktive retrè yo.`)),
         cta: { label: t('Ir a mi panel', 'Go to my dashboard', 'Aller à mon panneau', 'Ale nan panèl mwen'), url: `${webUrl()}/vendedor/dashboard` },
-        text: t(`${s.store} ya está activa en NEXOVAX.`, `${s.store} is now live on NEXOVAX.`, `${s.store} est maintenant en ligne sur NEXOVAX.`, `${s.store} an liy sou NEXOVAX kounye a.`),
+        text: t(`${s.store} ya está activa en ${brand()}.`, `${s.store} is now live on ${brand()}.`, `${s.store} est maintenant en ligne sur ${brand()}.`, `${s.store} an liy sou ${brand()} kounye a.`),
       }),
     });
   }
@@ -1001,8 +1008,8 @@ export class MailService {
   /** Last e-mail to the address the account had (the account itself no longer exists). */
   async accountDeleted(email: string, name: string | null, locale: Locale, requestId: string) {
     const t = tr(locale);
-    const line = t('Eliminamos tu cuenta de NEXOVAX y tus datos personales. Los registros de compras que la ley nos obliga a conservar quedaron anónimos.',
-                   'We deleted your NEXOVAX account and your personal data. Purchase records we are legally required to keep are now anonymous.', 'Nous avons supprimé votre compte NEXOVAX et vos données personnelles. Les traces d’achat que la loi nous oblige à conserver sont désormais anonymes.', 'Nou efase kont NEXOVAX ou ak done pèsonèl ou. Dosye acha lalwa oblije nou kenbe yo vin san non kounye a.');
+    const line = t(`Eliminamos tu cuenta de ${brand()} y tus datos personales. Los registros de compras que la ley nos obliga a conservar quedaron anónimos.`,
+                   `We deleted your ${brand()} account and your personal data. Purchase records we are legally required to keep are now anonymous.`, `Nous avons supprimé votre compte ${brand()} et vos données personnelles. Les traces d’achat que la loi nous oblige à conserver sont désormais anonymes.`, `Nou efase kont ${brand()} ou ak done pèsonèl ou. Dosye acha lalwa oblije nou kenbe yo vin san non kounye a.`);
     await this.send({
       template: 'ACCOUNT_DELETED',
       dedupeKey: `account-deletion:${requestId}:DELETED`,
@@ -1016,7 +1023,7 @@ export class MailService {
         preheader: line,
         title: t('Cuenta eliminada', 'Account deleted', 'Compte supprimé', 'Kont efase'),
         body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')}${name ? ` ${esc(name)}` : ''}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`) +
-          p(t('Gracias por haber sido parte de NEXOVAX. Si cambias de opinión, puedes crear una cuenta nueva cuando quieras.', 'Thank you for being part of NEXOVAX. If you change your mind, you can create a new account at any time.', 'Merci d’avoir fait partie de NEXOVAX. Si vous changez d’avis, vous pouvez créer un nouveau compte à tout moment.', 'Mèsi paske w te fè pati NEXOVAX. Si w chanje lide, ou ka kreye yon nouvo kont nenpòt lè.')),
+          p(t(`Gracias por haber sido parte de ${brandHtml()}. Si cambias de opinión, puedes crear una cuenta nueva cuando quieras.`, `Thank you for being part of ${brandHtml()}. If you change your mind, you can create a new account at any time.`, `Merci d’avoir fait partie de ${brandHtml()}. Si vous changez d’avis, vous pouvez créer un nouveau compte à tout moment.`, `Mèsi paske w te fè pati ${brandHtml()}. Si w chanje lide, ou ka kreye yon nouvo kont nenpòt lè.`)),
         text: line,
       }),
     });

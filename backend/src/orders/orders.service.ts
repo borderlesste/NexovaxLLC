@@ -9,6 +9,7 @@ import { mediaUrl } from '../catalog/catalog.sql';
 import { CARRIERS, ShippingService } from '../shipping/shipping.service';
 import { orderRef, parseOrderRef, paymentRef, returnRef, ticketRef } from '../common/refs';
 import { fromMinor, toMinor } from '../common/money';
+import { decrypt } from '../common/crypto';
 import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
 import { ShippingSettlementService } from '../shipping/shipping-settlement.service';
 import { CANCELLABLE_SQL, CancellationsService } from './cancellations.service';
@@ -38,6 +39,23 @@ const TICKET_LABELS: Record<string, string> = {
   OPEN: 'Pendiente', IN_PROGRESS: 'En proceso', PENDING_CUSTOMER: 'Esperando al usuario', PENDING_INTERNAL: 'En revisión interna', RESOLVED: 'Resuelto', CLOSED: 'Cerrado', CANCELLED: 'Cancelado',
 };
 const DISPUTE_OPEN = ['OPEN', 'UNDER_REVIEW', 'INQUIRY_OPEN'];
+
+/**
+ * Seller's fiscal identity for receipts: legal name, country and tax id. The tax id is shown only for
+ * businesses (an individual's tax id is usually a personal ID number and stays private).
+ */
+function sellerLegal(so: any) {
+  if (!so.legal_name) return null;
+  let taxId: string | null = null;
+  if (so.tax_identifier_ciphertext && so.entity_type_code && so.entity_type_code !== 'INDIVIDUAL') {
+    try {
+      taxId = decrypt(so.tax_identifier_ciphertext);
+    } catch {
+      taxId = null;
+    }
+  }
+  return { name: so.legal_name as string, entityType: so.entity_type_code as string | null, countryCode: so.registration_country_code as string | null, taxId };
+}
 
 @Injectable()
 export class OrdersService {
@@ -181,7 +199,8 @@ export class OrdersService {
       this.db.one(`select * from public.order_address_snapshots where order_id = $1 and address_type = 'SHIPPING'`, [o.id]),
       this.db.many(
         `select so.id, so.public_number, so.seller_id, so.lifecycle_status, so.fulfillment_status, s.slug, coalesce(ssp.display_name, s.slug) as name,
-                ssp.support_phone, sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
+                ssp.support_phone, ssp.support_email, slp.legal_name, slp.entity_type_code, slp.registration_country_code, slp.tax_identifier_ciphertext,
+                sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
                 sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission, sofs.seller_entitlement_estimate::text as seller_net,
                 sofs.product_gross_amount::text as gross_subtotal, sofs.discount_total::text as discount,
                 (select string_agg(pc.code::text, ', ') from public.order_promotion_snapshots ops join public.promotion_codes pc on pc.id = ops.promotion_code_id
@@ -192,6 +211,7 @@ export class OrdersService {
                 ${CANCELLABLE_SQL('so', 'o')} as cancellable
            from public.seller_orders so join public.orders o on o.id = so.order_id join public.sellers s on s.id = so.seller_id
            left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+           left join public.seller_legal_profiles slp on slp.seller_id = s.id
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
            left join lateral (select * from public.order_shipping_groups g where g.seller_order_id = so.id order by g.created_at limit 1) osg on true
            left join public.seller_ship_from_addresses sfa on sfa.id = osg.ship_from_address_id
@@ -277,7 +297,7 @@ export class OrdersService {
       sellerOrders: sellerOrders.map((so: any) => ({
         id: so.id,
         number: `V-${so.public_number}`,
-        seller: { id: so.seller_id, slug: so.slug, name: so.name, phone: so.support_phone },
+        seller: { id: so.seller_id, slug: so.slug, name: so.name, phone: so.support_phone, email: so.support_email ?? null, legal: sellerLegal(so) },
         lifecycleStatus: so.lifecycle_status,
         fulfillmentStatus: so.fulfillment_status,
         cancellation: cancellations[so.id] ?? null,

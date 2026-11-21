@@ -22,7 +22,7 @@ export default function ConfirmationPage({ params }: { params: Promise<{ id: str
     post(`/checkout/${id}/payments/stripe/confirm`).then(() => q.refetch()).catch((e) => toast.error(e?.message ?? t('El pago aún no se ha completado.')));
   }, [q.data, id, q]);
   if (q.isLoading) return <PageLoader />;
-  if (q.isError) return <div className="mx-auto max-w-2xl px-4 py-16"><ErrorBox message="No encontramos esta compra." /></div>;
+  if (q.isError) return <div className="mx-auto max-w-2xl px-4 py-16"><ErrorBox message={t('No encontramos esta compra.')} /></div>;
   const r = q.data;
   const paid = !!r.orderId;
   const failed = !paid && ['CANCELLED', 'FAILED'].includes(r.paymentStatus);
@@ -59,18 +59,18 @@ export default function ConfirmationPage({ params }: { params: Promise<{ id: str
         {r.bankTransfer && (
           <div className="mt-6 rounded-xl border border-line bg-surface p-5 text-left text-sm">
             <p className="mb-3 flex items-center gap-2 font-bold"><Landmark className="size-5 text-brand-600" /> {t('Datos para la transferencia')}</p>
-            {[
-              [t('Banco'), r.bankTransfer.bank],
-              [t('Titular'), r.bankTransfer.accountName],
-              [t('Cuenta'), r.bankTransfer.accountNumber],
-              ...(r.bankTransfer.routingOrSwift ? [['Routing / SWIFT', r.bankTransfer.routingOrSwift]] : []),
-              ...(r.bankTransfer.iban ? [['IBAN', r.bankTransfer.iban]] : []),
-              [t('Monto exacto'), money(r.amount, r.currency)],
-              [t('Referencia'), r.bankTransfer.reference],
-            ].map(([k, v]) => (
+            {([
+              [t('Banco'), r.bankTransfer.bank, false],
+              [t('Titular'), r.bankTransfer.accountName, false],
+              [t('Cuenta'), r.bankTransfer.accountNumber, true],
+              ...(r.bankTransfer.routingOrSwift ? [['Routing / SWIFT', r.bankTransfer.routingOrSwift, false]] : []),
+              ...(r.bankTransfer.iban ? [['IBAN', r.bankTransfer.iban, true]] : []),
+              [t('Monto exacto'), money(r.amount, r.currency), false],
+              [t('Referencia'), r.bankTransfer.reference, true],
+            ] as Array<[string, string, boolean]>).map(([k, v, copyable]) => (
               <div key={k} className="flex items-center justify-between border-b border-line py-2 last:border-0">
                 <span className="text-muted">{k}</span>
-                <span className="flex items-center gap-2 font-semibold">{v} {k === 'Referencia' || k === 'Cuenta' ? <button onClick={() => copy(String(v))} aria-label={t('Copiar')}><Copy className="size-4 text-brand-600" /></button> : null}</span>
+                <span className="flex items-center gap-2 font-semibold">{v} {copyable ? <button onClick={() => copy(String(v))} aria-label={t('Copiar')}><Copy className="size-4 text-brand-600" /></button> : null}</span>
               </div>
             ))}
             <p className="mt-3 text-xs text-muted">{r.bankTransfer.instructions}</p>

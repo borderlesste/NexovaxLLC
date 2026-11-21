@@ -93,6 +93,16 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               <p className="font-bold">{t('Vendido por {store}', { store: so.seller.name })}</p>
               <p className="text-xs text-muted">{so.number}{so.cancellation?.status === 'REFUNDED' ? ` · ${t('Reembolsado')}` : ''}</p>
             </div>
+            {(so.seller.legal || so.seller.email) && (
+              <p className="mb-2 text-xs text-muted" data-receipt-seller-legal>
+                {[
+                  so.seller.legal?.name && `${t('Razón social')}: ${so.seller.legal.name}`,
+                  so.seller.legal?.taxId && `${t('Identificación fiscal')}: ${so.seller.legal.taxId}`,
+                  so.seller.legal?.countryCode && countryName(so.seller.legal.countryCode),
+                  so.seller.email,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
