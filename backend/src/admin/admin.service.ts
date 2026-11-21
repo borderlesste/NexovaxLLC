@@ -951,7 +951,9 @@ export class AdminService {
         const cc = await normalizeCountry(this.db, String(c));
         if (!list.includes(cc)) list.push(cc);
       }
-      s['geo.delivery'] = { ipDetection: g.ipDetection, showSelector: g.showSelector, countries: list };
+      const days = g.laneHistoryDays ?? 90;
+      if (!Number.isInteger(days) || days < 1 || days > 365) throw badRequest('SETTING_INVALID', 'Configuración de país de entrega inválida.');
+      s['geo.delivery'] = { ipDetection: g.ipDetection, showSelector: g.showSelector, countries: list, laneHistoryDays: days };
     }
     if (g != null || s['marketplace.default_country'] != null) {
       const offered = (s['geo.delivery'] ?? (await this.settings.get('geo.delivery')))?.countries ?? [];

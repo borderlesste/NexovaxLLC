@@ -84,6 +84,8 @@ export interface GeoDeliverySettings {
   showSelector: boolean;
   /** Destinations offered in the selector (ISO alpha-2); empty = every country in the catalog. */
   countries: string[];
+  /** Days a store's past live carrier quote to a country counts as proof the route works ("Disponible"). */
+  laneHistoryDays?: number;
 }
 
 export interface PlatformSettings {
@@ -153,7 +155,7 @@ const DEFAULTS: PlatformSettings = {
     siteName: '', title: '', titleTemplate: '', description: '', keywords: '', canonicalUrl: '', ogImage: '', ogImageAlt: '',
     twitterHandle: '', twitterCard: 'summary_large_image', googleVerification: '', bingVerification: '', noindex: false,
   },
-  'geo.delivery': { ipDetection: true, showSelector: true, countries: [] },
+  'geo.delivery': { ipDetection: true, showSelector: true, countries: [], laneHistoryDays: 90 },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */

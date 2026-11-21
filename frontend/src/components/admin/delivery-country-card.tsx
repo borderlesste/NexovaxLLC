@@ -1,7 +1,7 @@
 'use client';
 import { MapPin, X } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/card';
-import { Field, Select } from '@/components/ui/input';
+import { Field, Input, Select } from '@/components/ui/input';
 import { Switch } from '@/components/ui/misc';
 import { useCountries } from '@/components/shop/geo-fields';
 import { countryName, t } from '@/lib/i18n';
@@ -10,6 +10,7 @@ export interface GeoDelivery {
   ipDetection: boolean;
   showSelector: boolean;
   countries: string[];
+  laneHistoryDays?: number;
 }
 
 /** Admin → Configuración → General: how the delivery destination is suggested (NX-GEO-001). */
@@ -49,6 +50,9 @@ export function DeliveryCountryCard({ value, defaultCountry, onChange }: { value
           </div>
           {missingDefault && <p className="text-xs text-red-600">{t('Agrega el país predeterminado ({c}) a la lista o cámbialo.', { c: countryName(defaultCountry) })}</p>}
         </div>
+        <Field label={t('Días de historial de envíos para marcar «Disponible»')} hint={t('Si la tienda obtuvo tarifas reales hacia ese país en este plazo, el producto se muestra disponible; si no, «Por confirmar».')}>
+          <Input inputMode="numeric" value={String(value.laneHistoryDays ?? 90)} onChange={(e) => onChange({ ...value, laneHistoryDays: Math.min(365, Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1)) })} suffix={t('días')} />
+        </Field>
       </div>
     </Card>
   );

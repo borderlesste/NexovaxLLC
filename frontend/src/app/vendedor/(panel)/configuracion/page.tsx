@@ -15,6 +15,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { PageLoader } from '@/components/ui/misc';
 import { cityLine, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { t } from '@/lib/i18n';
+import { DestinationsCard } from '@/components/seller/destinations-card';
 
 function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
   const a = store.shipFrom ?? {};
@@ -154,6 +155,7 @@ export default function StoreSettingsPage() {
             {s.shipFrom && <p className="mt-4 flex gap-2 rounded-lg bg-surface p-3"><MapPin className="size-4 shrink-0 text-brand-600" /> <span><b>{t('Almacén principal:')}</b> {s.shipFrom.line1} · {cityLine(s.shipFrom)}</span></p>}
           </Card>
           <ShipFromCard store={s} onSaved={() => qc.invalidateQueries({ queryKey: ['seller-store'] })} />
+          <DestinationsCard shipFromCountry={s.shipFrom?.countryCode ?? null} />
         </div>
       </div>
     </>

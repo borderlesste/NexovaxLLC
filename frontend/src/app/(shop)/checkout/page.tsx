@@ -72,6 +72,7 @@ export default function CheckoutPage() {
     placeholderData: (prev) => prev,
   });
   const q = quote.data;
+  const destBlocked = !!q?.groups?.some((g: any) => g.destinationBlocked?.length);
   // Codes the server did not accept are reported once and dropped.
   useEffect(() => {
     const bad = (q?.couponErrors ?? []).filter((e: any) => codes.includes(e.code));
@@ -203,6 +204,15 @@ export default function CheckoutPage() {
                 <div key={g.sellerId}>
                   {q.groups.length > 1 && <p className="mb-2 flex items-center gap-1.5 text-sm font-bold"><Store className="size-4 text-brand-600" /> {g.sellerName}</p>}
                   {g.liveRates && <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><Zap className="size-3.5" /> {t('Tarifas en vivo de transportadoras')}</p>}
+                  {!!g.destinationBlocked?.length && (
+                    <div className="mb-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800" data-destination-blocked>
+                      <p className="font-semibold">{t('No se envían a {c}:', { c: countryName(q.destinationCountry) || q.destinationCountry })}</p>
+                      <ul className="mt-1 list-disc pl-5">
+                        {g.destinationBlocked.map((b: any) => <li key={b.productId}>{g.items.find((i: any) => i.productId === b.productId)?.title ?? ''}</li>)}
+                      </ul>
+                      <p className="mt-1 text-xs">{t('Quítalos del carrito o elige una dirección en otro país para continuar.')}</p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {g.shippingOptions.map((r: any) => {
                       const sel = selectedFor(g) === r.code;
@@ -355,11 +365,11 @@ export default function CheckoutPage() {
           </dl>
           <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 text-xl font-extrabold"><span>{t('Total a pagar')}</span><span className="text-brand-800">{money(q.total, q.currency)}</span></div>
           {method === 'CARD' && stripeKey ? (
-            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!addressId} resetKey={`${resetKey}|${chosenCard?.id ?? 'new'}|${saveStripe}`} savedCard={!!chosenCard} />
+            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!addressId || destBlocked} resetKey={`${resetKey}|${chosenCard?.id ?? 'new'}|${saveStripe}`} savedCard={!!chosenCard} />
           ) : method === 'PAYPAL' && paypalMethod ? (
-            <PaypalPay clientId={paypalMethod.clientId} currency={q.currency} place={() => placeOnline('PAYPAL')} onPaid={onPaid} disabled={!addressId} />
+            <PaypalPay clientId={paypalMethod.clientId} currency={q.currency} place={() => placeOnline('PAYPAL')} onPaid={onPaid} disabled={!addressId || destBlocked} />
           ) : (
-          <Button size="lg" className="mt-5 h-14 w-full text-lg" onClick={place} loading={placing} disabled={!addressId}>
+          <Button size="lg" className="mt-5 h-14 w-full text-lg" onClick={place} loading={placing} disabled={!addressId || destBlocked}>
             <Lock /> {t('Confirmar compra')}
           </Button>
           )}

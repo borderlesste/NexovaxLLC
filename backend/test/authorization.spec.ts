@@ -53,7 +53,7 @@ describe('AuthGuard role checks', () => {
 
 describe('seller money endpoints are owner-only', () => {
   const service = new Proxy({}, { get: () => jest.fn().mockResolvedValue({ ok: true }) }) as any;
-  const ctrl = new SellerController(service, service, service, service);
+  const ctrl = new SellerController(service, service, service, service, service);
   const schedules = new PayoutSchedulesController(service);
   const member = user({ sellers: [MEMBER_OF] });
   const owner = user({ sellers: [OWNED] });
@@ -77,7 +77,7 @@ describe('seller money endpoints are owner-only', () => {
 
 describe('seller team areas', () => {
   const service = new Proxy({}, { get: () => jest.fn().mockResolvedValue({ ok: true }) }) as any;
-  const ctrl = new SellerController(service, service, service, service);
+  const ctrl = new SellerController(service, service, service, service, service);
   const team = new TeamController(service);
   const member = user({ sellers: [MEMBER_OF] });
   const owner = user({ sellers: [OWNED] });
@@ -88,6 +88,9 @@ describe('seller team areas', () => {
   });
   it('blocks a member from areas they were not given', () => {
     expect(() => ctrl.products(member, {}, MEMBER_OF.id)).toThrow(/permiso/);
+    expect(() => ctrl.updateStoreDestinations(member, { mode: 'ALL' }, MEMBER_OF.id)).toThrow(/permiso/);
+    expect(() => ctrl.updateProductDestinations(member, OTHER, { mode: 'ALL' }, MEMBER_OF.id)).toThrow(/permiso/);
+    expect(() => ctrl.updateStoreDestinations(owner, { mode: 'ALL' }, OTHER)).toThrow();
     expect(() => requireSeller(member, MEMBER_OF.id, 'SETTINGS')).toThrow(/permiso/);
     expect(sellerCan(member, MEMBER_OF.id, 'MESSAGES')).toBe(false);
     expect(sellerCan(member, OTHER, 'ORDERS')).toBe(false);

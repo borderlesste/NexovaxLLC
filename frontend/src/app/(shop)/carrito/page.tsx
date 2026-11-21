@@ -1,4 +1,5 @@
 'use client';
+import { AvailabilityWarning } from '@/components/shop/availability';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowRight, Clock, Minus, Plus, ShoppingCart, Store, Trash2 } from 'lucide-react';
@@ -95,6 +96,7 @@ export default function CartPage() {
                         <Link href={`/producto/${i.slug}`} className="line-clamp-2 font-semibold hover:text-brand-700">{i.title}</Link>
                         <p className="mt-0.5 text-sm text-muted">{Object.entries(i.attributes ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || i.sku}</p>
                         {i.issue && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-700"><AlertTriangle className="size-3.5" /> {i.issue}</p>}
+                        <AvailabilityWarning productId={i.productId} />
                         <div className="mt-3 flex flex-wrap items-center gap-4">
                           <div className="inline-flex items-center rounded-lg border border-line">
                             <button className="grid size-9 place-items-center disabled:opacity-40" disabled={i.quantity <= 1 || upd.isPending} onClick={() => upd.mutate({ id: i.id, quantity: i.quantity - 1 })} aria-label={t('Menos')}><Minus className="size-4" /></button>

@@ -17,6 +17,7 @@ import { AffiliatesService } from '../promotions/affiliates.service';
 import { orderRef, paymentRef } from '../common/refs';
 import { ONLINE_PAYMENT_TTL_MIN, PaymentsService } from '../payments/payments.service';
 import { MailService } from '../mail/mail.service';
+import { AvailabilityService } from '../geo/availability';
 
 const ENGINE = 'nx-checkout-2.0';
 const SANDBOX_PROVIDER = 'RD_SANDBOX';
@@ -93,7 +94,23 @@ export class CheckoutService {
     private readonly coupons: CouponsService,
     private readonly affiliates: AffiliatesService,
     private readonly stripeTax: StripeTaxService,
+    private readonly availability: AvailabilityService,
   ) {}
+
+  /**
+   * Confirmed restrictions (marketplace, store or product) for the confirmed address country (NX-GEO-001 §5).
+   * Only UNAVAILABLE blocks; uncertainty is settled by the live shipping options.
+   */
+  private async destinationBlocks(groups: any[], country: string | null | undefined) {
+    const blocked = new Map<string, string>();
+    if (!country) return blocked;
+    const ids = groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => i.productId as string));
+    for (let i = 0; i < ids.length; i += 100) {
+      const r = await this.availability.forProducts(country, ids.slice(i, i + 100));
+      for (const [id, a] of Object.entries(r.items)) if (a.status === 'UNAVAILABLE') blocked.set(id, a.reason);
+    }
+    return blocked;
+  }
 
   // ------------------------------------------------------------------ pricing
   private async commissionRule(c: PoolClient | undefined, sellerId: string, categoryId: string, productId: string, variantId: string): Promise<CommissionRule | null> {
@@ -194,6 +211,7 @@ export class CheckoutService {
     const optionsBySeller = address
       ? await this.groupOptions(cart.id, cart.groups, address, cart.currency)
       : (new Map(cart.groups.map((g: any) => [g.sellerId, { options: [], messages: [], liveRates: false }])) as unknown as Awaited<ReturnType<CheckoutService['groupOptions']>>);
+    const blocked = await this.destinationBlocks(cart.groups, address?.country_code);
     const groups = [];
     const totals = { subtotal: 0n, discount: 0n, shipping: 0n, tax: 0n };
     const lines = cart.groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => ({ key: i.variantId, sellerId: g.sellerId, productId: i.productId, gross: toMinor(i.unitPrice) * BigInt(i.quantity) })));
@@ -236,6 +254,8 @@ export class CheckoutService {
         })),
         shippingMessages: opt.messages,
         liveRates: opt.liveRates,
+        /** Items that can't be shipped to the address country, with the reason code. */
+        destinationBlocked: items.filter((i: any) => blocked.has(i.productId)).map((i: any) => ({ productId: i.productId, reason: blocked.get(i.productId) })),
         selectedShipping: chosen?.code ?? null,
         subtotal: fromMinor(subtotal),
         discount: fromMinor(discount),
@@ -321,6 +341,8 @@ export class CheckoutService {
     if (!preCart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
     const preAddress = await this.buyerAddress(userId, input.addressId);
     if (!preAddress || preAddress.id !== input.addressId) throw badRequest('CHECKOUT_SHIPPING_ADDRESS_REQUIRED', 'Selecciona una dirección de envío válida.');
+    if ((await this.destinationBlocks(preCart.groups, preAddress.country_code)).size)
+      throw conflict('DESTINATION_UNAVAILABLE', 'Algunos productos no se envían al país de tu dirección. Quítalos del carrito o elige otra dirección.');
     const optionsBySeller = await this.groupOptions(preCart.id, preCart.groups, preAddress, preCart.currency);
     for (const g of preCart.groups) {
       const code = input.shipping?.[g.sellerId];

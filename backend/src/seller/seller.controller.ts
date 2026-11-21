@@ -18,9 +18,16 @@ import { CARRIERS } from '../shipping/shipping.service';
 import { AlertsService } from '../analytics/alerts.service';
 import { DbService } from '../db/db.service';
 import { badRequest } from '../common/errors';
+import { AvailabilityService } from '../geo/availability';
 
 const PHONE = /^\+?[0-9][0-9 ().-]{5,47}$/;
 const upload = { limits: { fileSize: 8 * 1024 * 1024, files: 8, fields: 10, parts: 20 } };
+
+export class DestinationsDto {
+  @IsIn(['ALL', 'DOMESTIC', 'ONLY', 'EXCEPT']) mode!: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(300) @IsString({ each: true }) countries?: string[];
+  @IsOptional() @IsString() @MaxLength(300) note?: string | null;
+}
 
 export class ProductStatusDto {
   @IsIn(['PAUSE', 'RESUME', 'ARCHIVE']) action: 'PAUSE' | 'RESUME' | 'ARCHIVE';
@@ -162,6 +169,7 @@ export class SellerController {
     private readonly orders: OrdersService,
     private readonly alerts: AlertsService,
     private readonly db: DbService,
+    private readonly availability: AvailabilityService,
   ) {}
 
   private sid(user: RequestUser, header?: string, area?: SellerArea) {
@@ -186,6 +194,27 @@ export class SellerController {
   @Put('store/ship-from')
   updateShipFrom(@CurrentUser() user: RequestUser, @Body() dto: ShipFromDto, @Headers('x-seller-id') h?: string) {
     return this.seller.updateShipFrom(this.sid(user, h, 'SETTINGS'), dto);
+  }
+
+  /** Where the store ships to (NX-GEO-001): every destination, only its country, only some, or all but some. */
+  @Get('store/destinations')
+  storeDestinations(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
+    return this.availability.get(this.sid(user, h, 'SETTINGS'), null);
+  }
+
+  @Put('store/destinations')
+  updateStoreDestinations(@CurrentUser() user: RequestUser, @Body() dto: DestinationsDto, @Headers('x-seller-id') h?: string) {
+    return this.availability.set(this.sid(user, h, 'SETTINGS'), null, user.id, dto);
+  }
+
+  @Get('products/:id/destinations')
+  productDestinations(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
+    return this.availability.get(this.sid(user, h, 'PRODUCTS'), id);
+  }
+
+  @Put('products/:id/destinations')
+  updateProductDestinations(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DestinationsDto, @Headers('x-seller-id') h?: string) {
+    return this.availability.set(this.sid(user, h, 'PRODUCTS'), id, user.id, dto);
   }
 
   @Put('store')

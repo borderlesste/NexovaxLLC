@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth';
 import { EarnBox } from '@/components/affiliates/earn-box';
 import { ShareButton } from '@/components/shop/share-button';
 import { StockAlertButton } from '@/components/shop/stock-alert';
+import { AvailabilityPanel } from '@/components/shop/availability';
 import { Recommendations } from '@/components/shop/recommendations';
 import { trackProductView } from '@/lib/analytics';
 import { money, cn, fmtDate } from '@/lib/utils';
@@ -185,6 +186,7 @@ export function ProductDetail({ initial }: { initial: any }) {
                 </span>
               </div>
             </div>
+            <AvailabilityPanel productId={p.id} className="mt-5" />
             <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Button size="lg" onClick={() => addToCart(false)} loading={cart.isPending} disabled={!variant || stock <= 0}><ShoppingCart /> {t('Agregar al carrito')}</Button>
               <Button size="lg" variant="outline" onClick={() => addToCart(true)} disabled={!variant || stock <= 0}><Zap /> {t('Comprar ahora')}</Button>

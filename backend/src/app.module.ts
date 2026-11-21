@@ -25,6 +25,7 @@ import { CheckoutService } from './checkout/checkout.service';
 import { CheckoutController } from './checkout/checkout.controller';
 import { HealthController } from './health.controller';
 import { GeoController } from './geo/geo.controller';
+import { AvailabilityService } from './geo/availability';
 import { OrdersService } from './orders/orders.service';
 import { OrdersController } from './orders/orders.controller';
 import { SellerService } from './seller/seller.service';
@@ -97,6 +98,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
   providers: [
     DbService,
     SettingsService,
+    AvailabilityService,
     SupabaseAdminService,
     CatalogService,
     AccountService,

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { get } from '@/lib/api';
 import { useAddToCart } from './hooks';
 import { t, getIntlLocale } from '@/lib/i18n';
+import { AvailabilityLine } from './availability';
 
 export interface ProductCardData {
   id: string;
@@ -111,6 +112,7 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         </Link>
         <span className="shrink-0"><Stars value={p.rating} count={p.reviewCount} /></span>
       </div>
+      <AvailabilityLine productId={p.id} className="mt-1" />
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
         <span className="whitespace-nowrap text-lg font-extrabold">{p.price ? money(p.price) : '—'}</span>
         {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) && <span className="whitespace-nowrap text-xs text-muted line-through">{money(p.compareAtPrice)}</span>}

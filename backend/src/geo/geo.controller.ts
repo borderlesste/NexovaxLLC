@@ -1,10 +1,17 @@
-import { Controller, Get, Param, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
+import { ArrayMaxSize, IsArray, IsString, IsUUID, Matches } from 'class-validator';
 import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
 import { SettingsService } from '../settings/settings.service';
 import { resolveDeliveryContext } from './delivery-context';
+import { AvailabilityService, MAX_AVAILABILITY_ITEMS } from './availability';
+
+export class AvailabilityDto {
+  @IsString() @Matches(/^[A-Za-z]{2}$/) country!: string;
+  @IsArray() @ArrayMaxSize(MAX_AVAILABILITY_ITEMS) @IsUUID('all', { each: true }) productIds!: string[];
+}
 import { badRequest } from '../common/errors';
 import { countryGeo, matchRegion, normalizeCountry, REAL_COUNTRY, regionValue } from '../common/geo';
 import { DbService } from '../db/db.service';
@@ -31,7 +38,18 @@ export class GeoController {
   constructor(
     private readonly db: DbService,
     private readonly settings: SettingsService,
+    private readonly availability: AvailabilityService,
   ) {}
+
+  /**
+   * Availability of products for a destination country (Disponible / No disponible / Por confirmar).
+   * Country-level only: checkout validates the confirmed address. POST so the list fits in the body.
+   */
+  @Post('availability')
+  async productAvailability(@Body() dto: AvailabilityDto, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return this.availability.forProducts(dto.country, dto.productIds);
+  }
 
   /**
    * Browsing destination (NX-GEO-001): explicit choice > account preference > IP country > default.
