@@ -32,8 +32,11 @@ export class JobsService {
     private readonly stripeTax: StripeTaxService,
   ) {}
 
-  /** Stripe Tax: record paid orders and refunds in Stripe's tax reports (retry). */
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  /**
+   * Stripe Tax fallback. Sales are recorded when the payment succeeds and refunds reversed when they
+   * complete; this only retries what failed then (e.g. Stripe unavailable).
+   */
+  @Cron(CronExpression.EVERY_HOUR)
   async syncStripeTax() {
     if (process.env.DISABLE_JOBS === 'true') return;
     try {

@@ -1,3 +1,4 @@
+import { StripeTaxService } from '../tax/stripe-tax.service';
 import { providerRefundMode, testRefundReference } from '../payments/refund-environment';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
@@ -54,6 +55,7 @@ export class CancellationsService {
     private readonly stripe: StripeService,
     private readonly paypal: PaypalService,
     private readonly policies: ReturnPolicyService,
+    private readonly stripeTax: StripeTaxService,
   ) {}
 
   // ------------------------------------------------------------------ open / decide
@@ -200,6 +202,7 @@ export class CancellationsService {
       await this.db.exec(`update public.nx_order_cancellations set last_error = $2, updated_at = now() where id = $1`, [id, String(e?.message ?? e).slice(0, 300)]).catch(() => undefined);
       throw e;
     }
+    this.stripeTax.fireRefunds(c.order_id);
     this.mail.fire(() => this.mail.orderCancellationEvent(id, 'REFUNDED'));
     return this.view(id, 'staff');
   }

@@ -1,3 +1,4 @@
+import { StripeTaxService } from '../tax/stripe-tax.service';
 import { providerRefundMode, testRefundReference } from '../payments/refund-environment';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
@@ -60,6 +61,7 @@ export class ReturnsService {
     private readonly paypal: PaypalService,
     private readonly policies: ReturnPolicyService,
     private readonly shipping: ShippingService,
+    private readonly stripeTax: StripeTaxService,
   ) {}
 
   // ------------------------------------------------------------------ policy & eligibility
@@ -416,6 +418,7 @@ export class ReturnsService {
       if (now!.status === 'REFUND_PENDING') await this.setStatus(c, id, 'CLOSED');
       await this.summary(c, rr);
     });
+    this.stripeTax.fireRefunds(rr.order_id);
     this.mail.fire(() => this.mail.returnEvent(id, 'REFUNDED'));
     return this.detail(user, id, { as: 'staff' });
   }
@@ -849,6 +852,7 @@ export class ReturnsService {
       if (total !== toMinor(input.amount))
         throw conflict('EXTERNAL_REFUND_AMOUNT_MISMATCH', `Esas unidades suman ${fromMinor(total)} y el procesador reembolsó ${input.amount}. Elige las unidades que cubren exactamente el reembolso.`);
     });
+    this.stripeTax.fireRefunds(input.orderId);
     for (const rid of returnIds) this.mail.fire(() => this.mail.returnEvent(rid, 'REFUNDED'));
     return { returnIds };
   }

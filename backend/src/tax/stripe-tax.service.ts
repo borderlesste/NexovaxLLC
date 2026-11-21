@@ -138,22 +138,31 @@ export class StripeTaxService {
     }
   }
 
-  /** Fire-and-forget after an order is paid; the periodic job retries what fails. */
+  /** Fire-and-forget after an order is paid; the hourly job retries what fails. */
   fire(orderId: string) {
     this.recordOrder(orderId).catch((e) => this.logger.warn(`Stripe Tax transaction for ${orderId}: ${e?.message}`));
+  }
+
+  /** Fire-and-forget right after a refund completes: reverses its tax in Stripe; the hourly job retries what fails. */
+  fireRefunds(orderId: string) {
+    if (!this.stripe.enabled) return;
+    this.reverseRefunds(orderId).catch((e) => this.logger.warn(`Stripe Tax reversal for ${orderId}: ${e?.message}`));
   }
 
   /** Records the Stripe tax transaction of a paid order taxed by Stripe Tax (idempotent). */
   async recordOrder(orderId: string) {
     const o = await this.db.one(
       `select o.id, o.public_number, o.payment_status, ofs.calculation_breakdown->'tax'->>'stripeCalculationId' as calc,
-              t.status, t.transaction_id
+              t.status, t.transaction_id,
+              (select p.environment from public.payments p where p.order_id = o.id order by p.created_at desc limit 1) as environment
          from public.orders o join public.order_financial_snapshots ofs on ofs.order_id = o.id
          left join public.stripe_tax_transactions t on t.order_id = o.id
         where o.id = $1`,
       [orderId],
     );
     if (!o?.calc || !this.stripe.enabled) return null;
+    // Calculations belong to the Stripe mode they were made in: a test-mode order can't be recorded with the live key.
+    if ((o.environment ?? 'TEST') !== this.stripe.environment) return null;
     if (o.status === 'RECORDED') return o.transaction_id;
     if (!['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'DISPUTED'].includes(o.payment_status)) return null;
     await this.db.exec(
@@ -214,10 +223,11 @@ export class StripeTaxService {
          left join public.stripe_tax_transactions t on t.order_id = o.id
         where ofs.calculation_breakdown->'tax'->>'stripeCalculationId' is not null
           and o.payment_status in ('PAID','PARTIALLY_REFUNDED','REFUNDED','DISPUTED')
+          and coalesce((select p.environment from public.payments p where p.order_id = o.id order by p.created_at desc limit 1), 'TEST') = $2
           and (t.order_id is null or t.status = 'PENDING'
                or (t.status = 'RECORDED' and exists (select 1 from public.refunds r where r.order_id = o.id and r.status = 'COMPLETED' and not (r.id = any(t.reversed_refund_ids)))))
         order by o.placed_at limit $1`,
-      [limit],
+      [limit, this.stripe.environment],
     );
     let n = 0;
     for (const r of rows) {
