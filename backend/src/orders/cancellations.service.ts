@@ -1,3 +1,4 @@
+import { providerRefundMode, testRefundReference } from '../payments/refund-environment';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
@@ -141,7 +142,7 @@ export class CancellationsService {
     if (c.status === 'REFUNDED') return this.view(id, 'staff');
     if (c.status !== 'APPROVED') throw conflict('CANCELLATION_NOT_APPROVED', 'La cancelación aún no está aprobada.');
     const pay = await this.db.one(
-      `select p.id, p.provider_code, pc.external_charge_id
+      `select p.id, p.provider_code, p.environment, pc.external_charge_id
          from public.payments p left join lateral (select external_charge_id from public.payment_charges x where x.payment_id = p.id order by x.created_at desc limit 1) pc on true
         where p.order_id = $1 and p.status in ('PAID','PARTIALLY_REFUNDED') order by p.created_at desc limit 1`,
       [c.order_id],
@@ -168,7 +169,11 @@ export class CancellationsService {
         providerId = input.external.providerRefundId;
         providerStatus = input.external.providerStatus;
       } else if (r!.status !== 'COMPLETED') {
-        if (pay.provider_code === 'STRIPE') {
+        const mode = pay.provider_code === 'STRIPE' ? providerRefundMode(pay.environment, this.stripe.environment)
+          : pay.provider_code === 'PAYPAL' ? providerRefundMode(pay.environment, this.paypal.environment) : 'PROVIDER';
+        if (mode === 'BOOK_ONLY') {
+          ({ providerId, providerStatus } = testRefundReference(refundId));
+        } else if (pay.provider_code === 'STRIPE') {
           if (!pay.external_charge_id) throw conflict('CHARGE_NOT_FOUND', 'No se encontró el cargo de la tarjeta.');
           const sr = await this.stripe.refund({ chargeOrIntent: pay.external_charge_id, amount: r!.amount, currency: r!.currency_code, refundId });
           if (sr.status === 'failed' || sr.status === 'canceled') throw new AppError('REFUND_PROVIDER_FAILED', 'Stripe rechazó el reembolso.', HttpStatus.BAD_GATEWAY, { status: sr.status });

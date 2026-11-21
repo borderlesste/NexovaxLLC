@@ -5,6 +5,7 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Este pago se hizo con dinero real y los pagos están en modo de prueba: no se puede reembolsar desde aquí.": "This payment was made with real money and payments are in test mode: it can’t be refunded from here.",
   "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "The featured list changed. Reload the page and try again.",
   "La fecha de entrada en vigor no es válida (como máximo un año).": "The effective date isn’t valid (up to one year ahead).",
   "Ya hay una versión programada para esta política. Cancélala antes de programar otra.": "There’s already a scheduled version of this policy. Cancel it before scheduling another.",
