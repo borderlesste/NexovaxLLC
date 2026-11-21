@@ -1,36 +1,39 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { serverGet } from '@/lib/server-api';
-import { siteUrl } from '@/lib/site-url';
+import { getSeo, pageMetadata } from '@/lib/seo';
+import { getT } from '@/lib/i18n/server';
 import { ProductDetail } from './product-detail';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const p = await serverGet<any>(`/products/${slug}`, 60);
-  if (!p) return { title: 'Producto no encontrado' };
-  return {
-    title: p.seo?.title ?? p.title,
-    description: p.seo?.description ?? p.shortDescription ?? undefined,
-    alternates: { canonical: `/producto/${p.slug}` },
-    openGraph: { type: 'website', url: `/producto/${p.slug}`, title: p.title, description: p.shortDescription ?? undefined, images: p.images?.[0]?.url ? [p.images[0].url] : [] },
-  };
+  const t = await getT();
+  if (!p) return { title: t('Producto no encontrado'), robots: { index: false, follow: true } };
+  return pageMetadata({
+    title: p.seo?.title || p.title,
+    description: p.seo?.description || p.shortDescription || p.description,
+    path: `/producto/${p.slug}`,
+    images: (p.images ?? []).slice(0, 4).map((i: any) => i.url),
+    imageAlt: p.images?.[0]?.alt || p.title,
+  });
 }
 
 /** Product structured data (schema.org) so search results can show price, stock and rating. */
-function productJsonLd(p: any) {
+function productJsonLd(p: any, base: string) {
   const data: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: p.title,
     description: p.shortDescription ?? undefined,
     sku: p.variants?.[0]?.sku ?? undefined,
-    image: (p.images ?? []).slice(0, 5).map((i: any) => `${siteUrl()}${i.url}`),
+    image: (p.images ?? []).slice(0, 5).map((i: any) => `${base}${i.url}`),
     brand: p.brand?.name ? { '@type': 'Brand', name: p.brand.name } : undefined,
     category: p.category?.name ?? undefined,
     offers: p.price
       ? {
           '@type': 'Offer',
-          url: `${siteUrl()}/producto/${p.slug}`,
+          url: `${base}/producto/${p.slug}`,
           price: String(p.price),
           priceCurrency: p.currency ?? 'USD',
           availability: Number(p.stock) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
@@ -49,7 +52,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!p) notFound();
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd(p) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd(p, (await getSeo()).base) }} />
       <ProductDetail initial={p} />
     </>
   );

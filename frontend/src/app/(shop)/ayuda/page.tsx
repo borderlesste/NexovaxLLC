@@ -3,11 +3,12 @@ import { AlertCircle, BookOpen, CreditCard, HelpCircle, Package, RotateCcw, Shie
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { getHas, getServerLocale, getT } from '@/lib/i18n/server';
+import { pageMetadata } from '@/lib/seo';
 import { serverGet } from '@/lib/server-api';
 
 export async function generateMetadata() {
   const t = await getT();
-  return { title: t('Centro de ayuda') };
+  return pageMetadata({ title: t('Centro de ayuda'), path: '/ayuda' });
 }
 
 const TOPICS = [

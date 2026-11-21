@@ -10,7 +10,11 @@ import { isIP } from 'node:net';
  *   Any value a browser sends itself is discarded, so it can't be forged.
  * - The API trusts it only together with PROXY_SHARED_SECRET (same value on both servers).
  */
-export const config = { matcher: '/api/:path*', runtime: 'nodejs' };
+export const config = {
+  // API calls (visitor IP) and pages (current path for the canonical link); not static files.
+  matcher: ['/api/:path*', '/((?!_next/|favicon|icon|apple-icon|.*\\.(?:png|jpg|jpeg|webp|svg|ico|txt|xml|webmanifest)$).*)'],
+  runtime: 'nodejs',
+};
 
 const FORWARD_SECRET = 'x-nx-proxy-secret';
 const FORWARD_IP = 'x-nx-client-ip';
@@ -25,8 +29,14 @@ function visitorIp(req: NextRequest): string | null {
   return ip && isIP(ip) ? ip : null;
 }
 
+const PATHNAME = 'x-nx-pathname';
+
 export function middleware(req: NextRequest) {
   const headers = new Headers(req.headers);
+  if (!req.nextUrl.pathname.startsWith('/api/')) {
+    headers.set(PATHNAME, req.nextUrl.pathname);
+    return NextResponse.next({ request: { headers } });
+  }
   headers.delete(FORWARD_SECRET);
   headers.delete(FORWARD_IP);
   const secret = process.env.PROXY_SHARED_SECRET?.trim();

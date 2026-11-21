@@ -890,6 +890,13 @@ export class AdminService {
     return { settings, commission, payoutPolicy: payout, roles, system, taxRates, currencies };
   }
 
+  /** Uploads the default share image; the admin then saves it in SEO settings. */
+  async uploadSeoImage(admin: RequestUser, file: Express.Multer.File) {
+    if (!file) throw badRequest('FILE_REQUIRED', 'Selecciona una imagen.');
+    const id = await this.supa.uploadPlatformImage(admin.id, file);
+    return { url: mediaUrl(id) };
+  }
+
   async updateSettings(admin: RequestUser, patch: Partial<PlatformSettings> & { commissionRate?: number }) {
     const { commissionRate, ...rest } = patch;
     await this.validateSettings(rest);
@@ -927,13 +934,14 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
     const text = (v: unknown, min: number, max: number, re?: RegExp) =>
       typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
     validateHelpAndSocial(s);
+    validateSeo(s);
     if (s['marketplace.name'] != null && !text(s['marketplace.name'], 2, 60, /\p{L}/u)) throw badRequest('NAME_INVALID', 'El nombre del marketplace no es válido.');
     if (s['marketplace.support_email'] != null && !text(s['marketplace.support_email'], 6, 254, /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/))
       throw badRequest('EMAIL_INVALID', 'Correo electrónico inválido.');
@@ -1247,6 +1255,54 @@ const SOCIAL_HOSTS: Record<string, string[]> = {
   facebook: ['facebook.com', 'fb.com'], instagram: ['instagram.com'], youtube: ['youtube.com', 'youtu.be'], x: ['x.com', 'twitter.com'],
   tiktok: ['tiktok.com'], linkedin: ['linkedin.com'], whatsapp: ['wa.me', 'whatsapp.com'], pinterest: ['pinterest.com'],
 };
+/** SEO defaults: plain text without tags, https URLs, an @handle and a title template with %s. */
+function validateSeo(s: Record<string, any>) {
+  const v = s['seo.defaults'];
+  if (v == null) return;
+  if (typeof v !== 'object' || Array.isArray(v)) throw badRequest('SEO_INVALID', 'Configuración SEO inválida.');
+  const str = (k: string, max: number, label: string) => {
+    const x = v[k] == null ? '' : v[k];
+    if (typeof x !== 'string' || x.trim().length > max || /[\u0000-\u001f<>]/.test(x)) throw badRequest('SEO_INVALID', `${label}: máximo ${max} caracteres, sin etiquetas.`);
+    return x.trim();
+  };
+  const url = (k: string, label: string, allowPath: boolean) => {
+    const x = str(k, 500, label);
+    if (!x) return '';
+    if (allowPath && /^\/(?!\/)[\w\-./%]*$/.test(x)) return x;
+    try {
+      const u = new URL(x);
+      if (u.protocol === 'https:' && u.hostname && !/^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(u.hostname)) return allowPath ? u.toString() : u.origin;
+    } catch {}
+    throw badRequest('SEO_INVALID', `${label}: ingresa un enlace válido que empiece por https://`);
+  };
+  const out: Record<string, any> = {
+    siteName: str('siteName', 60, 'Nombre del sitio'),
+    titleTemplate: str('titleTemplate', 80, 'Plantilla de título'),
+    keywords: str('keywords', 300, 'Palabras clave'),
+    canonicalUrl: url('canonicalUrl', 'URL canónica', false),
+    ogImage: url('ogImage', 'Imagen para compartir', true),
+    ogImageAlt: str('ogImageAlt', 200, 'Texto alternativo de la imagen'),
+    twitterHandle: str('twitterHandle', 16, 'Usuario de X'),
+    twitterCard: v.twitterCard === 'summary' ? 'summary' : 'summary_large_image',
+    googleVerification: str('googleVerification', 120, 'Verificación de Google'),
+    bingVerification: str('bingVerification', 120, 'Verificación de Bing'),
+    noindex: v.noindex === true,
+  };
+  if (out.titleTemplate && !out.titleTemplate.includes('%s')) throw badRequest('SEO_INVALID', 'La plantilla de título debe incluir %s (el título de cada página).');
+  if (out.twitterHandle) {
+    out.twitterHandle = '@' + out.twitterHandle.replace(/^@/, '');
+    if (!/^@\w{1,15}$/.test(out.twitterHandle)) throw badRequest('SEO_INVALID', 'Usuario de X inválido (ej.: @nexovax).');
+  }
+  for (const k of ['googleVerification', 'bingVerification']) if (out[k] && !/^[\w\-.=+/]+$/.test(out[k])) throw badRequest('SEO_INVALID', 'El código de verificación solo admite letras, números y - _ . = + /');
+  for (const l of ['', 'En', 'Fr', 'Ht']) {
+    const t = str(`title${l}`, 70, 'Título de la portada');
+    const d = str(`description${l}`, 300, 'Descripción');
+    if (!l || t) out[`title${l}`] = t;
+    if (!l || d) out[`description${l}`] = d;
+  }
+  s['seo.defaults'] = out;
+}
+
 function validateHelpAndSocial(s: Record<string, any>) {
   const multi = (v: unknown, min: number, max: number) =>
     typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u0009\u000b-\u001f<>]/.test(v) && /\p{L}/u.test(v);

@@ -206,10 +206,32 @@ export class SupabaseAdminService {
   }
 
   /**
+   * Marketplace share image (Open Graph / X card): 1200×630 JPEG, the format every
+   * social network previews, public in the media bucket. Returns the asset id.
+   */
+  async uploadPlatformImage(userId: string, file: UploadFile): Promise<string> {
+    const { out, meta } = await this.processImage(file, (img) => img.resize({ width: 1200, height: 630, fit: 'cover', position: 'attention' }), 'jpeg');
+    const key = `platform/seo/${randomUUID()}.jpg`;
+    const { error } = await this.admin.storage.from(config.mediaBucket).upload(key, out, { contentType: 'image/jpeg', upsert: false });
+    if (error) {
+      this.logger.warn(`image upload failed: ${error.message}`);
+      throw new AppError('UPLOAD_FAILED', 'No se pudo subir la imagen. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
+    const row = await this.db.one<{ id: string }>(
+      `insert into public.assets (uploaded_by_user_id, owner_seller_id, storage_provider, storage_bucket, storage_key,
+                                  original_filename, mime_type, size_bytes, width_pixels, height_pixels, visibility,
+                                  status, uploaded_at, ready_at)
+       values ($1,null,'SUPABASE',$2,$3,$4,'image/jpeg',$5,$6,$7,'PUBLIC','READY',now(),now()) returning id`,
+      [userId, config.mediaBucket, key, file.originalname?.slice(0, 200) ?? null, out.length, meta.width, meta.height],
+    );
+    return row!.id;
+  }
+
+  /**
    * Validates an uploaded image (declared and real format, size, dimensions, no
    * animation) from its header before decoding, then re-encodes it to WebP.
    */
-  private async processImage(file: UploadFile, transform: (img: Sharp) => Sharp): Promise<{ out: Buffer; meta: OutputInfo }> {
+  private async processImage(file: UploadFile, transform: (img: Sharp) => Sharp, format: 'webp' | 'jpeg' = 'webp'): Promise<{ out: Buffer; meta: OutputInfo }> {
     if (!ALLOWED_IMAGE.includes(file.mimetype))
       throw new AppError('UNSUPPORTED_IMAGE', 'Formato no permitido. Usa JPG, PNG, WebP o AVIF.');
     if (file.size > MAX_IMAGE_BYTES || file.buffer.length > MAX_IMAGE_BYTES) throw new AppError('IMAGE_TOO_LARGE', 'La imagen supera 8 MB.');
@@ -232,9 +254,10 @@ export class SupabaseAdminService {
     let meta: OutputInfo;
     try {
       const r = await withImageSlot(() =>
-        transform(sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS, failOn: 'error', pages: 1 }).rotate())
-          .webp({ quality: 86 })
-          .toBuffer({ resolveWithObject: true }),
+        (format === 'jpeg'
+          ? transform(sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS, failOn: 'error', pages: 1 }).rotate()).flatten({ background: '#ffffff' }).jpeg({ quality: 86, mozjpeg: true })
+          : transform(sharp(file.buffer, { limitInputPixels: MAX_IMAGE_PIXELS, failOn: 'error', pages: 1 }).rotate()).webp({ quality: 86 })
+        ).toBuffer({ resolveWithObject: true }),
       );
       out = r.data;
       meta = r.info;

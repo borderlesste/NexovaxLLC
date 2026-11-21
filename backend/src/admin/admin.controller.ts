@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
@@ -353,6 +354,13 @@ export class AdminController {
   @Put('settings')
   updateSettings(@CurrentUser() user: RequestUser, @Body() dto: SettingsDto) {
     return this.admin.updateSettings(user, { ...(dto.settings ?? {}), commissionRate: dto.commissionRate });
+  }
+
+  @Roles('ADMIN')
+  @Post('settings/seo-image')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 2, parts: 4 } }))
+  uploadSeoImage(@CurrentUser() user: RequestUser, @UploadedFile() file: Express.Multer.File) {
+    return this.admin.uploadSeoImage(user, file);
   }
 
   // tax rates (destination country)

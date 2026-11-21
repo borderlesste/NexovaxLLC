@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { serverGet } from '@/lib/server-api';
-import { siteUrl } from '@/lib/site-url';
+import { getSeo } from '@/lib/seo';
 
 /** Regenerated at most once an hour. */
 export const revalidate = 3600;
@@ -26,7 +26,7 @@ async function load(): Promise<SitemapData> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = siteUrl();
+  const { base } = await getSeo();
   const now = new Date();
   const { products, stores, categories } = await load();
   const at = (e: Entry) => (e.updatedAt ? new Date(e.updatedAt) : now);

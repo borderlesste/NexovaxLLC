@@ -52,6 +52,30 @@ export interface HelpCommissions { body: string; bodyEn?: string; bodyFr?: strin
 export type SocialNetwork = 'facebook' | 'instagram' | 'youtube' | 'x' | 'tiktok' | 'linkedin' | 'whatsapp' | 'pinterest';
 export interface SocialLink { network: SocialNetwork; url: string }
 
+/** Site-wide SEO defaults (Admin → Configuración → SEO). Empty fields fall back as documented per field. */
+export interface SeoSettings {
+  /** og:site_name and the title suffix; empty → marketplace.name. */
+  siteName: string;
+  /** Home page title next to the site name (es + optional translations). */
+  title: string; titleEn?: string; titleFr?: string; titleHt?: string;
+  /** Title of every other page; %s is the page title. Empty → "%s · {siteName}". */
+  titleTemplate: string;
+  description: string; descriptionEn?: string; descriptionFr?: string; descriptionHt?: string;
+  keywords: string;
+  /** Public origin for canonical links, Open Graph URLs and the sitemap; empty → the web's env (NEXT_PUBLIC_SITE_URL). */
+  canonicalUrl: string;
+  /** Default share image (1200×630) for pages without their own. */
+  ogImage: string;
+  ogImageAlt: string;
+  /** @handle of the marketplace on X/Twitter (twitter:site). */
+  twitterHandle: string;
+  twitterCard: 'summary_large_image' | 'summary';
+  googleVerification: string;
+  bingVerification: string;
+  /** Asks search engines not to index the site (staging copies, pre-launch). */
+  noindex: boolean;
+}
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
@@ -72,6 +96,7 @@ export interface PlatformSettings {
   'help.sellers': { sections: HelpSection[] };
   'help.commissions': HelpCommissions;
   'social.links': SocialLink[];
+  'seo.defaults': SeoSettings;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -113,6 +138,10 @@ const DEFAULTS: PlatformSettings = {
     showPayoutMinimum: true,
   },
   'social.links': [],
+  'seo.defaults': {
+    siteName: '', title: '', titleTemplate: '', description: '', keywords: '', canonicalUrl: '', ogImage: '', ogImageAlt: '',
+    twitterHandle: '', twitterCard: 'summary_large_image', googleVerification: '', bingVerification: '', noindex: false,
+  },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */

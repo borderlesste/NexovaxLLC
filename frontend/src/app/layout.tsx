@@ -3,19 +3,26 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Analytics } from '@vercel/analytics/next';
-import { getServerLocale, getT } from '@/lib/i18n/server';
+import { getServerLocale } from '@/lib/i18n/server';
 import { serverGet } from '@/lib/server-api';
-import { siteUrl } from '@/lib/site-url';
+import { getSeo, pageMetadata } from '@/lib/seo';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
+/**
+ * Site-wide metadata from Admin → Configuración → SEO: title, description, canonical of the current path,
+ * Open Graph, Twitter/X card and search-engine verification. Pages with their own data override it.
+ */
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getT();
-  const name = (await serverGet<{ name?: string }>('/config/public', 60))?.name?.trim() || 'NEXOVAX';
+  const ctx = await getSeo();
+  const base = await pageMetadata({}, ctx);
+  const homeTitle = (base.title as { absolute: string }).absolute;
+  const other: Record<string, string> = {};
+  if (ctx.seo.bingVerification) other['msvalidate.01'] = ctx.seo.bingVerification;
   return {
-    metadataBase: new URL(siteUrl()),
-    title: { default: `${name} · ${t('Marketplace multivendedor')}`, template: `%s · ${name}` },
-    description: t('Compra en tiendas de todo el mundo con un solo carrito. Miles de productos, múltiples vendedores y una plataforma segura.'),
+    ...base,
+    title: { default: homeTitle, template: ctx.template },
+    verification: { google: ctx.seo.googleVerification || undefined, other },
   };
 }
 

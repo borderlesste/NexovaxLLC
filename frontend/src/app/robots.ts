@@ -1,8 +1,10 @@
 import type { MetadataRoute } from 'next';
-import { siteUrl } from '@/lib/site-url';
+import { getSeo } from '@/lib/seo';
 
-/** Search engines index the shop; private areas (accounts, panels, checkout, API) stay out. */
-export default function robots(): MetadataRoute.Robots {
+/** Search engines index the shop; private areas (accounts, panels, checkout, API) stay out. SEO → "No indexar" closes it all. */
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const { base, seo } = await getSeo();
+  if (seo.noindex) return { rules: [{ userAgent: '*', disallow: '/' }] };
   return {
     rules: [
       {
@@ -11,7 +13,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/admin', '/cuenta', '/carrito', '/checkout', '/mensajes', '/auth/', '/vendedor/', '/*?*q='],
       },
     ],
-    sitemap: `${siteUrl()}/sitemap.xml`,
-    host: siteUrl(),
+    sitemap: `${base}/sitemap.xml`,
+    host: base,
   };
 }

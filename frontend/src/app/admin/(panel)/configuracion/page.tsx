@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Wrench } from 'lucide-react';
+  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Search, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
 import { cn, fmtDate, money } from '@/lib/utils';
@@ -18,6 +18,7 @@ import { PageLoader, Switch } from '@/components/ui/misc';
 import { CountrySelect } from '@/components/shop/geo-fields';
 import { RateZone } from '@/components/admin/rate-zone';
 import { HelpEditor } from '@/components/admin/help-editor';
+import { SeoEditor } from '@/components/admin/seo-editor';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
 
 const TABS = [
@@ -29,6 +30,7 @@ const TABS = [
   ['notifications', 'Notificaciones', Bell],
   ['disputes', 'Disputas', Scale],
   ['help', 'Ayuda y redes', BookOpen],
+  ['seo', 'SEO', Search],
   ['roles', 'Roles y permisos', Users],
 ] as const;
 
@@ -265,6 +267,7 @@ export default function SettingsPage() {
             </Card>
           )}
           {tab === 'help' && <HelpEditor settings={s} />}
+          {tab === 'seo' && <SeoEditor value={s['seo.defaults']} onChange={(v) => set('seo.defaults', v)} marketplaceName={s['marketplace.name']} />}
           {tab === 'notifications' && (
             <Card>
               <CardHeader icon={<Bell />} title={t('Notificaciones')} subtitle={t('Canales de aviso a compradores y vendedores.')} />

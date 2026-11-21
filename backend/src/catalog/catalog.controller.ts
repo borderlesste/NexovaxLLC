@@ -45,6 +45,7 @@ export class CatalogController {
       productModeration: s['features.mandatory_moderation'] === true,
       maintenance: !!s['features.maintenance_mode'],
       social: s['social.links'] ?? [],
+      seo: s['seo.defaults'],
     };
   }
 

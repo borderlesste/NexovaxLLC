@@ -1,10 +1,13 @@
 import type { MetadataRoute } from 'next';
+import { getSeo } from '@/lib/seo';
 
-/** Web app manifest: name and icons (generated from the NEXOVAX logo) for home screens and tabs. */
-export default function manifest(): MetadataRoute.Manifest {
+/** Web app manifest: name from Admin → Configuración → SEO, icons generated from the logo. */
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const { siteName, title, description } = await getSeo();
   return {
-    name: 'NEXOVAX Marketplace',
-    short_name: 'NEXOVAX',
+    name: [siteName, title].filter(Boolean).join(' · ') || siteName,
+    short_name: siteName,
+    description: description || undefined,
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
