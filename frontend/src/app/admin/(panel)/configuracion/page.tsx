@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Search, Wrench } from 'lucide-react';
+  Activity, BarChart3, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Search, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
 import { cn, fmtDate, money } from '@/lib/utils';
@@ -20,6 +20,7 @@ import { RateZone } from '@/components/admin/rate-zone';
 import { DeliveryCountryCard } from '@/components/admin/delivery-country-card';
 import { HelpEditor } from '@/components/admin/help-editor';
 import { SeoEditor } from '@/components/admin/seo-editor';
+import { GoogleEditor } from '@/components/admin/google-editor';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
 
 const TABS = [
@@ -32,6 +33,7 @@ const TABS = [
   ['disputes', 'Disputas', Scale],
   ['help', 'Ayuda y redes', BookOpen],
   ['seo', 'SEO', Search],
+  ['google', 'Google', BarChart3],
   ['roles', 'Roles y permisos', Users],
 ] as const;
 
@@ -275,6 +277,7 @@ export default function SettingsPage() {
           )}
           {tab === 'help' && <HelpEditor settings={s} />}
           {tab === 'seo' && <SeoEditor value={s['seo.defaults']} onChange={(v) => set('seo.defaults', v)} marketplaceName={s['marketplace.name']} />}
+          {tab === 'google' && <GoogleEditor value={s['google.integrations']} siteUrl={s['seo.defaults']?.canonicalUrl || s['marketplace.base_url']} defaultCountry={s['marketplace.default_country']} onChange={(v) => set('google.integrations', v)} />}
           {tab === 'notifications' && (
             <Card>
               <CardHeader icon={<Bell />} title={t('Notificaciones')} subtitle={t('Canales de aviso a compradores y vendedores.')} />

@@ -934,7 +934,7 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
@@ -942,6 +942,28 @@ export class AdminService {
       typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
     validateHelpAndSocial(s);
     validateSeo(s);
+    const gi = s['google.integrations'];
+    if (gi != null) {
+      if (typeof gi !== 'object' || Array.isArray(gi) || !Array.isArray(gi.merchantShippingCountries ?? []) || (gi.merchantShippingCountries ?? []).length > 50)
+        throw badRequest('SETTING_INVALID', 'Configuración de Google inválida.');
+      const id = String(gi.ga4MeasurementId ?? '').trim().toUpperCase();
+      if (id && !/^G-[A-Z0-9]{4,20}$/.test(id)) throw badRequest('GA4_ID_INVALID', 'El ID de medición de GA4 tiene la forma G-XXXXXXXXXX.');
+      if (gi.ga4Enabled === true && !id) throw badRequest('GA4_ID_REQUIRED', 'Ingresa el ID de medición de GA4 para activarlo.');
+      const ship: string[] = [];
+      for (const c of gi.merchantShippingCountries ?? []) {
+        const cc = await normalizeCountry(this.db, String(c));
+        if (!ship.includes(cc)) ship.push(cc);
+      }
+      s['google.integrations'] = {
+        ga4Enabled: gi.ga4Enabled === true,
+        ga4MeasurementId: id,
+        merchantFeedEnabled: gi.merchantFeedEnabled === true,
+        merchantShippingCountries: ship,
+        merchantCondition: (['new', 'used', 'refurbished'] as const).includes(gi.merchantCondition) ? gi.merchantCondition : 'new',
+        merchantIncludeOutOfStock: gi.merchantIncludeOutOfStock === true,
+        merchantStoreAsBrand: gi.merchantStoreAsBrand === true,
+      };
+    }
     const g = s['geo.delivery'];
     if (g != null) {
       if (typeof g !== 'object' || typeof g.ipDetection !== 'boolean' || typeof g.showSelector !== 'boolean' || !Array.isArray(g.countries) || g.countries.length > 300)

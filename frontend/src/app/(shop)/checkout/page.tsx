@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ga } from '@/lib/ga';
 import { toast } from 'sonner';
 import {
   Zap, Building2, Check, ChevronLeft, CreditCard, Headphones, Home, Landmark, Lock, MapPin, PackageCheck, Pencil, Plus, ShieldCheck, ShoppingBag, Store, Truck, Wallet,
@@ -89,6 +90,15 @@ export default function CheckoutPage() {
     setCodeInput('');
   };
   const items = useMemo(() => q?.groups.flatMap((g: any) => g.items) ?? [], [q]);
+  // GA4 begin_checkout, once per visit to the checkout (only with analytics consent).
+  const gaSent = useRef(false);
+  useEffect(() => {
+    if (gaSent.current || !q?.groups?.length) return;
+    gaSent.current = true;
+    ga.beginCheckout(q.currency, q.groups.flatMap((g: any) => g.items.map((i: any) => ({
+      item_id: i.productId, item_name: i.title, price: ga.num(i.unitPrice), quantity: i.quantity, affiliation: g.sellerName, item_variant: i.variantTitle ?? undefined,
+    }))), ga.num(q.subtotal));
+  }, [q]);
   const selectedFor = (g: any) => (g.shippingOptions.some((o: any) => o.code === shipping[g.sellerId]) ? shipping[g.sellerId] : g.selectedShipping);
   const stripeCards = q?.paymentMethods?.some((m: any) => m.code === 'CARD' && m.provider === 'STRIPE');
   const savedCards = useQuery({ queryKey: ['cards'], queryFn: () => get<{ enabled: boolean; cards: any[] }>('/me/cards'), enabled: !!session && !!stripeCards });

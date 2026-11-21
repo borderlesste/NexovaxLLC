@@ -1,5 +1,7 @@
 import { DbService } from '../db/db.service';
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { googleMerchantFeed } from './google-merchant';
 import { ApiTags } from '@nestjs/swagger';
 import { config } from '../config';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
@@ -46,6 +48,8 @@ export class CatalogController {
       maintenance: !!s['features.maintenance_mode'],
       social: s['social.links'] ?? [],
       seo: s['seo.defaults'],
+      // GA4 loads in the browser only after the visitor accepts analytics cookies.
+      ga4MeasurementId: s['google.integrations']?.ga4Enabled && s['google.integrations'].ga4MeasurementId ? s['google.integrations'].ga4MeasurementId : null,
     };
   }
 
@@ -131,6 +135,16 @@ export class CatalogController {
   @Get('sitemap')
   sitemap() {
     return this.catalog.sitemap();
+  }
+
+  /** Google Merchant Center product feed (Admin → Configuración → Google). 404 while it is off. */
+  @Get('feeds/google-merchant.xml')
+  async googleMerchant(@Res() res: Response) {
+    const body = await googleMerchantFeed(this.db, this.settings);
+    if (body == null) throw new NotFoundException('El feed de Google Merchant Center está desactivado.');
+    res.setHeader('content-type', 'application/xml; charset=utf-8');
+    res.setHeader('cache-control', 'public, max-age=900');
+    res.send(body);
   }
 
   @Get('search/suggest')

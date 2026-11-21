@@ -9,7 +9,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/vendedor/registro'],
+        // Product photos (/api/media) must stay crawlable for Google Images and Merchant Center.
+        allow: ['/', '/vendedor/registro', '/api/media/', '/feeds/'],
         disallow: ['/api/', '/admin', '/cuenta', '/carrito', '/checkout', '/mensajes', '/auth/', '/vendedor/', '/*?*q='],
       },
     ],

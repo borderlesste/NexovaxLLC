@@ -9,6 +9,7 @@ import { money } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ErrorBox, PageLoader } from '@/components/ui/misc';
 import { t } from '@/lib/i18n';
+import { ga } from '@/lib/ga';
 
 export default function ConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -21,6 +22,11 @@ export default function ConfirmationPage({ params }: { params: Promise<{ id: str
     verified.current = true;
     post(`/checkout/${id}/payments/stripe/confirm`).then(() => q.refetch()).catch((e) => toast.error(e?.message ?? t('El pago aún no se ha completado.')));
   }, [q.data, id, q]);
+  // GA4 purchase, once per confirmed order (only with analytics consent).
+  useEffect(() => {
+    const r = q.data;
+    if (r?.orderId) ga.purchase(r.orderNumber ?? r.orderId, r.currency, Number(r.amount) || 0);
+  }, [q.data]);
   if (q.isLoading) return <PageLoader />;
   if (q.isError) return <div className="mx-auto max-w-2xl px-4 py-16"><ErrorBox message={t('No encontramos esta compra.')} /></div>;
   const r = q.data;

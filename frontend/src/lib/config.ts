@@ -17,6 +17,8 @@ export interface PublicConfig {
   /** Cloudflare Turnstile site key; null when the anti-bot check is off. */
   turnstileSiteKey?: string | null;
   social?: { network: string; url: string }[];
+  /** GA4 measurement ID when Google Analytics is on; it loads only with analytics consent. */
+  ga4MeasurementId?: string | null;
 }
 
 export function usePublicConfig() {

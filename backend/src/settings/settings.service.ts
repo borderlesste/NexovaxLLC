@@ -88,6 +88,24 @@ export interface GeoDeliverySettings {
   laneHistoryDays?: number;
 }
 
+/** Google integrations (Admin → Configuración → Google): GA4 and the Merchant Center product feed. */
+export interface GoogleSettings {
+  /** Measures visits and e-commerce events with Google Analytics 4, only after the visitor accepts analytics cookies. */
+  ga4Enabled: boolean;
+  /** GA4 web stream measurement ID (G-XXXXXXXXXX). */
+  ga4MeasurementId: string;
+  /** Publishes the product feed at /feeds/google-merchant.xml for Merchant Center (free listings and Shopping ads). */
+  merchantFeedEnabled: boolean;
+  /** Countries whose flat shipping price goes in each item (g:shipping); empty = the marketplace's default country. */
+  merchantShippingCountries: string[];
+  /** Condition declared for every item (the catalog has no per-product condition yet). */
+  merchantCondition: 'new' | 'used' | 'refurbished';
+  /** List out-of-stock products as out_of_stock instead of leaving them out. */
+  merchantIncludeOutOfStock: boolean;
+  /** Use the store name as brand when a product has no brand. */
+  merchantStoreAsBrand: boolean;
+}
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
@@ -110,6 +128,7 @@ export interface PlatformSettings {
   'social.links': SocialLink[];
   'seo.defaults': SeoSettings;
   'geo.delivery': GeoDeliverySettings;
+  'google.integrations': GoogleSettings;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -156,6 +175,10 @@ const DEFAULTS: PlatformSettings = {
     twitterHandle: '', twitterCard: 'summary_large_image', googleVerification: '', bingVerification: '', noindex: false,
   },
   'geo.delivery': { ipDetection: true, showSelector: true, countries: [], laneHistoryDays: 90 },
+  'google.integrations': {
+    ga4Enabled: false, ga4MeasurementId: '', merchantFeedEnabled: false, merchantShippingCountries: [],
+    merchantCondition: 'new', merchantIncludeOutOfStock: false, merchantStoreAsBrand: false,
+  },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */
@@ -184,6 +207,7 @@ export class SettingsService {
     );
     const out: any = { ...DEFAULTS };
     for (const r of rows) out[r.setting_key] = r.value;
+    out['google.integrations'] = { ...DEFAULTS['google.integrations'], ...(out['google.integrations'] ?? {}) };
     if (!client) {
       this.cache = { at: Date.now(), value: out };
       setMailRuntime({

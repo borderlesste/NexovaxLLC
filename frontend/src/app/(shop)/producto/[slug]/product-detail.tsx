@@ -15,6 +15,7 @@ import { StockAlertButton } from '@/components/shop/stock-alert';
 import { AvailabilityPanel } from '@/components/shop/availability';
 import { Recommendations } from '@/components/shop/recommendations';
 import { trackProductView } from '@/lib/analytics';
+import { ga, type GaItem } from '@/lib/ga';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -67,9 +68,17 @@ export function ProductDetail({ initial }: { initial: any }) {
   const isAvailable = (optionId: string, valueId: string) =>
     p.variants.some((v: any) => v.optionValues?.[optionId] === valueId && v.stock > 0 && p.options.every((o: any) => o.id === optionId || !selected[o.id] || v.optionValues?.[o.id] === selected[o.id]));
 
+  const gaItem = (): GaItem => ({
+    item_id: p.id, item_name: p.title, price: ga.num(variant?.price ?? p.price), item_brand: p.brand?.name ?? undefined,
+    item_category: p.category?.name ?? undefined, item_variant: p.variants.length > 1 ? variant?.title ?? undefined : undefined, affiliation: p.seller?.name ?? undefined,
+  });
+  // GA4 view_item, once per product page (only with analytics consent).
+  useEffect(() => ga.viewItem(p.currency, gaItem()), [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const addToCart = async (buyNow = false) => {
     if (!variant) return toast.error(t('Selecciona una combinación disponible.'));
     const r = await cart.add(variant.id, qty);
+    if (r) ga.addToCart(p.currency, { ...gaItem(), quantity: qty });
     if (r && buyNow) router.push('/checkout');
   };
 
