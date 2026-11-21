@@ -1,6 +1,6 @@
 'use client';
-import { CheckCircle2, CircleHelp, XCircle } from 'lucide-react';
-import { availabilityText, useAvailability, type Availability } from '@/lib/delivery';
+import { CheckCircle2, CircleHelp, MapPin, XCircle } from 'lucide-react';
+import { availabilityText, useAvailability, useAvailabilityMany, useDelivery, type Availability } from '@/lib/delivery';
 import { countryName, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { DeliveryCountrySelector } from '@/components/layout/delivery-country-selector';
@@ -55,6 +55,60 @@ export function AvailabilityWarning({ productId }: { productId: string }) {
     <p className="mt-1 flex items-start gap-1 text-xs font-semibold text-red-600" data-availability={a.status}>
       <XCircle className="mt-px size-3.5 shrink-0" /> <span>{title}. {detail}</span>
     </p>
+  );
+}
+
+/**
+ * Cart summary for the browsing destination: how many items can't be shipped there, with the
+ * selector to change it. Changing the destination re-evaluates every line (NX-GEO-001 §4).
+ */
+export function CartDestinationBanner({ productIds }: { productIds: string[] }) {
+  const { country, isApproximate, byProduct } = useAvailabilityMany(productIds);
+  if (!country) return null;
+  const blocked = [...byProduct.values()].filter((a) => a.status === 'UNAVAILABLE').length;
+  const unsure = [...byProduct.values()].filter((a) => a.status === 'UNCONFIRMED').length;
+  const name = countryName(country) || country;
+  const tone = blocked ? 'border-red-200 bg-red-50 text-red-900' : 'border-line bg-white text-ink';
+  return (
+    <div className={cn('mt-4 flex flex-col gap-3 rounded-xl border p-4 text-sm sm:flex-row sm:items-center', tone)} data-cart-destination={country} role="status">
+      <MapPin className="size-5 shrink-0 text-brand-600" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">
+          {blocked
+            ? blocked === 1 ? t('1 producto no se envía a {c}.', { c: name }) : t('{n} productos no se envían a {c}.', { n: blocked, c: name })
+            : isApproximate ? t('Destino sugerido: {c}.', { c: name }) : t('Destino de entrega: {c}.', { c: name })}
+        </p>
+        <p className="mt-0.5 text-xs text-muted">
+          {blocked
+            ? t('Quítalos o cambia el país de entrega. Al pagar se confirma todo con tu dirección.')
+            : unsure
+              ? t('El envío de algunos productos se confirma con tu dirección al pagar.')
+              : t('Al pagar se confirman el envío, su costo y los impuestos con tu dirección.')}
+        </p>
+      </div>
+      <DeliveryCountrySelector compact className="shrink-0 self-start border border-line bg-white sm:self-auto" />
+    </div>
+  );
+}
+
+/**
+ * Checkout: the confirmed address decides (NX-GEO-001 §3). When it is in another country than the
+ * browsing destination, say so and offer to browse with the address country.
+ */
+export function AddressCountryNotice({ addressCountry }: { addressCountry: string | null }) {
+  const { context, setCountry } = useDelivery();
+  if (!addressCountry || !context || context.deliveryCountry === addressCountry) return null;
+  if (context.countries.length && !context.countries.includes(addressCountry)) return null;
+  const a = countryName(addressCountry) || addressCountry;
+  return (
+    <div className="mb-3 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center" data-address-country-notice>
+      <p className="flex-1">
+        {t('Tu dirección está en {a}; navegabas con destino {d}. Calculamos el envío, los impuestos y la disponibilidad para {a}.', { a, d: countryName(context.deliveryCountry) || context.deliveryCountry })}
+      </p>
+      <button type="button" onClick={() => setCountry(addressCountry)} className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 ring-1 ring-amber-200 hover:bg-brand-50">
+        {t('Usar {a} como destino', { a })}
+      </button>
+    </div>
   );
 }
 

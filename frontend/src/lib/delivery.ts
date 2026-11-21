@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post, put } from './api';
 import { useAuth } from './auth';
 
@@ -129,4 +129,22 @@ export function availabilityText(a: Availability, country: string, tr: (es: stri
     case 'NO_ORIGIN': return { title: tr('Envío a {c} por confirmar', { c }), detail: tr('La tienda aún no indica desde dónde despacha.') };
     default: return { title: tr('Envío a {c} por confirmar', { c }), detail: tr('Indica tu dirección al pagar para confirmar el envío y su costo.') };
   }
+}
+
+/** Availability of several products (cart) for the current destination; re-evaluated when the destination changes. */
+export function useAvailabilityMany(productIds: string[]) {
+  const { context } = useDelivery();
+  const country = context?.deliveryCountry;
+  const ids = [...new Set(productIds)];
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['availability', country, id],
+      queryFn: () => loadAvailability(country!, id),
+      enabled: !!country,
+      staleTime: 5 * 60_000,
+    })),
+  });
+  const map = new Map<string, Availability>();
+  results.forEach((r, i) => r.data && map.set(ids[i], r.data));
+  return { country: country ?? null, isApproximate: !!context?.isApproximate, byProduct: map, loading: results.some((r) => r.isLoading) };
 }

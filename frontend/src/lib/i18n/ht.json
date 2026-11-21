@@ -2984,5 +2984,16 @@
 "La disponibilidad final se confirma con la dirección del comprador y las tarifas de envío al pagar.": "Disponiblite final la konfime ak adrès achtè a ak pri livrezon lè l ap peye.",
 "Guardar destinos": "Sere destinasyon yo",
 "Días de historial de envíos para marcar «Disponible»": "Jou istorik livrezon pou montre «Disponib»",
-"Si la tienda obtuvo tarifas reales hacia ese país en este plazo, el producto se muestra disponible; si no, «Por confirmar».": "Si boutik la te jwenn vrè pri livrezon pou peyi sa a nan peryòd sa a, pwodui a parèt disponib; sinon «Pou konfime»."
+"Si la tienda obtuvo tarifas reales hacia ese país en este plazo, el producto se muestra disponible; si no, «Por confirmar».": "Si boutik la te jwenn vrè pri livrezon pou peyi sa a nan peryòd sa a, pwodui a parèt disponib; sinon «Pou konfime».",
+"País de entrega: para sugerirte un destino usamos solo el país que nuestro proveedor de alojamiento estima a partir de tu conexión. No guardamos tu dirección IP ni pedimos tu ubicación exacta. Si eliges otro país, lo recordamos en una cookie funcional (nx_delivery_country) y, si iniciaste sesión, en tu cuenta. Es solo una referencia para navegar: el envío, los impuestos y la disponibilidad se confirman con la dirección que indiques al pagar.": "Peyi livrezon: pou nou sijere w yon destinasyon, nou itilize sèlman peyi ebèjman nou an estime apati koneksyon ou. Nou pa sere adrès IP ou ni nou pa mande kote egzak ou ye. Si w chwazi yon lòt peyi, nou sonje l nan yon cookie fonksyonèl (nx_delivery_country) epi, si w konekte, nan kont ou. Se sèlman yon referans pou navige: livrezon, taks ak disponiblite konfime ak adrès ou bay lè w ap peye.",
+"1 producto no se envía a {c}.": "1 pwodui pa voye nan {c}.",
+"{n} productos no se envían a {c}.": "{n} pwodui pa voye nan {c}.",
+"Destino sugerido: {c}.": "Destinasyon sijere: {c}.",
+"Destino de entrega: {c}.": "Destinasyon livrezon: {c}.",
+"Quítalos o cambia el país de entrega. Al pagar se confirma todo con tu dirección.": "Retire yo oswa chanje peyi livrezon an. Tout bagay konfime ak adrès ou lè w ap peye.",
+"El envío de algunos productos se confirma con tu dirección al pagar.": "Livrezon kèk pwodui konfime ak adrès ou lè w ap peye.",
+"Al pagar se confirman el envío, su costo y los impuestos con tu dirección.": "Lè w ap peye, livrezon an, pri li ak taks yo konfime ak adrès ou.",
+"Tu dirección está en {a}; navegabas con destino {d}. Calculamos el envío, los impuestos y la disponibilidad para {a}.": "Adrès ou nan {a}; ou t ap navige ak destinasyon {d}. Nou kalkile livrezon, taks ak disponiblite pou {a}.",
+"Usar {a} como destino": "Itilize {a} kòm destinasyon",
+"Cómo usamos tu ubicación": "Kijan nou itilize kote ou ye"
 }

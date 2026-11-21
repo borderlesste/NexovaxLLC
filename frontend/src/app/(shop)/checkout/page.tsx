@@ -17,6 +17,7 @@ import { ProductImage } from '@/components/shop/product-card';
 import { AddressDialog, type Address } from '@/components/shop/address-form';
 import { PaypalPay, StripeBoundary, StripeCardForm, StripePayButton, type PlacedCheckout } from '@/components/checkout/online-payments';
 import { cityLine } from '@/components/shop/geo-fields';
+import { AddressCountryNotice } from '@/components/shop/availability';
 import { usePublicConfig } from '@/lib/config';
 import { countryName, t } from '@/lib/i18n';
 
@@ -196,6 +197,7 @@ export default function CheckoutPage() {
               <Truck className="mt-0.5 size-6 text-brand-600" />
               <div><h2 className="text-lg font-bold">{t('Método de envío')}</h2><p className="text-sm text-muted">{t('Elige cómo deseas recibir tu pedido')}{q.groups.length > 1 ? t(' de cada tienda') : ''}.</p></div>
             </div>
+            {!q.needsAddress && <AddressCountryNotice addressCountry={q.destinationCountry} />}
             {q.needsAddress ? (
               <p className="flex items-center gap-2 rounded-xl bg-surface px-4 py-3 text-sm text-muted" data-shipping-needs-address><MapPin className="size-4 shrink-0 text-brand-600" /> {t('Agrega tu dirección para calcular el envío.')}</p>
             ) : (

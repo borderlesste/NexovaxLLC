@@ -104,6 +104,7 @@ export default async function HelpPage() {
       <section id="cookies" className="card mt-6 p-6">
         <h2 className="text-2xl font-extrabold">{t('Cookies')}</h2>
         <p className="mt-2 text-sm text-muted">{t('Usamos cookies esenciales para mantener tu sesión iniciada y tus preferencias (como el idioma y borradores de formularios). No usamos cookies de publicidad.')}</p>
+        <p className="mt-2 text-sm text-muted" id="ubicacion">{t('País de entrega: para sugerirte un destino usamos solo el país que nuestro proveedor de alojamiento estima a partir de tu conexión. No guardamos tu dirección IP ni pedimos tu ubicación exacta. Si eliges otro país, lo recordamos en una cookie funcional (nx_delivery_country) y, si iniciaste sesión, en tu cuenta. Es solo una referencia para navegar: el envío, los impuestos y la disponibilidad se confirman con la dirección que indiques al pagar.')}</p>
         <p className="mt-2 text-sm text-muted">{t('Con tu permiso usamos cookies de analítica: registramos qué productos visitas y cuánto tiempo, para mejorar las recomendaciones y dar a las tiendas estadísticas totales (visitas, favoritos, ventas). Las tiendas nunca ven quién eres. El detalle se borra a los 90 días y puedes cambiar tu decisión en «Preferencias de cookies», al pie de la página. Si no aceptas, solo contamos visitas de forma anónima.')}</p>
       </section>
     </div>

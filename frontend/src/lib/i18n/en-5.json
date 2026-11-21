@@ -227,5 +227,16 @@
 "Guardar destinos": "Save destinations",
 "Días de historial de envíos para marcar «Disponible»": "Days of shipping history to show “Available”",
 "Si la tienda obtuvo tarifas reales hacia ese país en este plazo, el producto se muestra disponible; si no, «Por confirmar».": "If the store got real carrier rates to that country in this period, the product shows as available; otherwise “To be confirmed”.",
-"días": "days"
+"días": "days",
+"País de entrega: para sugerirte un destino usamos solo el país que nuestro proveedor de alojamiento estima a partir de tu conexión. No guardamos tu dirección IP ni pedimos tu ubicación exacta. Si eliges otro país, lo recordamos en una cookie funcional (nx_delivery_country) y, si iniciaste sesión, en tu cuenta. Es solo una referencia para navegar: el envío, los impuestos y la disponibilidad se confirman con la dirección que indiques al pagar.": "Delivery country: to suggest a destination we only use the country our hosting provider estimates from your connection. We don’t store your IP address or ask for your exact location. If you choose another country, we remember it in a functional cookie (nx_delivery_country) and, if you’re signed in, in your account. It’s only a browsing reference: shipping, taxes and availability are confirmed with the address you enter at checkout.",
+"1 producto no se envía a {c}.": "1 product doesn’t ship to {c}.",
+"{n} productos no se envían a {c}.": "{n} products don’t ship to {c}.",
+"Destino sugerido: {c}.": "Suggested destination: {c}.",
+"Destino de entrega: {c}.": "Delivery destination: {c}.",
+"Quítalos o cambia el país de entrega. Al pagar se confirma todo con tu dirección.": "Remove them or change the delivery country. Everything is confirmed with your address at checkout.",
+"El envío de algunos productos se confirma con tu dirección al pagar.": "Shipping for some products is confirmed with your address at checkout.",
+"Al pagar se confirman el envío, su costo y los impuestos con tu dirección.": "At checkout, shipping, its cost and taxes are confirmed with your address.",
+"Tu dirección está en {a}; navegabas con destino {d}. Calculamos el envío, los impuestos y la disponibilidad para {a}.": "Your address is in {a}; you were browsing with {d} as destination. Shipping, taxes and availability are calculated for {a}.",
+"Usar {a} como destino": "Use {a} as destination",
+"Cómo usamos tu ubicación": "How we use your location"
 }

@@ -63,6 +63,7 @@ export function DeliveryCountrySelector({ className, compact }: { className?: st
                 ? t('Lo sugerimos según tu conexión. La disponibilidad y el envío se confirman con tu dirección al pagar.')
                 : t('La disponibilidad y el envío se confirman con tu dirección al pagar.')}
             </p>
+            <a href="/ayuda#ubicacion" className="mt-1 inline-block text-[11px] font-semibold text-brand-700 hover:underline">{t('Cómo usamos tu ubicación')}</a>
             <div className="relative mt-2">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
               <input

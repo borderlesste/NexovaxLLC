@@ -1,5 +1,5 @@
 'use client';
-import { AvailabilityWarning } from '@/components/shop/availability';
+import { AvailabilityWarning, CartDestinationBanner } from '@/components/shop/availability';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowRight, Clock, Minus, Plus, ShoppingCart, Store, Trash2 } from 'lucide-react';
@@ -56,6 +56,7 @@ export default function CartPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 lg:px-8">
       <Breadcrumbs items={[{ label: t('Carrito') }]} />
       <h1 className="mt-4 text-3xl font-extrabold">{t('Tu carrito')}</h1>
+      {!!c?.groups.length && <CartDestinationBanner productIds={c.groups.flatMap((g: any) => g.items.map((i: any) => i.productId))} />}
       {pp && (
         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center" data-pending-payment>
           <Clock className="size-5 shrink-0" />
