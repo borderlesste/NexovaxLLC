@@ -2700,7 +2700,6 @@
 "Notas": "Notes",
 "Incluye {a}": "Inclut {a}",
 "impuestos": "taxes",
-"Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Appliquées selon le pays de l’adresse de livraison. Pays sans taux : 0 %. Le taux réduit s’applique aux produits de catégorie fiscale « Réduite » ; les produits « Exonérés » ne paient pas de taxe.",
 "Tasa reducida": "Taux réduit",
 "Grava envío": "Taxe la livraison",
 "Precio con impuesto incluido": "Prix TTC",
@@ -3111,5 +3110,17 @@
 "Primera respuesta de soporte": "Première réponse du support",
 "Normal: {a}": "Normale : {a}",
 "Alta: {a}": "Haute : {a}",
-"Crítica: {a}": "Critique : {a}"
+"Crítica: {a}": "Critique : {a}",
+"Se aplican según el país de la dirección de envío; en «Estados» puedes fijar tasas por estado o provincia (p. ej., EE. UU.). Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Appliqués selon le pays de l’adresse de livraison ; dans « États », vous pouvez fixer des taux par État ou province (p. ex. États-Unis). Pays sans taux : 0 %. Le taux réduit s’applique aux produits de catégorie fiscale « Réduite » ; les « Exonérés » ne paient pas de taxe.",
+"Tasas por estado o provincia de la dirección de envío": "Taux par État ou province de l’adresse de livraison",
+"Estados": "États",
+"Impuesto por estado: {c}": "Taxe par État : {c}",
+"Una fila activa reemplaza la tasa del país para direcciones de envío en ese estado. Activa solo los estados donde estás registrado para cobrar el impuesto. Estas tasas son estatales: no incluyen impuestos de ciudad o condado ni exenciones por tipo de producto.": "Une ligne active remplace le taux du pays pour les adresses de livraison dans cet État. N’activez que les États où vous êtes enregistré pour percevoir la taxe. Ce sont des taux d’État : ils n’incluent ni les taxes municipales ou de comté ni les exonérations par type de produit.",
+"Buscar estado…": "Rechercher un État…",
+"{a} de {n} activos": "{a} sur {n} actifs",
+"Sin estados configurados.": "Aucun État configuré.",
+"Estado o provincia": "État ou province",
+"Indica el código del estado y el nombre del impuesto.": "Indiquez le code de l’État et le nom de la taxe.",
+"¿Eliminar el impuesto de {c}? Ese estado usará la tasa del país.": "Supprimer la taxe de {c} ? Cet État utilisera le taux du pays.",
+"Las tasas iniciales de EE. UU. son tasas estatales de referencia (noviembre de 2026); confírmalas con tu asesor fiscal. Para el impuesto exacto por dirección (ciudad y condado), usa Stripe Tax en la fila del país.": "Les taux initiaux des États-Unis sont des taux d’État de référence (novembre 2026) ; confirmez-les avec votre conseiller fiscal. Pour la taxe exacte par adresse (ville et comté), utilisez Stripe Tax sur la ligne du pays."
 }

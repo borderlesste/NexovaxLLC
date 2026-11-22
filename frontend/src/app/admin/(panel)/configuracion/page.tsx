@@ -21,6 +21,7 @@ import { DeliveryCountryCard } from '@/components/admin/delivery-country-card';
 import { HelpEditor } from '@/components/admin/help-editor';
 import { SeoEditor } from '@/components/admin/seo-editor';
 import { GoogleEditor } from '@/components/admin/google-editor';
+import { TaxRegionsDialog } from '@/components/admin/tax-regions';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
 
 const TABS = [
@@ -42,6 +43,7 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
   const [rows, setRows] = useState<any[]>(() => rates.map(toRow));
   const [busy, setBusy] = useState<string | null>(null);
   const [draft, setDraft] = useState({ countryCode: '', taxName: '', ratePct: '' });
+  const [regionsOf, setRegionsOf] = useState<string | null>(null);
   useEffect(() => setRows(rates.map(toRow)), [rates]); // eslint-disable-line react-hooks/exhaustive-deps
   const saveRow = async (r: any) => {
     setBusy(r.countryCode);
@@ -77,7 +79,7 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
   const sorted = [...rows].sort((a, b) => countryName(a.countryCode).localeCompare(countryName(b.countryCode)));
   return (
     <Card>
-      <CardHeader icon={<Percent />} title={t('Impuestos por país de destino')} subtitle={t('Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.')} />
+      <CardHeader icon={<Percent />} title={t('Impuestos por país de destino')} subtitle={t('Se aplican según el país de la dirección de envío; en «Estados» puedes fijar tasas por estado o provincia (p. ej., EE. UU.). Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.')} />
       <p className="mx-5 mt-4 rounded-lg bg-surface px-4 py-3 text-xs text-muted">{t('Stripe Tax: actívalo primero en tu panel de Stripe y registra allí los estados donde debes cobrar. Con el interruptor encendido, Stripe calcula el impuesto de ese país por dirección exacta (las tasas de esta fila no se usan) y cada venta y reembolso queda en sus reportes fiscales.')}</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1080px] text-sm">
@@ -95,7 +97,10 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
                   <td><Switch checked={!!r.pricesIncludeTax} onCheckedChange={(v) => upd('pricesIncludeTax', v)} /></td>
                   <td><Switch checked={r.calculationProvider === 'STRIPE_TAX'} onCheckedChange={(v) => upd('calculationProvider', v ? 'STRIPE_TAX' : 'RATES')} /></td>
                   <td><Switch checked={!!r.isActive} onCheckedChange={(v) => upd('isActive', v)} /></td>
-                  <td className="pr-5 text-right">
+                  <td className="pr-5 text-right whitespace-nowrap">
+                    <Button size="sm" variant="ghost" onClick={() => setRegionsOf(r.countryCode)} title={t('Tasas por estado o provincia de la dirección de envío')}>
+                      {t('Estados')}{r.regionCount ? ` (${r.regionActive}/${r.regionCount})` : ''}
+                    </Button>
                     <Button size="sm" variant="outline" loading={busy === r.countryCode} onClick={() => saveRow(r)}>{t('Guardar')}</Button>
                     <Button size="icon" variant="ghost" onClick={() => remove(r.countryCode)} aria-label={t('Eliminar')}><Trash2 /></Button>
                   </td>
@@ -112,6 +117,7 @@ function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => voi
         <Button className="self-end" onClick={add}><Plus /> {t('Agregar')}</Button>
       </div>
       <p className="px-5 pb-5 text-xs text-muted">{t('Las tasas iniciales son tasas generales de referencia; confírmalas con tu asesor fiscal. El impuesto aplicado queda guardado como evidencia en cada pedido.')}</p>
+      <TaxRegionsDialog countryCode={regionsOf ?? ''} open={!!regionsOf} onOpenChange={(o) => !o && setRegionsOf(null)} onChanged={onChanged} />
     </Card>
   );
 }

@@ -1091,6 +1091,18 @@ export class AdminService {
     return this.tax.remove(countryCode);
   }
 
+  taxRegionRates(countryCode: string) {
+    return this.tax.listRegions(countryCode);
+  }
+
+  saveTaxRegionRate(admin: RequestUser, input: Parameters<TaxService['upsertRegion']>[1]) {
+    return this.tax.upsertRegion(admin.id, input);
+  }
+
+  deleteTaxRegionRate(countryCode: string, regionCode: string) {
+    return this.tax.removeRegion(countryCode, regionCode);
+  }
+
   /** Feature / unfeature a published product on the home page ("Producto destacado"). */
   async setFeatured(user: RequestUser, productId: string, featured: boolean) {
     if (!featured) {

@@ -352,5 +352,17 @@
 "Primera respuesta de soporte": "Support first response",
 "Normal: {a}": "Normal: {a}",
 "Alta: {a}": "High: {a}",
-"Crítica: {a}": "Critical: {a}"
+"Crítica: {a}": "Critical: {a}",
+"Se aplican según el país de la dirección de envío; en «Estados» puedes fijar tasas por estado o provincia (p. ej., EE. UU.). Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Applied by the country of the shipping address; under “States” you can set rates by state or province (e.g. US). Countries without a rate: 0%. The reduced rate applies to products in the “Reduced” tax class; “Exempt” products pay no tax.",
+"Tasas por estado o provincia de la dirección de envío": "Rates by state or province of the shipping address",
+"Estados": "States",
+"Impuesto por estado: {c}": "Tax by state: {c}",
+"Una fila activa reemplaza la tasa del país para direcciones de envío en ese estado. Activa solo los estados donde estás registrado para cobrar el impuesto. Estas tasas son estatales: no incluyen impuestos de ciudad o condado ni exenciones por tipo de producto.": "An active row replaces the country rate for shipping addresses in that state. Only activate the states where you are registered to collect the tax. These are statewide rates: they do not include city or county taxes or product-type exemptions.",
+"Buscar estado…": "Search state…",
+"{a} de {n} activos": "{a} of {n} active",
+"Sin estados configurados.": "No states configured.",
+"Estado o provincia": "State or province",
+"Indica el código del estado y el nombre del impuesto.": "Enter the state code and the tax name.",
+"¿Eliminar el impuesto de {c}? Ese estado usará la tasa del país.": "Delete the tax for {c}? That state will use the country rate.",
+"Las tasas iniciales de EE. UU. son tasas estatales de referencia (noviembre de 2026); confírmalas con tu asesor fiscal. Para el impuesto exacto por dirección (ciudad y condado), usa Stripe Tax en la fila del país.": "The initial US rates are reference statewide rates (November 2026); confirm them with your tax advisor. For exact tax by address (city and county), use Stripe Tax on the country row."
 }

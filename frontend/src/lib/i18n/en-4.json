@@ -1191,7 +1191,6 @@
 "Notas": "Notes",
 "Incluye {a}": "Includes {a}",
 "impuestos": "taxes",
-"Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Applied according to the shipping address country. Countries without a rate: 0 %. The reduced rate applies to products in the “Reduced” tax category; “Exempt” products pay no tax.",
 "Tasa reducida": "Reduced rate",
 "Grava envío": "Taxes shipping",
 "Precio con impuesto incluido": "Tax-inclusive prices",

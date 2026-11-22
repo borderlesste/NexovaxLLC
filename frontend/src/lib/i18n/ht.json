@@ -2700,7 +2700,6 @@
 "Notas": "Nòt",
 "Incluye {a}": "Gen ladan l {a}",
 "impuestos": "taks",
-"Se aplican según el país de la dirección de envío. Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Yo aplike selon peyi adrès livrezon an. Peyi ki pa gen to: 0 %. To redwi a aplike sou pwodwi ki nan kategori fiskal «Redwi»; pwodwi «Egzante» yo pa peye taks.",
 "Tasa reducida": "To redwi",
 "Grava envío": "Taks sou livrezon",
 "Precio con impuesto incluido": "Pri ak taks ladan",
@@ -3111,5 +3110,17 @@
 "Primera respuesta de soporte": "Premye repons sipò",
 "Normal: {a}": "Nòmal: {a}",
 "Alta: {a}": "Wo: {a}",
-"Crítica: {a}": "Kritik: {a}"
+"Crítica: {a}": "Kritik: {a}",
+"Se aplican según el país de la dirección de envío; en «Estados» puedes fijar tasas por estado o provincia (p. ej., EE. UU.). Países sin tasa: 0 %. La tasa reducida se usa en productos de categoría fiscal «Reducida»; los «Exentos» no pagan impuesto.": "Yo aplike selon peyi adrès livrezon an; nan « Eta » ou ka mete to pa eta oswa pwovens (egz. Etazini). Peyi ki pa gen to: 0 %. To redwi a aplike pou pwodwi kategori fiskal « Redwi »; pwodwi « Egzante » pa peye taks.",
+"Tasas por estado o provincia de la dirección de envío": "To pa eta oswa pwovens adrès livrezon an",
+"Estados": "Eta",
+"Impuesto por estado: {c}": "Taks pa eta: {c}",
+"Una fila activa reemplaza la tasa del país para direcciones de envío en ese estado. Activa solo los estados donde estás registrado para cobrar el impuesto. Estas tasas son estatales: no incluyen impuestos de ciudad o condado ni exenciones por tipo de producto.": "Yon liy aktif ranplase to peyi a pou adrès livrezon nan eta sa a. Aktive sèlman eta kote ou anrejistre pou kolekte taks la. Se to eta yo ye: yo pa gen ladan taks vil oswa konte ni egzanpsyon pa kalite pwodwi.",
+"Buscar estado…": "Chèche eta…",
+"{a} de {n} activos": "{a} sou {n} aktif",
+"Sin estados configurados.": "Pa gen eta ki konfigire.",
+"Estado o provincia": "Eta oswa pwovens",
+"Indica el código del estado y el nombre del impuesto.": "Antre kòd eta a ak non taks la.",
+"¿Eliminar el impuesto de {c}? Ese estado usará la tasa del país.": "Efase taks {c}? Eta sa a ap itilize to peyi a.",
+"Las tasas iniciales de EE. UU. son tasas estatales de referencia (noviembre de 2026); confírmalas con tu asesor fiscal. Para el impuesto exacto por dirección (ciudad y condado), usa Stripe Tax en la fila del país.": "To inisyal Etazini yo se to eta referans (novanm 2026); konfime yo ak konseye fiskal ou. Pou taks egzak pa adrès (vil ak konte), itilize Stripe Tax sou liy peyi a."
 }

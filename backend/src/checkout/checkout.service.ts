@@ -205,7 +205,7 @@ export class CheckoutService {
     const cart = await this.carts.getCart(userId);
     if (!cart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
     const address = await this.buyerAddress(userId, input.addressId);
-    const tax = await this.tax.forCountry(address?.country_code);
+    const tax = await this.tax.forDestination(address?.country_code, address?.region);
     const classOf = await this.tax.classesFor(cart.groups.flatMap((g: any) => g.items.map((i: any) => i.productId)));
     // No address yet: no shipping options or amount until the buyer adds one.
     const optionsBySeller = address
@@ -455,7 +455,7 @@ export class CheckoutService {
 
       // ---- packages, quotes and selected rate per group
       const shippingBySeller = new Map<string, Minor>();
-      const taxInfo = await this.tax.forCountry(address.country_code, c);
+      const taxInfo = await this.tax.forDestination(address.country_code, address.region, c);
       const shippingLines: ShippingTaxLine[] = [];
       for (const [key, groupId] of groupIds) {
         const sellerId = key.split(':')[0];
@@ -636,9 +636,10 @@ export class CheckoutService {
   /** Writes calculation run + immutable snapshots + commission evidence, then finalizes. */
   private async calculate(c: PoolClient, sessionId: string, currency: string, items: any[], shippingBySeller: Map<string, Minor>, corr: string, destinationCountry: string,
     coupons: (CouponResult & { reservationId: string })[] = [], customerId?: string, shippingLines: ShippingTaxLine[] = [], address?: any) {
-    const taxInfo = await this.tax.forCountry(destinationCountry, c);
+    const taxInfo = await this.tax.forDestination(destinationCountry, address?.region, c);
     const taxEvidence = {
-      code: taxInfo.taxName, rate: taxInfo.rate, reducedRate: taxInfo.reducedRate, country: destinationCountry, source: 'marketplace_tax_rates',
+      code: taxInfo.taxName, rate: taxInfo.rate, reducedRate: taxInfo.reducedRate, country: destinationCountry, region: taxInfo.regionCode ?? null,
+      source: taxInfo.regionCode ? 'marketplace_tax_region_rates' : 'marketplace_tax_rates',
       pricesIncludeTax: taxInfo.pricesIncludeTax, appliesToShipping: taxInfo.appliesToShipping,
     };
     const dec = await this.db.one(`select decimal_places from public.currencies where code = $1`, [currency], c);

@@ -86,6 +86,17 @@ export class TaxRateDto {
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsCleanText(0, 300) notes?: string;
 }
+export class TaxRegionRateDto {
+  @IsCountryCode() countryCode: string;
+  @Matches(/^[A-Za-z0-9]{1,6}$/, { message: 'Código de estado o provincia inválido.' }) regionCode: string;
+  @IsOptional() @IsCleanText(0, 80) regionName?: string;
+  @IsCleanText(1, 40) taxName: string;
+  @ToNumber() @IsNumber({ maxDecimalPlaces: 6 }, { message: 'La tasa debe ser un número.' }) @Min(0) @Max(0.99) rate: number;
+  @IsOptional() @ToNumber() @IsNumber({ maxDecimalPlaces: 6 }, { message: 'La tasa debe ser un número.' }) @Min(0) @Max(0.99) reducedRate?: number | null;
+  @IsOptional() @IsBoolean() appliesToShipping?: boolean;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsCleanText(0, 300) notes?: string;
+}
 export class RoleDto {
   @IsIn(['CUSTOMER', 'SELLER', 'SUPPORT', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN']) role: any;
   @IsBoolean() grant: boolean;
@@ -380,6 +391,25 @@ export class AdminController {
   @Delete('tax-rates/:country')
   deleteTaxRate(@Param('country') country: string) {
     return this.admin.deleteTaxRate(country);
+  }
+
+  // tax rates by state / province (override the country rate)
+  @Roles('ADMIN')
+  @Get('tax-rates/:country/regions')
+  taxRegionRates(@Param('country') country: string) {
+    return this.admin.taxRegionRates(country);
+  }
+
+  @Roles('ADMIN')
+  @Put('tax-rates/regions')
+  saveTaxRegionRate(@CurrentUser() user: RequestUser, @Body() dto: TaxRegionRateDto) {
+    return this.admin.saveTaxRegionRate(user, dto);
+  }
+
+  @Roles('ADMIN')
+  @Delete('tax-rates/:country/regions/:region')
+  deleteTaxRegionRate(@Param('country') country: string, @Param('region') region: string) {
+    return this.admin.deleteTaxRegionRate(country, region);
   }
 
   // users
