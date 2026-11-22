@@ -469,17 +469,20 @@ export class CatalogService {
       this.listProducts({ sort: 'relevance', pageSize: 12 }),
       featuredOn ? this.listProducts({ featured: true, sort: 'featured', pageSize: 12 }) : Promise.resolve(null),
       this.listProducts({ sort: 'newest', pageSize: 6 }),
-      this.listProducts({ onSale: true, sort: 'relevance', pageSize: 6 }),
+      this.listProducts({ onSale: true, sort: 'relevance', pageSize: 18 }),
       this.sellers(),
     ]);
+    const featured = !featuredOn ? [] : curated?.items.length ? curated.items : popular.items;
+    // "Ofertas de la semana" never repeats what "Productos destacados" already shows right above it.
+    const shown = new Set(featured.map((p: any) => p.id));
     return {
       categories: categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, productCount: c.productCount })),
-      featured: !featuredOn ? [] : curated?.items.length ? curated.items : popular.items,
+      featured,
       featuredEnabled: featuredOn,
       featuredCurated: !!curated?.items.length,
       popular: popular.items,
       newest: newest.items,
-      deals: deals.items,
+      deals: deals.items.filter((p: any) => !shown.has(p.id)).slice(0, 6),
       sellers: sellers.slice(0, 8),
       currency: popular.currency,
     };

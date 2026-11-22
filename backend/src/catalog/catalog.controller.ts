@@ -47,6 +47,7 @@ export class CatalogController {
       productModeration: s['features.mandatory_moderation'] === true,
       maintenance: !!s['features.maintenance_mode'],
       social: s['social.links'] ?? [],
+      company: s['company.info'],
       seo: s['seo.defaults'],
       // GA4 loads in the browser only after the visitor accepts analytics cookies.
       ga4MeasurementId: s['google.integrations']?.ga4Enabled && s['google.integrations'].ga4MeasurementId ? s['google.integrations'].ga4MeasurementId : null,

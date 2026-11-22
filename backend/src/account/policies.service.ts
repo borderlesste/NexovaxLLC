@@ -4,11 +4,11 @@ import { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
 import { badRequest } from '../common/errors';
 
-export type PolicyCode = 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY' | 'SELLER_TERMS' | 'RETURN_POLICY' | 'SHIPPING_POLICY';
+export type PolicyCode = 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY' | 'SELLER_TERMS' | 'RETURN_POLICY' | 'SHIPPING_POLICY' | 'ABOUT_US';
 /** What every account accepts; SELLER_TERMS is accepted per store at onboarding. */
 export const USER_POLICIES: PolicyCode[] = ['TERMS_OF_SERVICE', 'PRIVACY_POLICY'];
-/** Informational public pages (returns, shipping): published and versioned, never accepted. */
-export const PUBLIC_POLICIES: PolicyCode[] = ['RETURN_POLICY', 'SHIPPING_POLICY'];
+/** Informational public pages (returns, shipping, about us): published and versioned, never accepted. */
+export const PUBLIC_POLICIES: PolicyCode[] = ['RETURN_POLICY', 'SHIPPING_POLICY', 'ABOUT_US'];
 export const EDITABLE_POLICIES: PolicyCode[] = [...USER_POLICIES, 'SELLER_TERMS', ...PUBLIC_POLICIES];
 
 export interface AcceptanceContext {
@@ -38,7 +38,7 @@ export class PoliciesService {
          left join public.policy_version_localizations l on l.policy_version_id = v.id and l.locale = $1
          join public.policy_version_localizations d on d.policy_version_id = v.id and d.locale = p.default_locale
         where p.status = 'ACTIVE' and ($2::text[] is null or p.code = any($2))
-        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS','RETURN_POLICY','SHIPPING_POLICY'], p.code::text)`,
+        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS','RETURN_POLICY','SHIPPING_POLICY','ABOUT_US'], p.code::text)`,
       [locale, codes ?? null],
     );
     return rows.map((r: any) => ({ code: r.code as PolicyCode, slug: r.slug, versionId: r.version_id, version: r.version_number, effectiveAt: r.effective_at, title: r.title, text: r.text }));
@@ -101,7 +101,7 @@ export class PoliciesService {
     const pols = await this.db.many(
       `select p.id, p.code, p.slug, p.default_locale, p.current_published_version_id as current_id, pt.name as type_name, pt.acceptance_mode, pt.audience
          from public.policies p join public.policy_types pt on pt.code = p.policy_type_code where p.status = 'ACTIVE'
-        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS','RETURN_POLICY','SHIPPING_POLICY'], p.code::text)`,
+        order by array_position(array['TERMS_OF_SERVICE','PRIVACY_POLICY','SELLER_TERMS','RETURN_POLICY','SHIPPING_POLICY','ABOUT_US'], p.code::text)`,
     );
     const out = [];
     for (const p of pols) {

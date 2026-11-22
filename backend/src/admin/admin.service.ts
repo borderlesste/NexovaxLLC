@@ -931,13 +931,14 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
     const text = (v: unknown, min: number, max: number, re?: RegExp) =>
       typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
     validateHelpAndSocial(s);
+    validateCompany(s);
     validateSeo(s);
     const gi = s['google.integrations'];
     if (gi != null) {
@@ -1338,6 +1339,26 @@ function validateSeo(s: Record<string, any>) {
     if (!l || d) out[`description${l}`] = d;
   }
   s['seo.defaults'] = out;
+}
+
+/** Company data for the footer, /sobre-nosotros and the legal texts: plain text, every field optional. */
+function validateCompany(s: Record<string, any>) {
+  const v = s['company.info'];
+  if (v == null) return;
+  if (typeof v !== 'object' || Array.isArray(v)) throw badRequest('COMPANY_INVALID', 'Datos de la empresa inválidos.');
+  const LIMITS: Record<string, [number, string]> = {
+    legalName: [120, 'Razón social'], jurisdiction: [120, 'Jurisdicción'], address: [300, 'Dirección'], registrationNumber: [60, 'Número de registro'],
+    phone: [40, 'Teléfono'], supportHours: [160, 'Horario de atención'], footerText: [400, 'Texto del pie de página'],
+  };
+  const out: Record<string, string> = {};
+  for (const [k, [max, label]] of Object.entries(LIMITS))
+    for (const l of k === 'supportHours' || k === 'footerText' ? ['', 'En', 'Fr', 'Ht'] : ['']) {
+      const x = v[`${k}${l}`] == null ? '' : v[`${k}${l}`];
+      if (typeof x !== 'string' || x.trim().length > max || /[\u0000-\u001f<>]/.test(x)) throw badRequest('COMPANY_INVALID', `${label}: máximo ${max} caracteres, sin etiquetas.`);
+      if (!l || x.trim()) out[`${k}${l}`] = x.trim();
+    }
+  if (out.phone && !/^\+?[\d\s().-]{6,40}$/.test(out.phone)) throw badRequest('COMPANY_INVALID', 'Teléfono inválido (ej.: +1 717 555 0100).');
+  s['company.info'] = out;
 }
 
 function validateHelpAndSocial(s: Record<string, any>) {

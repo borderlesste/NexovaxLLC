@@ -1,5 +1,6 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"No pudimos enviar tu mensaje en este momento. Escríbenos directamente al correo de soporte.": "Nous n’avons pas pu envoyer votre message pour le moment. Écrivez-nous directement à l’adresse e-mail du support.",
 "Este pago se hizo con dinero real y los pagos están en modo de prueba: no se puede reembolsar desde aquí.": "Ce paiement a été fait avec de l’argent réel et les paiements sont en mode test : il ne peut pas être remboursé d’ici.",
 "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "La liste des produits en vedette a changé. Rechargez la page et réessayez.",
 "La fecha de entrada en vigor no es válida (como máximo un año).": "La date d’entrée en vigueur n’est pas valable (un an maximum).",
@@ -364,6 +365,7 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"No pudimos enviar tu mensaje en este momento. Escríbenos directamente al correo de soporte.": "Nou pa t ka voye mesaj ou a kounye a. Ekri nou dirèkteman nan imèl sipò a.",
 "Este pago se hizo con dinero real y los pagos están en modo de prueba: no se puede reembolsar desde aquí.": "Peman sa a fèt ak lajan reyèl epi peman yo an mòd tès: nou pa ka ranbouse l isit la.",
 "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "Lis pwodwi an vedèt yo chanje. Rechaje paj la epi eseye ankò.",
 "La fecha de entrada en vigor no es válida (como máximo un año).": "Dat antre an vigè a pa valab (yon ane maksimòm).",

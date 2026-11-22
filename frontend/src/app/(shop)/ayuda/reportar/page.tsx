@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, AlertCircle, AlertTriangle, BookOpen, Check, CheckCircle2, ClipboardList, Clock, CreditCard, ExternalLink, Headphones, Layers, Link2, Mail, Monitor, MoreHorizontal, Package, Pencil, Search, Send, Smartphone, Store, User, MessageSquare, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, post, upload } from '@/lib/api';
+import { errorMessage, get, postWithCaptcha, upload } from '@/lib/api';
+import { useCaptcha } from '@/components/ui/turnstile';
 import { FilePicker, formWith } from '@/components/attachments/attachments';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,10 @@ function ReportForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  // Without an account (or locked out) the report reaches support by e-mail and the answer comes back there.
+  const [guest, setGuest] = useState({ name: '', email: '' });
+  const [guestSent, setGuestSent] = useState<string | null>(null);
+  const captcha = useCaptcha('support_contact');
   const [trackCode, setTrackCode] = useState('');
   const [track, setTrack] = useState<any>(null);
   useEffect(() => {
@@ -47,10 +52,24 @@ function ReportForm() {
   }, []);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
   const submit = async () => {
-    if (!session) return toast.info(t('Inicia sesión para enviar el reporte.'));
+    if (!session && (guest.name.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guest.email.trim()))) return toast.error(t('Escribe tu nombre y un correo válido para poder responderte.'));
     if (!f.categoryCode || f.subject.trim().length < 4 || f.description.trim().length < 10) return toast.error(t('Completa tipo, asunto y descripción (mínimo 10 caracteres).'));
     if (!accept) return toast.error(t('Debes aceptar la política de privacidad.'));
+    if (!session && !captcha.ready) return toast.error(t('Completa la verificación de seguridad.'));
     setBusy(true);
+    if (!session) {
+      try {
+        await postWithCaptcha('/support/contact', { ...f, name: guest.name.trim(), email: guest.email.trim().toLowerCase() }, captcha.token);
+        setGuestSent(guest.email.trim().toLowerCase());
+        try { localStorage.removeItem(DRAFT_KEY); } catch {}
+      } catch (e) {
+        toast.error(errorMessage(e));
+      } finally {
+        captcha.reset();
+        setBusy(false);
+      }
+      return;
+    }
     try {
       const r = await upload('/support/reports', formWith({ ...f }, files));
       setDone(r.code);
@@ -93,7 +112,17 @@ function ReportForm() {
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_520px]">
         <section className="card p-6">
-          {done ? (
+          {guestSent ? (
+            <div className="py-10 text-center" data-guest-sent>
+              <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
+              <h2 className="mt-4 text-2xl font-extrabold">{t('¡Mensaje enviado!')}</h2>
+              <p className="mt-2 text-muted">{t('Nuestro equipo de soporte te responderá por correo a {a}.', { a: guestSent })}</p>
+              <p className="mt-3 text-sm text-muted">{t('Te responderemos en un plazo estimado de 24–48 horas.')}</p>
+              <div className="mt-6 flex justify-center gap-3">
+                <Button variant="outline" onClick={() => { setGuestSent(null); setF({ ...f, subject: '', description: '' }); }}>{t('Enviar otro')}</Button>
+              </div>
+            </div>
+          ) : done ? (
             <div className="py-10 text-center">
               <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
               <h2 className="mt-4 text-2xl font-extrabold">{t('¡Reporte enviado!')}</h2>
@@ -108,10 +137,10 @@ function ReportForm() {
           ) : (
             <>
               <div className="flex items-start gap-3"><ClipboardList className="size-8 text-brand-600" /><div><h2 className="text-xl font-bold">{t('Completa el formulario')}</h2><p className="text-sm text-muted">{t('Bríndanos la mayor cantidad de detalles posible para poder ayudarte de forma más rápida y efectiva.')}</p></div></div>
-              {!session && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('Para enviar un reporte necesitas una cuenta.')}{' '}<Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold underline">{t('Inicia sesión')}</Link> {t('o')} <Link href="/auth/registrarse" className="font-semibold underline">{t('regístrate')}</Link>.</p>}
+              {!session && <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-900" data-guest-note>{t('No necesitas una cuenta: escríbenos y te responderemos por correo.')}{' '}{t('Si tienes cuenta,')}{' '}<Link href="/auth/iniciar-sesion?next=/ayuda/reportar" className="font-semibold underline">{t('inicia sesión')}</Link> {t('para adjuntar evidencias y seguir el reporte desde tu cuenta.')}</p>}
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label={t('Nombre completo')} required><Input icon={<User />} value={me?.displayName ?? ''} disabled placeholder={t('Ej. Juan Pérez')} /></Field>
-                <Field label={t('Correo electrónico')} required><Input icon={<Mail />} value={me?.email ?? ''} disabled placeholder={t('Ej. juan.perez@email.com')} /></Field>
+                <Field label={t('Nombre completo')} required><Input icon={<User />} value={session ? me?.displayName ?? '' : guest.name} disabled={!!session} maxLength={120} onChange={(e) => setGuest({ ...guest, name: e.target.value })} placeholder={t('Ej. Juan Pérez')} data-guest-name /></Field>
+                <Field label={t('Correo electrónico')} required><Input icon={<Mail />} type="email" value={session ? me?.email ?? '' : guest.email} disabled={!!session} maxLength={254} onChange={(e) => setGuest({ ...guest, email: e.target.value })} placeholder={t('Ej. juan.perez@email.com')} data-guest-email /></Field>
                 <Field label={t('Tipo de problema')} required>
                   <Select value={f.categoryCode} onChange={(e) => set('categoryCode', e.target.value)}>
                     <option value="">{t('Selecciona un tipo de problema')}</option>
@@ -132,9 +161,11 @@ function ReportForm() {
                   <Textarea rows={4} value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={1000} placeholder={t('Describe el problema con el mayor detalle posible. Incluye qué pasó, qué estabas haciendo, desde cuándo ocurre y cualquier información relevante.')} />
                   <p className="mt-1 text-right text-xs text-muted">{f.description.length} / 1,000</p>
                 </Field>
-                <Field label={t('Evidencias')} hint={t('(opcional) Capturas de pantalla, fotos o PDF — hasta 4 archivos de 10 MB')} className="sm:col-span-2">
-                  <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} />
-                </Field>
+                {session && (
+                  <Field label={t('Evidencias')} hint={t('(opcional) Capturas de pantalla, fotos o PDF — hasta 4 archivos de 10 MB')} className="sm:col-span-2">
+                    <FilePicker files={files} onChange={setFiles} label={t('Adjuntar archivos')} />
+                  </Field>
+                )}
                 <Field label={t('URL o página afectada')}><Input icon={<Link2 />} value={f.url} onChange={(e) => set('url', e.target.value)} placeholder={t('Ej. https://nexovax.com/producto/123')} /></Field>
                 <Field label={t('Número de pedido')} hint={t('(opcional)')}><Input rule="trackingNumber" icon={<Package />} value={f.orderNumber} onChange={(e) => set('orderNumber', e.target.value)} placeholder={t('Ej. NX-789456')} /></Field>
                 <Field label={t('Nombre de la tienda o vendedor')} hint={t('(opcional)')}><Input rule="businessName" icon={<Store />} value={f.storeName} onChange={(e) => set('storeName', e.target.value)} placeholder={t('Ej. Urban Style Co.')} /></Field>
@@ -150,8 +181,9 @@ function ReportForm() {
                 <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" />
                 <span>{t('Acepto la')}{' '}<Link href="/ayuda#privacidad" className="text-brand-700 underline">{t('Política de privacidad')}</Link> {t('y autorizo a NEXOVAX a contactarme por correo electrónico para dar seguimiento a este reporte.')}{' '}<span className="text-red-500">*</span></span>
               </label>
+              {!session && captcha.widget && <div className="mt-4">{captcha.widget}</div>}
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Button size="lg" onClick={submit} loading={busy} disabled={!session}><Send /> {t('Enviar reporte')}</Button>
+                <Button size="lg" onClick={submit} loading={busy} disabled={!session && !captcha.ready}><Send /> {t('Enviar reporte')}</Button>
                 <Button size="lg" variant="outline" onClick={() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(f)); toast.success(t('Borrador guardado en este dispositivo.')); } catch { toast.error(t('No se pudo guardar el borrador.')); } }}>{t('Guardar borrador')}</Button>
               </div>
             </>

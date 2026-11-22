@@ -106,6 +106,27 @@ export interface GoogleSettings {
   merchantStoreAsBrand: boolean;
 }
 
+/**
+ * Company behind the marketplace (Admin → Configuración → Ayuda y redes → Empresa y pie de página).
+ * Shown in the footer, /sobre-nosotros and the legal texts. Empty fields are not shown.
+ * Texts with En/Fr/Ht variants fall back to the built-in translation, then to Spanish.
+ */
+export interface CompanyInfo {
+  /** Legal name of the company that operates the marketplace (e.g. "NEXOVAX LLC"). */
+  legalName: string;
+  /** Where it is organized and whose laws govern the terms (e.g. "Pensilvania, Estados Unidos"). */
+  jurisdiction: string;
+  /** Registered business address. */
+  address: string;
+  /** Registration or tax number, when the company wants to show it. */
+  registrationNumber: string;
+  phone: string;
+  /** Support hours, e.g. "Lunes a viernes, 9:00–18:00 (hora del Este, EE. UU.)". */
+  supportHours: string; supportHoursEn?: string; supportHoursFr?: string; supportHoursHt?: string;
+  /** Short description under the logo in the footer; empty = the built-in text. */
+  footerText: string; footerTextEn?: string; footerTextFr?: string; footerTextHt?: string;
+}
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
@@ -129,6 +150,7 @@ export interface PlatformSettings {
   'seo.defaults': SeoSettings;
   'geo.delivery': GeoDeliverySettings;
   'google.integrations': GoogleSettings;
+  'company.info': CompanyInfo;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -179,6 +201,7 @@ const DEFAULTS: PlatformSettings = {
     ga4Enabled: false, ga4MeasurementId: '', merchantFeedEnabled: false, merchantShippingCountries: [],
     merchantCondition: 'new', merchantIncludeOutOfStock: false, merchantStoreAsBrand: false,
   },
+  'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', phone: '', supportHours: '', footerText: '' },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */
@@ -208,6 +231,7 @@ export class SettingsService {
     const out: any = { ...DEFAULTS };
     for (const r of rows) out[r.setting_key] = r.value;
     out['google.integrations'] = { ...DEFAULTS['google.integrations'], ...(out['google.integrations'] ?? {}) };
+    out['company.info'] = { ...DEFAULTS['company.info'], ...(out['company.info'] ?? {}) };
     if (!client) {
       this.cache = { at: Date.now(), value: out };
       setMailRuntime({

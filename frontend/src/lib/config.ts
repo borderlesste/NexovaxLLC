@@ -17,6 +17,8 @@ export interface PublicConfig {
   /** Cloudflare Turnstile site key; null when the anti-bot check is off. */
   turnstileSiteKey?: string | null;
   social?: { network: string; url: string }[];
+  /** Company behind the marketplace (footer, /sobre-nosotros); empty fields are hidden. */
+  company?: { legalName?: string; jurisdiction?: string; address?: string; registrationNumber?: string; phone?: string; supportHours?: string; footerText?: string; [k: string]: string | undefined };
   /** GA4 measurement ID when Google Analytics is on; it loads only with analytics consent. */
   ga4MeasurementId?: string | null;
 }

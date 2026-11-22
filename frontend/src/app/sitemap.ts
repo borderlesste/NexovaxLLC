@@ -37,6 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/ayuda`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/politica-de-envios`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/politica-de-devoluciones`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${base}/sobre-nosotros`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/vendedor/registro`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     ...categories.map((c) => ({ url: `${base}/catalogo/categorias/${encodeURIComponent(c.slug)}`, lastModified: at(c), changeFrequency: 'weekly' as const, priority: 0.7 })),
     ...products.map((p) => ({ url: `${base}/producto/${encodeURIComponent(p.slug)}`, lastModified: at(p), changeFrequency: 'weekly' as const, priority: 0.8 })),

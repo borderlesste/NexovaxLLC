@@ -1,4 +1,7 @@
-import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Req, Res, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import type { Request } from 'express';
+import { TurnstileGuard } from '../auth/turnstile.guard';
+import { requestLocale } from '../common/i18n-errors';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Transform } from 'class-transformer';
 import type { Response } from 'express';
@@ -8,7 +11,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 import { CurrentUser, isStaff, Public, RequestUser, Roles } from '../auth/auth';
-import { IsBusinessName, IsCleanMultiline, IsCleanText, IsOrderReference, IsWebUrl } from '../common/validators';
+import { IsBusinessName, IsCleanMultiline, IsCleanText, IsEmailAddress, IsOrderReference, IsPersonName, IsWebUrl } from '../common/validators';
 import { SupportService } from './support.service';
 
 export class ReportDto {
@@ -20,6 +23,12 @@ export class ReportDto {
   @IsOptional() @IsOrderReference() orderNumber?: string;
   @IsOptional() @IsBusinessName(2, 120) storeName?: string;
   @IsOptional() @IsIn(['WEB', 'MOBILE', 'OTHER']) platform?: any;
+}
+
+/** Same report, sent without an account: name and e-mail are typed instead of taken from the session. */
+export class GuestReportDto extends ReportDto {
+  @IsPersonName(2, 120) name: string;
+  @IsEmailAddress() email: string;
 }
 
 export class ReplyDto {
@@ -58,6 +67,18 @@ export class SupportController {
   @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_FILES, ATTACHMENT_UPLOAD))
   create(@CurrentUser() user: RequestUser, @Body() dto: ReportDto, @UploadedFiles() files?: Express.Multer.File[], @Headers('user-agent') ua?: string) {
     return this.support.create(user, { ...dto, client: ua }, files ?? []);
+  }
+
+  /**
+   * Support without signing in (no account, or can't get in). Anti-bot check and a tight rate limit;
+   * the request reaches the support inbox by e-mail and the team answers the visitor there.
+   */
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @UseGuards(TurnstileGuard)
+  @Post('contact')
+  contact(@Body() dto: GuestReportDto, @Req() req: Request) {
+    return this.support.createGuest({ ...dto, locale: requestLocale(req) });
   }
 
   /** Evidence and attachments of a report (requester or support staff). */

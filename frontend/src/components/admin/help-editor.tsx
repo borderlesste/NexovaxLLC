@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, BookOpen, Coins, Plus, Share2, Store, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, BookOpen, Building2, Coins, Plus, Share2, Store, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, put } from '@/lib/api';
 import { t } from '@/lib/i18n';
@@ -17,6 +17,8 @@ type Commissions = { body: string; bodyEn?: string; bodyFr?: string; bodyHt?: st
 type Lang = 'En' | 'Fr' | 'Ht';
 const LANGS: [Lang, string][] = [['En', 'English'], ['Fr', 'Français'], ['Ht', 'Kreyòl ayisyen']];
 type Social = { network: string; url: string };
+type Company = { legalName: string; jurisdiction: string; address: string; registrationNumber: string; phone: string; supportHours: string; footerText: string; [k: string]: string | undefined };
+const EMPTY_COMPANY: Company = { legalName: '', jurisdiction: '', address: '', registrationNumber: '', phone: '', supportHours: '', footerText: '' };
 
 const move = <T,>(list: T[], i: number, d: number) => {
   const j = i + d;
@@ -36,13 +38,14 @@ function RowTools({ i, n, onMove, onRemove }: { i: number; n: number; onMove: (d
   );
 }
 
-/** Admin: help center (FAQ, seller guide, commissions text) and footer social links. */
+/** Admin: help center (FAQ, seller guide, commissions text), company data for the footer and footer social links. */
 export function HelpEditor({ settings }: { settings: Record<string, any> }) {
   const qc = useQueryClient();
   const [faq, setFaq] = useState<Faq[]>(settings['help.faq'] ?? []);
   const [sections, setSections] = useState<Section[]>(settings['help.sellers']?.sections ?? []);
   const [com, setCom] = useState<Commissions>(settings['help.commissions'] ?? { body: '', showRate: true, showPayoutMinimum: true });
   const [social, setSocial] = useState<Social[]>(settings['social.links'] ?? []);
+  const [company, setCompany] = useState<Company>({ ...EMPTY_COMPANY, ...(settings['company.info'] ?? {}) });
   const [busy, setBusy] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>('En');
   const langName = LANGS.find((x) => x[0] === lang)![1];
@@ -51,7 +54,9 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
     setSections(settings['help.sellers']?.sections ?? []);
     setCom(settings['help.commissions'] ?? { body: '', showRate: true, showPayoutMinimum: true });
     setSocial(settings['social.links'] ?? []);
+    setCompany({ ...EMPTY_COMPANY, ...(settings['company.info'] ?? {}) });
   }, [settings]);
+  const co = (k: string, v: string) => setCompany({ ...company, [k]: v });
   const save = async (key: string, patch: Record<string, unknown>) => {
     setBusy(key);
     try {
@@ -131,6 +136,25 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
             <label className="flex items-center gap-2"><Switch checked={com.showPayoutMinimum} onCheckedChange={(v) => setCom({ ...com, showPayoutMinimum: v })} /> {t('Mostrar el retiro mínimo')}</label>
           </div>
           <div className="flex justify-end"><Button loading={busy === 'com'} onClick={() => save('com', { 'help.commissions': com })} data-commissions-save>{t('Guardar comisiones')}</Button></div>
+        </div>
+      </Card>
+
+      <Card data-company-editor>
+        <CardHeader icon={<Building2 />} title={t('Empresa y pie de página')} subtitle={t('Datos legales y de contacto que se muestran en el pie de página y en /sobre-nosotros. Los campos vacíos no se muestran. El correo de soporte se edita en la pestaña General.')} />
+        <div className="space-y-4 p-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <Field label={t('Razón social')}><Input value={company.legalName} maxLength={120} placeholder={t('Ej. NEXOVAX LLC')} onChange={(e) => co('legalName', e.target.value)} data-company-legal-name /></Field>
+            <Field label={t('Constituida en (jurisdicción)')}><Input value={company.jurisdiction} maxLength={120} placeholder={t('Ej. Pensilvania, Estados Unidos')} onChange={(e) => co('jurisdiction', e.target.value)} /></Field>
+            <Field label={t('Domicilio legal')}><Input value={company.address} maxLength={300} placeholder={t('Calle, ciudad, estado, código postal, país')} onChange={(e) => co('address', e.target.value)} /></Field>
+            <Field label={t('Número de registro')} hint={t('(opcional)')}><Input value={company.registrationNumber} maxLength={60} onChange={(e) => co('registrationNumber', e.target.value)} /></Field>
+            <Field label={t('Teléfono de soporte')} hint={t('(opcional)')}><Input value={company.phone} maxLength={40} placeholder="+1 717 555 0100" onChange={(e) => co('phone', e.target.value)} /></Field>
+            <div />
+            <Field label={t('Horario de atención')}><Input value={company.supportHours} maxLength={160} placeholder={t('Ej. Lunes a viernes, 9:00–18:00 (hora del Este)')} onChange={(e) => co('supportHours', e.target.value)} data-company-hours /></Field>
+            <Field label={`${t('Horario de atención')} (${langName})`}><Input value={company[`supportHours${lang}`] ?? ''} maxLength={160} onChange={(e) => co(`supportHours${lang}`, e.target.value)} /></Field>
+            <Field label={t('Texto del pie de página')} hint={t('Vacío = texto predeterminado')}><Textarea rows={3} value={company.footerText} maxLength={400} onChange={(e) => co('footerText', e.target.value)} /></Field>
+            <Field label={`${t('Texto del pie de página')} (${langName})`}><Textarea rows={3} value={company[`footerText${lang}`] ?? ''} maxLength={400} onChange={(e) => co(`footerText${lang}`, e.target.value)} /></Field>
+          </div>
+          <div className="flex justify-end"><Button loading={busy === 'company'} onClick={() => save('company', { 'company.info': company })} data-company-save>{t('Guardar datos de la empresa')}</Button></div>
         </div>
       </Card>
 

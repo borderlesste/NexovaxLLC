@@ -55,6 +55,24 @@ export class SupportService {
     ]).then(([categories, priorities, teams]) => ({ categories, priorities, teams }));
   }
 
+  /**
+   * Support request without signing in (no account yet, or locked out): e-mailed to the support
+   * inbox with the visitor as Reply-To. Kept outside the ticket queue, whose tickets belong to an account.
+   */
+  async createGuest(input: ReportInput & { name: string; email: string; locale: string }) {
+    const cat = await this.db.one(`select name from public.support_ticket_categories where code = $1 and is_active`, [input.categoryCode]);
+    if (!cat) throw badRequest('CATEGORY_INVALID', 'Selecciona un tipo de problema.');
+    const id = randomUUID();
+    const status = await this.mail.guestSupportRequest({
+      id, name: input.name.trim(), email: input.email.trim().toLowerCase(), category: cat.name, priority: input.priority,
+      subject: input.subject.trim(), description: input.description.trim(), url: input.url?.trim() || undefined,
+      orderNumber: input.orderNumber?.trim() || undefined, storeName: input.storeName?.trim() || undefined, platform: input.platform, locale: input.locale,
+    });
+    if (status === 'FAILED' || status === 'SKIPPED' || status === 'SUPPRESSED')
+      throw badRequest('SUPPORT_MAIL_UNAVAILABLE', 'No pudimos enviar tu mensaje en este momento. Escríbenos directamente al correo de soporte.');
+    return { ok: true };
+  }
+
   async create(user: RequestUser, input: ReportInput, files: UploadedFile[] = []) {
     const cat = await this.db.one(`select id from public.support_ticket_categories where code = $1 and is_active`, [input.categoryCode]);
     if (!cat) throw badRequest('CATEGORY_INVALID', 'Selecciona un tipo de problema.');

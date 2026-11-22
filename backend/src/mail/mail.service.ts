@@ -15,6 +15,8 @@ interface SendInput {
   entityType?: string;
   entityId?: string | null;
   message: Rendered;
+  /** Reply-To other than the support address (guest support requests: the visitor's own e-mail). */
+  replyTo?: string;
 }
 
 interface Contact {
@@ -29,7 +31,7 @@ const RESEND_URL = 'https://api.resend.com/emails';
 const loc = (v: unknown): Locale => (v === 'es' || v === 'en' || v === 'fr' || v === 'ht' ? v : mailRuntime.locale);
 /** Picks the Spanish or English variant. */
 /** Sent even with "Notificaciones por email" off: account access, bank details to pay, account deletion. */
-const ESSENTIAL = /^(EMAIL_VERIFICATION|PASSWORD_RECOVERY|BANK_TRANSFER_PENDING|ACCOUNT_DELET|SELLER_TEAM_INVITATION)/;
+const ESSENTIAL = /^(EMAIL_VERIFICATION|PASSWORD_RECOVERY|BANK_TRANSFER_PENDING|ACCOUNT_DELET|SELLER_TEAM_INVITATION|SUPPORT_GUEST_REQUEST)/;
 /** Sender shows the marketplace name from Configuración, keeping the verified address. */
 const senderFrom = () => {
   const addr = /<([^>]+)>/.exec(config.mailFrom)?.[1] ?? config.mailFrom;
@@ -100,7 +102,7 @@ export class MailService {
             subject: i.message.subject,
             html: i.message.html,
             text: i.message.text,
-            reply_to: mailRuntime.supportEmail || config.mailReplyTo,
+            reply_to: i.replyTo || mailRuntime.supportEmail || config.mailReplyTo,
             tags: [{ name: 'template', value: i.template.replace(/[^A-Za-z0-9_-]/g, '_') }],
           }),
           signal: AbortSignal.timeout(15_000),
@@ -1054,6 +1056,43 @@ export class MailService {
     if (!tk?.requester_user_id) return null;
     const u = await this.userContact(tk.requester_user_id);
     return u ? { tk, u, code: ticketRef(tk.public_number) } : null;
+  }
+
+  /**
+   * Support request from a visitor without an account (or who can't sign in): it goes to the
+   * support inbox with Reply-To set to the visitor, so the team answers by e-mail. Nothing is sent
+   * to the visitor's address, so the public form can't be used to e-mail third parties.
+   */
+  async guestSupportRequest(i: { id: string; name: string; email: string; category: string; priority: string; subject: string; description: string; url?: string; orderNumber?: string; storeName?: string; platform?: string; locale: string }) {
+    const to = mailRuntime.supportEmail || config.mailReplyTo;
+    if (!to) return 'SKIPPED';
+    const html = [
+      p(`<b>${esc(i.subject)}</b>`),
+      rows([
+        ['Nombre', esc(i.name)], ['Correo', esc(i.email)], ['Tipo', esc(i.category)], ['Prioridad', esc(i.priority)], ['Idioma', esc(i.locale)],
+        ...(i.orderNumber ? [['Pedido', esc(i.orderNumber)] as [string, string]] : []),
+        ...(i.storeName ? [['Tienda', esc(i.storeName)] as [string, string]] : []),
+        ...(i.url ? [['URL', esc(i.url)] as [string, string]] : []),
+        ...(i.platform ? [['Plataforma', esc(i.platform)] as [string, string]] : []),
+      ]),
+      p(esc(i.description).replace(/\n/g, '<br>')),
+      p('Responde a este correo para contestar directamente a la persona (sin cuenta en el marketplace).'),
+    ].join('');
+    return this.send({
+      template: 'SUPPORT_GUEST_REQUEST',
+      dedupeKey: `guest-support:${i.id}`,
+      to,
+      replyTo: i.email,
+      entityType: 'SUPPORT_GUEST_REQUEST',
+      message: layout({
+        locale: 'es',
+        subject: `[Soporte · sin cuenta] ${i.subject}`.slice(0, 180),
+        preheader: `${i.name} <${i.email}>`,
+        title: 'Consulta de soporte sin cuenta',
+        body: html,
+        text: `${i.name} <${i.email}>\n${i.category} · ${i.priority}\n${i.subject}\n\n${i.description}${i.orderNumber ? `\nPedido: ${i.orderNumber}` : ''}${i.storeName ? `\nTienda: ${i.storeName}` : ''}${i.url ? `\nURL: ${i.url}` : ''}`,
+      }),
+    });
   }
 
   async supportTicketCreated(ticketId: string) {
