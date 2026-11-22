@@ -342,5 +342,15 @@
 "¿Tienes dudas con un pedido o una devolución? Te acompañamos en 4 idiomas en cada paso.": "Questions about an order or a return? We’re with you in 4 languages at every step.",
 "{n} días desde la entrega. El cliente paga el envío de vuelta. Reembolso tras la inspección.": "{n} days from delivery. The customer pays return shipping. Refund after inspection.",
 "{n} días desde la entrega. Cómo devolver un producto y reembolsos.": "{n} days from delivery. How to return a product and refunds.",
-"El cliente envía el producto y paga el envío de vuelta": "The customer ships the item and pays return shipping"
+"El cliente envía el producto y paga el envío de vuelta": "The customer ships the item and pays return shipping",
+"Identificación fiscal (EIN)": "Tax ID (EIN)",
+"Representante legal": "Legal representative",
+"Plazo para reportar o devolver": "Time to report or return",
+"Pago a la tienda": "Payment to the store",
+"Al confirmarse la entrega": "Once delivery is confirmed",
+"{n} días después de la entrega, y nunca con una devolución o disputa abierta": "{n} days after delivery, and never while a return or dispute is open",
+"Primera respuesta de soporte": "Support first response",
+"Normal: {a}": "Normal: {a}",
+"Alta: {a}": "High: {a}",
+"Crítica: {a}": "Critical: {a}"
 }

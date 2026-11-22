@@ -3101,5 +3101,15 @@
 "¿Tienes dudas con un pedido o una devolución? Te acompañamos en 4 idiomas en cada paso.": "Une question sur une commande ou un retour ? Nous vous accompagnons en 4 langues à chaque étape.",
 "{n} días desde la entrega. El cliente paga el envío de vuelta. Reembolso tras la inspección.": "{n} jours à compter de la livraison. Le client paie les frais de retour. Remboursement après inspection.",
 "{n} días desde la entrega. Cómo devolver un producto y reembolsos.": "{n} jours à compter de la livraison. Comment retourner un produit et remboursements.",
-"El cliente envía el producto y paga el envío de vuelta": "Le client renvoie le produit et paie les frais de retour"
+"El cliente envía el producto y paga el envío de vuelta": "Le client renvoie le produit et paie les frais de retour",
+"Identificación fiscal (EIN)": "Identifiant fiscal (EIN)",
+"Representante legal": "Représentant légal",
+"Plazo para reportar o devolver": "Délai pour signaler ou retourner",
+"Pago a la tienda": "Paiement à la boutique",
+"Al confirmarse la entrega": "Dès la confirmation de la livraison",
+"{n} días después de la entrega, y nunca con una devolución o disputa abierta": "{n} jours après la livraison, et jamais tant qu’un retour ou un litige est ouvert",
+"Primera respuesta de soporte": "Première réponse du support",
+"Normal: {a}": "Normale : {a}",
+"Alta: {a}": "Haute : {a}",
+"Crítica: {a}": "Critique : {a}"
 }

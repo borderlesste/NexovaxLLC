@@ -17,7 +17,7 @@ type Commissions = { body: string; bodyEn?: string; bodyFr?: string; bodyHt?: st
 type Lang = 'En' | 'Fr' | 'Ht';
 const LANGS: [Lang, string][] = [['En', 'English'], ['Fr', 'Français'], ['Ht', 'Kreyòl ayisyen']];
 type Social = { network: string; url: string };
-type Company = { legalName: string; jurisdiction: string; address: string; registrationNumber: string; phone: string; supportHours: string; footerText: string; [k: string]: string | undefined };
+type Company = { legalName: string; jurisdiction: string; address: string; registrationNumber: string; taxId?: string; legalRepresentative?: string; phone: string; supportHours: string; footerText: string; [k: string]: string | undefined };
 const EMPTY_COMPANY: Company = { legalName: '', jurisdiction: '', address: '', registrationNumber: '', phone: '', supportHours: '', footerText: '' };
 
 const move = <T,>(list: T[], i: number, d: number) => {
@@ -147,8 +147,9 @@ export function HelpEditor({ settings }: { settings: Record<string, any> }) {
             <Field label={t('Constituida en (jurisdicción)')}><Input value={company.jurisdiction} maxLength={120} placeholder={t('Ej. Pensilvania, Estados Unidos')} onChange={(e) => co('jurisdiction', e.target.value)} /></Field>
             <Field label={t('Domicilio legal')}><Input value={company.address} maxLength={300} placeholder={t('Calle, ciudad, estado, código postal, país')} onChange={(e) => co('address', e.target.value)} /></Field>
             <Field label={t('Número de registro')} hint={t('(opcional)')}><Input value={company.registrationNumber} maxLength={60} onChange={(e) => co('registrationNumber', e.target.value)} /></Field>
+            <Field label={t('Identificación fiscal (EIN)')} hint={t('(opcional)')}><Input value={company.taxId ?? ''} maxLength={40} placeholder="12-3456789" onChange={(e) => co('taxId', e.target.value)} /></Field>
+            <Field label={t('Representante legal')} hint={t('(opcional)')}><Input value={company.legalRepresentative ?? ''} maxLength={120} onChange={(e) => co('legalRepresentative', e.target.value)} /></Field>
             <Field label={t('Teléfono de soporte')} hint={t('(opcional)')}><Input value={company.phone} maxLength={40} placeholder="+1 717 555 0100" onChange={(e) => co('phone', e.target.value)} /></Field>
-            <div />
             <Field label={t('Horario de atención')}><Input value={company.supportHours} maxLength={160} placeholder={t('Ej. Lunes a viernes, 9:00–18:00 (hora del Este)')} onChange={(e) => co('supportHours', e.target.value)} data-company-hours /></Field>
             <Field label={`${t('Horario de atención')} (${langName})`}><Input value={company[`supportHours${lang}`] ?? ''} maxLength={160} onChange={(e) => co(`supportHours${lang}`, e.target.value)} /></Field>
             <Field label={t('Texto del pie de página')} hint={t('Vacío = texto predeterminado')}><Textarea rows={3} value={company.footerText} maxLength={400} onChange={(e) => co('footerText', e.target.value)} /></Field>

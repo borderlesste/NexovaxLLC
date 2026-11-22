@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AlertCircle, Building2, Clock, Mail, MapPin, Phone, RotateCcw, Scale, Truck } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Building2, Clock, Mail, MapPin, Phone, RotateCcw, Scale, ShieldCheck, Truck, User } from 'lucide-react';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { getServerLocale, getT } from '@/lib/i18n/server';
 import { pageMetadata } from '@/lib/seo';
 import { serverGet } from '@/lib/server-api';
 
-export type PublicPolicyCode = 'RETURN_POLICY' | 'SHIPPING_POLICY' | 'ABOUT_US';
+export type PublicPolicyCode = 'RETURN_POLICY' | 'SHIPPING_POLICY' | 'ABOUT_US' | 'BUYER_PROTECTION';
 type Policy = { code: string; slug: string; title: string; text: string; version: number | null; effectiveAt: string | null };
 type Company = { legalName?: string; jurisdiction?: string; address?: string; registrationNumber?: string; phone?: string; supportHours?: string; [k: string]: string | undefined };
 type ReturnFacts = { windowDays: number; labelPayer: string; shippingRefund: string; restockingFeePercent: number; inspectionRequired: boolean };
@@ -16,6 +16,7 @@ const META: Record<PublicPolicyCode, { path: string; label: string }> = {
   RETURN_POLICY: { path: '/politica-de-devoluciones', label: 'Política de devoluciones' },
   SHIPPING_POLICY: { path: '/politica-de-envios', label: 'Política de envíos' },
   ABOUT_US: { path: '/sobre-nosotros', label: 'Sobre nosotros' },
+  BUYER_PROTECTION: { path: '/proteccion-al-comprador', label: 'Protección al comprador' },
 };
 
 /** The current published version, in the visitor's language (Spanish when missing). */
@@ -53,11 +54,18 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
   const numLocale = ({ es: 'es-US', en: 'en-US', fr: 'fr-FR', ht: 'fr-HT' } as const)[locale];
   const [p, facts, cfg] = await Promise.all([
     load(code),
-    code === 'RETURN_POLICY' ? serverGet<ReturnFacts>('/returns/policy', 300) : null,
+    code === 'RETURN_POLICY' || code === 'BUYER_PROTECTION' ? serverGet<ReturnFacts>('/returns/policy', 300) : null,
     code === 'ABOUT_US' ? serverGet<{ name?: string; supportEmail?: string; company?: Company }>('/config/public', 60) : null,
   ]);
   if (!p) notFound();
-  const Icon = code === 'RETURN_POLICY' ? RotateCcw : code === 'ABOUT_US' ? Building2 : Truck;
+  // Buyer protection: the figures in force (store payout hold, support response times) come from the live rules.
+  const [help, support] = code === 'BUYER_PROTECTION'
+    ? await Promise.all([
+        serverGet<{ commissions?: { holdDays: number | null } }>('/help', 300),
+        serverGet<{ priorities?: { code: string; first_response_seconds: number | null }[] }>('/support/catalogs', 300),
+      ])
+    : [null, null];
+  const Icon = code === 'RETURN_POLICY' ? RotateCcw : code === 'ABOUT_US' ? Building2 : code === 'BUYER_PROTECTION' ? ShieldCheck : Truck;
   // "Sobre nosotros": verifiable company data from Admin → Configuración → Ayuda y redes → Empresa.
   const L = locale === 'fr' ? 'Fr' : locale === 'ht' ? 'Ht' : locale === 'en' ? 'En' : '';
   const co = cfg?.company ?? {};
@@ -68,12 +76,24 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
         [Scale, t('Constituida en'), co.jurisdiction],
         [MapPin, t('Domicilio'), co.address],
         [Building2, t('Número de registro'), co.registrationNumber],
+        [BadgeCheck, t('Identificación fiscal (EIN)'), co.taxId],
+        [User, t('Representante legal'), co.legalRepresentative],
         [Mail, t('Correo de soporte'), cfg.supportEmail, 'mail'],
         [Phone, t('Teléfono'), co.phone],
         [Clock, t('Horario de atención'), hours],
       ] as [any, string, string | undefined, string?][]).filter((r) => !!r[2])
     : [];
-  const rows = facts
+  const dur = (sec?: number | null) => (!sec ? null : sec < 3600 ? t('{n} min', { n: Math.round(sec / 60) }) : t('{n} h', { n: Math.round(sec / 3600) }));
+  const firstResponse = (c: string) => dur(support?.priorities?.find((x) => x.code === c)?.first_response_seconds);
+  const hold = help?.commissions?.holdDays;
+  const rows = code === 'BUYER_PROTECTION'
+    ? ([
+        facts && [t('Plazo para reportar o devolver'), t('{n} días desde la entrega', { n: facts.windowDays })],
+        facts && [t('Envío de la devolución'), t(LABEL_PAYER[facts.labelPayer] ?? facts.labelPayer)],
+        hold != null && [t('Pago a la tienda'), hold === 0 ? t('Al confirmarse la entrega') : t('{n} días después de la entrega, y nunca con una devolución o disputa abierta', { n: hold })],
+        firstResponse('NORMAL') && [t('Primera respuesta de soporte'), [firstResponse('NORMAL') && t('Normal: {a}', { a: firstResponse('NORMAL')! }), firstResponse('HIGH') && t('Alta: {a}', { a: firstResponse('HIGH')! }), firstResponse('CRITICAL') && t('Crítica: {a}', { a: firstResponse('CRITICAL')! })].filter(Boolean).join(' · ')],
+      ].filter(Boolean) as [string, string][])
+    : facts
     ? [
         [t('Plazo para devolver'), t('{n} días desde la entrega', { n: facts.windowDays })],
         [t('Envío de la devolución'), t(LABEL_PAYER[facts.labelPayer] ?? facts.labelPayer)],

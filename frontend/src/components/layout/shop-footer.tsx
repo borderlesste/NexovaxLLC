@@ -12,7 +12,7 @@ const cols = [
   { title: 'Marketplace', links: [['Inicio', '/'], ['Categorías', '/catalogo'], ['Ofertas', '/catalogo?onSale=true'], ['Vendedores', '/vendedores'], ['Sobre nosotros', '/sobre-nosotros']] },
   { title: 'Vendedores', links: [['Vender en la plataforma', '/vendedor/registro'], ['Planes y comisiones', '/ayuda#comisiones'], ['Ayuda para vendedores', '/ayuda#vendedores']] },
   { title: 'Ayuda', links: [['Centro de ayuda', '/ayuda'], ['Preguntas frecuentes', '/ayuda#faq'], ['Contactar a soporte', '/ayuda/reportar']] },
-  { title: 'Legal', links: [['Términos y condiciones', '/ayuda#terminos'], ['Privacidad y cookies', '/ayuda#privacidad'], ['Política de devoluciones', '/politica-de-devoluciones'], ['Política de envíos', '/politica-de-envios']] },
+  { title: 'Legal', links: [['Términos y condiciones', '/ayuda#terminos'], ['Privacidad y cookies', '/ayuda#privacidad'], ['Protección al comprador', '/proteccion-al-comprador'], ['Política de devoluciones', '/politica-de-devoluciones'], ['Política de envíos', '/politica-de-envios']] },
 ];
 
 export function ShopFooter() {

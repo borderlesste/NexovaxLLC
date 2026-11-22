@@ -118,8 +118,12 @@ export interface CompanyInfo {
   jurisdiction: string;
   /** Registered business address. */
   address: string;
-  /** Registration or tax number, when the company wants to show it. */
+  /** Business registration number (state entity number), when the company wants to show it. */
   registrationNumber: string;
+  /** Tax ID (e.g. EIN), when the company wants to show it. */
+  taxId?: string;
+  /** Legal representative / managing member. */
+  legalRepresentative?: string;
   phone: string;
   /** Support hours, e.g. "Lunes a viernes, 9:00–18:00 (hora del Este, EE. UU.)". */
   supportHours: string; supportHoursEn?: string; supportHoursFr?: string; supportHoursHt?: string;
@@ -201,7 +205,7 @@ const DEFAULTS: PlatformSettings = {
     ga4Enabled: false, ga4MeasurementId: '', merchantFeedEnabled: false, merchantShippingCountries: [],
     merchantCondition: 'new', merchantIncludeOutOfStock: false, merchantStoreAsBrand: false,
   },
-  'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', phone: '', supportHours: '', footerText: '' },
+  'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', taxId: '', legalRepresentative: '', phone: '', supportHours: '', footerText: '' },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */

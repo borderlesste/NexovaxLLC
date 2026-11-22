@@ -1347,7 +1347,7 @@ function validateCompany(s: Record<string, any>) {
   if (v == null) return;
   if (typeof v !== 'object' || Array.isArray(v)) throw badRequest('COMPANY_INVALID', 'Datos de la empresa inválidos.');
   const LIMITS: Record<string, [number, string]> = {
-    legalName: [120, 'Razón social'], jurisdiction: [120, 'Jurisdicción'], address: [300, 'Dirección'], registrationNumber: [60, 'Número de registro'],
+    legalName: [120, 'Razón social'], jurisdiction: [120, 'Jurisdicción'], address: [300, 'Dirección'], registrationNumber: [60, 'Número de registro'], taxId: [40, 'Identificación fiscal'], legalRepresentative: [120, 'Representante legal'],
     phone: [40, 'Teléfono'], supportHours: [160, 'Horario de atención'], footerText: [400, 'Texto del pie de página'],
   };
   const out: Record<string, string> = {};
