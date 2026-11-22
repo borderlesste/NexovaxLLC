@@ -91,7 +91,7 @@ Ou bezwen èd? Ekri nou nan Èd → Rapòte yon pwoblèm.$t$))),
       jsonb_build_object(
         'es', jsonb_build_array('Política de envíos', $t$NEXOVAX es un marketplace: cada tienda prepara y envía sus propios pedidos.
 
-Destinos: enviamos a los países disponibles en el selector «Entregar en» del sitio. Algunas tiendas o productos solo se envían a ciertos países; la ficha del producto y el checkout te lo indican antes de pagar.
+Destinos: enviamos a los países disponibles en el selector «Enviar a» del sitio. Algunas tiendas o productos solo se envían a ciertos países; la ficha del producto y el checkout te lo indican antes de pagar.
 
 Costo del envío: se calcula en el checkout según la dirección de entrega, el peso y tamaño del paquete y el servicio que elijas (tarifas en vivo de las transportadoras o tarifas del marketplace). Siempre ves el costo total antes de pagar. Si tu pedido incluye productos de varias tiendas, cada tienda envía su parte por separado.
 
@@ -125,7 +125,7 @@ International shipping: import taxes, duties and customs procedures of the desti
 Delivery problems: if your order doesn’t arrive, or arrives damaged or incomplete, report it from the order details or in Help → Report a problem and we will resolve it with the store.$t$),
         'fr', jsonb_build_array('Politique de livraison', $t$NEXOVAX est une marketplace : chaque boutique prépare et expédie ses propres commandes.
 
-Destinations : nous livrons dans les pays proposés dans le sélecteur « Livrer en » du site. Certaines boutiques ou certains produits ne sont livrés que dans certains pays ; la fiche produit et le paiement vous l’indiquent avant de payer.
+Destinations : nous livrons dans les pays proposés dans le sélecteur « Envoyer à » du site. Certaines boutiques ou certains produits ne sont livrés que dans certains pays ; la fiche produit et le paiement vous l’indiquent avant de payer.
 
 Frais de livraison : ils sont calculés au paiement selon l’adresse de livraison, le poids et la taille du colis et le service choisi (tarifs en direct des transporteurs ou tarifs de la marketplace). Vous voyez toujours le coût total avant de payer. Si votre commande contient des produits de plusieurs boutiques, chaque boutique expédie sa partie séparément.
 
@@ -142,7 +142,7 @@ Envois internationaux : les taxes d’importation, droits de douane et formalit�
 Problèmes de livraison : si votre commande n’arrive pas, arrive endommagée ou incomplète, signalez-le depuis le détail de la commande ou dans Aide → Signaler un problème et nous le réglerons avec la boutique.$t$),
         'ht', jsonb_build_array('Règ pou livrezon', $t$NEXOVAX se yon maketplas: chak boutik prepare epi voye pwòp kòmand pa l.
 
-Destinasyon: nou voye nan peyi ki disponib nan seleksyon «Livre nan» sou sit la. Gen kèk boutik oswa pwodwi ki voye sèlman nan kèk peyi; fich pwodwi a ak kès la di w sa anvan w peye.
+Destinasyon: nou voye nan peyi ki disponib nan seleksyon «Voye bay» sou sit la. Gen kèk boutik oswa pwodwi ki voye sèlman nan kèk peyi; fich pwodwi a ak kès la di w sa anvan w peye.
 
 Pri livrezon: yo kalkile l nan kès la selon adrès livrezon an, pwa ak gwosè pake a ak sèvis ou chwazi a (pri an dirèk transpòtè yo oswa pri maketplas la). Ou toujou wè pri total la anvan w peye. Si kòmand ou gen pwodwi plizyè boutik, chak boutik voye pa l apa.
 
