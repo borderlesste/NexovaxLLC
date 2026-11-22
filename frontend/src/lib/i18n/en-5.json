@@ -275,5 +275,12 @@
 "Cuando la tienda confirma la recepción del producto": "When the store confirms it received the item",
 "Condiciones vigentes": "Current conditions",
 "Página pública informativa: no hay que aceptarla. Se muestra en {url} y en el pie de página.": "Public information page: it does not need to be accepted. It is shown at {url} and in the footer.",
-"Ver página pública": "View public page"
+"Ver página pública": "View public page",
+"Métodos de pago, transferencias y recibos de compra.": "Payment methods, bank transfers and purchase receipts.",
+"Plazo, cómo devolver un producto y reembolsos.": "Time limit, how to return a product and refunds.",
+"Destinos, tarifas, tiempos y envíos internacionales.": "Destinations, rates, delivery times and international shipping.",
+"Usamos cookies esenciales para mantener tu sesión iniciada y tus preferencias (como el idioma y borradores de formularios). Si agregas productos sin haber iniciado sesión, tu carrito se guarda solo en este navegador y pasa a tu cuenta cuando inicias sesión. No usamos cookies de publicidad.": "We use essential cookies to keep you signed in and remember your preferences (such as language and form drafts). If you add products without signing in, your cart is stored only in this browser and moves to your account when you sign in. We don’t use advertising cookies.",
+"Retención tras la entrega": "Hold after delivery",
+"Sin retención": "No hold",
+"{n} días": "{n} days"
 }
