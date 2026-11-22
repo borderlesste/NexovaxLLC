@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { StorefrontIllustration } from '@/components/layout/auth-illustration';
 import { getLocale, t } from '@/lib/i18n';
+import { PENDING_EMAIL_KEY } from '@/lib/auth-pending';
 
 function RegisterForm() {
   const { signIn } = useAuth();
@@ -40,6 +41,8 @@ function RegisterForm() {
         await signIn(f.email, f.password);
         router.replace(next);
       } else {
+        // Lets the login page prefill the address for "Reenviar enlace" (kept out of the URL).
+        try { sessionStorage.setItem(PENDING_EMAIL_KEY, f.email.trim()); } catch {}
         router.replace('/auth/iniciar-sesion?registered=1');
       }
     } catch (err) {

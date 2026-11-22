@@ -6,6 +6,7 @@ import { CheckCircle2, MailWarning } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
+import { PENDING_EMAIL_KEY } from '@/lib/auth-pending';
 
 /** Landing page of the e-mailed verification link: exchanges the one-time token and signs the user in. */
 export default function ConfirmEmailPage() {
@@ -20,7 +21,10 @@ export default function ConfirmEmailPage() {
       .auth.verifyOtp({ token_hash: tokenHash, type: 'email' })
       .then(({ error }) => {
         setState(error ? 'error' : 'ok');
-        if (!error) setTimeout(() => router.replace('/'), 2500);
+        if (!error) {
+          try { sessionStorage.removeItem(PENDING_EMAIL_KEY); } catch {}
+          setTimeout(() => router.replace('/'), 2500);
+        }
       });
   }, [router]);
   return (

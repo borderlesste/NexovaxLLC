@@ -66,16 +66,21 @@ export class AccountService {
     await this.mail.emailVerification(userId, email, `${webUrl()}/auth/confirmar?token_hash=${encodeURIComponent(tokenHash)}&type=email`);
   }
 
-  /** Re-sends the verification link. Always answers OK (no account discovery). */
   /** Password sign-in on behalf of the browser (see AccountController.login). */
   login(email: string, password: string, captchaToken?: string | null) {
     return this.supa.signInWithPassword(email.trim().toLowerCase(), password, captchaToken);
   }
 
+  /**
+   * Re-sends the verification link. Always answers OK (no account discovery).
+   * New accounts stay in PENDING_VERIFICATION until the address is confirmed, so
+   * those are exactly the ones that need it (suspended or deleted accounts never get one).
+   */
   async resendVerification(email: string) {
     const normalized = email.trim().toLowerCase();
     const u = await this.db.one<{ id: string }>(
-      `select id from public.users where lower(email::text) = $1 and email_verified_at is null and status = 'ACTIVE'`,
+      `select id from public.users
+        where lower(email::text) = $1 and email_verified_at is null and status in ('PENDING_VERIFICATION', 'ACTIVE')`,
       [normalized],
     );
     if (u) this.mail.fire(() => this.sendVerification(u.id, normalized));

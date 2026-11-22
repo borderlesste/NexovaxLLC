@@ -15,6 +15,7 @@ import { Field, Input } from '@/components/ui/input';
 import { LogoMark } from '@/components/layout/logo';
 import { StorefrontIllustration } from '@/components/layout/auth-illustration';
 import { t } from '@/lib/i18n';
+import { PENDING_EMAIL_KEY } from '@/lib/auth-pending';
 
 function LoginForm() {
   const { signIn, session } = useAuth();
@@ -40,6 +41,7 @@ function LoginForm() {
     setResending(true);
     try {
       await postWithCaptcha('/auth/resend-verification', { email: email.trim() }, captcha.token);
+      setError('');
       toast.success(t('Si la cuenta existe y no está confirmada, te enviamos un nuevo enlace.'));
     } catch (err) {
       setError(errorMessage(err));
@@ -57,6 +59,13 @@ function LoginForm() {
     staleTime: Infinity,
   });
   useEffect(() => {
+    if (!unverified) return;
+    try {
+      const saved = sessionStorage.getItem(PENDING_EMAIL_KEY);
+      if (saved) setEmail((cur) => cur || saved);
+    } catch {}
+  }, [unverified]);
+  useEffect(() => {
     if (session) router.replace(next);
   }, [session, next, router]);
   const submit = async (e: React.FormEvent) => {
@@ -69,7 +78,10 @@ function LoginForm() {
       router.replace(next);
     } catch (err: any) {
       setError(err.message);
-      if (err?.code === 'EMAIL_NOT_CONFIRMED') setUnverified(true);
+      if (err?.code === 'EMAIL_NOT_CONFIRMED') {
+        setUnverified(true);
+        try { sessionStorage.setItem(PENDING_EMAIL_KEY, email.trim()); } catch {}
+      }
       captcha.reset();
     } finally {
       setBusy(false);
