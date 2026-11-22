@@ -25,6 +25,8 @@ async function bootstrap() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('X-Frame-Options', 'DENY');
+    // HTTPS only (api.nexovax.com sits behind Cloudflare/Render TLS); browsers skip plain HTTP for 2 years.
+    if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
   });

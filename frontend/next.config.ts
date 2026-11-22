@@ -2,30 +2,8 @@ import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs/config';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
-const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-// Uploads and private downloads go straight to the API (see src/lib/api.ts).
-const DIRECT_API = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '').replace(/\/api$/, '');
-const dev = process.env.NODE_ENV !== 'production';
 
-/**
- * Content-Security-Policy (defense in depth against injected scripts/navigation).
- * Allows only the app itself, Supabase, Stripe (Payment Element / 3-D Secure), PayPal, Cloudflare Turnstile, Sentry (error reports)
- * and Google Analytics 4 (loaded only with the visitor's analytics consent).
- * 'unsafe-inline' scripts are required by Next.js hydration without nonces.
- */
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://*.js.stripe.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com https://challenges.cloudflare.com https://www.googletagmanager.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  `connect-src 'self' ${DIRECT_API} ${SUPABASE} ${SUPABASE.replace('https://', 'wss://')} https://api.stripe.com https://*.stripe.com https://*.paypal.com https://www.sandbox.paypal.com https://api-m.paypal.com https://api-m.sandbox.paypal.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com`,
-  'frame-src https://challenges.cloudflare.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.stripe.com https://www.paypal.com https://*.paypal.com https://www.sandbox.paypal.com',
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ');
+// Content-Security-Policy: sent by src/middleware.ts with a nonce per request (src/lib/csp.ts).
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -45,13 +23,16 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: csp },
+          // HTTPS only, for 2 years, on nexovax.com and its subdomains (www, api).
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com" "https://www.paypal.com")' },
         ],
       },
+      // Language files carry a content hash in their name (src/app/i18n): cache them for a year.
+      { source: '/i18n/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
     ];
   },
 };

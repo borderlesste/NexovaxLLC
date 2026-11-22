@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isIP } from 'node:net';
+import { buildCsp } from '@/lib/csp';
 
 /**
  * Forwards the visitor's real IP to the NestJS API (proxied under /api) so rate limits
@@ -50,7 +51,14 @@ export function middleware(req: NextRequest) {
   const headers = new Headers(req.headers);
   if (!req.nextUrl.pathname.startsWith('/api/')) {
     headers.set(PATHNAME, req.nextUrl.pathname);
-    return NextResponse.next({ request: { headers } });
+    // A fresh nonce per page: Next.js reads it from the request's CSP header and puts it on its scripts.
+    const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+    const csp = buildCsp(nonce);
+    headers.set('x-nonce', nonce);
+    headers.set('Content-Security-Policy', csp);
+    const res = NextResponse.next({ request: { headers } });
+    res.headers.set('Content-Security-Policy', csp);
+    return res;
   }
   headers.delete(FORWARD_SECRET);
   headers.delete(FORWARD_IP);

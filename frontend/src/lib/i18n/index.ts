@@ -1,5 +1,5 @@
 'use client';
-import { hasTranslation, intlLocale, isLocale, Locale, LOCALE_COOKIE, paypalLocale, stripeLocale, translate } from './core';
+import { hasTranslation, intlLocale, isLocale, Locale, LOCALE_COOKIE, paypalLocale, stripeLocale, translate, type Dict } from './core';
 
 export type { Locale } from './core';
 export { LOCALES, isLocale } from './core';
@@ -17,17 +17,27 @@ export function configureI18n(locale: Locale, defaultCurrency: string) {
   currency = defaultCurrency || 'USD';
 }
 
+/**
+ * The current language's strings: in the browser, loaded before hydration by /i18n/<locale>.<version>.js
+ * (root layout); during server rendering, the dictionaries the server registered (dicts.ts).
+ */
+function dict(): Dict | undefined {
+  if (current === 'es') return undefined;
+  if (typeof window === 'undefined') return (globalThis as { __NX_I18N_ALL?: Record<Locale, Dict> }).__NX_I18N_ALL?.[current];
+  return (window as unknown as { __NX_I18N?: Dict }).__NX_I18N;
+}
+
 export const getLocale = () => current;
 export const getCurrency = () => currency;
 export const getIntlLocale = () => intlLocale(current);
 export const getStripeLocale = () => stripeLocale(current);
 export const getPaypalLocale = () => paypalLocale(current);
 /** True when the current language has its own translation of this Spanish text. */
-export const isTranslated = (es: string) => hasTranslation(current, es);
+export const isTranslated = (es: string) => hasTranslation(current, es, dict());
 
 /** Translates a Spanish UI string to the current language. */
 export function t(es: string, vars?: Record<string, string | number | null | undefined>) {
-  return translate(current, es, vars);
+  return translate(current, es, vars, dict());
 }
 
 export async function switchLocale(next: Locale, persist?: (l: Locale) => Promise<unknown>) {

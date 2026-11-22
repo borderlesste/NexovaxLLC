@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import Script from 'next/script';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import { Providers } from './providers';
 import { Analytics } from '@vercel/analytics/next';
 import { getServerLocale } from '@/lib/i18n/server';
+import { dictScriptPath } from '@/lib/i18n/dicts';
 import { serverGet } from '@/lib/server-api';
 import { getSeo, pageMetadata } from '@/lib/seo';
 
@@ -35,6 +37,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className={inter.variable}>
       <body className="font-sans">
+        {/* UI strings of the current language only (Spanish is the source and needs none), before hydration. */}
+        {locale !== 'es' && <Script src={dictScriptPath(locale)} strategy="beforeInteractive" />}
         <Providers locale={locale} currency={cfg?.currency ?? 'USD'}>{children}</Providers>
         <Analytics />
         <SpeedInsights />

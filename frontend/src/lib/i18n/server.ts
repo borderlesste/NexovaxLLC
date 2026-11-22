@@ -1,6 +1,7 @@
 import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { hasTranslation, isLocale, Locale, LOCALE_COOKIE, translate } from './core';
+import { DICTS } from './dicts';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
@@ -27,11 +28,11 @@ export async function getServerLocale(): Promise<Locale> {
 
 export async function getT() {
   const l = await getServerLocale();
-  return (es: string, vars?: Record<string, string | number | null | undefined>) => translate(l, es, vars);
+  return (es: string, vars?: Record<string, string | number | null | undefined>) => translate(l, es, vars, DICTS[l]);
 }
 
 /** Server-side check: does the request language have its own translation of this text? */
 export async function getHas() {
   const l = await getServerLocale();
-  return (es: string) => hasTranslation(l, es);
+  return (es: string) => hasTranslation(l, es, DICTS[l]);
 }
