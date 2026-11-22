@@ -60,7 +60,7 @@ export default function AdminFinancePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label={t('Ventas totales (GMV)')} value={money(k.gmv)} icon={<Layers />} hint={[k.orders === 1 ? t('1 pedido pagado') : t('{a} pedidos pagados', { a: k.orders }), Number(k.refunded) > 0 ? t('Reembolsado: {a}', { a: money(k.refunded) }) : ''].filter(Boolean).join(' · ')} />
         <StatCard label={t('Comisiones de la plataforma')} value={money(k.commission)} icon={<Percent />} hint={k.avgCommissionRate != null ? t('{a} % promedio sobre productos', { a: (k.avgCommissionRate * 100).toFixed(1) }) : ''} />
-        <StatCard label={t('Pagos a vendedores')} value={money(k.seller_payable)} icon={<Store />} hint={t('Liquidado en el período: {a}', { a: money(k.payoutsPaid) })} />
+        <StatCard label={t('Pagos a vendedores')} value={money(k.seller_payable)} icon={<Store />} hint={[t('Liquidado en el período: {a}', { a: money(k.payoutsPaid) }), Number(k.affiliate) > 0 ? t('Afiliados: {a}', { a: money(k.affiliate) }) : ''].filter(Boolean).join(' · ')} />
         <StatCard label={t('Impuestos recaudados')} value={money(k.tax)} icon={<BarChart3 />} hint={[d.taxes ? t('Por declarar: {a}', { a: money(d.taxes.pending) }) : '', t('Envíos: {a}', { a: money(k.shipping) })].filter(Boolean).join(' · ')} />
         <StatCard label={t('Vendedores activos')} value={k.activeSellers} icon={<User />} hint={t('{a} con ventas en el período', { a: k.sellersWithSales ?? 0 })} />
       </div>
@@ -71,7 +71,7 @@ export default function AdminFinancePage() {
           {d.payouts.length ? (
             <table className="w-full text-sm"><thead className="text-left text-xs text-muted"><tr><th className="px-5 py-2">{t('Vendedor')}</th><th>{t('Monto')}</th><th>{t('Estado')}</th><th>{t('Fecha')}</th><th /></tr></thead>
               <tbody className="divide-y divide-line">{d.payouts.map((p: any) => (
-                <tr key={p.id}><td className="px-5 py-2.5 font-semibold">{p.seller.name}</td><td>{money(p.amount)}</td><td><StatusBadge status={p.status} /></td><td className="text-muted">{fmtDate(p.requestedAt)}</td><td className="pr-4"><PayoutActions p={p} onDone={refresh} /></td></tr>
+                <tr key={p.id}><td className="px-5 py-2.5 font-semibold">{p.seller.name}</td><td>{money(p.amount, p.currency)}</td><td><StatusBadge status={p.status} /></td><td className="text-muted">{fmtDate(p.requestedAt)}</td><td className="pr-4"><PayoutActions p={p} onDone={refresh} /></td></tr>
               ))}</tbody></table>
           ) : <Empty title={t('Sin solicitudes de retiro')} />}
         </Card>

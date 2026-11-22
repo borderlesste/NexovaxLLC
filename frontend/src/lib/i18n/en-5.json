@@ -282,5 +282,8 @@
 "Usamos cookies esenciales para mantener tu sesión iniciada y tus preferencias (como el idioma y borradores de formularios). Si agregas productos sin haber iniciado sesión, tu carrito se guarda solo en este navegador y pasa a tu cuenta cuando inicias sesión. No usamos cookies de publicidad.": "We use essential cookies to keep you signed in and remember your preferences (such as language and form drafts). If you add products without signing in, your cart is stored only in this browser and moves to your account when you sign in. We don’t use advertising cookies.",
 "Retención tras la entrega": "Hold after delivery",
 "Sin retención": "No hold",
-"{n} días": "{n} days"
+"{n} días": "{n} days",
+"productos menos comisiones y afiliados": "products minus commission and affiliates",
+"Comisión de afiliado {a}": "Affiliate commission {a}",
+"Afiliados: {a}": "Affiliates: {a}"
 }

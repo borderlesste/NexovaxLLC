@@ -52,7 +52,7 @@ export default function AdminDashboard() {
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option></Select>
           <Button onClick={() => download(`informe-${days}d.csv`, full ? [[t('Día'), t('Ventas'), t('Pedidos')], ...d.series.map((s: any) => [s.day, s.sales, s.orders])] : [[t('Día'), t('Pedidos')], ...d.series.map((s: any) => [s.day, s.orders])])}><Download /> {t('Exportar informe')}</Button></>} />
       <div className={`grid gap-4 sm:grid-cols-2 ${full ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
-        {full && <StatCard label={t('Ventas totales')} value={money(d.kpis.sales)} icon={<CreditCard />} change={d.kpis.salesChange} hint={t('vs. período anterior')} />}
+        {full && <StatCard label={t('Ventas totales')} value={money(d.kpis.sales, d.currency)} icon={<CreditCard />} change={d.kpis.salesChange} hint={t('vs. período anterior')} />}
         <StatCard label={t('Pedidos realizados')} value={d.kpis.orders.toLocaleString(getIntlLocale())} icon={<ShoppingCart />} change={d.kpis.ordersChange} hint={t('vs. período anterior')} />
         <StatCard label={t('Vendedores activos')} value={d.kpis.activeSellers} icon={<Users />} hint={t('de {a} registrados', { a: d.kpis.totalSellers })} />
         <StatCard label={t('Productos publicados')} value={d.kpis.activeProducts.toLocaleString(getIntlLocale())} icon={<Package />} hint={t('de {a} en catálogo', { a: d.kpis.totalProducts })} />
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
           {d.recentOrders.length ? (
             <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-surface text-left text-xs text-muted"><tr><th className="px-5 py-2.5">{t('Pedido')}</th><th>{t('Cliente')}</th><th>{t('Fecha')}</th><th>{t('Total')}</th><th>{t('Estado')}</th><th /></tr></thead>
               <tbody className="divide-y divide-line">{d.recentOrders.map((o: any) => (
-                <tr key={o.id}><td className="px-5 py-3 font-bold">#{o.number}</td><td>{o.customer}</td><td className="text-muted">{fmtDate(o.placed_at)}</td><td className="font-semibold">{money(o.total)}</td><td><StatusBadge status={o.status} /></td><td className="pr-5 text-right"><Link href={`/admin/pedidos/${o.id}`} className="font-semibold text-brand-700">{t('Ver detalle')}</Link></td></tr>
+                <tr key={o.id}><td className="px-5 py-3 font-bold">#{o.number}</td><td>{o.customer}</td><td className="text-muted">{fmtDate(o.placed_at)}</td><td className="font-semibold">{money(o.total, o.currency)}</td><td><StatusBadge status={o.status} /></td><td className="pr-5 text-right"><Link href={`/admin/pedidos/${o.id}`} className="font-semibold text-brand-700">{t('Ver detalle')}</Link></td></tr>
               ))}</tbody></table></div>
           ) : <Empty icon={<ShoppingCart />} title={t('Aún no hay pedidos')} />}
         </Card>

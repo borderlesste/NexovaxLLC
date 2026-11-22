@@ -40,7 +40,7 @@ export default function CommissionsPage() {
     <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm">
       <thead className="bg-surface text-left text-xs font-semibold text-muted"><tr><th className="px-5 py-3">{t('Retiro')}</th><th>{t('Vendedor')}</th><th>{t('Destino')}</th><th>{t('Monto')}</th><th>{t('Solicitado')}</th><th>{t('Estado')}</th><th /></tr></thead>
       <tbody className="divide-y divide-line">{rows.map((p: any) => (
-        <tr key={p.id}><td className="px-5 py-3 font-bold">{p.number}</td><td>{p.seller.name}</td><td className="text-muted">{p.account.label} ****{p.account.last4}</td><td className="font-semibold">{money(p.amount)}</td>
+        <tr key={p.id}><td className="px-5 py-3 font-bold">{p.number}</td><td>{p.seller.name}</td><td className="text-muted">{p.account.label} ****{p.account.last4}</td><td className="font-semibold">{money(p.amount, p.currency)}</td>
           <td className="text-muted">{fmtDate(p.requestedAt)}{p.paidAt ? <><br />{t('Pagado')}{' '}{fmtDate(p.paidAt)}</> : null}</td><td><StatusBadge status={p.status} /></td>
           <td className="pr-5 text-right">{actions && <PayoutActions p={p} onDone={refresh} />}</td></tr>
       ))}</tbody></table></div>

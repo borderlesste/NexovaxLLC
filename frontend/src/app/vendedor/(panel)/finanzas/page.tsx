@@ -58,11 +58,12 @@ export default function SellerFinancePage() {
       toast.error(errorMessage(e));
     }
   };
-  const ICON: Record<string, any> = { SALE: ShoppingCart, COMMISSION: Percent, PAYOUT: Landmark, REFUND: Undo2 };
+  const ICON: Record<string, any> = { SALE: ShoppingCart, COMMISSION: Percent, AFFILIATE: Percent, PAYOUT: Landmark, REFUND: Undo2 };
   const PAYOUT_STATUS: Record<string, string> = { REQUESTED: 'solicitado', APPROVAL_REQUIRED: 'pendiente de aprobación', APPROVED: 'aprobado', PROCESSING: 'en proceso', PAID: 'pagado' };
   const concept = (m: any) => !m.ref ? m.concept
     : m.kind === 'SALE' ? t('Venta {a}', { a: m.ref })
     : m.kind === 'COMMISSION' ? t('Comisión de plataforma {a}', { a: m.ref })
+    : m.kind === 'AFFILIATE' ? t('Comisión de afiliado {a}', { a: m.ref })
     : m.kind === 'REFUND' ? t('Reembolso parcial {a}', { a: m.ref })
     : t('Retiro {a} ({b})', { a: m.ref, b: t(PAYOUT_STATUS[m.status] ?? String(m.status ?? '').toLowerCase()) });
   const rate = Number(d.period.products) > 0 ? Number(d.period.commission) / Number(d.period.products) : d.commissionRate;
@@ -75,7 +76,7 @@ export default function SellerFinancePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Ventas (brutas)')} value={money(d.period.gross, d.currency)} icon={<ShoppingCart />} hint={[t('incluye envío e impuestos'), Number(d.period.refunded) > 0 ? t('Reembolsado: {a}', { a: money(d.period.refunded, d.currency) }) : ''].filter(Boolean).join(' · ')} />
         <StatCard label={t('Comisión de la plataforma')} value={`- ${money(d.period.commission, d.currency)}`} icon={<Box />} hint={rate != null ? t('{a} sobre el precio de los productos', { a: pct(rate) }) : ''} />
-        <StatCard label={t('Ganancia neta')} value={money(d.period.net, d.currency)} icon={<Wallet />} tone="green" hint={t('productos menos comisión')} />
+        <StatCard label={t('Ganancia neta')} value={money(d.period.net, d.currency)} icon={<Wallet />} tone="green" hint={Number(d.period.affiliate) > 0 ? [t('productos menos comisiones y afiliados'), t('Afiliados: {a}', { a: money(d.period.affiliate, d.currency) })].join(' · ') : t('productos menos comisión')} />
         <StatCard label={t('Saldo disponible')} value={money(d.balances.available, d.currency)} icon={<Coins />} hint={d.payoutPolicy?.holdDays ? t('Pendiente: {a} (se libera {b} días después de la entrega)', { a: money(d.balances.pending, d.currency), b: d.payoutPolicy.holdDays }) : t('Pendiente por entrega: {a}', { a: money(d.balances.pending, d.currency) })} />
       </div>
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">

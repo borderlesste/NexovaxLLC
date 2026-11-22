@@ -95,7 +95,7 @@ export class OrdersService {
               s.id as seller_id, s.slug as seller_slug, coalesce(ssp.display_name, s.slug) as seller_name,
               sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
               sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission,
-              sofs.seller_entitlement_estimate::text as seller_net,
+              (sofs.seller_entitlement_estimate - sofs.referral_commission_total)::text as seller_net,
               (select count(*) from public.order_items oi where oi.seller_order_id = so.id)::int as item_lines,
               (select coalesce(sum(oi.quantity),0) from public.order_items oi where oi.seller_order_id = so.id)::int as units,
               (select ois.product_title from public.order_items oi join public.order_item_snapshots ois on ois.order_item_id = oi.id
@@ -205,7 +205,7 @@ export class OrdersService {
                 sofs.product_gross_amount::text as gross_subtotal, sofs.discount_total::text as discount,
                 (select string_agg(pc.code::text, ', ') from public.order_promotion_snapshots ops join public.promotion_codes pc on pc.id = ops.promotion_code_id
                   where ops.order_id = so.order_id and ops.application_snapshot->>'sellerId' = so.seller_id::text) as coupon,
-                (select coalesce(sum(rc.final_amount),0)::text from public.referral_commissions rc where rc.seller_order_id = so.id) as affiliate,
+                sofs.referral_commission_total::text as affiliate,
                 osg.id as shipping_group_id, osg.service_name, osg.carrier_name, osg.service_token, osg.customer_shipping_amount::text as shipping_amount,
                 osg.estimated_days, osg.shipping_provider_code, sfa.city as origin_city, sfa.region as origin_region, sfa.country_code as origin_country,
                 ${CANCELLABLE_SQL('so', 'o')} as cancellable
