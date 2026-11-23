@@ -63,6 +63,12 @@ describe('NX-GEO-001 over HTTP', () => {
     expect(f.body).toMatchObject({ detectedCountry: null, source: 'default' });
   });
 
+  it('uses the default destination if the country cookie is malformed', async () => {
+    const response = await request(app.getHttpServer()).get('/api/geo/context').set('Cookie', 'nx_locale=en; nx_delivery_country=%').expect(200);
+    expect(response.body).toMatchObject({ deliveryCountry: 'US', source: 'default', isApproximate: true });
+    expect(response.headers['cache-control']).toContain('no-store');
+  });
+
   it('availability validates the country and caps the list', async () => {
     const s = request(app.getHttpServer());
     const ok = await s.post('/api/geo/availability').send({ country: 'DO', productIds: [PID] }).expect(201);

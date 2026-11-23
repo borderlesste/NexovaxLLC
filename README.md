@@ -166,5 +166,5 @@ Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been
 - **Moderación:** con moderación obligatoria, cualquier cambio de contenido visible (textos, marca, atributos, opciones, variantes o imágenes) de un producto activo lo devuelve a revisión; precio y stock no.
 - **Administración:** solo un super administrador puede modificar cuentas o roles de administradores; siempre queda al menos un super administrador activo.
 - **Web:** CSP y cabeceras de seguridad (`frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`); el parámetro `next` del login solo admite rutas internas.
-- **Mensajería:** actualización por sondeo (5 s); Supabase Realtime requeriría políticas RLS de lectura para el navegador.
+- **Mensajería:** Supabase Realtime envía avisos sin texto a un canal privado por usuario y comprueba los permisos al suscribirse y al emitir. La API sigue autorizando la lectura de las conversaciones y el sondeo sirve de respaldo. Despliega la migración `20261122160000` junto con el frontend y recarga las pestañas abiertas para que los avisos de vendedor enlacen a su bandeja.
 - **Ciudades:** texto libre por país; cada ciudad nueva se registra en `city_references` (las 49 de RD importadas de countries.dev se mantienen).

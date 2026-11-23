@@ -1,19 +1,19 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ga } from '@/lib/ga';
 import { toast } from 'sonner';
 import {
   Zap, Building2, Check, ChevronLeft, CreditCard, Headphones, Home, Landmark, Lock, MapPin, PackageCheck, Pencil, Plus, ShieldCheck, ShoppingBag, Store, Truck, Wallet,
 } from 'lucide-react';
-import { errorMessage, get, post } from '@/lib/api';
+import { ApiError, errorMessage, get, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { cn, money, uid } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
-import { Checkbox, Empty, PageLoader } from '@/components/ui/misc';
+import { Checkbox, Empty, ErrorBox, PageLoader } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { AddressDialog, type Address } from '@/components/shop/address-form';
 import { PaypalPay, StripeBoundary, StripeCardForm, StripePayButton, type PlacedCheckout } from '@/components/checkout/online-payments';
@@ -43,6 +43,14 @@ function Steps({ current }: { current: number }) {
 
 const PAY_ICONS: Record<string, any> = { CARD: CreditCard, PAYPAL: Wallet, BANK_TRANSFER: Landmark, CASH_ON_DELIVERY: PackageCheck };
 
+interface PaymentDetails {
+  paymentMethod: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
+  idempotencyKey: string;
+  card?: { number: string; expMonth: number; expYear: number; cvc: string; name: string };
+  savedCardId?: string;
+  saveCard?: boolean;
+}
+
 export default function CheckoutPage() {
   const { session, loading, me } = useAuth();
   const router = useRouter();
@@ -50,7 +58,7 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<Record<string, string>>({});
   const [addressId, setAddressId] = useState<string>('');
   const [addrDialog, setAddrDialog] = useState<{ open: boolean; address?: Address | null }>({ open: false });
-  const [method, setMethod] = useState<'CARD' | 'PAYPAL' | 'BANK_TRANSFER'>('CARD');
+  const [method, setMethod] = useState<PaymentDetails['paymentMethod']>('CARD');
   const [card, setCard] = useState({ number: '', exp: '', cvc: '', name: '' });
   const [save, setSave] = useState(true);
   const [placing, setPlacing] = useState(false);
@@ -64,13 +72,14 @@ export default function CheckoutPage() {
 
   const addresses = useQuery({ queryKey: ['addresses'], queryFn: () => get<Address[]>('/me/addresses'), enabled: !!session });
   useEffect(() => {
-    if (!addressId && addresses.data?.length) setAddressId((addresses.data.find((a) => a.isDefaultShipping) ?? addresses.data[0]).id);
-  }, [addresses.data, addressId]);
+    if (!addresses.isSuccess || addresses.fetchStatus !== 'idle' || addresses.data.some((a) => a.id === addressId)) return;
+    setAddressId((addresses.data.find((a) => a.isDefaultShipping) ?? addresses.data[0])?.id ?? '');
+  }, [addresses.data, addresses.fetchStatus, addresses.isSuccess, addressId]);
   const cfg = usePublicConfig();
   const quote = useQuery({
     queryKey: ['checkout-quote', addressId, shipping, codes],
     queryFn: () => post('/checkout/quote', { shipping, addressId: addressId || undefined, coupons: codes }),
-    enabled: !!session && addresses.isFetched,
+    enabled: !!session && addresses.isSuccess,
     placeholderData: (prev) => prev,
   });
   const q = quote.data;
@@ -105,30 +114,56 @@ export default function CheckoutPage() {
   const usableCards = (savedCards.data?.cards ?? []).filter((c: any) => !c.expired);
   const [cardChoice, setCardChoice] = useState<string | null>(null);
   const [saveStripe, setSaveStripe] = useState(false);
+  const shippingSelection = q ? Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)])) : {};
+  const addressVersion = quote.isSuccess && !quote.isPlaceholderData && quote.fetchStatus === 'idle'
+    && addresses.isSuccess && addresses.fetchStatus === 'idle' && addresses.data.some((a) => a.id === addressId)
+    && q?.addressId === addressId && typeof q.addressVersion === 'string' ? q.addressVersion : null;
+  const canPlace = !!addressVersion && !destBlocked;
+  const resetKey = q ? JSON.stringify([addressId, q.addressVersion, shippingSelection, q.total, applied]) : '';
+  const readyPlacementKey = useRef<string | null>(null);
+  // A provider can defer the placement callback while the buyer changes checkout inputs.
+  useLayoutEffect(() => {
+    readyPlacementKey.current = canPlace ? resetKey : null;
+  }, [canPlace, quote.dataUpdatedAt, resetKey]);
 
-  // The quote waits for the addresses; until it exists (and did not fail) there is nothing to render.
-  if (loading || !session || (!q && !quote.isError)) return <PageLoader />;
-  if (quote.isError && !q)
+  const refreshAddressesAndQuote = () => {
+    readyPlacementKey.current = null;
+    void qc.invalidateQueries({ queryKey: ['addresses'] });
+    void qc.invalidateQueries({ queryKey: ['checkout-quote'] });
+  };
+
+  const checkoutError = addresses.error ?? quote.error;
+  if (loading || !session || (!q && !checkoutError)) return <PageLoader />;
+  if (!q && checkoutError instanceof ApiError && checkoutError.code === 'CART_EMPTY')
     return (
       <div className="mx-auto max-w-3xl px-4 py-16"><div className="card"><Empty icon={<ShoppingBag />} title={t('Tu carrito está vacío')} description={t('Agrega productos antes de finalizar la compra.')} action={<Button asChild><Link href="/catalogo">{t('Explorar productos')}</Link></Button>} /></div></div>
     );
+  if (!q)
+    return <div className="mx-auto max-w-3xl px-4 py-16"><ErrorBox message={errorMessage(checkoutError)} onRetry={refreshAddressesAndQuote} /></div>;
 
   const cardMethod = q?.paymentMethods.find((m: any) => m.code === 'CARD');
   const chosenCard = cardChoice === 'new' ? null : usableCards.find((c: any) => c.id === cardChoice) ?? (cardChoice === null ? usableCards.find((c: any) => c.isDefault) ?? usableCards[0] : null);
   const stripeKey: string | null = cardMethod?.provider === 'STRIPE' ? cardMethod.publishableKey ?? null : null;
   const paypalMethod = q?.paymentMethods.find((m: any) => m.code === 'PAYPAL' && m.available);
-  const shippingSelection = () => Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
-  const resetKey = q ? JSON.stringify([addressId, shippingSelection(), q.total, applied]) : '';
+
+  const submitCheckout = async (payment: PaymentDetails) => {
+    if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
+    if (destBlocked || Object.values(shippingSelection).some((code) => !code)) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
+    if (!addressVersion || readyPlacementKey.current !== resetKey) throw new Error(t('Cargando…'));
+    try {
+      return await post<PlacedCheckout>('/checkout/place', { addressId, addressVersion, shipping: shippingSelection, coupons: applied, ...payment });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409 && e.code === 'CHECKOUT_ADDRESS_CHANGED') refreshAddressesAndQuote();
+      throw e;
+    }
+  };
 
   /** Creates the order's checkout + payment with the provider; the browser then completes the payment. */
-  const placeOnline = async (paymentMethod: 'CARD' | 'PAYPAL'): Promise<PlacedCheckout> => {
-    if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
-    if (q.groups.some((g: any) => !selectedFor(g))) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
-    return post('/checkout/place', {
-      addressId, shipping: shippingSelection(), paymentMethod, coupons: applied, idempotencyKey: uid(),
+  const placeOnline = (paymentMethod: 'CARD' | 'PAYPAL') =>
+    submitCheckout({
+      paymentMethod, idempotencyKey: uid(),
       ...(paymentMethod === 'CARD' ? (chosenCard ? { savedCardId: chosenCard.id } : saveStripe ? { saveCard: true } : {}) : {}),
     });
-  };
   const onPaid = (checkoutId: string) => {
     qc.invalidateQueries({ queryKey: ['cart'] });
     qc.invalidateQueries({ queryKey: ['me'] });
@@ -145,12 +180,8 @@ export default function CheckoutPage() {
     }
     setPlacing(true);
     try {
-      if (q.groups.some((g: any) => !selectedFor(g))) return toast.error(t('No hay métodos de envío disponibles para esta dirección.'));
-      const shippingSel = Object.fromEntries(q.groups.map((g: any) => [g.sellerId, selectedFor(g)]));
-      const r = await post('/checkout/place', { addressId, shipping: shippingSel, paymentMethod: method, card: cardPayload, coupons: applied, idempotencyKey: idem });
-      qc.invalidateQueries({ queryKey: ['cart'] });
-      qc.invalidateQueries({ queryKey: ['me'] });
-      router.push(`/checkout/confirmacion/${r.checkoutId}`);
+      const r = await submitCheckout({ paymentMethod: method, card: cardPayload, idempotencyKey: idem });
+      onPaid(r.checkoutId);
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -376,12 +407,13 @@ export default function CheckoutPage() {
             </div>
           </dl>
           <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 text-xl font-extrabold"><span>{t('Total a pagar')}</span><span className="text-brand-800">{money(q.total, q.currency)}</span></div>
+          {checkoutError && <div className="mt-3"><ErrorBox message={errorMessage(checkoutError)} onRetry={refreshAddressesAndQuote} /></div>}
           {method === 'CARD' && stripeKey ? (
-            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!addressId || destBlocked} resetKey={`${resetKey}|${chosenCard?.id ?? 'new'}|${saveStripe}`} savedCard={!!chosenCard} />
+            <StripePayButton place={() => placeOnline('CARD')} onPaid={onPaid} disabled={!canPlace} resetKey={`${resetKey}|${chosenCard?.id ?? 'new'}|${saveStripe}`} savedCard={!!chosenCard} />
           ) : method === 'PAYPAL' && paypalMethod ? (
-            <PaypalPay clientId={paypalMethod.clientId} currency={q.currency} place={() => placeOnline('PAYPAL')} onPaid={onPaid} disabled={!addressId || destBlocked} />
+            <PaypalPay clientId={paypalMethod.clientId} currency={q.currency} place={() => placeOnline('PAYPAL')} onPaid={onPaid} disabled={!canPlace} />
           ) : (
-          <Button size="lg" className="mt-5 h-14 w-full text-lg" onClick={place} loading={placing} disabled={!addressId || destBlocked}>
+          <Button size="lg" className="mt-5 h-14 w-full text-lg" onClick={place} loading={placing} disabled={!canPlace}>
             <Lock /> {t('Confirmar compra')}
           </Button>
           )}
@@ -394,7 +426,7 @@ export default function CheckoutPage() {
         </aside>
       </div>
       {addrDialog.open && (
-        <AddressDialog open onOpenChange={(o) => setAddrDialog({ open: o })} address={addrDialog.address} defaultCountry={cfg?.defaultCountry} onSaved={(a) => { qc.invalidateQueries({ queryKey: ['addresses'] }); setAddressId(a.id); }} />
+        <AddressDialog open onOpenChange={(o) => setAddrDialog({ open: o })} address={addrDialog.address} defaultCountry={cfg?.defaultCountry} onSaved={(a) => { refreshAddressesAndQuote(); setAddressId(a.id); }} />
       )}
     </div>
     </StripeBoundary>

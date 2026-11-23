@@ -210,6 +210,7 @@ const EN: Record<string, string> = {
   'Indica peso (kg) y dimensiones (largo, ancho y alto en cm) del paquete para calcular el envío.': 'Enter the package weight (kg) and dimensions (length, width and height in cm) to calculate shipping.',
   'La transportadora no ofrece servicio para esta ruta en este momento.': 'The carrier doesn’t serve this route at the moment.',
   'Una opción de envío ya no está disponible. Revisa los métodos de envío.': 'A shipping option is no longer available. Please review the shipping methods.',
+  'La dirección de envío cambió. Revisa la nueva cotización antes de confirmar.': 'The shipping address changed. Review the updated quote before confirming.',
   'El proveedor de envíos no respondió. Inténtalo de nuevo.': 'The shipping provider didn’t respond. Please try again.',
   'Shippo no está configurado.': 'Shippo is not configured.',
   'Revisa las tarifas de envío.': 'Review the shipping rates.',

@@ -43,7 +43,13 @@ function header(req: any, name: string) {
 export function readCookie(req: any, name: string) {
   for (const part of header(req, 'cookie').split(';')) {
     const i = part.indexOf('=');
-    if (i > 0 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+    if (i <= 0 || part.slice(0, i).trim() !== name) continue;
+    try {
+      return decodeURIComponent(part.slice(i + 1).trim());
+    } catch (error) {
+      if (!(error instanceof URIError)) throw error;
+      return '';
+    }
   }
   return '';
 }

@@ -307,19 +307,19 @@ export class ShippingService {
     );
   }
 
-  private cacheKey(origin: OriginAddress, dest: DestinationAddress, parcel: Parcel, currency: string) {
+  private cacheKey(origin: OriginAddress, dest: DestinationAddress, parcel: Parcel, currency: string, destinationVersion: string) {
     return createHash('sha256')
-      .update(JSON.stringify([origin.id, origin.line1, origin.postal_code, origin.country_code, dest.line1, dest.line2, dest.city, dest.region, dest.postal_code, dest.country_code, parcel, currency]))
+      .update(JSON.stringify([origin.id, origin.line1, origin.postal_code, origin.country_code, dest.line1, dest.line2, dest.city, dest.region, dest.postal_code, dest.country_code, destinationVersion, parcel, currency]))
       .digest('hex');
   }
 
   /** All options for one seller group, cheapest first (pickup last). */
-  async options(origin: OriginAddress | null, dest: DestinationAddress | null, parcel: Parcel, currency: string): Promise<{ options: ShippingOption[]; messages: string[]; liveRates: boolean }> {
+  async options(origin: OriginAddress | null, dest: DestinationAddress | null, parcel: Parcel, currency: string, destinationVersion: string): Promise<{ options: ShippingOption[]; messages: string[]; liveRates: boolean }> {
     const messages: string[] = [];
     let live: ShippingOption[] = [];
     const shippoOn = this.shippo.enabled && (await this.settings.get('shipping.shippo_enabled'));
     if (shippoOn && origin && dest) {
-      const key = this.cacheKey(origin, dest, parcel, currency);
+      const key = this.cacheKey(origin, dest, parcel, currency, destinationVersion);
       const hit = this.cache.get(key);
       if (hit && Date.now() - hit.at < RATE_TTL_MS) {
         live = hit.options;

@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { TaxService } from '../tax/tax.service';
@@ -27,6 +27,7 @@ export type PaymentMethod = 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
 
 export interface PlaceOrderInput {
   addressId: string;
+  addressVersion?: string;
   shipping: Record<string, string>; // sellerId -> rate code
   paymentMethod: PaymentMethod;
   card?: { number: string; expMonth: number; expYear: number; cvc: string; name: string };
@@ -36,6 +37,14 @@ export interface PlaceOrderInput {
   /** Store coupon codes typed by the buyer (one per store). */
   coupons?: string[];
   idempotencyKey: string;
+}
+
+function checkoutAddressVersion(address: { id: string; row_version: string }) {
+  return createHash('sha256').update(`${address.id}:${address.row_version}`).digest('hex');
+}
+
+function addressChanged() {
+  return conflict('CHECKOUT_ADDRESS_CHANGED', 'La dirección de envío cambió. Revisa la nueva cotización antes de confirmar.');
 }
 
 interface LineCalc {
@@ -169,11 +178,12 @@ export class CheckoutService {
     return { amount: bounded, raw, base };
   }
 
-  /** Default (or chosen) shipping address of the buyer, or null. */
+  /** Default (or chosen) address and its row revision; lock it when creating the checkout snapshot. */
   private async buyerAddress(userId: string, addressId?: string | null, c?: PoolClient) {
     return this.db.one(
-      `select * from public.addresses where user_id = $1 and deleted_at is null and ($2::uuid is null or id = $2)
-        order by (id = $2) desc nulls last, is_default_shipping desc, created_at limit 1`,
+      `select a.*, a.xmin::text as row_version from public.addresses a
+        where a.user_id = $1 and a.deleted_at is null and ($2::uuid is null or a.id = $2)
+        order by (a.id = $2) desc nulls last, a.is_default_shipping desc, a.created_at limit 1${c ? ' for share of a' : ''}`,
       [userId, addressId ?? null],
       c,
     );
@@ -181,6 +191,7 @@ export class CheckoutService {
 
   /** Shipping options for every seller group of the current cart (also used to validate the order). */
   private async groupOptions(cartId: string, groups: any[], address: any, currency: string) {
+    const addressVersion = checkoutAddressVersion(address);
     const dims = await this.db.many(
       `select ci.seller_id, ci.variant_id, ci.quantity::int as qty, v.weight_value, v.weight_unit, v.length_value, v.width_value, v.height_value, v.dimension_unit
          from public.cart_items ci join public.product_variants v on v.id = ci.variant_id
@@ -193,7 +204,7 @@ export class CheckoutService {
         const purchasable = new Set(g.items.filter((i: any) => i.purchasable).map((i: any) => i.variantId));
         const parcel = ShippingService.parcelFor(dims.filter((d: any) => d.seller_id === g.sellerId && purchasable.has(d.variant_id)));
         const origin = await this.shipping.originFor(g.sellerId);
-        const res = await this.shipping.options(origin, address, parcel, currency);
+        const res = await this.shipping.options(origin, address, parcel, currency, addressVersion);
         out.set(g.sellerId, { ...res, parcel });
       }),
     );
@@ -285,6 +296,7 @@ export class CheckoutService {
     return {
       currency: cart.currency,
       addressId: address?.id ?? null,
+      addressVersion: address ? checkoutAddressVersion(address) : null,
       destinationCountry: address?.country_code ?? null,
       needsAddress: !address,
       groups,
@@ -333,17 +345,18 @@ export class CheckoutService {
     else if (input.paymentMethod === 'PAYPAL' && !online) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
     else if (input.paymentMethod === 'BANK_TRANSFER' && !(await this.settings.get('payments.bank_transfer'))?.enabled)
       throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
+
+    const address = await this.buyerAddress(userId, input.addressId);
+    if (!address || checkoutAddressVersion(address) !== input.addressVersion) throw addressChanged();
     // Earlier card/PayPal attempts the buyer abandoned must not block the new checkout.
     await this.payments.releaseAbandoned(userId);
 
     // Live shipping options are fetched before the transaction (external API calls).
     const preCart = await this.carts.getCart(userId);
     if (!preCart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
-    const preAddress = await this.buyerAddress(userId, input.addressId);
-    if (!preAddress || preAddress.id !== input.addressId) throw badRequest('CHECKOUT_SHIPPING_ADDRESS_REQUIRED', 'Selecciona una dirección de envío válida.');
-    if ((await this.destinationBlocks(preCart.groups, preAddress.country_code)).size)
+    if ((await this.destinationBlocks(preCart.groups, address.country_code)).size)
       throw conflict('DESTINATION_UNAVAILABLE', 'Algunos productos no se envían al país de tu dirección. Quítalos del carrito o elige otra dirección.');
-    const optionsBySeller = await this.groupOptions(preCart.id, preCart.groups, preAddress, preCart.currency);
+    const optionsBySeller = await this.groupOptions(preCart.id, preCart.groups, address, preCart.currency);
     for (const g of preCart.groups) {
       const code = input.shipping?.[g.sellerId];
       if (!code || !optionsBySeller.get(g.sellerId)!.options.some((o) => o.code === code))
@@ -356,12 +369,9 @@ export class CheckoutService {
     const checkoutId = await this.db.tx(async (c) => {
       const corr = randomUUID();
       const cart = await this.carts.ensureMutableCart(userId, c);
-      const address = await this.db.one(
-        `select * from public.addresses where id = $1 and user_id = $2 and deleted_at is null`,
-        [input.addressId, userId],
-        c,
-      );
-      if (!address) throw badRequest('CHECKOUT_SHIPPING_ADDRESS_REQUIRED', 'Selecciona una dirección de envío válida.');
+      // Wait for concurrent edits, then use the already validated address only if it is still current.
+      const currentAddress = await this.buyerAddress(userId, input.addressId, c);
+      if (!currentAddress || checkoutAddressVersion(currentAddress) !== input.addressVersion) throw addressChanged();
 
       const expiresAt = new Date(Date.now() + (input.paymentMethod === 'BANK_TRANSFER' ? TRANSFER_TTL_MIN : ONLINE_PAYMENT_TTL_MIN) * 60_000);
       const sessionId: string = (await this.db.one(

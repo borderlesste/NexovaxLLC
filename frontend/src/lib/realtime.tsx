@@ -2,7 +2,6 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
@@ -17,9 +16,8 @@ interface MessageSignal {
 }
 
 /**
- * Live inbox: listens to the private Realtime channels of the signed-in user (user:<id>) and of the
- * stores whose messages they can read (seller:<id>). The database sends a small signal when a message
- * arrives (never its text); the pages then reload the conversation through the API.
+ * The user's private inbox receives customer signals and authorized seller signals.
+ * The pages then reload the conversation through the API.
  */
 export function RealtimeInbox() {
   const { session, me } = useAuth();
@@ -30,26 +28,21 @@ export function RealtimeInbox() {
   pathRef.current = pathname;
 
   const userId = me?.id;
-  const sellerIds = (me?.sellers ?? [])
-    .filter((s) => s.isOwner || s.areas?.includes('MESSAGES'))
-    .map((s) => s.id)
-    .sort()
-    .join(',');
   const token = session?.access_token;
 
   useEffect(() => {
     if (!userId || !token) return;
     const sb = supabase();
-    const channels: RealtimeChannel[] = [];
+    let channel: ReturnType<typeof sb.channel> | undefined;
     let cancelled = false;
 
-    const onMessage = async (signal: MessageSignal, inbox: 'customer' | 'seller') => {
+    const onMessage = async (signal: MessageSignal) => {
       await qc.invalidateQueries({ queryKey: ['conversation', signal.conversationId] });
       qc.invalidateQueries({ queryKey: ['conversations'] });
       qc.invalidateQueries({ queryKey: ['me'] });
       qc.invalidateQueries({ queryKey: ['notifications-count'] });
       if (!signal.senderId || signal.senderId === userId) return;
-      const href = `${inbox === 'seller' ? '/vendedor/mensajes' : '/cuenta/mensajes'}?c=${signal.conversationId}`;
+      const href = `${signal.sellerId ? '/vendedor/mensajes' : '/cuenta/mensajes'}?c=${signal.conversationId}`;
       if (pathRef.current?.endsWith('/mensajes')) return; // the inbox already shows it
       toast(t('Tienes un mensaje nuevo'), {
         id: `msg-${signal.conversationId}`,
@@ -64,24 +57,17 @@ export function RealtimeInbox() {
         /* subscribe() retries with the session token */
       }
       if (cancelled) return;
-      const topics: [string, 'customer' | 'seller'][] = [
-        [`user:${userId}`, 'customer'],
-        ...sellerIds.split(',').filter(Boolean).map((id) => [`seller:${id}`, 'seller'] as [string, 'seller']),
-      ];
-      for (const [topic, inbox] of topics) {
-        const ch = sb
-          .channel(topic, { config: { private: true } })
-          .on('broadcast', { event: 'message' }, ({ payload }) => void onMessage(payload as MessageSignal, inbox))
-          .subscribe();
-        channels.push(ch);
-      }
+      channel = sb
+        .channel(`user:${userId}`, { config: { private: true } })
+        .on('broadcast', { event: 'message' }, ({ payload }) => void onMessage(payload as MessageSignal))
+        .subscribe();
     })();
 
     return () => {
       cancelled = true;
-      for (const ch of channels) void sb.removeChannel(ch);
+      if (channel) void sb.removeChannel(channel);
     };
-  }, [userId, sellerIds, token, qc, router]);
+  }, [userId, token, qc, router]);
 
   return null;
 }

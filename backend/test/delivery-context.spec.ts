@@ -27,6 +27,21 @@ describe('delivery context (NX-GEO-001)', () => {
     expect(account).toMatchObject({ deliveryCountry: 'DO', source: 'account', isApproximate: false });
   });
 
+  it('honors a valid percent-encoded country before the account preference', async () => {
+    const context = await resolveDeliveryContext(db, settingsWith(on), signed({ cookie: 'nx_delivery_country=%6D%78' }), 'u-do');
+    expect(context).toMatchObject({ deliveryCountry: 'MX', source: 'manual', isApproximate: false });
+  });
+
+  it('uses the account or IP preference when the country cookie cannot be decoded', async () => {
+    const request = signed({ cookie: 'nx_delivery_country=%E0%A4' });
+    await expect(resolveDeliveryContext(db, settingsWith(on), request, 'u-do')).resolves.toMatchObject({
+      deliveryCountry: 'DO', source: 'account', isApproximate: false,
+    });
+    await expect(resolveDeliveryContext(db, settingsWith(on), request)).resolves.toMatchObject({
+      deliveryCountry: 'BR', source: 'ip', isApproximate: true,
+    });
+  });
+
   it('ignores a country header without the proxy secret (forged by a client)', async () => {
     const c = await resolveDeliveryContext(db, settingsWith(on), req({ 'x-nx-ip-country': 'BR', 'x-nx-proxy-secret': 'nope' }));
     expect(c).toMatchObject({ detectedCountry: null, deliveryCountry: 'US', source: 'default', isApproximate: true });

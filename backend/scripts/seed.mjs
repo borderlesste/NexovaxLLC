@@ -266,7 +266,7 @@ async function placeOrder(t, address, items, prefer, payment) {
     shipping[g.sellerId] = opt.code;
   }
   const quote = await api.post(t, '/checkout/quote', { addressId: address.id, shipping });
-  const body = { addressId: address.id, shipping, idempotencyKey: randomUUID(), ...payment };
+  const body = { addressId: address.id, addressVersion: quote.addressVersion, shipping, idempotencyKey: randomUUID(), ...payment };
   let res = await api.post(t, '/checkout/place', body);
   // Real card processor (Stripe, test mode): the browser would confirm the PaymentIntent with the
   // Payment Element; the seed confirms it server-side with Stripe's test payment methods.
@@ -473,7 +473,7 @@ async function main() {
       await api.post(juan, '/cart/items', { variantId: stocked(shoes).id, quantity: 1 });
       const q = await api.post(juan, '/checkout/quote', { addressId: addr.juanDO.id });
       if (q.groups[0].shippingOptions.some((o) => o.provider === 'SHIPPO')) warn('Shippo devolvió tarifas domésticas en RD');
-      const placed = await api.post(juan, '/checkout/place', { addressId: addr.juanDO.id, shipping: { [q.groups[0].sellerId]: q.groups[0].shippingOptions[0].code }, ...CARD('Juan Perez', '4000000000000002'), idempotencyKey: randomUUID() });
+      const placed = await api.post(juan, '/checkout/place', { addressId: addr.juanDO.id, addressVersion: q.addressVersion, shipping: { [q.groups[0].sellerId]: q.groups[0].shippingOptions[0].code }, ...CARD('Juan Perez', '4000000000000002'), idempotencyKey: randomUUID() });
       if (placed.paymentAction?.provider === 'STRIPE') {
         await stripeConfirm(placed.paymentAction.clientSecret, 'pm_card_chargeDeclined');
         await call(juan, 'POST', `/checkout/${placed.checkoutId}/payments/stripe/confirm`, {}, { expect: 402 });
