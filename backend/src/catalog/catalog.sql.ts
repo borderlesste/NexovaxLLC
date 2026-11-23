@@ -1,4 +1,5 @@
 import { realOrder } from '../common/live-orders';
+import { activeAffiliateProgramSql } from '../promotions/affiliates.sql';
 /**
  * Shared SQL fragments for catalog read models.
  * Prices come from the pricing domain (active variant_price_versions); stock is
@@ -28,7 +29,11 @@ export const PRODUCT_CARD_SELECT = (currencyParam: string) => `
   coalesce(rv.avg_rating, 0)::numeric(3,2)::text as rating,
   coalesce(rv.review_count, 0)::int as review_count,
   coalesce(st.available, 0)::int as stock,
-  coalesce(sold.qty, 0)::int as sold_count`;
+  coalesce(sold.qty, 0)::int as sold_count,
+  (p.status in ('ACTIVE','OUT_OF_STOCK') and exists (
+    select 1 from (${activeAffiliateProgramSql('p.seller_id')}) affiliate
+     where affiliate.product_ids is null or affiliate.product_ids ? p.id::text
+  )) as affiliate_commission_enabled`;
 
 export const PRODUCT_CARD_JOINS = (currencyParam: string) => `
   join public.sellers s on s.id = p.seller_id
@@ -75,6 +80,7 @@ export function mapProductCard(r: any) {
     reviewCount: r.review_count,
     stock: r.stock,
     soldCount: r.sold_count,
+    affiliateCommissionEnabled: r.affiliate_commission_enabled === true,
     createdAt: r.created_at,
   };
 }

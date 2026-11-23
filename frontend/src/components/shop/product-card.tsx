@@ -4,6 +4,7 @@ import { Heart, ImageOff, ShoppingCart, Star, Store } from 'lucide-react';
 import { useState } from 'react';
 import { money, cn } from '@/lib/utils';
 import { useToggleFavorite } from './hooks';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { get } from '@/lib/api';
 import { useAddToCart } from './hooks';
@@ -21,6 +22,7 @@ export interface ProductCardData {
   rating: number;
   reviewCount: number;
   stock?: number;
+  affiliateCommissionEnabled?: boolean;
   seller: { name: string; slug: string; verified?: boolean };
 }
 
@@ -117,6 +119,9 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         <span className="whitespace-nowrap text-lg font-extrabold">{p.price ? money(p.price) : '—'}</span>
         {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) && <span className="whitespace-nowrap text-xs text-muted line-through">{money(p.compareAtPrice)}</span>}
       </div>
+      {p.affiliateCommissionEnabled === true && (
+        <Badge tone="green" className="mt-1.5 self-start whitespace-normal">{t('Gana comisión al compartir')}</Badge>
+      )}
       {showAddToCart && (
         <Button size="sm" className="mt-2 w-full" onClick={quickAdd} loading={adding} disabled={out}>
           <ShoppingCart /> {out ? t('Agotado') : t('Añadir al carrito')}

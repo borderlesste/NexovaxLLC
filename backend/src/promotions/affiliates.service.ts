@@ -7,6 +7,7 @@ import { RequestUser } from '../auth/auth';
 import { applyRate, fromMinor, Minor } from '../common/money';
 import { orderRef } from '../common/refs';
 import { NotificationsService } from '../notifications/notifications.service';
+import { activeAffiliateProgramSql } from './affiliates.sql';
 
 export interface ProgramInput {
   enabled: boolean;
@@ -149,24 +150,14 @@ export class AffiliatesService {
 
   /** Active program terms for a store (rule in force), or null. */
   private async active(sellerId: string, c?: PoolClient) {
-    const r = await this.db.one(
-      `select p.id as program_id, p.attribution_window_days, cand.rule_version_id, cand.conditions, d.percentage_rate::text as rate
-         from public.nx_seller_affiliate_programs nsp join public.referral_programs p on p.id = nsp.program_id and p.status = 'ACTIVE'
-         join public.business_rule_groups g on g.id = nsp.rule_group_id and g.status = 'ACTIVE'
-         join lateral (select * from public.get_business_rule_candidates('REFERRAL_COMMISSION', nsp.seller_id, null, null, null, now()) x
-                        where x.rule_group_id = nsp.rule_group_id order by x.effective_from desc, x.version_number desc limit 1) cand on true
-         join public.referral_rule_definitions d on d.rule_version_id = cand.rule_version_id and d.program_id = p.id
-        where nsp.seller_id = $1`,
-      [sellerId],
-      c,
-    );
+    const r = await this.db.one(activeAffiliateProgramSql('$1'), [sellerId], c);
     if (!r) return null;
     return {
       programId: r.program_id as string,
       windowDays: r.attribution_window_days as number,
       ruleVersionId: r.rule_version_id as string,
       rate: r.rate as string,
-      productIds: (Array.isArray(r.conditions?.productIds) && r.conditions.productIds.length ? r.conditions.productIds : null) as string[] | null,
+      productIds: r.product_ids as string[] | null,
     };
   }
 
