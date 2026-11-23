@@ -62,12 +62,15 @@ export function ProductImage({ src, alt, className, sizes, priority }: { src?: s
   );
 }
 
-export function Stars({ value, count, size = 'sm' }: { value: number; count?: number; size?: 'sm' | 'md' }) {
+export function Stars({ value, count, countLabel, size = 'sm' }: { value: number; count?: number; countLabel?: string; size?: 'sm' | 'md' }) {
+  const textClass = cn('text-muted', size === 'sm' ? 'text-xs' : 'text-sm');
+  if (!value || count === 0) return <span className={textClass}>{t('Sin valoraciones')}</span>;
+
   return (
-    <span className={cn('inline-flex items-center gap-1 text-muted', size === 'sm' ? 'text-xs' : 'text-sm')}>
-      <Star className={cn('fill-amber-400 text-amber-400', size === 'sm' ? 'size-3.5' : 'size-4')} />
-      <b className="font-semibold text-ink">{value ? value.toFixed(1) : '—'}</b>
-      {count !== undefined && <span>({count.toLocaleString(getIntlLocale())})</span>}
+    <span className={cn('inline-flex items-center gap-1', textClass)}>
+      <Star aria-hidden="true" className={cn('fill-amber-400 text-amber-400', size === 'sm' ? 'size-3.5' : 'size-4')} />
+      <b className="font-semibold text-ink">{value.toFixed(1)}</b>
+      {count !== undefined && <span>({count.toLocaleString(getIntlLocale())}{countLabel && ` ${countLabel}`})</span>}
     </span>
   );
 }
@@ -112,7 +115,7 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         <Link href={`/tienda/${p.seller.slug}`} className="flex min-w-0 items-center gap-1 text-xs text-muted hover:text-brand-700">
           <Store className="size-3.5 shrink-0" /> <span className="truncate">{p.seller.name}</span>
         </Link>
-        <span className="shrink-0"><Stars value={p.rating} count={p.reviewCount} /></span>
+        {p.reviewCount > 0 && <span className="shrink-0"><Stars value={p.rating} count={p.reviewCount} /></span>}
       </div>
       <AvailabilityLine productId={p.id} className="mt-1" />
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2">

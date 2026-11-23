@@ -58,6 +58,7 @@ export function ProductDetail({ initial }: { initial: any }) {
   const compare = variant?.compareAtPrice ?? p.compareAtPrice;
   const discount = price && compare && Number(compare) > Number(price) ? Math.round((1 - Number(price) / Number(compare)) * 100) : null;
   const stock = variant?.stock ?? 0;
+  const hasReviews = p.reviewCount > 0;
   const images = p.images.length ? p.images : [{ url: null, alt: p.title }];
   // show the photo of the chosen variant (e.g. the selected color) when the seller linked one
   useEffect(() => {
@@ -218,7 +219,7 @@ export function ProductDetail({ initial }: { initial: any }) {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-              <span className="inline-flex items-center gap-1"><Star className="size-4 fill-amber-400 text-amber-400" /> <b className="text-ink">{p.sellerStats.rating ? p.sellerStats.rating.toFixed(1) : '—'}</b> ({p.sellerStats.reviews.toLocaleString(getIntlLocale())} {t('valoraciones)')}</span>
+              <Stars value={p.sellerStats.rating} count={p.sellerStats.reviews} countLabel={t('valoraciones')} size="md" />
               <span className="inline-flex items-center gap-1"><Box className="size-4" /> <b className="text-ink">{p.sellerStats.products.toLocaleString(getIntlLocale())}</b> {t('productos')}</span>
             </div>
             <Button variant="soft" className="mt-4 w-full" onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> {t('Contactar vendedor')}</Button>
@@ -271,20 +272,20 @@ export function ProductDetail({ initial }: { initial: any }) {
               ) : <Empty title={t('Sin especificaciones')} description={t('El vendedor no agregó especificaciones técnicas.')} />
             )}
             {tab === 'reviews' && (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
-                <div>
-                  <p className="text-4xl font-extrabold">{p.rating ? p.rating.toFixed(1) : '—'}</p>
+              <div className={cn('grid grid-cols-1 gap-6', hasReviews && 'md:grid-cols-[220px_minmax(0,1fr)]')}>
+                {hasReviews && <div>
+                  <p className="text-4xl font-extrabold">{p.rating.toFixed(1)}</p>
                   <Stars value={p.rating} count={p.reviewCount} size="md" />
                   <div className="mt-3 space-y-1">
                     {p.ratingDistribution.map((d: any) => (
                       <div key={d.rating} className="flex items-center gap-2 text-xs">
                         <span className="w-3">{d.rating}</span><Star className="size-3 fill-amber-400 text-amber-400" />
-                        <div className="h-2 flex-1 rounded-full bg-brand-50"><div className="h-2 rounded-full bg-brand-600" style={{ width: `${p.reviewCount ? (d.count / p.reviewCount) * 100 : 0}%` }} /></div>
+                        <div className="h-2 flex-1 rounded-full bg-brand-50"><div className="h-2 rounded-full bg-brand-600" style={{ width: `${(d.count / p.reviewCount) * 100}%` }} /></div>
                         <span className="w-6 text-right text-muted">{d.count}</span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </div>}
                 <div className="space-y-4">
                   {reviews.data?.items?.length ? reviews.data.items.map((r: any) => (
                     <div key={r.id} className="border-b border-line pb-4">
