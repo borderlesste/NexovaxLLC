@@ -98,7 +98,7 @@ export interface GoogleSettings {
   merchantFeedEnabled: boolean;
   /** Countries whose flat shipping price goes in each item (g:shipping); empty = the marketplace's default country. */
   merchantShippingCountries: string[];
-  /** Condition declared for every item (the catalog has no per-product condition yet). */
+  /** Fallback condition for items whose seller has not specified one. */
   merchantCondition: 'new' | 'used' | 'refurbished';
   /** List out-of-stock products as out_of_stock instead of leaving them out. */
   merchantIncludeOutOfStock: boolean;

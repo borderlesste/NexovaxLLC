@@ -552,17 +552,8 @@ async function main() {
           ok(`${name}: ${o.orderNumber} rastreo Shippo → ${a.status} → ${b.status}`);
         } else {
           await api.post(t, `/seller/shipments/${sh.id}/tracking`, { status: 'OUT_FOR_DELIVERY', city: sh.toCity ?? undefined });
-          // Sellers can't self-declare delivery: the buyer confirms receipt.
-          let confirmed = false;
-          for (const buyer of [juan, maria]) {
-            try {
-              await api.post(buyer, `/orders/shipments/${sh.id}/confirm-delivery`);
-              confirmed = true;
-              break;
-            } catch {}
-          }
-          if (confirmed) ok(`${name}: ${o.orderNumber} entregado (confirmado por el comprador)`);
-          else warn(`${name}: ${o.orderNumber} en ruta; pendiente de confirmación del comprador`);
+          await api.post(t, `/seller/shipments/${sh.id}/tracking`, { status: 'DELIVERED', city: sh.toCity ?? undefined });
+          ok(`${name}: ${o.orderNumber} entregado (confirmado por el vendedor)`);
         }
       }
     }

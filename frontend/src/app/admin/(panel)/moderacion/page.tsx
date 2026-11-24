@@ -13,7 +13,8 @@ import { Input, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { Empty, Pagination, Segmented, Spinner } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
-import { t } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
+import { productMetadataLabels } from '@/lib/product-metadata';
 
 function Moderation() {
   const sp = useSearchParams();
@@ -46,6 +47,7 @@ function Moderation() {
     }
   };
   const r = review.data;
+  const labels = productMetadataLabels(getLocale());
   const checks = r ? [[t('Información completa (título, descripción, categoría)'), r.checklist.complete], [t('Imágenes de calidad y reales del producto'), r.checklist.images], [t('Precio y stock válidos'), r.checklist.priceStock], [t('Cumple con las políticas del marketplace'), r.checklist.policies]] : [];
   return (
     <>
@@ -91,15 +93,21 @@ function Moderation() {
               </div>
               <div className="space-y-5 p-5">
                 <div className="flex gap-3">
-                  <div className="grid w-[55%] grid-cols-[1fr_56px] gap-2">
-                    <ProductImage src={r.media[0]?.url} alt="" className="row-span-3 aspect-square rounded-xl bg-surface" />
-                    {r.media.slice(1, 4).map((m: any) => <img key={m.id} src={m.url} alt="" className="aspect-square rounded-lg bg-surface object-contain" />)}
+                  <div className="grid w-[55%] content-start grid-cols-2 gap-2">
+                    {r.media.map((m: any, i: number) => {
+                      const variant = r.variants.find((v: any) => v.id === m.variantId);
+                      return <figure key={m.id} className={i === 0 ? 'col-span-2' : undefined}>
+                        <ProductImage src={m.url} alt={r.title} className="aspect-square w-full rounded-lg bg-surface" />
+                        {variant && <figcaption className="break-words text-xs text-muted">{[...Object.values(variant.optionValues), variant.sku].join(' · ')}</figcaption>}
+                      </figure>;
+                    })}
                   </div>
                   <div className="min-w-0 flex-1 space-y-1 text-sm">
                     <p className="text-lg font-extrabold leading-tight">{r.title}</p>
                     <p className="text-muted">{t('SKU:')}{' '}{r.variants[0]?.sku}</p>
                     <p><span className="text-muted">{t('Vendedor:')}</span> {r.seller.name} <StatusBadge status={r.seller.status} /></p>
                     <p><span className="text-muted">{t('Categoría:')}</span> {r.category}</p>
+                    {r.condition && <p><span className="text-muted">{labels.condition}</span> <b>{r.condition === 'USED' ? labels.used : labels.new}</b></p>}
                     <p><span className="text-muted">{t('Precio:')}</span> <b>{r.variants[0]?.price ? money(r.variants[0].price) : '—'}</b></p>
                     <p><span className="text-muted">{t('Stock:')}</span> <b>{r.variants.reduce((a: number, v: any) => a + v.stock, 0)} {t('unidades')}</b> · {r.variants.length} {t('variantes')}</p>
                   </div>
@@ -108,6 +116,10 @@ function Moderation() {
                   <p className="mb-2 flex items-center gap-2 font-bold"><FileText className="size-4 text-brand-600" /> {t('Descripción del vendedor')}</p>
                   <p className="max-h-36 overflow-y-auto whitespace-pre-line rounded-xl border border-line bg-surface/60 p-3 text-sm">{r.description}</p>
                 </div>
+                {r.sizeGuide && <div>
+                  <p className="mb-2 font-bold">{labels.sizeGuide}</p>
+                  <p className="max-h-36 overflow-y-auto whitespace-pre-line break-words rounded-xl border border-line p-3 text-sm">{r.sizeGuide}</p>
+                </div>}
                 <div>
                   <p className="mb-2 flex items-center gap-2 font-bold"><ClipboardCheck className="size-4 text-brand-600" /> {t('Checklist de revisión')}</p>
                   <ul className="divide-y divide-line rounded-xl border border-line text-sm">

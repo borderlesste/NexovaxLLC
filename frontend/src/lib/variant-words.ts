@@ -21,7 +21,6 @@ const COLORS: (Word & { hex: string })[] = [
   { es: 'Naranja', en: 'Orange', fr: 'Orange', ht: 'Zoranj', hex: '#f97316' },
   { es: 'Marrón', en: 'Brown', fr: 'Marron', ht: 'Mawon', hex: '#7c4a1d' },
   { es: 'Beige', en: 'Beige', fr: 'Beige', ht: 'Bèj', hex: '#e7d9c4' },
-  // Recognized when typed (not offered as presets).
   { es: 'Azul marino', en: 'Navy blue', fr: 'Bleu marine', ht: 'Ble maren', hex: '#1e3a8a' },
   { es: 'Azul claro', en: 'Light blue', fr: 'Bleu clair', ht: 'Ble pal', hex: '#93c5fd' },
   { es: 'Azul oscuro', en: 'Dark blue', fr: 'Bleu foncé', ht: 'Ble fonse', hex: '#1e40af' },
@@ -46,7 +45,6 @@ const COLORS: (Word & { hex: string })[] = [
   { es: 'Bronce', en: 'Bronze', fr: 'Bronze', ht: 'Bwonz', hex: '#cd7f32' },
   { es: 'Cobre', en: 'Copper', fr: 'Cuivre', ht: 'Kwiv', hex: '#b87333' },
 ];
-const PRESET_COLORS = COLORS.slice(0, 12);
 
 const SIZES: Word[] = [
   { es: 'Pequeño', en: 'Small', fr: 'Petit', ht: 'Piti' },
@@ -91,7 +89,7 @@ export const quickOptions = (locale: string) => (['color', 'clothing', 'size'] a
 export function presetsFor(name: string, locale: string): string[] {
   const l = lang(locale);
   const k = kindOf(name);
-  if (k === 'color') return PRESET_COLORS.map((c) => c[l]);
+  if (k === 'color') return COLORS.map((c) => c[l]);
   if (k === 'clothing') return CLOTHING_SIZES;
   if (k === 'size') return SIZES.map((s) => s[l]);
   return [];

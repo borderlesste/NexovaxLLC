@@ -31,6 +31,8 @@ import { OrdersController } from './orders/orders.controller';
 import { SellerService } from './seller/seller.service';
 import { ProductImportService } from './seller/product-import.service';
 import { ProductImportController } from './seller/product-import.controller';
+import { PreordersService } from './preorders/preorders.service';
+import { PreordersController } from './preorders/preorders.controller';
 import { SellerController } from './seller/seller.controller';
 import { MessagingService } from './messaging/messaging.service';
 import { MessagingController } from './messaging/messaging.controller';
@@ -94,7 +96,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController, PreordersController],
   providers: [
     DbService,
     SettingsService,
@@ -107,6 +109,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     OrdersService,
     SellerService,
     ProductImportService,
+    PreordersService,
     MessagingService,
     SupportService,
     AdminService,

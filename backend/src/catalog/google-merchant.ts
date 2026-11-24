@@ -31,7 +31,7 @@ export function validGtin(code: string | null | undefined): string | null {
 
 type Row = {
   id: string; slug: string; title: string; short_description: string | null; description: string | null; requires_shipping: boolean;
-  brand: string | null; store: string; origin: string | null; category_path: string | null;
+  item_condition: 'NEW' | 'USED' | null; brand: string | null; store: string; origin: string | null; category_path: string | null;
   price: string | null; compare_at: string | null; sku: string | null; barcode: string | null; stock: number;
   weight_value: string | null; weight_unit: string | null; images: string[];
   store_mode: string | null; store_countries: string[] | null; product_mode: string | null; product_countries: string[] | null;
@@ -64,7 +64,7 @@ export async function googleMerchantFeed(db: DbService, settings: SettingsServic
   const rates = (s['shipping.rates'] ?? []).filter((r) => r.code !== 'PICKUP');
 
   const rows = await db.many<Row>(
-    `select p.id, p.slug, p.title, p.short_description, p.description, p.requires_shipping,
+    `select p.id, p.slug, p.title, p.short_description, p.description, p.requires_shipping, p.item_condition,
             b.name as brand, coalesce(ssp.display_name, s.slug) as store,
             (select a.country_code from public.seller_ship_from_addresses a where a.seller_id = p.seller_id and a.status = 'ACTIVE'
               order by a.is_default desc, a.created_at limit 1) as origin,
@@ -120,7 +120,7 @@ export async function googleMerchantFeed(db: DbService, settings: SettingsServic
       `<g:availability>${inStock ? 'in_stock' : 'out_of_stock'}</g:availability>`,
       `<g:price>${money(onSale ? r.compare_at! : r.price!, currency)}</g:price>`,
       ...(onSale ? [`<g:sale_price>${money(r.price!, currency)}</g:sale_price>`] : []),
-      `<g:condition>${g.merchantCondition || 'new'}</g:condition>`,
+      `<g:condition>${r.item_condition?.toLowerCase() || g.merchantCondition || 'new'}</g:condition>`,
       ...(brand ? [`<g:brand>${xml(clip(brand, 70))}</g:brand>`] : []),
       ...(gtin ? [`<g:gtin>${gtin}</g:gtin>`] : []),
       ...(r.sku && brand && !gtin ? [`<g:mpn>${xml(clip(r.sku, 70))}</g:mpn>`] : []),

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AlertCircle, Bell, CreditCard, Heart, MapPin, MessageSquare, Package, RotateCcw, Shield, Store, User, Users, LayoutDashboard, Handshake, Share2, BookOpen } from 'lucide-react';
+import { AlertCircle, Bell, CalendarDays, CreditCard, Heart, MapPin, MessageSquare, Package, RotateCcw, Shield, Store, User, Users, LayoutDashboard, Handshake, Share2, BookOpen } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { PageLoader } from '@/components/ui/misc';
@@ -11,6 +11,7 @@ import { t } from '@/lib/i18n';
 const LINKS = [
   ['/cuenta/perfil', 'Mi perfil', User],
   ['/cuenta/pedidos', 'Mis pedidos', Package],
+  ['/cuenta/reservas', 'Mis reservas', CalendarDays],
   ['/cuenta/devoluciones', 'Devoluciones', RotateCcw],
   ['/cuenta/enlaces', 'Enlaces compartidos', Share2],
   ['/cuenta/afiliados', 'Afiliados', Handshake],

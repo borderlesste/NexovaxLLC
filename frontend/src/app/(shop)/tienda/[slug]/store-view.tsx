@@ -90,8 +90,8 @@ export function StoreView({ initial }: { initial: any }) {
       <Breadcrumbs items={[{ label: t('Vendedores'), href: '/vendedores' }, { label: store.name }]} />
       <section className="relative mt-4 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 via-brand-200 to-brand-400">
         {store.bannerUrl && <img src={store.bannerUrl} alt="" className="absolute inset-0 size-full object-cover opacity-70" />}
-        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
-          <div className="grid size-32 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg">
+        <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
+          <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg sm:size-28">
             {store.logoUrl ? <img src={store.logoUrl} alt={store.name} className="size-full object-cover" /> : <LogoMark className="size-16" />}
           </div>
           <div className="min-w-0">

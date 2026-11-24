@@ -42,7 +42,7 @@ async function Hero({ preview }: { preview: any[] }) {
             <div className="grid grid-cols-4 gap-2">
               {(preview.length ? preview : Array.from({ length: 4 })).slice(0, 4).map((p: any, i) => (
                 <div key={i} className="rounded-lg bg-surface p-1.5">
-                  <ProductImage src={p?.imageUrl} alt={p?.title ?? ''} sizes="80px" className="aspect-square w-full rounded-md" />
+                  <ProductImage src={p?.imageUrl} alt={p?.title ?? ''} sizes="80px" className="aspect-square w-full rounded-md object-cover" />
                   <div className="mt-1 h-1.5 w-3/4 rounded bg-brand-100" />
                 </div>
               ))}
@@ -84,8 +84,8 @@ export default async function HomePage() {
         </div>
       </section>
       <div className="mx-auto max-w-[1400px] px-4 lg:px-8">
-        <section className="mt-12">
-          <div className="mb-5 flex items-end justify-between">
+        <section className="mt-7 lg:mt-9">
+          <div className="mb-3 flex items-end justify-between">
             <h2 className="text-2xl font-extrabold">{t('Explora por categorías')}</h2>
             <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver todas las categorías')} <ArrowRight className="size-4" /></Link>
           </div>
@@ -103,10 +103,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <Recommendations context="home" limit={12} className="mt-12" reserveSpace />
+        <Recommendations context="home" limit={12} className="mt-7 lg:mt-9" reserveSpace />
 
-        {featuredOn && <section className="mt-12" data-featured-section>
-          <div className="mb-5 flex items-end justify-between">
+        {featuredOn && <section className="mt-7 lg:mt-9" data-featured-section>
+          <div className="mb-3 flex items-end justify-between">
             <h2 className="text-2xl font-extrabold">{t('Productos destacados')}</h2>
             <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver más productos')} <ArrowRight className="size-4" /></Link>
           </div>
@@ -118,8 +118,8 @@ export default async function HomePage() {
         </section>}
 
         {data?.deals?.length ? (
-          <section className="mt-12">
-            <div className="mb-5 flex items-end justify-between">
+          <section className="mt-7 lg:mt-9">
+            <div className="mb-3 flex items-end justify-between">
               <h2 className="text-2xl font-extrabold">{t('Ofertas de la semana')}</h2>
               <Link href="/catalogo?onSale=true" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver ofertas')} <ArrowRight className="size-4" /></Link>
             </div>
@@ -127,7 +127,7 @@ export default async function HomePage() {
           </section>
         ) : null}
 
-        <section className="mt-12">
+        <section className="mt-7 lg:mt-9">
           <Link href="/vendedor/registro" className="card relative flex flex-col items-start gap-5 overflow-hidden bg-gradient-to-r from-brand-50 to-white p-6 transition hover:shadow-lg sm:flex-row sm:items-center" data-seller-banner>
             <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Store className="size-8" /></div>
             <div className="flex-1">
@@ -138,8 +138,8 @@ export default async function HomePage() {
           </Link>
         </section>
 
-        <section className="mt-12" data-guarantees>
-          <div className="mb-6 max-w-3xl">
+        <section className="mt-7 lg:mt-9" data-guarantees>
+          <div className="mb-4 max-w-3xl">
             <h2 className="text-2xl font-extrabold">{t('Tu compra, respaldada de principio a fin')}</h2>
             <p className="mt-1 text-muted">{t('Comprar fuera de tu país no debería ser complicado. Nosotros nos encargamos de que todo sea transparente.')}</p>
           </div>

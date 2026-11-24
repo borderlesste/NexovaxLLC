@@ -79,7 +79,7 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
   const title = current?.name ?? (sp.get('q') ? t('Resultados para “{a}”', { a: sp.get('q') }) : sp.get('onSale') ? t('Ofertas') : t('Todos los productos'));
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8">
+    <div className="mx-auto max-w-[1400px] px-4 py-4 lg:px-8">
       <Breadcrumbs items={[{ label: t('Catálogo'), href: '/catalogo' }, ...path.map((c: any) => ({ label: t(c.name), href: `/catalogo/categorias/${c.slug}` }))]} />
       <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -94,7 +94,7 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
           </Select>
         </div>
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className={cn('card h-fit space-y-6 p-5', !showFilters && 'hidden lg:block')}>
           <div className="flex items-center justify-between">
             <p className="text-lg font-bold">{t('Filtros')}</p>
@@ -157,7 +157,7 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
           {q.data && q.data.items.length > 0 && (
             <>
               <ProductGrid items={q.data.items} cols="xl:grid-cols-4" showAddToCart />
-              <div className="card mt-6">
+              <div className="card mt-4">
                 <Pagination page={q.data.page} pageSize={q.data.pageSize} total={q.data.total} onPage={(p) => set('page', String(p))} label={t('productos')} />
               </div>
             </>

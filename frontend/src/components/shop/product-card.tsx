@@ -23,6 +23,7 @@ export interface ProductCardData {
   rating: number;
   reviewCount: number;
   stock?: number;
+  preorderAvailable?: boolean;
   affiliateCommissionEnabled?: boolean;
   seller: { id: string; name: string; slug: string; verified?: boolean };
 }
@@ -37,11 +38,11 @@ export const CARD_SIZES = '(min-width: 1280px) 15vw, (min-width: 1024px) 24vw, (
  * only the size it shows; `sizes` says how wide it is displayed. `priority` is for the first, visible image.
  */
 export function ProductImage({ src, alt, className, sizes, priority }: { src?: string | null; alt: string; className?: string; sizes?: string; priority?: boolean }) {
-  const [err, setErr] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   // Fixed-size thumbnails (size-10 … size-28) need only that many pixels; anything else is a card.
   const fixed = /(?:^|\s)size-(\d+)(?:\s|$)/.exec(className ?? '');
   sizes ??= fixed ? `${Number(fixed[1]) * 4}px` : CARD_SIZES;
-  if (!src || err)
+  if (!src || src === failedSrc)
     return (
       <div className={cn('grid place-items-center bg-gradient-to-br from-brand-50 to-brand-100 text-brand-300', className)}>
         <ImageOff className="size-8" />
@@ -57,7 +58,7 @@ export function ProductImage({ src, alt, className, sizes, priority }: { src?: s
       loading={priority ? 'eager' : 'lazy'}
       fetchPriority={priority ? 'high' : undefined}
       decoding="async"
-      onError={() => setErr(true)}
+      onError={() => setFailedSrc(src)}
       className={cn('object-contain', className)}
     />
   );
@@ -97,8 +98,9 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
     }
   };
   const out = p.stock !== undefined && p.stock <= 0;
+  const upcoming = out && p.preorderAvailable;
   return (
-    <div className="group card relative flex flex-col overflow-hidden p-3 transition hover:-translate-y-0.5 hover:shadow-lg">
+    <div className="group card relative flex flex-col overflow-hidden p-2.5 transition hover:-translate-y-0.5 hover:shadow-lg">
       <button
         onClick={() => fav.toggle(p.id)}
         className="absolute right-4 top-4 z-10 grid size-8 place-items-center rounded-full bg-white/90 text-ink shadow-sm transition hover:text-brand-600"
@@ -108,9 +110,11 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
       </button>
       <Link href={`/producto/${p.slug}`} className="block">
         <div className="relative aspect-[5/4] overflow-hidden rounded-xl bg-surface">
-          <ProductImage src={p.imageUrl} alt={p.title} className="size-full transition duration-300 group-hover:scale-105" />
+          <ProductImage src={p.imageUrl} alt={p.title} className="size-full object-cover transition duration-300 group-hover:scale-105" />
           {p.discountPercent ? <span className="absolute left-2 top-2 rounded-md bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">-{p.discountPercent}%</span> : null}
-          {out && <span className="absolute bottom-2 left-2 rounded-md bg-ink/80 px-2 py-0.5 text-xs font-semibold text-white">{t('Agotado')}</span>}
+          {out && <span className={cn('absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-xs font-semibold', upcoming ? 'bg-amber-100 text-amber-900' : 'bg-ink/80 text-white')}>
+            {t(upcoming ? 'Próximamente en stock' : 'Agotado')}
+          </span>}
         </div>
         <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-bold leading-5 text-ink">{p.title}</h3>
       </Link>
@@ -128,11 +132,13 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
       {canEarnCommission && (
         <Badge tone="green" className="mt-1.5 self-start whitespace-normal">{t('Gana comisión al compartir')}</Badge>
       )}
-      {showAddToCart && (
+      {showAddToCart && (upcoming ? (
+        <Button asChild size="sm" className="mt-2 w-full" variant="secondary"><Link href={`/producto/${p.slug}`}>{t('Ver preorden')}</Link></Button>
+      ) : (
         <Button size="sm" className="mt-2 w-full" onClick={quickAdd} loading={adding} disabled={out}>
           <ShoppingCart /> {out ? t('Agotado') : t('Añadir al carrito')}
         </Button>
-      )}
+      ))}
     </div>
   );
 }

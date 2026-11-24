@@ -103,7 +103,7 @@ export class RoleDto {
 }
 
 export class AdminTrackingDto {
-  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'EXCEPTION']) status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION';
+  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'EXCEPTION']) status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'EXCEPTION';
   @IsOptional() @IsCleanText(0, 200) detail?: string;
 }
 

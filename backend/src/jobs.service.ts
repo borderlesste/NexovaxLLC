@@ -106,18 +106,6 @@ export class JobsService {
     }
   }
 
-  /** Closes manually tracked shipments the customer never confirmed (see AUTO_CONFIRM_DELIVERY_DAYS). */
-  @Cron(CronExpression.EVERY_HOUR)
-  async autoConfirmDeliveries() {
-    if (process.env.DISABLE_JOBS === 'true') return;
-    try {
-      const n = await this.orders.autoConfirmManualDeliveries();
-      if (n) this.logger.log(`Auto-confirmed deliveries: ${n}`);
-    } catch (e: any) {
-      this.logger.warn(`autoConfirmManualDeliveries: ${e.message}`);
-    }
-  }
-
   /** Product analytics: roll today's and yesterday's events into daily totals. */
   @Cron(CronExpression.EVERY_HOUR)
   async productAnalytics() {

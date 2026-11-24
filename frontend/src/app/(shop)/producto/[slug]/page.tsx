@@ -53,7 +53,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd(p, (await getSeo()).base) }} />
-      <ProductDetail initial={p} />
+      <ProductDetail key={p.id} initial={p} />
     </>
   );
 }

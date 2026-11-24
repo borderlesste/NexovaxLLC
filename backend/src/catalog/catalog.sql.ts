@@ -1,4 +1,5 @@
 import { realOrder } from '../common/live-orders';
+import { productHasPreorderSql } from '../preorders/preorders.sql';
 import { activeAffiliateProgramSql } from '../promotions/affiliates.sql';
 /**
  * Shared SQL fragments for catalog read models.
@@ -30,6 +31,8 @@ export const PRODUCT_CARD_SELECT = (currencyParam: string) => `
   coalesce(rv.review_count, 0)::int as review_count,
   coalesce(st.available, 0)::int as stock,
   coalesce(sold.qty, 0)::int as sold_count,
+  (p.status in ('ACTIVE','OUT_OF_STOCK') and s.status = 'ACTIVE' and coalesce(st.available, 0) <= 0
+    and ${productHasPreorderSql('p')}) as preorder_available,
   (p.status in ('ACTIVE','OUT_OF_STOCK') and exists (
     select 1 from (${activeAffiliateProgramSql('p.seller_id')}) affiliate
      where affiliate.product_ids is null or affiliate.product_ids ? p.id::text
@@ -79,6 +82,7 @@ export function mapProductCard(r: any) {
     rating: Number(r.rating),
     reviewCount: r.review_count,
     stock: r.stock,
+    preorderAvailable: r.preorder_available === true,
     soldCount: r.sold_count,
     affiliateCommissionEnabled: r.affiliate_commission_enabled === true,
     createdAt: r.created_at,

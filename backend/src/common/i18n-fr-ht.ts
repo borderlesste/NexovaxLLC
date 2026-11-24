@@ -1,5 +1,18 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+  "Indica una cantidad entera entre 1 y 1.000.000.": "Saisissez un nombre entier entre 1 et 1 000 000.",
+  "Indica la zona horaria de llegada.": "Indiquez le fuseau horaire de la date d’arrivée.",
+  "Indica una fecha de llegada con zona horaria.": "Indiquez une date d’arrivée avec son fuseau horaire.",
+  "Esta tienda o variante no admite cambios de preorden.": "Les précommandes de cette boutique ou de cette variante ne peuvent pas être modifiées.",
+  "La variante ya tiene existencias.": "Cette variante est déjà en stock.",
+  "La llegada debe ser futura y dentro de los cinco días desde la apertura.": "Choisissez une date d’arrivée future dans les cinq jours suivant l’ouverture de la précommande.",
+  "La cantidad prevista debe cubrir las unidades reservadas.": "La quantité prévue doit couvrir les unités déjà réservées.",
+  "Ya hay reservas para la fecha de llegada indicada.": "Des unités sont déjà réservées pour la date d’arrivée annoncée.",
+  "No puedes reservar productos de tu propia tienda.": "Vous ne pouvez pas réserver les produits de votre propre boutique.",
+  "Esta preorden ya terminó.": "Cette précommande est terminée.",
+  "Ya no quedan suficientes unidades para esta reserva.": "Il ne reste plus assez d’unités pour cette réservation.",
+  "Preorden no encontrada.": "Précommande introuvable.",
+  "Reserva no encontrada.": "Réservation introuvable.",
 "No pudimos enviar tu mensaje en este momento. Escríbenos directamente al correo de soporte.": "Nous n’avons pas pu envoyer votre message pour le moment. Écrivez-nous directement à l’adresse e-mail du support.",
 "Este pago se hizo con dinero real y los pagos están en modo de prueba: no se puede reembolsar desde aquí.": "Ce paiement a été fait avec de l’argent réel et les paiements sont en mode test : il ne peut pas être remboursé d’ici.",
 "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "La liste des produits en vedette a changé. Rechargez la page et réessayez.",
@@ -366,6 +379,19 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+  "Indica una cantidad entera entre 1 y 1.000.000.": "Antre yon nonb antye ant 1 ak 1 000 000.",
+  "Indica la zona horaria de llegada.": "Mete zòn lè dat arive a.",
+  "Indica una fecha de llegada con zona horaria.": "Antre dat arive a ansanm ak zòn lè li.",
+  "Esta tienda o variante no admite cambios de preorden.": "Ou pa ka chanje prèkòmand pou boutik sa a oswa varyant sa a.",
+  "La variante ya tiene existencias.": "Varyant sa a deja an stòk.",
+  "La llegada debe ser futura y dentro de los cinco días desde la apertura.": "Chwazi yon dat arive ki poko pase epi ki nan senk jou apre ouvèti prèkòmand lan.",
+  "La cantidad prevista debe cubrir las unidades reservadas.": "Kantite ki pou rive a dwe kouvri kantite moun deja rezève.",
+  "Ya hay reservas para la fecha de llegada indicada.": "Moun deja rezève atik pou dat arive ou te anonse a.",
+  "No puedes reservar productos de tu propia tienda.": "Ou pa ka rezève pwodwi nan pwòp boutik ou.",
+  "Esta preorden ya terminó.": "Prèkòmand sa a fini.",
+  "Ya no quedan suficientes unidades para esta reserva.": "Pa gen ase atik ankò pou rezèvasyon sa a.",
+  "Preorden no encontrada.": "Nou pa jwenn prèkòmand lan.",
+  "Reserva no encontrada.": "Nou pa jwenn rezèvasyon an.",
 "No pudimos enviar tu mensaje en este momento. Escríbenos directamente al correo de soporte.": "Nou pa t ka voye mesaj ou a kounye a. Ekri nou dirèkteman nan imèl sipò a.",
 "Este pago se hizo con dinero real y los pagos están en modo de prueba: no se puede reembolsar desde aquí.": "Peman sa a fèt ak lajan reyèl epi peman yo an mòd tès: nou pa ka ranbouse l isit la.",
 "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "Lis pwodwi an vedèt yo chanje. Rechaje paj la epi eseye ankò.",

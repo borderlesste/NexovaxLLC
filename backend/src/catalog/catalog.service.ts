@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { taxonomyOptionLabel } from '../common/i18n-catalog';
 import { attributeLabel } from '../common/attributes';
 import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { notFound } from '../common/errors';
 import { clampPage, clampPageSize } from '../common/paging';
+import { productHasPreorderSql } from '../preorders/preorders.sql';
 import { mapProductCard, mediaUrl, PRODUCT_CARD_JOINS, PRODUCT_CARD_SELECT } from './catalog.sql';
 
 export interface ProductQuery {
@@ -66,7 +68,10 @@ export class CatalogService {
   /** WHERE of the public listing (shared by the product list and its facets). */
   private listingWhere(query: ProductQuery, currency: string, withAttrs = true) {
     const params: unknown[] = [currency];
-    const where: string[] = [`p.status = 'ACTIVE'`, `s.status = 'ACTIVE'`, `pr.min_amount is not null`];
+    const where: string[] = [
+      `(p.status = 'ACTIVE' or (p.status = 'OUT_OF_STOCK' and ${productHasPreorderSql('p')}))`,
+      `s.status = 'ACTIVE'`, `pr.min_amount is not null`,
+    ];
     const add = (v: unknown) => {
       params.push(v);
       return `$${params.length}`;
@@ -97,7 +102,7 @@ export class CatalogService {
     return { where, params };
   }
 
-  /** Public listing of ACTIVE products from ACTIVE sellers. */
+  /** Public listings include out-of-stock products with an open preorder. */
   async listProducts(query: ProductQuery) {
     const currency = await this.settings.currency();
     const { where, params } = this.listingWhere(query, currency);
@@ -179,7 +184,7 @@ export class CatalogService {
   async productDetail(slug: string, viewerUserId?: string) {
     const currency = await this.settings.currency();
     const row = await this.db.one(
-      `select ${PRODUCT_CARD_SELECT('$2')}, p.description, p.brand_id, b.name as brand_name, p.requires_shipping,
+      `select ${PRODUCT_CARD_SELECT('$2')}, p.description, p.item_condition, p.size_guide, p.brand_id, b.name as brand_name, p.requires_shipping,
               seo.meta_title, seo.meta_description, c.parent_id as category_parent_id
          from public.products p
          ${PRODUCT_CARD_JOINS('$2')}
@@ -257,9 +262,35 @@ export class CatalogService {
       [productId, row.category_id, currency],
     );
 
+    const attributeGroups = new Map<string, typeof attributes>();
+    for (const attribute of attributes) {
+      const group = attributeGroups.get(attribute.code) ?? [];
+      group.push(attribute);
+      attributeGroups.set(attribute.code, group);
+    }
+    const specifications = [...attributeGroups.values()].map((group) => {
+      const labels = group.map((a) => {
+        const number = a.value_number != null ? `${Number(a.value_number)}${a.unit_code ? ' ' + a.unit_code : ''}` : '';
+        const es = attributeLabel(a.validation_rules, a.value_text) ?? (a.value_boolean != null ? (a.value_boolean ? 'Sí' : 'No') : number);
+        const en = attributeLabel(a.validation_rules, a.value_text, 'en') ?? (a.value_boolean != null ? (a.value_boolean ? 'Yes' : 'No') : number);
+        return { es, en };
+      });
+      return {
+        code: group[0].code, name: group[0].name,
+        value: labels.map((l) => l.es).join(', '),
+        valueEn: labels.map((l) => l.en).join(', '),
+        ...(labels.length > 1 ? {
+          valueFr: labels.map((l) => taxonomyOptionLabel(l.es, l.en, 'fr')).join(', '),
+          valueHt: labels.map((l) => taxonomyOptionLabel(l.es, l.en, 'ht')).join(', '),
+        } : {}),
+      };
+    });
+
     return {
       ...mapProductCard(row),
       description: row.description,
+      condition: row.item_condition ?? null,
+      sizeGuide: row.size_guide ?? null,
       brand: row.brand_id ? { id: row.brand_id, name: row.brand_name } : null,
       requiresShipping: row.requires_shipping,
       seo: { title: row.meta_title ?? row.title, description: row.meta_description ?? row.short_description },
@@ -275,16 +306,7 @@ export class CatalogService {
         stock: v.stock,
         optionValues: v.option_values,
       })),
-      specifications: attributes.map((a: any) => {
-        const num = a.value_number != null ? `${Number(a.value_number)}${a.unit_code ? ' ' + a.unit_code : ''}` : null;
-        return {
-          code: a.code,
-          name: a.name,
-          value: a.value_text != null ? attributeLabel(a.validation_rules, a.value_text, 'es') : num ?? (a.value_boolean != null ? (a.value_boolean ? 'Sí' : 'No') : ''),
-          // English label; the locale interceptor swaps it in for English clients.
-          valueEn: a.value_text != null ? attributeLabel(a.validation_rules, a.value_text, 'en') : num ?? (a.value_boolean != null ? (a.value_boolean ? 'Yes' : 'No') : ''),
-        };
-      }),
+      specifications,
       ratingDistribution: [5, 4, 3, 2, 1].map((n) => ({ rating: n, count: ratingDist.find((d: any) => d.rating === n)?.count ?? 0 })),
       breadcrumbs,
       sellerStats,

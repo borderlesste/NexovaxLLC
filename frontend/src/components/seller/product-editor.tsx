@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { getLocale, t } from '@/lib/i18n';
+import { productMetadataLabels } from '@/lib/product-metadata';
+import { SellerProductPreorders } from '@/components/seller/product-preorders';
+import { MediaVariantSelect } from '@/components/seller/media-variant-select';
 import { ShippingDimensions } from '@/components/seller/shipping-dimensions';
 import { DestinationsCard, type DestinationDraft } from '@/components/seller/destinations-card';
 import { isColorOption, presetsFor, quickOptions, sameOption, sameWord, swatchFor } from '@/lib/variant-words';
@@ -33,17 +36,18 @@ const skuPart = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUppe
 
 export function ProductEditor({ productId }: { productId?: string }) {
   const router = useRouter();
+  const labels = productMetadataLabels(getLocale());
   const qc = useQueryClient();
   const existing = useQuery({ queryKey: ['seller-product', productId], queryFn: () => get(`/seller/products/${productId}`), enabled: !!productId });
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get('/categories'), staleTime: 300_000 });
   const moderation = useQuery({ queryKey: ['public-config'], queryFn: () => get<any>('/config/public'), staleTime: 60_000 }).data?.productModeration === true;
   const [loaded, setLoaded] = useState(!productId);
   const [dest, setDest] = useState<DestinationDraft>({ mode: 'ALL', countries: [] });
-  const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', taxClass: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
+  const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', condition: 'NEW', sizeGuide: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
   const [options, setOptions] = useState<Opt[]>([]);
   const [variants, setVariants] = useState<Var[]>([{ key: 'default', optionValues: {}, sku: '', price: '', compareAtPrice: '', stock: '0', active: true }]);
   const [ship, setShip] = useState({ weightKg: '', lengthCm: '', widthCm: '', heightCm: '' });
-  const [attrs, setAttrs] = useState<Record<string, string>>({});
+  const [attrs, setAttrs] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState<null | 'draft' | 'submit'>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -54,7 +58,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
     if (!product || !cats.data || loaded) return;
     const parent = cats.data.find((c: any) => c.id === product.categoryId || c.children.some((k: any) => k.id === product.categoryId));
     setF({
-      title: product.title, parentCategoryId: parent?.id ?? '', categoryId: product.categoryId, taxClass: product.taxClass ?? '', brandName: product.brandName ?? '', shortDescription: product.shortDescription ?? '',
+      title: product.title, parentCategoryId: parent?.id ?? '', categoryId: product.categoryId, condition: product.condition ?? '', sizeGuide: product.sizeGuide ?? '', brandName: product.brandName ?? '', shortDescription: product.shortDescription ?? '',
       description: product.description ?? '', slug: product.seo.slug ?? '', metaTitle: product.seo.metaTitle ?? '', metaDescription: product.seo.metaDescription ?? '',
     });
     setOptions(product.options.map((o: any) => ({ name: o.name, values: o.values.map((v: any) => ({ label: v.label, swatch: v.swatch })) })));
@@ -63,13 +67,14 @@ export function ProductEditor({ productId }: { productId?: string }) {
     })));
     const v0 = product.variants[0];
     if (v0) setShip({ weightKg: v0.weightKg ? String(Number(v0.weightKg)) : '', lengthCm: v0.lengthCm ? String(Number(v0.lengthCm)) : '', widthCm: v0.widthCm ? String(Number(v0.widthCm)) : '', heightCm: v0.heightCm ? String(Number(v0.heightCm)) : '' });
-    setAttrs(Object.fromEntries(product.attributes.map((a: any) => [a.definition_id, a.value])));
+    const values: Record<string, string[]> = {};
+    for (const a of product.attributes) (values[a.definition_id] ??= []).push(a.value);
+    setAttrs(values);
     setLoaded(true);
   }, [product, cats.data, loaded]);
 
   const parent = cats.data?.find((c: any) => c.id === f.parentCategoryId);
   const effectiveCategory = f.categoryId || f.parentCategoryId;
-  const categoryTaxClass: string = (cats.data ?? []).flatMap((c: any) => [c, ...c.children]).find((c: any) => c.id === effectiveCategory)?.taxClass ?? 'STANDARD';
   const attrDefs = useQuery({ queryKey: ['attr-defs', effectiveCategory], queryFn: () => get(`/seller/categories/${effectiveCategory}/attributes`), enabled: !!effectiveCategory });
   const templates = useQuery({ queryKey: ['variant-templates', effectiveCategory], queryFn: () => get(`/seller/categories/${effectiveCategory}/variant-templates`), enabled: !!effectiveCategory });
 
@@ -80,12 +85,17 @@ export function ProductEditor({ productId }: { productId?: string }) {
     setVariants((prev) => {
       const byKey = new Map(prev.map((v) => [v.key, v]));
       const first = prev[0];
+      const usedSkus = new Set(prev.map((v) => v.sku.toUpperCase()));
       return all.map((ov) => {
         const k = keyOf(ov);
         const ex = byKey.get(k);
         if (ex) return ex;
         const suffix = Object.values(ov).map(skuPart).join('-');
-        return { key: k, optionValues: ov, sku: `${first?.sku?.split('-').slice(0, 2).join('-') || base}${suffix ? '-' + suffix : ''}`, price: first?.price ?? '', compareAtPrice: first?.compareAtPrice ?? '', stock: '0', active: true };
+        const stem = `${first?.sku?.split('-').slice(0, 2).join('-') || base}${suffix ? '-' + suffix : ''}`.slice(0, 60);
+        let sku = stem;
+        for (let n = 2; usedSkus.has(sku.toUpperCase()); n++) sku = `${stem}-${n}`;
+        usedSkus.add(sku.toUpperCase());
+        return { key: k, optionValues: ov, sku, price: first?.price ?? '', compareAtPrice: first?.compareAtPrice ?? '', stock: '0', active: true };
       });
     });
   };
@@ -98,7 +108,8 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const payload = (action: 'SAVE_DRAFT' | 'SUBMIT') => ({
     title: f.title,
     categoryId: effectiveCategory,
-    taxClass: f.taxClass || null,
+    condition: f.condition || null,
+    sizeGuide: f.sizeGuide.trim() || null,
     brandName: f.brandName || null,
     shortDescription: f.shortDescription || null,
     description: f.description,
@@ -107,7 +118,9 @@ export function ProductEditor({ productId }: { productId?: string }) {
       id: v.id, sku: v.sku, optionValues: v.optionValues, price: Number(v.price), compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null, stock: Number(v.stock || 0),
       weightKg: ship.weightKg ? Number(ship.weightKg) : null, lengthCm: ship.lengthCm ? Number(ship.lengthCm) : null, widthCm: ship.widthCm ? Number(ship.widthCm) : null, heightCm: ship.heightCm ? Number(ship.heightCm) : null,
     })),
-    attributes: Object.entries(attrs).filter(([id, v]) => v?.toString().trim() && (!attrDefs.data || attrDefs.data.some((d: any) => d.id === id))).map(([definitionId, value]) => ({ definitionId, value: String(value) })),
+    attributes: Object.entries(attrs)
+      .filter(([id]) => !attrDefs.data || attrDefs.data.some((d: AttrDef) => d.id === id))
+      .flatMap(([definitionId, values]) => values.filter((v) => v?.trim()).map((value) => ({ definitionId, value }))),
     seo: { slug: f.slug || undefined, metaTitle: f.metaTitle || undefined, metaDescription: f.metaDescription || undefined },
     action,
   });
@@ -199,10 +212,10 @@ export function ProductEditor({ productId }: { productId?: string }) {
                   <option value="">{t('Selecciona una subcategoría')}</option>{parent?.children.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
               </Field>
-              <Field label={t('Categoría fiscal')} hint={t('Define qué impuesto paga el producto en cada país. Si no sabes, déjalo según la categoría.')}>
-                <Select value={f.taxClass} onChange={(e) => setF({ ...f, taxClass: e.target.value })}>
-                  <option value="">{t('Según la categoría ({a})', { a: taxClassLabel(categoryTaxClass) })}</option>
-                  <option value="STANDARD">{t('General (tasa normal)')}</option><option value="REDUCED">{t('Reducida')}</option><option value="EXEMPT">{t('Exenta (sin impuesto)')}</option>
+              <Field label={labels.condition}>
+                <Select aria-label={labels.condition} value={f.condition} onChange={(e) => setF({ ...f, condition: e.target.value })}>
+                  {!f.condition && <option value="">{t('Selecciona')}</option>}
+                  <option value="NEW">{labels.new}</option><option value="USED">{labels.used}</option>
                 </Select>
               </Field>
               <Field label={t('Marca')}><Input rule="businessName" value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} placeholder={t('Ej. Nike, Adidas, Xiaomi')} /></Field>
@@ -210,6 +223,10 @@ export function ProductEditor({ productId }: { productId?: string }) {
               <Field label={t('Descripción del producto')} required className="sm:col-span-3">
                 <Textarea rows={6} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={5000} placeholder={t('Describe tu producto de forma clara y detallada. Incluye sus características, beneficios, materiales, uso recomendado, etc.')} />
                 <p className="mt-1 text-right text-xs text-muted">{f.description.length} {t('/ 5,000 caracteres')}</p>
+              </Field>
+              <Field label={labels.sizeGuide} className="sm:col-span-3">
+                <Textarea aria-label={labels.sizeGuide} value={f.sizeGuide} maxLength={3000} rows={3} placeholder={labels.sizeExample}
+                  onChange={(e) => setF({ ...f, sizeGuide: e.target.value })} />
               </Field>
             </div>
           </Card>
@@ -245,7 +262,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
                         if (e.key !== 'Enter' && e.key !== ',') return;
                         e.preventDefault();
                         const label = (newValue[i] ?? '').trim();
-                        if (!label || o.values.some((v) => v.label.toLowerCase() === label.toLowerCase())) return;
+                        if (!label || o.values.some((v) => sameWord(v.label, label))) return;
                         const swatch = isColor(o.name) ? swatchFor(label) : null;
                         const n = [...options];
                         n[i] = { ...o, values: [...o.values, { label, swatch }] };
@@ -329,16 +346,21 @@ export function ProductEditor({ productId }: { productId?: string }) {
                 </button>
                 {media.map((m: any) => (
                   <div key={m.id} className={cn('group relative overflow-hidden rounded-xl border-2 bg-surface', m.isPrimary ? 'border-brand-600' : 'border-line')}>
-                    <img src={m.url} alt="" className="aspect-square w-full object-contain" />
-                    <div className="absolute inset-x-0 bottom-0 flex justify-between bg-white/90 p-1 opacity-0 transition group-hover:opacity-100">
-                      <button onClick={() => mediaAction(m.id, 'primary')} title={t('Principal')} aria-label={t('Principal')}><Star className={cn('size-4', m.isPrimary && 'fill-amber-400 text-amber-400')} /></button>
-                      <button onClick={() => mediaAction(m.id, 'delete')} title={t('Eliminar')} aria-label={t('Eliminar')}><Trash2 className="size-4 text-red-600" /></button>
+                    <div className="relative">
+                      <img src={m.url} alt="" className="aspect-square w-full object-contain" />
+                      <div className="absolute inset-x-0 bottom-0 flex justify-between bg-white/90 p-1 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                        <button onClick={() => mediaAction(m.id, 'primary')} title={t('Principal')} aria-label={t('Principal')}><Star className={cn('size-4', m.isPrimary && 'fill-amber-400 text-amber-400')} /></button>
+                        <button onClick={() => mediaAction(m.id, 'delete')} title={t('Eliminar')} aria-label={t('Eliminar')}><Trash2 className="size-4 text-red-600" /></button>
+                      </div>
                     </div>
+                    {productId && <MediaVariantSelect productId={productId} mediaId={m.id} variantId={m.variantId} variants={product.variants} />}
                   </div>
                 ))}
               </div>
             </div>
           </Card>
+
+          <SellerProductPreorders productId={productId} variants={product?.variants ?? []} />
 
           <Card>
             <CardHeader icon={<Truck />} title={t('Envío y dimensiones')} subtitle={t('Información para el cálculo y la gestión del envío.')} />
@@ -378,7 +400,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
 export default ProductEditor;
 
 type AttrOption = { value: string; label: string; labelEn?: string };
-type AttrDef = { id: string; name: string; unit?: string | null; required: boolean; dataType: string; input: 'select' | 'combobox' | 'text' | 'number' | 'boolean'; options: AttrOption[]; suggestions: string[] };
+type AttrDef = { id: string; code: string; name: string; unit?: string | null; required: boolean; dataType: string; input: 'select' | 'combobox' | 'text' | 'number' | 'boolean'; options: AttrOption[]; suggestions: string[] };
 const VISIBLE_ATTRS = 9;
 
 /**
@@ -386,23 +408,26 @@ const VISIBLE_ATTRS = 9;
  * with the catalog options plus values other sellers already used, and numbers /
  * yes-no by type. Values the API rejects come back as field errors.
  */
-function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: Record<string, string>; onChange: (id: string, v: string) => void }) {
+function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: Record<string, string[]>; onChange: (id: string, v: string[]) => void }) {
   const [all, setAll] = useState(false);
   const en = getLocale() === 'en';
   const label = (o: AttrOption) => (en ? o.labelEn || o.label : o.label);
   // Keep every attribute that already has a value visible.
-  const shown = all ? defs : defs.filter((d, i) => i < VISIBLE_ATTRS || d.required || values[d.id]);
+  const shown = all ? defs : defs.filter((d, i) => i < VISIBLE_ATTRS || d.code === 'style' || d.required || values[d.id]?.length);
   return (
     <div className="p-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {shown.map((a) => {
-          const v = values[a.id] ?? '';
+          const v = values[a.id]?.[0] ?? '';
           const field = `${a.name}${a.unit ? ` (${a.unit})` : ''}`;
           let control: React.ReactNode;
+          if (a.code === 'style') {
+            return <StyleChoices key={a.id} def={a} values={values[a.id] ?? []} onChange={(selected) => onChange(a.id, selected)} />;
+          }
           if (a.input === 'select') {
             const known = !v || a.options.some((o) => o.value === v);
             control = (
-              <Select value={v} onChange={(e) => onChange(a.id, e.target.value)} data-attr={a.id}>
+              <Select value={v} onChange={(e) => onChange(a.id, [e.target.value])} data-attr={a.id}>
                 <option value="">{t('Selecciona')}</option>
                 {!known && <option value={v}>{v}</option>}
                 {a.options.map((o) => <option key={o.value} value={o.value}>{label(o)}</option>)}
@@ -410,12 +435,12 @@ function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: 
             );
           } else if (a.input === 'boolean') {
             control = (
-              <Select value={v} onChange={(e) => onChange(a.id, e.target.value)} data-attr={a.id}>
+              <Select value={v} onChange={(e) => onChange(a.id, [e.target.value])} data-attr={a.id}>
                 <option value="">—</option><option value="true">{t('Sí')}</option><option value="false">{t('No')}</option>
               </Select>
             );
           } else if (a.input === 'number') {
-            control = <Input rule="decimal" value={v} onChange={(e) => onChange(a.id, e.target.value)} data-attr={a.id} />;
+            control = <Input rule="decimal" value={v} onChange={(e) => onChange(a.id, [e.target.value])} data-attr={a.id} />;
           } else {
             // open list: show the label of a stored option code; typed text is matched to an option by the API
             const opt = a.options.find((o) => o.value === v);
@@ -424,7 +449,7 @@ function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: 
             control = (
               <>
                 <Input list={choices.length ? listId : undefined} value={opt ? label(opt) : v} maxLength={200} autoComplete="off" data-attr={a.id}
-                  placeholder={choices.length ? t('Elige o escribe') : undefined} onChange={(e) => onChange(a.id, e.target.value)} />
+                  placeholder={choices.length ? t('Elige o escribe') : undefined} onChange={(e) => onChange(a.id, [e.target.value])} />
                 {choices.length > 0 && <datalist id={listId}>{[...new Set(choices)].map((c) => <option key={c} value={c} />)}</datalist>}
               </>
             );
@@ -441,6 +466,39 @@ function AttributeFields({ defs, values, onChange }: { defs: AttrDef[]; values: 
   );
 }
 
-function taxClassLabel(cls: string) {
-  return cls === 'REDUCED' ? t('Reducida') : cls === 'EXEMPT' ? t('Exenta (sin impuesto)') : t('General (tasa normal)');
+function StyleChoices({ def, values, onChange }: { def: AttrDef; values: string[]; onChange: (values: string[]) => void }) {
+  const [custom, setCustom] = useState('');
+  const locale = getLocale();
+  const labels = productMetadataLabels(locale);
+  const choices = new Map(def.options.map((o) => [o.value, locale === 'en' ? o.labelEn || o.label : o.label]));
+  for (const value of [...def.suggestions, ...values]) if (!choices.has(value)) choices.set(value, value);
+
+  const addCustom = () => {
+    const text = custom.trim();
+    if (!text) return;
+    const folded = text.toLowerCase();
+    const hit = [...choices].find(([code, label]) => [code, label].some((s) => s.toLowerCase() === folded));
+    const value = hit?.[0] ?? text;
+    if (!values.includes(value)) onChange([...values, value]);
+    setCustom('');
+  };
+  return (
+    <fieldset className="space-y-2 sm:col-span-3" data-attr={def.id}>
+      <legend className="text-sm font-semibold">{def.name}{def.required ? ' *' : ''}</legend>
+      <div className="flex flex-wrap gap-2">
+        {[...choices].map(([value, label]) => (
+          <label key={value} className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-line px-2 py-1 text-sm">
+            <input type="checkbox" className="accent-brand-600" checked={values.includes(value)}
+              onChange={(e) => onChange(e.target.checked ? [...values, value] : values.filter((v) => v !== value))} />
+            {label}
+          </label>
+        ))}
+      </div>
+      {def.input !== 'select' && <div className="flex items-center gap-2">
+        <Input aria-label={labels.customStyle} placeholder={labels.customStyle} maxLength={200} value={custom} onChange={(e) => setCustom(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }} />
+        <Button type="button" variant="outline" size="sm" disabled={!custom.trim()} onClick={addCustom}><Plus /> {labels.addStyle}</Button>
+      </div>}
+    </fieldset>
+  );
 }

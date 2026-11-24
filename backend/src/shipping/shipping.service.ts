@@ -540,12 +540,14 @@ export class ShippingService {
       .catch(() => undefined);
   }
 
-  /** Registers a manually entered tracking number with Shippo when the carrier is supported (live mode). */
-  async watchManualTracking(carrierCode: string, trackingNumber: string, shipmentId: string) {
-    const carrier = CARRIERS.find((x) => x.code === carrierCode);
-    if (!carrier?.shippo || !this.shippo.enabled || this.shippo.testMode) return;
-    await this.db.exec(`update public.shipment_trackings set provider_tracking_id = $2 where shipment_id = $1 and tracking_number = $3`, [shipmentId, carrier.shippo, trackingNumber]);
-    await this.shippo.registerTrack(carrier.shippo, trackingNumber, shipmentId).catch(() => undefined);
+  /** Bind a supported manual guide to its live carrier before dispatch commits. */
+  manualTrackingProvider(carrierCode: string) {
+    if (!this.shippo.enabled || this.shippo.testMode) return null;
+    return CARRIERS.find((carrier) => carrier.code === carrierCode)?.shippo ?? null;
+  }
+
+  watchManualTracking(provider: string, trackingNumber: string, shipmentId: string) {
+    return this.shippo.registerTrack(provider, trackingNumber, shipmentId);
   }
 
   // ------------------------------------------------------------------ tracking
@@ -555,7 +557,7 @@ export class ShippingService {
    * Test mode: Shippo cannot track real carriers, so the shipment advances
    * through Shippo's own test tracking numbers (PRE_TRANSIT → TRANSIT → DELIVERED).
    */
-  async refreshTracking(trackingId: string): Promise<{ applied: number; delivered: boolean; status: string } | null> {
+  async refreshTracking(trackingId: string, allowTestProgress = false): Promise<{ applied: number; delivered: boolean; status: string } | null> {
     const t = await this.db.one(
       `select st.id, st.shipment_id, st.carrier_code, st.tracking_number, st.current_status, st.provider_tracking_id, st.source_code, sh.order_id
          from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id where st.id = $1`,
@@ -564,6 +566,7 @@ export class ShippingService {
     if (!t || !t.provider_tracking_id || ['DELIVERED', 'RETURNED'].includes(t.current_status)) return null;
     let track;
     if (this.shippo.testMode) {
+      if (!allowTestProgress) return { applied: 0, delivered: false, status: t.current_status };
       const next = t.current_status === 'PRE_TRANSIT' || t.current_status === 'UNKNOWN' ? 'SHIPPO_TRANSIT' : 'SHIPPO_DELIVERED';
       track = await this.shippo.track('shippo', next);
       // Shippo test events carry fixed past dates; stamp them now so the timeline stays ordered.
@@ -596,8 +599,16 @@ export class ShippingService {
     let last = 'UNKNOWN';
     const sorted = [...events].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
     await this.db.tx(async (c) => {
+      // Polls and webhooks can report the same event at the same time.
+      const shipment = await this.db.one(
+        `select sh.status, sh.shipped_at, st.current_status from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id
+          where st.id = $1 for update of st, sh`,
+        [t.id], c,
+      );
+      if (!shipment || ['CANCELLED', 'RETURNED'].includes(shipment.status) || shipment.current_status === 'RETURNED') return;
       for (const e of sorted) {
         const status = e.status === 'LABEL_CREATED' ? 'PRE_TRANSIT' : e.substatus === 'out_for_delivery' && e.status === 'IN_TRANSIT' ? 'OUT_FOR_DELIVERY' : e.status;
+        if (status === 'DELIVERED' && (!shipment.shipped_at || shipment.status === 'DELIVERED' || shipment.current_status === 'DELIVERED' || delivered)) continue;
         const key = `shippo:${e.objectId ?? `${e.providerStatus}:${e.at}`}`;
         const dup = await this.db.one(`select 1 from public.tracking_events where tracking_id = $1 and deduplication_key = $2`, [t.id, key], c);
         if (dup) continue;

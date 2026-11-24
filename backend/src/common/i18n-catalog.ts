@@ -40,6 +40,8 @@ function loadFrHt(): Map<string, { fr: string; ht: string }> {
 
 const FRHT = loadFrHt();
 
+export const taxonomyOptionLabel = (es: string, en: string, locale: 'fr' | 'ht') => FRHT.get(es)?.[locale] ?? en;
+
 /** French / Haitian Creole: taxonomy names and option labels; anything unknown keeps the English name, then Spanish. */
 function translateFrHt(v: any, l: 'fr' | 'ht', depth = 0): any {
   if (depth > 8 || v == null) return v;
@@ -49,9 +51,9 @@ function translateFrHt(v: any, l: 'fr' | 'ht', depth = 0): any {
     const name = (val: string) => (FRHT.has(val) || EN.has(val) ? one(val) : val.includes(' · ') ? val.split(' · ').map(one).join(' · ') : val);
     const out: any = {};
     for (const [k, val] of Object.entries(v)) {
-      if (k === 'valueEn') continue;
+      if (k === 'valueEn' || k === 'valueFr' || k === 'valueHt') continue;
       if (k === 'value' && typeof (v as any).valueEn === 'string' && typeof val === 'string') {
-        out.value = FRHT.get(val)?.[l] ?? (v as any).valueEn;
+        out.value = v[l === 'fr' ? 'valueFr' : 'valueHt'] ?? taxonomyOptionLabel(val, v.valueEn, l);
         continue;
       }
       // Attribute options / facets carry { label, labelEn }: the label shown is the localized one.
@@ -73,7 +75,7 @@ function translate(v: any, depth = 0): any {
   if (typeof v === 'object' && !(v instanceof Date) && !Buffer.isBuffer(v)) {
     const out: any = {};
     for (const [k, val] of Object.entries(v)) {
-      if (k === 'valueEn') continue;
+      if (k === 'valueEn' || k === 'valueFr' || k === 'valueHt') continue;
       if (k === 'value' && typeof (v as any).valueEn === 'string') {
         out.value = (v as any).valueEn;
         continue;

@@ -46,6 +46,12 @@ describe('Google Merchant feed', () => {
     expect(y).toContain('<g:availability>out_of_stock</g:availability>');
   });
 
+  it('uses each listing condition and preserves the configured fallback for older products', async () => {
+    const products = [row({ item_condition: 'USED' }), row({ item_condition: 'NEW' }), row()];
+    const xml = await googleMerchantFeed(db(products), settings({ merchantCondition: 'refurbished' }) as any);
+    expect(xml?.match(/<g:condition>[^<]+/g)).toEqual(['<g:condition>used', '<g:condition>new', '<g:condition>refurbished']);
+  });
+
   it('accepts only GTINs with a valid check digit', () => {
     expect(validGtin('4006381333931')).toBe('4006381333931');
     expect(validGtin('4006381333932')).toBeNull();

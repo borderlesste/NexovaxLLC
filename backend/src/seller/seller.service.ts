@@ -60,6 +60,8 @@ export interface ProductInput {
   title: string;
   categoryId: string;
   taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT' | null;
+  condition?: 'NEW' | 'USED' | null;
+  sizeGuide?: string | null;
   brandName?: string | null;
   shortDescription?: string | null;
   description: string;
@@ -361,10 +363,10 @@ export class SellerService {
            from public.product_variants v where v.product_id = $1 and v.status <> 'ARCHIVED' order by v.is_default desc, v.created_at`,
         [productId, currency],
       ),
-      this.db.many(`select id, asset_id, is_primary, sort_order from public.product_media where product_id = $1 order by is_primary desc, sort_order`, [productId]),
+      this.db.many(`select id, asset_id, is_primary, sort_order, variant_id from public.product_media where product_id = $1 order by is_primary desc, sort_order`, [productId]),
       this.db.many(
         `select pav.attribute_definition_id as definition_id, coalesce(pav.value_text, pav.value_number::text, pav.value_boolean::text) as value
-           from public.product_attribute_values pav where pav.product_id = $1`,
+           from public.product_attribute_values pav where pav.product_id = $1 order by pav.attribute_definition_id, pav.position`,
         [productId],
       ),
       this.db.one(`select status, decision_reason, reviewed_at from public.product_moderation_reviews where product_id = $1 order by created_at desc limit 1`, [productId]),
@@ -376,6 +378,8 @@ export class SellerService {
       status: p.status,
       categoryId: p.category_id,
       taxClass: p.tax_class ?? null,
+      condition: p.item_condition ?? null,
+      sizeGuide: p.size_guide ?? null,
       brandName: p.brand_name,
       shortDescription: p.short_description,
       description: p.description,
@@ -385,7 +389,7 @@ export class SellerService {
         id: v.id, sku: v.sku, status: v.status, price: v.price, compareAtPrice: v.compare_at, stock: v.stock, reserved: v.reserved,
         weightKg: v.weight, lengthCm: v.length, widthCm: v.width, heightCm: v.height, optionValues: v.option_values,
       })),
-      media: media.map((m: any) => ({ id: m.id, url: mediaUrl(m.asset_id), isPrimary: m.is_primary, sortOrder: m.sort_order })),
+      media: media.map((m: any) => ({ id: m.id, url: mediaUrl(m.asset_id), isPrimary: m.is_primary, sortOrder: m.sort_order, variantId: m.variant_id ?? null })),
       attributes,
       lastReview: review,
     };
@@ -415,17 +419,21 @@ export class SellerService {
           product.title !== input.title.trim() || (product.description ?? '') !== input.description.trim() || product.category_id !== input.categoryId;
         const slug = await this.uniqueSlug(c, input.seo?.slug || input.title, product.id);
         await this.db.exec(
-          `update public.products set title = $2, slug = $3, category_id = $4, brand_id = $5, short_description = $6, description = $7, tax_class = $8, version = version + 1
+          `update public.products set title = $2, slug = $3, category_id = $4, brand_id = $5, short_description = $6, description = $7, tax_class = $8,
+                  item_condition = $9, size_guide = $10, version = version + 1
             where id = $1`,
-          [product.id, input.title.trim(), slug, input.categoryId, brandId, input.shortDescription?.trim() || null, input.description.trim(), input.taxClass || null],
+          [product.id, input.title.trim(), slug, input.categoryId, brandId, input.shortDescription?.trim() || null, input.description.trim(),
+            input.taxClass === undefined ? product.tax_class : input.taxClass,
+            input.condition === undefined ? product.item_condition : input.condition,
+            input.sizeGuide === undefined ? product.size_guide : input.sizeGuide?.trim() || null],
           c,
         );
       } else {
         const slug = await this.uniqueSlug(c, input.seo?.slug || input.title);
         product = await this.db.one(
-          `insert into public.products (seller_id, category_id, brand_id, product_type_code, title, slug, short_description, description, status, requires_shipping, tax_class)
-           values ($1,$2,$3,'PHYSICAL',$4,$5,$6,$7,'DRAFT',true,$8) returning *`,
-          [sellerId, input.categoryId, brandId, input.title.trim(), slug, input.shortDescription?.trim() || null, input.description.trim(), input.taxClass || null],
+          `insert into public.products (seller_id, category_id, brand_id, product_type_code, title, slug, short_description, description, status, requires_shipping, tax_class, item_condition, size_guide)
+           values ($1,$2,$3,'PHYSICAL',$4,$5,$6,$7,'DRAFT',true,$8,$9,$10) returning *`,
+          [sellerId, input.categoryId, brandId, input.title.trim(), slug, input.shortDescription?.trim() || null, input.description.trim(), input.taxClass || null, input.condition ?? null, input.sizeGuide?.trim() || null],
           c,
         );
         await this.db.exec(`insert into public.product_status_history (product_id, from_status, to_status, changed_by, reason) values ($1,null,'DRAFT',$2,'Producto creado')`, [product.id, user.id], c);
@@ -527,6 +535,12 @@ export class SellerService {
         [product.id, keptVariantIds],
         c,
       );
+      if (removed.length) {
+        await this.db.exec(
+          `update public.product_media set variant_id = null where product_id = $1 and variant_id = any($2::uuid[])`,
+          [product.id, removed.map((v) => v.id)], c,
+        );
+      }
       for (const r of removed)
         await this.db.exec(`update public.product_variants set status = 'ARCHIVED', archived_at = now(), is_default = false where id = $1`, [r.id], c);
 
@@ -538,7 +552,8 @@ export class SellerService {
           (await this.attributeDefinitionRows(input.categoryId, c)).map((d: any) => [d.id, d]),
         );
         const problems: string[] = [];
-        const rows: Array<[string, (string | number | boolean | null)[]]> = [];
+        const rows: Array<{ id: string; position: number; columns: (string | number | boolean | null)[] }> = [];
+        const seen = new Map<string, Set<string>>();
         for (const a of input.attributes.filter((x) => x.value?.toString().trim())) {
           const def = defs.get(a.definitionId);
           if (!def) {
@@ -546,23 +561,30 @@ export class SellerService {
             continue;
           }
           try {
-            rows.push([a.definitionId, normalizeAttributeValue(def, a.value)]);
+            const columns = normalizeAttributeValue(def, a.value);
+            const values = seen.get(def.id) ?? new Set<string>();
+            if (values.size && def.code !== 'style') throw new AttributeValueError(`${def.name}: elige un solo valor.`);
+            const key = String(columns.find((value) => value !== null)).toLowerCase();
+            if (values.has(key)) continue;
+            rows.push({ id: def.id, position: values.size, columns });
+            values.add(key);
+            seen.set(def.id, values);
           } catch (e) {
             if (e instanceof AttributeValueError) problems.push(e.message);
             else throw e;
           }
         }
         if (input.action === 'SUBMIT') {
-          const filled = new Set(rows.map(([id]) => id));
+          const filled = new Set(rows.map((row) => row.id));
           for (const d of defs.values()) if (d.required && !filled.has(d.id)) problems.push(`${d.name}: es obligatorio.`);
         }
         if (problems.length)
           throw badRequest('ATTRIBUTES_INVALID', 'Revisa los atributos del producto.', [{ field: 'attributes', errors: [...new Set(problems)] }]);
-        for (const [definitionId, cols] of rows) {
+        for (const row of rows) {
           await this.db.exec(
             `insert into public.product_attribute_values (product_id, attribute_definition_id, position, value_text, value_number, value_boolean)
-             values ($1,$2,0,$3,$4,$5)`,
-            [product.id, definitionId, ...cols],
+             values ($1,$2,$3,$4,$5,$6)`,
+            [product.id, row.id, row.position, ...row.columns],
             c,
           );
         }
@@ -572,8 +594,9 @@ export class SellerService {
       // Any customer-visible content (brand, texts, attributes, options, variants) counts; price/stock don't.
       if (contentBefore !== null && !contentChanged) contentChanged = contentBefore !== (await this.contentFingerprint(c, product.id));
       const current = (await this.db.one(`select status from public.products where id = $1`, [product.id], c))!.status;
+      const needsReview = ['ACTIVE', 'OUT_OF_STOCK'].includes(current) && contentChanged && moderation;
       if (input.action === 'SUBMIT') {
-        if (!['DRAFT', 'REJECTED', 'PAUSED'].includes(current) && !(current === 'ACTIVE' && contentChanged && moderation))
+        if (!['DRAFT', 'REJECTED', 'PAUSED'].includes(current) && !needsReview)
           return product.id;
         const hasMedia = await this.db.one(`select 1 from public.product_media where product_id = $1 limit 1`, [product.id], c);
         if (!hasMedia) throw badRequest('PRODUCT_IMAGE_REQUIRED', 'Agrega al menos una imagen antes de publicar.');
@@ -592,7 +615,7 @@ export class SellerService {
         } else {
           await this.transition(c, product.id, current, 'PENDING_REVIEW', user.id, 'Pendiente de aprobación de la tienda');
         }
-      } else if (current === 'ACTIVE' && contentChanged && moderation) {
+      } else if (needsReview) {
         await this.transition(c, product.id, current, 'PENDING_REVIEW', user.id, 'Cambios de contenido requieren revisión');
         await this.db.exec(
           `insert into public.product_moderation_reviews (product_id, submitted_product_version, status, submitted_by, submitted_at)
@@ -609,7 +632,7 @@ export class SellerService {
   /** Hash of the moderated, customer-visible content of a product (excludes price and stock). */
   private async contentFingerprint(c: PoolClient, productId: string): Promise<string> {
     const r = await this.db.one<{ h: string }>(
-      `select md5(concat_ws('|', p.title, p.description, p.category_id, p.brand_id, p.short_description,
+      `select md5(concat_ws('|', p.title, p.description, p.category_id, p.brand_id, p.short_description, p.item_condition, p.size_guide,
                 (select string_agg(concat_ws(':', a.attribute_definition_id, a.position, a.value_text, a.value_number, a.value_boolean, a.value_json), ',' order by a.attribute_definition_id, a.position)
                    from public.product_attribute_values a where a.product_id = p.id),
                 (select string_agg(concat_ws(':', o.code, o.name, ov.code, ov.label, ov.swatch_value), ',' order by o.sort_order, o.code, ov.sort_order, ov.code)
@@ -631,8 +654,8 @@ export class SellerService {
     const moderation = await this.settings.get('features.mandatory_moderation');
     if (!moderation) return;
     const p = await this.db.one(`select status from public.products where id = $1 for update`, [productId], c);
-    if (p?.status !== 'ACTIVE') return;
-    await this.transition(c, productId, 'ACTIVE', 'PENDING_REVIEW', actor, 'Cambios de imágenes requieren revisión');
+    if (!p || !['ACTIVE', 'OUT_OF_STOCK'].includes(p.status)) return;
+    await this.transition(c, productId, p.status, 'PENDING_REVIEW', actor, 'Cambios de imágenes requieren revisión');
     await this.db.exec(`update public.product_moderation_reviews set status = 'CANCELLED', updated_at = now() where product_id = $1 and status = 'PENDING'`, [productId], c);
     await this.db.exec(
       `insert into public.product_moderation_reviews (product_id, submitted_product_version, status, submitted_by, submitted_at)
@@ -704,6 +727,27 @@ export class SellerService {
           [productId],
           c,
         );
+      await this.mediaChanged(c, productId, actor);
+    });
+    return this.getProduct(sellerId, productId);
+  }
+
+  async setMediaVariant(sellerId: string, productId: string, mediaId: string, variantId: string | null, actor: string) {
+    await this.db.tx(async (c) => {
+      const product = await this.db.one(`select status from public.products where id = $1 and seller_id = $2 for update`, [productId, sellerId], c);
+      if (!product) throw notFound('Producto');
+      if (product.status === 'ARCHIVED') throw conflict('PRODUCT_ARCHIVED', 'El producto está archivado.');
+      const media = await this.db.one(
+        `select variant_id from public.product_media where id = $1 and product_id = $2 and seller_id = $3 and media_role in ('COVER','GALLERY') for update`,
+        [mediaId, productId, sellerId], c,
+      );
+      if (!media) throw notFound('Imagen');
+      if (variantId !== null) {
+        const variant = await this.db.one(`select id from public.product_variants where id = $1 and product_id = $2 and status = 'ACTIVE'`, [variantId, productId], c);
+        if (!variant) throw notFound('Variante');
+      }
+      if (media.variant_id === variantId) return;
+      await this.db.exec(`update public.product_media set variant_id = $2 where id = $1`, [mediaId, variantId], c);
       await this.mediaChanged(c, productId, actor);
     });
     return this.getProduct(sellerId, productId);

@@ -9,9 +9,9 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
-  ValidateNested,
+  ValidateIf, ValidateNested,
 } from 'class-validator';
-import { CurrentUser, RequestUser, requireSeller, requireSellerOwner, SellerArea } from '../auth/auth';
+import { CurrentUser, FreshUser, RequestUser, requireSeller, requireSellerOwner, SellerArea } from '../auth/auth';
 import { SELLER_PAYOUT_METHODS, SellerPayoutMethod, SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
@@ -77,7 +77,7 @@ class OptionValueDto {
 }
 class OptionDto {
   @IsCleanText(1, 40) name: string;
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(30) @ValidateNested({ each: true }) @Type(() => OptionValueDto) values: OptionValueDto[];
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(40) @ValidateNested({ each: true }) @Type(() => OptionValueDto) values: OptionValueDto[];
 }
 class VariantDto {
   @IsOptional() @IsUUID() id?: string;
@@ -91,6 +91,9 @@ class VariantDto {
   @IsOptional() @ToNumber() @IsMeasure(300, 'El ancho') widthCm?: number | null;
   @IsOptional() @ToNumber() @IsMeasure(300, 'El alto') heightCm?: number | null;
 }
+class MediaVariantDto {
+  @ValidateIf((_o, value) => value !== null) @IsUUID() variantId: string | null;
+}
 class AttributeDto {
   @IsUUID() definitionId: string;
   @IsCleanText(0, 200) value: string;
@@ -103,8 +106,10 @@ class SeoDto {
 export class ProductDto {
   @IsCleanText(3, 140) title: string;
   @IsUUID() categoryId: string;
-  /** null/omitted = use the category's tax class. */
+  /** Null inherits the category tax class, omission preserves the current override. */
   @IsOptional() @IsIn(['STANDARD', 'REDUCED', 'EXEMPT'], { message: 'Categoría fiscal inválida.' }) taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT' | null;
+  @IsOptional() @IsIn(['NEW', 'USED']) condition?: 'NEW' | 'USED' | null;
+  @IsOptional() @IsCleanMultiline(0, 3000) sizeGuide?: string | null;
   @IsOptional() @IsBusinessName(1, 60) brandName?: string | null;
   @IsOptional() @IsCleanText(0, 300) shortDescription?: string | null;
   @IsCleanMultiline(10, 5000) description: string;
@@ -131,9 +136,8 @@ export class ShipDto {
   @IsOptional() @IsWebUrl(300) trackingUrl?: string;
 }
 
-/** Sellers report progress only; delivery is confirmed by the customer, the carrier or support. */
 export class TrackingDto {
-  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'EXCEPTION']) status: any;
+  @IsIn(['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'EXCEPTION']) status: 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION';
   @IsOptional() @IsCleanText(0, 200) detail?: string;
   @IsOptional() @IsPlaceName(2, 80) city?: string;
 }
@@ -285,6 +289,11 @@ export class SellerController {
     return this.seller.removeMedia(this.sid(user, h, 'PRODUCTS'), id, mediaId, user.id);
   }
 
+  @Put('products/:id/media/:mediaId/variant')
+  mediaVariant(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('mediaId', ParseUUIDPipe) mediaId: string, @Body() body: MediaVariantDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.setMediaVariant(this.sid(user, h, 'PRODUCTS'), id, mediaId, body.variantId, user.id);
+  }
+
   @Post('products/:id/media/:mediaId/primary')
   primaryMedia(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('mediaId', ParseUUIDPipe) mediaId: string, @Headers('x-seller-id') h?: string) {
     return this.seller.setPrimaryMedia(this.sid(user, h, 'PRODUCTS'), id, mediaId, user.id);
@@ -345,14 +354,16 @@ export class SellerController {
     return this.orders.ship(this.sid(user, h, 'ORDERS'), id, user.id, dto);
   }
 
+  @FreshUser()
   @Post('shipments/:id/refresh-tracking')
   refreshTracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
-    return this.orders.refreshShipmentTracking({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, id);
+    return this.orders.refreshShipmentTracking({ kind: 'seller', userId: user.id, sellerId: this.sid(user, h, 'ORDERS') }, id);
   }
 
+  @FreshUser()
   @Post('shipments/:id/tracking')
   tracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: TrackingDto, @Headers('x-seller-id') h?: string) {
-    return this.orders.updateTracking({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, id, dto.status, dto.detail, dto.city);
+    return this.orders.updateTracking({ kind: 'seller', userId: user.id, sellerId: this.sid(user, h, 'ORDERS') }, id, dto.status, dto.detail, dto.city);
   }
 
   // finance

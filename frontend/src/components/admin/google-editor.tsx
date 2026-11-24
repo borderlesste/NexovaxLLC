@@ -65,7 +65,7 @@ export function GoogleEditor({ value, siteUrl, defaultCountry, onChange }: { val
               {v.merchantFeedEnabled && <Button type="button" variant="outline" size="sm" asChild><a href="/feeds/google-merchant.xml" target="_blank" rel="noreferrer" aria-label={t('Abrir')}><ExternalLink /></a></Button>}
             </div>
           </div>
-          <Field label={t('Estado de los productos')} hint={t('Se declara igual para todos los productos.')}>
+          <Field label={t('Estado de los productos')} hint={t('Se usa cuando el vendedor no ha indicado la condición del producto.')}>
             <Select value={v.merchantCondition} onChange={(e) => set('merchantCondition', e.target.value as GoogleIntegrations['merchantCondition'])}>
               <option value="new">{t('Nuevo')}</option>
               <option value="refurbished">{t('Reacondicionado')}</option>

@@ -5,6 +5,19 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Indica una cantidad entera entre 1 y 1.000.000.": "Enter a whole number between 1 and 1,000,000.",
+  "Indica la zona horaria de llegada.": "Include the time zone for the expected arrival.",
+  "Indica una fecha de llegada con zona horaria.": "Enter the expected arrival date with its time zone.",
+  "Esta tienda o variante no admite cambios de preorden.": "Preorder settings cannot be changed for this store or variant.",
+  "La variante ya tiene existencias.": "This variant is already in stock.",
+  "La llegada debe ser futura y dentro de los cinco días desde la apertura.": "Choose a future arrival within five days of opening the preorder.",
+  "La cantidad prevista debe cubrir las unidades reservadas.": "Incoming units must cover the quantities already reserved.",
+  "Ya hay reservas para la fecha de llegada indicada.": "Buyers have already reserved units for the promised arrival date.",
+  "No puedes reservar productos de tu propia tienda.": "You cannot reserve products from your own store.",
+  "Esta preorden ya terminó.": "This preorder has ended.",
+  "Ya no quedan suficientes unidades para esta reserva.": "There are no longer enough units for this reservation.",
+  "Preorden no encontrada.": "Preorder not found.",
+  "Reserva no encontrada.": "Reservation not found.",
   "No pudimos enviar tu mensaje en este momento. Escríbenos directamente al correo de soporte.": "We couldn’t send your message right now. Write to us directly at the support e-mail.",
   "Este pago se hizo con dinero real y los pagos están en modo de prueba: no se puede reembolsar desde aquí.": "This payment was made with real money and payments are in test mode: it can’t be refunded from here.",
   "La lista de destacados cambió. Recarga la página e inténtalo de nuevo.": "The featured list changed. Reload the page and try again.",
