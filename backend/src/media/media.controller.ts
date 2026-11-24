@@ -2,7 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query, Res } from '@nestjs/commo
 import sharp from 'sharp';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { CurrentUser, isStaff, Public, RequestUser } from '../auth/auth';
+import { CurrentUser, FreshUser, isStaff, Public, RequestUser } from '../auth/auth';
 import { DbService } from '../db/db.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { forbidden, notFound } from '../common/errors';
@@ -47,6 +47,7 @@ export class MediaController {
   ) {}
 
   @Public()
+  @FreshUser()
   @Get(':id')
   async get(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response, @CurrentUser() user?: RequestUser, @Query('w') w?: string) {
     const asset = await this.db.one<{
@@ -59,10 +60,11 @@ export class MediaController {
     }>(`select storage_bucket, storage_key, mime_type, visibility, owner_seller_id, status from public.assets where id = $1`, [id]);
     if (!asset || asset.status !== 'READY' || !asset.storage_bucket) throw notFound('Archivo');
     if (asset.visibility !== 'PUBLIC') {
+      if (user?.status !== 'ACTIVE') throw forbidden('Archivo privado.');
       // Verification documents (ID, tax and bank papers) are for the store owner and staff only,
       // not for every team member of the store.
       const isDocument = asset.storage_bucket === config.documentsBucket;
-      const owns = user?.sellers.some((s) => s.id === asset.owner_seller_id && (!isDocument || s.isOwner));
+      const owns = user.sellers.some((s) => s.id === asset.owner_seller_id && (!isDocument || s.isOwner));
       if (!owns && !isStaff(user, 'MODERATOR', 'SUPPORT')) throw forbidden('Archivo privado.');
     }
     let hit = asset.visibility === 'PUBLIC' ? this.cache.get(id) : undefined;
@@ -92,7 +94,7 @@ export class MediaController {
     res.setHeader(
       'Cache-Control',
       // Asset ids never change content (a new photo gets a new id), so public copies can be cached for a year.
-      asset.visibility === 'PUBLIC' ? 'public, max-age=31536000, immutable' : 'private, max-age=300',
+      asset.visibility === 'PUBLIC' ? 'public, max-age=31536000, immutable' : 'private, no-store',
     );
     res.end(hit.buf);
   }

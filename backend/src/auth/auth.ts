@@ -30,8 +30,11 @@ export type SellerArea = (typeof SELLER_AREAS)[number];
 
 export const IS_PUBLIC = 'rd:isPublic';
 export const ROLES = 'rd:roles';
+const FRESH_USER = 'rd:freshUser';
 /** Route is reachable without a token (a valid token still populates the user). */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
+/** Resolve account status and permissions from the shared database for this request. */
+export const FreshUser = () => SetMetadata(FRESH_USER, true);
 /** Requires at least one of the given roles. ADMIN/SUPER_ADMIN satisfy staff roles. */
 export const Roles = (...roles: RoleCode[]) => SetMetadata(ROLES, roles);
 
@@ -88,15 +91,16 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [ctx.getHandler(), ctx.getClass()]);
-    const roles = this.reflector.getAllAndOverride<RoleCode[]>(ROLES, [ctx.getHandler(), ctx.getClass()]);
+    const targets = [ctx.getHandler(), ctx.getClass()];
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets);
+    const roles = this.reflector.getAllAndOverride<RoleCode[]>(ROLES, targets);
 
     const header: string | undefined = req.headers['authorization'];
     const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
 
     if (token) {
       try {
-        req.user = await this.resolveUser(token);
+        req.user = await this.resolveUser(token, this.reflector.getAllAndOverride<boolean>(FRESH_USER, targets));
       } catch (e) {
         if (!isPublic) throw e instanceof AppError ? e : new AppError('UNAUTHENTICATED', 'Tu sesión no es válida o expiró.', HttpStatus.UNAUTHORIZED);
       }
@@ -119,7 +123,7 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  private async resolveUser(token: string): Promise<RequestUser> {
+  private async resolveUser(token: string, fresh = false): Promise<RequestUser> {
     const { payload } = await jwtVerify(token, jwks, {
       issuer: `${config.supabaseUrl}/auth/v1`,
       audience: 'authenticated',
@@ -127,7 +131,7 @@ export class AuthGuard implements CanActivate {
     // Supabase anonymous sign-ins also carry aud=authenticated: they are not marketplace accounts.
     if (payload.is_anonymous === true) throw new AppError('UNAUTHENTICATED', 'Debes iniciar sesión.', HttpStatus.UNAUTHORIZED);
     const sub = String(payload.sub);
-    const cached = userCache.get(sub);
+    const cached = fresh ? undefined : userCache.get(sub);
     if (cached && Date.now() - cached.at < USER_CACHE_MS) return { ...cached.user, sessionId: String(payload.session_id ?? '') };
 
     const row = await this.db.one<{ id: string; email: string; status: string; email_verified_at: string | null }>(
@@ -168,7 +172,7 @@ export class AuthGuard implements CanActivate {
         areas: s.is_owner ? [...SELLER_AREAS] : ((s.areas ?? []).filter((a) => (SELLER_AREAS as readonly string[]).includes(a)) as SellerArea[]),
       })),
     };
-    userCache.set(sub, { at: Date.now(), user });
+    if (!fresh) userCache.set(sub, { at: Date.now(), user });
     // Best-effort login timestamp.
     this.db
       .exec(`update public.users set last_login_at = now() where id = $1 and (last_login_at is null or last_login_at < now() - interval '10 minutes')`, [sub])
