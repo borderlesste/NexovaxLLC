@@ -7,6 +7,7 @@ import { useToggleFavorite } from './hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { get } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { useAddToCart } from './hooks';
 import { t, getIntlLocale } from '@/lib/i18n';
 import { AvailabilityLine } from './availability';
@@ -23,7 +24,7 @@ export interface ProductCardData {
   reviewCount: number;
   stock?: number;
   affiliateCommissionEnabled?: boolean;
-  seller: { name: string; slug: string; verified?: boolean };
+  seller: { id: string; name: string; slug: string; verified?: boolean };
 }
 
 /** Widths the API resizes to (MEDIA_WIDTHS in backend/src/media/media.controller.ts). */
@@ -76,6 +77,8 @@ export function Stars({ value, count, countLabel, size = 'sm' }: { value: number
 }
 
 export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardData; showAddToCart?: boolean; isFavorite?: boolean }) {
+  const { me } = useAuth();
+  const canEarnCommission = p.affiliateCommissionEnabled === true && !me?.sellers.some((seller) => seller.id === p.seller.id);
   const fav = useToggleFavorite();
   const cart = useAddToCart();
   const [adding, setAdding] = useState(false);
@@ -122,7 +125,7 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         <span className="whitespace-nowrap text-lg font-extrabold">{p.price ? money(p.price) : '—'}</span>
         {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) && <span className="whitespace-nowrap text-xs text-muted line-through">{money(p.compareAtPrice)}</span>}
       </div>
-      {p.affiliateCommissionEnabled === true && (
+      {canEarnCommission && (
         <Badge tone="green" className="mt-1.5 self-start whitespace-normal">{t('Gana comisión al compartir')}</Badge>
       )}
       {showAddToCart && (
