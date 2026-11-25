@@ -40,7 +40,8 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
   const params = useMemo(() => {
     const p = new URLSearchParams(sp.toString());
     if (categorySlug) p.set('category', categorySlug);
-    if (!p.get('pageSize')) p.set('pageSize', '24');
+    // Products per page come from the admin setting (API default); the page is ?page= in the URL.
+    p.delete('pageSize');
     return p;
   }, [sp, categorySlug]);
   const set = (k: string, v?: string | null) => {
@@ -50,7 +51,15 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
     if (k !== 'page') p.delete('page');
     router.push(`${pathname}?${p.toString()}`, { scroll: false });
   };
-  const q = useQuery({ queryKey: ['products', params.toString()], queryFn: () => get(`/products?${params.toString()}`) });
+  const q = useQuery({ queryKey: ['products', params.toString()], queryFn: () => get(`/products?${params.toString()}`), placeholderData: (prev) => prev });
+  const pageHref = (n: number) => {
+    const p = new URLSearchParams(sp.toString());
+    if (n > 1) p.set('page', String(n));
+    else p.delete('page');
+    const qs = p.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
+  const requestedPage = Number(sp.get('page')) || 1;
   // Attribute filters (size, color, material…) available for the current category/search/price.
   const facetParams = useMemo(() => {
     const p = new URLSearchParams(params.toString());
@@ -151,14 +160,17 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
               {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-80" />)}
             </div>
           )}
-          {q.data && q.data.items.length === 0 && (
+          {q.data && q.data.items.length === 0 && requestedPage > 1 && (
+            <div className="card"><Empty title={t('Esta página no existe')} description={t('No hay productos en esta página.')} action={<Link href={pageHref(1)} className="font-semibold text-brand-700 underline">{t('Ir a la primera página')}</Link>} /></div>
+          )}
+          {q.data && q.data.items.length === 0 && requestedPage <= 1 && (
             <div className="card"><Empty title={t('No encontramos productos')} description={t('Prueba con otros filtros o términos de búsqueda.')} /></div>
           )}
           {q.data && q.data.items.length > 0 && (
             <>
               <ProductGrid items={q.data.items} cols="xl:grid-cols-4" showAddToCart />
               <div className="card mt-4">
-                <Pagination page={q.data.page} pageSize={q.data.pageSize} total={q.data.total} onPage={(p) => set('page', String(p))} label={t('productos')} />
+                <Pagination page={q.data.page} pageSize={q.data.pageSize} total={q.data.total} href={pageHref} label={t('productos')} />
               </div>
             </>
           )}

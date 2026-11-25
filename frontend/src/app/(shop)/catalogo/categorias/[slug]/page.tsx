@@ -16,15 +16,16 @@ const find = (cats: Cat[], slug: string): Cat | null => {
   return null;
 };
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
   const { slug } = await params;
+  const page = Math.trunc(Number((await searchParams).page)) || 1;
   const c = find((await serverGet<Cat[]>('/categories', 300)) ?? [], slug);
   const t = await getT();
   if (!c) return pageMetadata({ title: t('Catálogo'), path: '/catalogo', noindex: true });
   return pageMetadata({
-    title: c.name,
+    title: page > 1 ? `${c.name} · ${t('Página {n}', { n: page })}` : c.name,
     description: c.description || t('Compra {c} en el marketplace: {n} productos de múltiples vendedores.', { c: c.name, n: c.productCount ?? 0 }),
-    path: `/catalogo/categorias/${encodeURIComponent(c.slug)}`,
+    path: `/catalogo/categorias/${encodeURIComponent(c.slug)}${page > 1 ? `?page=${page}` : ''}`,
     images: [c.imageUrl],
     imageAlt: c.name,
   });

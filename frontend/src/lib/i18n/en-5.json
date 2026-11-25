@@ -514,5 +514,13 @@
 "Terminada": "Ended",
 "Cancelada por la tienda": "Cancelled by the store",
 "Retirada": "Taken down",
-"Retirada por el marketplace": "Taken down by the marketplace"
+"Retirada por el marketplace": "Taken down by the marketplace",
+"Paginación": "Pagination",
+"Página {n}": "Page {n}",
+"Esta página no existe": "This page doesn't exist",
+"No hay productos en esta página.": "There are no products on this page.",
+"Ir a la primera página": "Go to the first page",
+"Cómo se listan los productos en el catálogo, las categorías y la búsqueda.": "How products are listed in the catalog, categories and search.",
+"Productos por página": "Products per page",
+"Entre {a} y {b}. Al superar esta cantidad, el catálogo muestra páginas.": "Between {a} and {b}. Above this number, the catalog is split into pages."
 }

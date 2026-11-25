@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { taxonomyOptionLabel } from '../common/i18n-catalog';
 import { attributeLabel } from '../common/attributes';
 import { DbService } from '../db/db.service';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsService, CATALOG_PAGE_SIZE_MAX } from '../settings/settings.service';
 import { notFound } from '../common/errors';
 import { clampPage, clampPageSize } from '../common/paging';
 import { soldOrder } from '../common/sales-sql';
@@ -148,7 +148,8 @@ export class CatalogService {
         featured: '(select fp.sort_order from public.nx_featured_products fp where fp.product_id = p.id) asc nulls last, p.published_at desc',
       }[query.sort ?? 'relevance'] ?? 'p.published_at desc';
 
-    const pageSize = clampPageSize(query.pageSize, 24, 60);
+    // No ?pageSize → the admin's catalog page size (Admin → Configuración → General → Catálogo).
+    const pageSize = clampPageSize(query.pageSize, (await this.settings.get('catalog.listing')).pageSize, CATALOG_PAGE_SIZE_MAX);
     const page = clampPage(query.page);
     const sql = `
       select ${PRODUCT_CARD_SELECT('$1')}, count(*) over() as total

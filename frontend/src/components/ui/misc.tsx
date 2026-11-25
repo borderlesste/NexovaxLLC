@@ -3,6 +3,7 @@ import * as TabsPrimitive from '@radix-ui/react-tabs';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as SwitchPrimitive from '@radix-ui/react-switch';
 import { ChevronLeft, ChevronRight, Inbox, Loader2, X } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { getIntlLocale, t } from '@/lib/i18n';
@@ -145,40 +146,49 @@ export function Switch({ checked, onCheckedChange, disabled }: { checked: boolea
   );
 }
 
-export function Pagination({ page, pageSize, total, onPage, label = 'resultados' }: { page: number; pageSize: number; total: number; onPage: (p: number) => void; label?: string }) {
+/**
+ * Page navigation. With `href`, each page is a real link (crawlable, shareable, opens in a new tab)
+ * instead of a button; `onPage` is then optional.
+ */
+export function Pagination({ page, pageSize, total, onPage, href, label = 'resultados' }: { page: number; pageSize: number; total: number; onPage?: (p: number) => void; href?: (p: number) => string; label?: string }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const from = total === 0 ? 0 : Math.min((page - 1) * pageSize + 1, total);
   const to = Math.min(page * pageSize, total);
   const nums: (number | '…')[] = [];
   for (let i = 1; i <= pages; i++) {
     if (i === 1 || i === pages || Math.abs(i - page) <= 1) nums.push(i);
     else if (nums[nums.length - 1] !== '…') nums.push('…');
   }
+  const numCls = (n: number) => cn('grid size-8 place-items-center rounded-lg border text-xs font-semibold', n === page ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-line bg-white text-ink hover:bg-surface');
+  const stepCls = 'inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-sm font-semibold text-ink hover:bg-surface [&_svg]:size-4';
+  const Step = ({ to: p, rel, children }: { to: number; rel: 'prev' | 'next'; children: React.ReactNode }) => {
+    const disabled = p < 1 || p > pages;
+    if (href) return disabled ? <span className={cn(stepCls, 'pointer-events-none opacity-40')} aria-disabled>{children}</span> : <Link href={href(p)} rel={rel} className={stepCls}>{children}</Link>;
+    return <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onPage?.(p)}>{children}</Button>;
+  };
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-muted">
+    <nav aria-label={t('Paginación')} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-muted">
       <span>
         {t('Mostrando')} <b className="text-ink">{from}–{to}</b> {t('de')} <b className="text-ink">{total.toLocaleString(getIntlLocale())}</b> {t(label)}
       </span>
       {pages > 1 && (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-            <ChevronLeft /> {t('Anterior')}
-          </Button>
+          <Step to={page - 1} rel="prev"><ChevronLeft /> {t('Anterior')}</Step>
           {nums.map((n, i) =>
             n === '…' ? (
               <span key={i} className="px-1">…</span>
+            ) : href ? (
+              <Link key={i} href={href(n)} aria-current={n === page ? 'page' : undefined} className={numCls(n)}>{n}</Link>
             ) : (
-              <button key={i} onClick={() => onPage(n)} className={cn('size-8 rounded-lg border text-xs font-semibold', n === page ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-line bg-white text-ink hover:bg-surface')}>
+              <button key={i} onClick={() => onPage?.(n)} aria-current={n === page ? 'page' : undefined} className={numCls(n)}>
                 {n}
               </button>
             ),
           )}
-          <Button variant="ghost" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
-            {t('Siguiente')} <ChevronRight />
-          </Button>
+          <Step to={page + 1} rel="next">{t('Siguiente')} <ChevronRight /></Step>
         </div>
       )}
-    </div>
+    </nav>
   );
 }
 

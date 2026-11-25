@@ -5,7 +5,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
-import { SettingsService, PlatformSettings } from '../settings/settings.service';
+import { SettingsService, PlatformSettings, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { OnboardingInput, SellerService } from '../seller/seller.service';
 import { TaxService } from '../tax/tax.service';
@@ -932,12 +932,19 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info', 'home.layout', 'catalog.listing']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
     const text = (v: unknown, min: number, max: number, re?: RegExp) =>
       typeof v === 'string' && v.trim().length >= min && v.trim().length <= max && !/[\u0000-\u001f<>]/.test(v) && (!re || re.test(v.trim()));
+    const cl = s['catalog.listing'];
+    if (cl != null) {
+      const n = (cl as any)?.pageSize;
+      if (!Number.isInteger(n) || n < CATALOG_PAGE_SIZE_MIN || n > CATALOG_PAGE_SIZE_MAX)
+        throw badRequest('PAGE_SIZE_INVALID', `Los productos por página deben ser un número entero entre ${CATALOG_PAGE_SIZE_MIN} y ${CATALOG_PAGE_SIZE_MAX}.`);
+      s['catalog.listing'] = { pageSize: n };
+    }
     validateHelpAndSocial(s);
     validateCompany(s);
     validateSeo(s);

@@ -3274,5 +3274,13 @@
 "Terminada": "Terminée",
 "Cancelada por la tienda": "Annulée par la boutique",
 "Retirada": "Retirée",
-"Retirada por el marketplace": "Retirée par la place de marché"
+"Retirada por el marketplace": "Retirée par la place de marché",
+"Paginación": "Pagination",
+"Página {n}": "Page {n}",
+"Esta página no existe": "Cette page n'existe pas",
+"No hay productos en esta página.": "Il n'y a aucun produit sur cette page.",
+"Ir a la primera página": "Aller à la première page",
+"Cómo se listan los productos en el catálogo, las categorías y la búsqueda.": "Affichage des produits dans le catalogue, les catégories et la recherche.",
+"Productos por página": "Produits par page",
+"Entre {a} y {b}. Al superar esta cantidad, el catálogo muestra páginas.": "Entre {a} et {b}. Au-delà, le catalogue est divisé en pages."
 }

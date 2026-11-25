@@ -3274,5 +3274,13 @@
 "Terminada": "Fini",
 "Cancelada por la tienda": "Boutik la anile l",
 "Retirada": "Retire",
-"Retirada por el marketplace": "Mache a retire l"
+"Retirada por el marketplace": "Mache a retire l",
+"Paginación": "Paj",
+"Página {n}": "Paj {n}",
+"Esta página no existe": "Paj sa a pa egziste",
+"No hay productos en esta página.": "Pa gen pwodwi sou paj sa a.",
+"Ir a la primera página": "Ale nan premye paj la",
+"Cómo se listan los productos en el catálogo, las categorías y la búsqueda.": "Kijan pwodwi yo parèt nan katalòg la, kategori yo ak rechèch la.",
+"Productos por página": "Pwodwi pa paj",
+"Entre {a} y {b}. Al superar esta cantidad, el catálogo muestra páginas.": "Ant {a} ak {b}. Lè gen plis pase sa, katalòg la divize an paj."
 }

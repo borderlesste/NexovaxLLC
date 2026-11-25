@@ -196,6 +196,14 @@ export default function SettingsPage() {
                 </div>
                 <p className="px-5 pb-5 text-xs text-muted">{t('El marketplace opera en una sola moneda. Los pedidos anteriores conservan su moneda original. Los impuestos se configuran por país en la pestaña Impuestos.')}</p>
               </Card>
+              <Card>
+                <CardHeader icon={<LayoutTemplate />} title={t('Catálogo')} subtitle={t('Cómo se listan los productos en el catálogo, las categorías y la búsqueda.')} />
+                <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                  <Field label={t('Productos por página')} required hint={t('Entre {a} y {b}. Al superar esta cantidad, el catálogo muestra páginas.', { a: 4, b: 60 })}>
+                    <Input inputMode="numeric" value={String(s['catalog.listing']?.pageSize ?? '')} onChange={(e) => set('catalog.listing', { ...(s['catalog.listing'] ?? {}), pageSize: Number(e.target.value.replace(/[^\d]/g, '')) || '' })} />
+                  </Field>
+                </div>
+              </Card>
               <DeliveryCountryCard
                 value={s['geo.delivery'] ?? { ipDetection: true, showSelector: true, countries: [] }}
                 defaultCountry={s['marketplace.default_country']}

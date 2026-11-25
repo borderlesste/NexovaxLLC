@@ -132,6 +132,14 @@ export interface CompanyInfo {
   footerText: string; footerTextEn?: string; footerTextFr?: string; footerTextHt?: string;
 }
 
+export interface CatalogListingSettings {
+  /** Products per page in /catalogo, category pages and search results (CATALOG_PAGE_SIZE_MIN..MAX). */
+  pageSize: number;
+}
+/** Bounds of catalog.listing.pageSize; the max is also the API cap for ?pageSize on /products. */
+export const CATALOG_PAGE_SIZE_MIN = 4;
+export const CATALOG_PAGE_SIZE_MAX = 60;
+
 export interface PlatformSettings {
   'marketplace.name': string;
   'marketplace.base_url': string;
@@ -158,6 +166,8 @@ export interface PlatformSettings {
   'company.info': CompanyInfo;
   /** Home page sections: order, on/off, titles and item counts (Admin → Configuración → Portada). */
   'home.layout': HomeLayout;
+  /** Public catalog listings (/catalogo, categories, search): products per page. */
+  'catalog.listing': CatalogListingSettings;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -210,6 +220,7 @@ const DEFAULTS: PlatformSettings = {
   },
   'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', taxId: '', legalRepresentative: '', phone: '', supportHours: '', footerText: '' },
   'home.layout': defaultHomeLayout(),
+  'catalog.listing': { pageSize: 12 },
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */
@@ -241,6 +252,7 @@ export class SettingsService {
     out['google.integrations'] = { ...DEFAULTS['google.integrations'], ...(out['google.integrations'] ?? {}) };
     out['company.info'] = { ...DEFAULTS['company.info'], ...(out['company.info'] ?? {}) };
     out['home.layout'] = normalizeHomeLayout(out['home.layout']);
+    out['catalog.listing'] = { ...DEFAULTS['catalog.listing'], ...(out['catalog.listing'] ?? {}) };
     if (!client) {
       this.cache = { at: Date.now(), value: out };
       setMailRuntime({
