@@ -138,7 +138,7 @@ export default function PoliciesPage() {
               ))}
             </ul>
             <div className="border-t border-line p-4">
-              <Button variant="outline" size="sm" asChild><Link href={pol.acceptanceMode === 'NONE' ? `/${pol.slug}` : `/ayuda#${pol.slug}`} target="_blank"><ExternalLink /> {pol.acceptanceMode === 'NONE' ? t('Ver página pública') : t('Ver en el centro de ayuda')}</Link></Button>
+              <Button variant="outline" size="sm" asChild><Link href={`/${pol.slug}`} target="_blank"><ExternalLink /> {t('Ver página pública')}</Link></Button>
             </div>
           </Card>
         </div>

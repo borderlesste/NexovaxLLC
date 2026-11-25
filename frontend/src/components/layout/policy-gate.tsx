@@ -46,7 +46,7 @@ export function PolicyGate() {
           <section key={`${p.versionId}:${p.sellerId ?? ''}`} className="rounded-xl border border-line p-4">
             <p className="font-bold">{p.title}{p.store ? ` · ${p.store}` : ''} <span className="text-xs font-normal text-muted">· {t('versión {n}', { n: p.version })}</span></p>
             <p className="mt-2 whitespace-pre-line text-sm text-muted">{p.text}</p>
-            <Link href={`/ayuda#${p.slug}`} className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline">{t('Ver en el centro de ayuda')}</Link>
+            <Link href={`/${p.slug}`} className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline">{t('Leer el documento completo')}</Link>
           </section>
         ))}
       </div>

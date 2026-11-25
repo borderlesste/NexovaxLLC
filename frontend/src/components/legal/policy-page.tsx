@@ -1,18 +1,23 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AlertCircle, BadgeCheck, Building2, Clock, Mail, MapPin, Phone, RotateCcw, Scale, ShieldCheck, Truck, User } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Building2, Clock, FileText, Lock, Mail, MapPin, Phone, RotateCcw, Scale, ShieldCheck, Store, Truck, User } from 'lucide-react';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { getServerLocale, getT } from '@/lib/i18n/server';
 import { pageMetadata } from '@/lib/seo';
 import { serverGet } from '@/lib/server-api';
+import { CookiesSection } from './cookies-section';
 
-export type PublicPolicyCode = 'RETURN_POLICY' | 'SHIPPING_POLICY' | 'ABOUT_US' | 'BUYER_PROTECTION';
+export type PublicPolicyCode = 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY' | 'SELLER_TERMS' | 'RETURN_POLICY' | 'SHIPPING_POLICY' | 'ABOUT_US' | 'BUYER_PROTECTION';
 type Policy = { code: string; slug: string; title: string; text: string; version: number | null; effectiveAt: string | null };
 type Company = { legalName?: string; jurisdiction?: string; address?: string; registrationNumber?: string; phone?: string; supportHours?: string; [k: string]: string | undefined };
 type ReturnFacts = { windowDays: number; labelPayer: string; shippingRefund: string; restockingFeePercent: number; inspectionRequired: boolean };
 
-const META: Record<PublicPolicyCode, { path: string; label: string }> = {
+/** Each legal text has its own crawlable page (the paths match the policy slugs in Admin → Políticas legales). */
+export const POLICY_PAGES: Record<PublicPolicyCode, { path: string; label: string }> = {
+  TERMS_OF_SERVICE: { path: '/terminos', label: 'Términos y condiciones' },
+  PRIVACY_POLICY: { path: '/privacidad', label: 'Privacidad y cookies' },
+  SELLER_TERMS: { path: '/terminos-vendedores', label: 'Términos para vendedores' },
   RETURN_POLICY: { path: '/politica-de-devoluciones', label: 'Política de devoluciones' },
   SHIPPING_POLICY: { path: '/politica-de-envios', label: 'Política de envíos' },
   ABOUT_US: { path: '/sobre-nosotros', label: 'Sobre nosotros' },
@@ -28,7 +33,7 @@ async function load(code: PublicPolicyCode) {
 export async function policyMetadata(code: PublicPolicyCode) {
   const t = await getT();
   const p = await load(code);
-  return pageMetadata({ title: p?.title || t(META[code].label), description: p?.text?.slice(0, 300), path: META[code].path });
+  return pageMetadata({ title: p?.title || t(POLICY_PAGES[code].label), description: p?.text?.slice(0, 300), path: POLICY_PAGES[code].path });
 }
 
 const LABEL_PAYER: Record<string, string> = {
@@ -55,7 +60,7 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
   const [p, facts, cfg] = await Promise.all([
     load(code),
     code === 'RETURN_POLICY' || code === 'BUYER_PROTECTION' ? serverGet<ReturnFacts>('/returns/policy', 300) : null,
-    code === 'ABOUT_US' ? serverGet<{ name?: string; supportEmail?: string; company?: Company }>('/config/public', 60) : null,
+    serverGet<{ name?: string; supportEmail?: string; company?: Company }>('/config/public', 60),
   ]);
   if (!p) notFound();
   // Buyer protection: the figures in force (store payout hold, support response times) come from the live rules.
@@ -65,22 +70,23 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
         serverGet<{ priorities?: { code: string; first_response_seconds: number | null }[] }>('/support/catalogs', 300),
       ])
     : [null, null];
-  const Icon = code === 'RETURN_POLICY' ? RotateCcw : code === 'ABOUT_US' ? Building2 : code === 'BUYER_PROTECTION' ? ShieldCheck : Truck;
-  // "Sobre nosotros": verifiable company data from Admin → Configuración → Ayuda y redes → Empresa.
+  const Icon = ({ RETURN_POLICY: RotateCcw, ABOUT_US: Building2, BUYER_PROTECTION: ShieldCheck, SHIPPING_POLICY: Truck, TERMS_OF_SERVICE: FileText, PRIVACY_POLICY: Lock, SELLER_TERMS: Store } as const)[code];
+  // Who operates the site, on every legal page: company data from Admin → Configuración → Ayuda y redes → Empresa.
   const L = locale === 'fr' ? 'Fr' : locale === 'ht' ? 'Ht' : locale === 'en' ? 'En' : '';
   const co = cfg?.company ?? {};
   const hours = (L && co[`supportHours${L}`]) || co.supportHours;
+  const about = code === 'ABOUT_US';
   const companyRows = cfg
     ? ([
         [Building2, t('Razón social'), co.legalName],
         [Scale, t('Constituida en'), co.jurisdiction],
         [MapPin, t('Domicilio'), co.address],
         [Building2, t('Número de registro'), co.registrationNumber],
-        [BadgeCheck, t('Identificación fiscal (EIN)'), co.taxId],
-        [User, t('Representante legal'), co.legalRepresentative],
+        [BadgeCheck, t('Identificación fiscal (EIN)'), about ? co.taxId : undefined],
+        [User, t('Representante legal'), about ? co.legalRepresentative : undefined],
         [Mail, t('Correo de soporte'), cfg.supportEmail, 'mail'],
         [Phone, t('Teléfono'), co.phone],
-        [Clock, t('Horario de atención'), hours],
+        [Clock, t('Horario de atención'), about ? hours : undefined],
       ] as [any, string, string | undefined, string?][]).filter((r) => !!r[2])
     : [];
   const dur = (sec?: number | null) => (!sec ? null : sec < 3600 ? t('{n} min', { n: Math.round(sec / 60) }) : t('{n} h', { n: Math.round(sec / 3600) }));
@@ -104,7 +110,7 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
     : [];
   return (
     <div className="mx-auto max-w-[900px] px-4 py-6 lg:px-8" data-public-policy={code}>
-      <Breadcrumbs items={code === 'ABOUT_US' ? [{ label: META[code].label }] : [{ label: 'Ayuda', href: '/ayuda' }, { label: META[code].label }]} />
+      <Breadcrumbs items={about ? [{ label: POLICY_PAGES[code].label }] : [{ label: 'Ayuda', href: '/ayuda' }, { label: POLICY_PAGES[code].label }]} />
       <div className="mt-4 rounded-3xl bg-gradient-to-r from-brand-50 to-brand-100 p-6 sm:p-8">
         <Icon className="size-9 text-brand-600" />
         <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">{p.title}</h1>
@@ -128,9 +134,10 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
       <article className="card mt-6 p-6">
         <p className="whitespace-pre-line leading-relaxed text-ink/90">{p.text}</p>
       </article>
+      {code === 'PRIVACY_POLICY' && <CookiesSection />}
       {companyRows.length > 0 && (
         <section className="card mt-6 p-6" data-company-info>
-          <h2 className="text-xl font-extrabold">{t('Datos de la empresa')}</h2>
+          <h2 className="text-xl font-extrabold">{about ? t('Datos de la empresa') : t('Quién opera este sitio')}</h2>
           <dl className="mt-3 divide-y divide-line text-sm">
             {companyRows.map(([I, k, v, kind]) => (
               <div key={k} className="grid grid-cols-1 gap-1 py-2.5 sm:grid-cols-[220px_1fr] sm:gap-4">
@@ -141,13 +148,16 @@ export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
           </dl>
         </section>
       )}
+      <nav className="card mt-6 p-6" aria-label={t('Documentos legales')} data-legal-nav>
+        <h2 className="text-xl font-extrabold">{t('Documentos legales')}</h2>
+        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+          {(Object.keys(POLICY_PAGES) as PublicPolicyCode[]).filter((c) => c !== code).map((c) => (
+            <li key={c}><Link href={POLICY_PAGES[c].path} className="font-semibold text-brand-700 hover:underline">{t(POLICY_PAGES[c].label)}</Link></li>
+          ))}
+        </ul>
+      </nav>
       <div className="mt-6 flex flex-wrap gap-3">
         <Button asChild><Link href="/ayuda/reportar"><AlertCircle /> {t('Reportar un problema')}</Link></Button>
-        {code === 'ABOUT_US' ? (
-          <Button variant="outline" asChild><Link href="/ayuda#terminos">{t('Términos y condiciones')}</Link></Button>
-        ) : (
-          <Button variant="outline" asChild><Link href={code === 'RETURN_POLICY' ? '/politica-de-envios' : '/politica-de-devoluciones'}>{t(code === 'RETURN_POLICY' ? 'Política de envíos' : 'Política de devoluciones')}</Link></Button>
-        )}
       </div>
     </div>
   );

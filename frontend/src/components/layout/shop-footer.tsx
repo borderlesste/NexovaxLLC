@@ -4,7 +4,7 @@ import { Logo } from './logo';
 import { openConsent } from '@/lib/consent';
 import { getLocale, t } from '@/lib/i18n';
 import { Clock, Mail, Phone } from 'lucide-react';
-import { usePublicConfig } from '@/lib/config';
+import { usePublicConfig, type PublicConfig } from '@/lib/config';
 import { SOCIAL_ICONS, SOCIAL_NAMES } from './social-icons';
 
 // Each link appears once: legal pages live only in the "Legal" column.
@@ -12,11 +12,12 @@ const cols = [
   { title: 'Marketplace', links: [['Inicio', '/'], ['Categorías', '/catalogo'], ['Ofertas', '/catalogo?onSale=true'], ['Vendedores', '/vendedores'], ['Sobre nosotros', '/sobre-nosotros']] },
   { title: 'Vendedores', links: [['Vender en la plataforma', '/vendedor/registro'], ['Planes y comisiones', '/ayuda#comisiones'], ['Ayuda para vendedores', '/ayuda#vendedores']] },
   { title: 'Ayuda', links: [['Centro de ayuda', '/ayuda'], ['Preguntas frecuentes', '/ayuda#faq'], ['Contactar a soporte', '/ayuda/reportar']] },
-  { title: 'Legal', links: [['Términos y condiciones', '/ayuda#terminos'], ['Privacidad y cookies', '/ayuda#privacidad'], ['Protección al comprador', '/proteccion-al-comprador'], ['Política de devoluciones', '/politica-de-devoluciones'], ['Política de envíos', '/politica-de-envios']] },
+  { title: 'Legal', links: [['Términos y condiciones', '/terminos'], ['Privacidad y cookies', '/privacidad'], ['Protección al comprador', '/proteccion-al-comprador'], ['Política de devoluciones', '/politica-de-devoluciones'], ['Política de envíos', '/politica-de-envios']] },
 ];
 
-export function ShopFooter() {
-  const cfg = usePublicConfig();
+/** `initial`: the config read on the server, so company and contact data are in the first HTML. */
+export function ShopFooter({ initial }: { initial?: PublicConfig | null }) {
+  const cfg = usePublicConfig() ?? initial ?? undefined;
   const social = (cfg?.social ?? []).filter((l) => SOCIAL_ICONS[l.network]);
   // Company data and texts from Admin → Configuración → Ayuda y redes → Empresa y pie de página.
   const co: Record<string, string | undefined> = cfg?.company ?? {};

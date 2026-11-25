@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { getHas, getServerLocale, getT } from '@/lib/i18n/server';
 import { pageMetadata } from '@/lib/seo';
 import { serverGet } from '@/lib/server-api';
+import { POLICY_PAGES, type PublicPolicyCode } from '@/components/legal/policy-page';
 
 export async function generateMetadata() {
   const t = await getT();
@@ -33,7 +34,7 @@ export default async function HelpPage() {
   const has = await getHas();
   const [help, returns] = await Promise.all([serverGet<Help>('/help', 30), serverGet<{ windowDays: number; labelPayer: string }>('/returns/policy', 300)]);
   // Returns and shipping have their own public pages (linked from the topic cards).
-  const policies = (await serverGet<any[]>('/policies', 300))?.filter((p) => !['RETURN_POLICY', 'SHIPPING_POLICY', 'ABOUT_US', 'BUYER_PROTECTION'].includes(p.code));
+  const policies = await serverGet<any[]>('/policies', 300);
   // English: the admin's own translation, else the automatic one.
   // French / Creole: our translation when the text is the stock one, else the English version, else Spanish.
   const tr = (es: string, eng?: string | null, own?: string | null) => (locale === 'es' ? es : en ? eng || t(es) : own || (has(es) ? t(es) : eng || es));
@@ -98,23 +99,24 @@ export default async function HelpPage() {
           <p className="mt-3 whitespace-pre-line text-muted">{tr(help.commissions.body, help.commissions.bodyEn, (help.commissions as any)[`body${L}`])}</p>
         </section>
       )}
-      {/* Legal texts: the exact published versions people accept at sign-up and store registration. */}
-      {(policies?.length ? policies : [
-        { code: 'TERMS_OF_SERVICE', slug: 'terminos', title: t('Términos y condiciones'), text: t('Al usar NEXOVAX aceptas comprar y vender de buena fe, cumplir las leyes aplicables en tu país y en el país de destino de cada envío, y las políticas de contenido del marketplace. Los vendedores son responsables de la veracidad de sus publicaciones, precios, inventario, del despacho de sus pedidos y del cumplimiento aduanero de sus envíos internacionales.'), version: null, effectiveAt: null },
-        { code: 'PRIVACY_POLICY', slug: 'privacidad', title: t('Política de privacidad'), text: t('Usamos tus datos únicamente para operar tu cuenta, procesar pedidos, pagos y envíos, y dar soporte. Compartimos con las transportadoras solo los datos necesarios para entregar tus pedidos. Los datos sensibles (identificación fiscal y cuentas bancarias de vendedores) se almacenan cifrados. No vendemos tus datos a terceros.'), version: null, effectiveAt: null },
-      ]).map((p: any) => (
-        <section key={p.code} id={p.slug} className="card mt-6 scroll-mt-24 p-6" data-policy={p.code}>
-          <h2 className="text-2xl font-extrabold">{p.title}</h2>
-          {p.version && <p className="mt-1 text-xs text-muted">{t('Versión {n} · vigente desde {d}', { n: p.version, d: new Date(p.effectiveAt).toLocaleDateString(numLocale) })}</p>}
-          <p className="mt-2 whitespace-pre-line text-sm text-muted">{p.text}</p>
-        </section>
-      ))}
-      <section id="cookies" className="card mt-6 p-6">
-        <h2 className="text-2xl font-extrabold">{t('Cookies')}</h2>
-        <p className="mt-2 text-sm text-muted">{t('Usamos cookies esenciales para mantener tu sesión iniciada y tus preferencias (como el idioma y borradores de formularios). Si agregas productos sin haber iniciado sesión, tu carrito se guarda solo en este navegador y pasa a tu cuenta cuando inicias sesión. No usamos cookies de publicidad.')}</p>
-        <p className="mt-2 text-sm text-muted" id="ubicacion">{t('País de entrega: para sugerirte un destino usamos solo el país que nuestro proveedor de alojamiento estima a partir de tu conexión. No guardamos tu dirección IP ni pedimos tu ubicación exacta. Si eliges otro país, lo recordamos en una cookie funcional (nx_delivery_country) y, si iniciaste sesión, en tu cuenta. Es solo una referencia para navegar: el envío, los impuestos y la disponibilidad se confirman con la dirección que indiques al pagar.')}</p>
-        <p className="mt-2 text-sm text-muted">{t('Con tu permiso usamos cookies de analítica: registramos qué productos visitas y cuánto tiempo, para mejorar las recomendaciones y dar a las tiendas estadísticas totales (visitas, favoritos, ventas). Las tiendas nunca ven quién eres. El detalle se borra a los 90 días y puedes cambiar tu decisión en «Preferencias de cookies», al pie de la página. Si no aceptas, solo contamos visitas de forma anónima.')}</p>
-        <p className="mt-2 text-sm text-muted">{t('Google Analytics: si lo aceptas, también medimos de forma agregada cómo se navega el sitio (páginas vistas, productos, carritos y compras) con Google Analytics, mediante sus cookies _ga. No activamos la publicidad ni los anuncios personalizados de Google. Si no aceptas o retiras tu permiso, no se carga y borramos esas cookies.')}</p>
+      {/* Legal texts: each one has its own crawlable page; the old anchors (#terminos, #privacidad…) stay as entry points. */}
+      <section className="card mt-6 scroll-mt-24 p-6" data-legal-links>
+        <h2 className="text-2xl font-extrabold">{t('Documentos legales')}</h2>
+        <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {(Object.keys(POLICY_PAGES) as PublicPolicyCode[]).map((c) => {
+            const p = policies?.find((x: any) => x.code === c);
+            const slug = POLICY_PAGES[c].path.slice(1);
+            return (
+              <li key={c} id={slug === 'privacidad' ? undefined : slug} className="scroll-mt-24">
+                <Link href={POLICY_PAGES[c].path} className="block rounded-xl border border-line px-4 py-3 hover:border-brand-400" data-policy={c}>
+                  <span className="font-semibold text-brand-700">{p?.title || t(POLICY_PAGES[c].label)}</span>
+                  {p?.version && p?.effectiveAt && <span className="mt-0.5 block text-xs text-muted">{t('Versión {n} · vigente desde {d}', { n: p.version, d: new Date(p.effectiveAt).toLocaleDateString(numLocale) })}</span>}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <p id="privacidad" className="mt-3 scroll-mt-24 text-sm text-muted"><span id="cookies" /><span id="ubicacion" />{t('El uso de cookies y del país de entrega se explica en')} <Link href="/privacidad#cookies" className="font-semibold text-brand-700 hover:underline">{t('Privacidad y cookies')}</Link>.</p>
       </section>
     </div>
   );

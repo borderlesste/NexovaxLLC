@@ -179,7 +179,7 @@ function ReportForm() {
               </div>
               <label className="mt-5 flex items-start gap-2 text-sm">
                 <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" />
-                <span>{t('Acepto la')}{' '}<Link href="/ayuda#privacidad" className="text-brand-700 underline">{t('Política de privacidad')}</Link> {t('y autorizo a NEXOVAX a contactarme por correo electrónico para dar seguimiento a este reporte.')}{' '}<span className="text-red-500">*</span></span>
+                <span>{t('Acepto la')}{' '}<Link href="/privacidad" className="text-brand-700 underline">{t('Política de privacidad')}</Link> {t('y autorizo a NEXOVAX a contactarme por correo electrónico para dar seguimiento a este reporte.')}{' '}<span className="text-red-500">*</span></span>
               </label>
               {!session && captcha.widget && <div className="mt-4">{captcha.widget}</div>}
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -33,7 +33,7 @@ export function CookieBanner({ initialOpen = false }: { initialOpen?: boolean })
         <Cookie className="hidden size-8 shrink-0 text-brand-600 sm:block" />
         <p className="flex-1 text-sm text-muted">
           {t('Usamos cookies esenciales para que el sitio funcione. Con tu permiso, también medimos qué productos visitas para mejorar las recomendaciones y cómo se usa el sitio (Google Analytics, sin publicidad); las tiendas solo ven cifras totales, nunca quién eres.')}{' '}
-          <Link href="/ayuda#cookies" className="font-semibold text-brand-700">{t('Más información sobre cookies')}</Link>
+          <Link href="/privacidad#cookies" className="font-semibold text-brand-700">{t('Más información sobre cookies')}</Link>
         </p>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={() => choose(false)} data-cookie-essential>{t('Solo necesarias')}</Button>

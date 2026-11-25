@@ -80,7 +80,7 @@ function RegisterForm() {
           <Field label={t('Confirmar contraseña')} required><Input required type={show ? 'text' : 'password'} icon={<Lock />} placeholder={t('Confirma tu contraseña')} value={f.confirm} onChange={set('confirm')} className="h-11" autoComplete="new-password" /></Field>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" />
-            <span>{t('Acepto los')}{' '}<Link href="/ayuda#terminos" className="font-semibold text-brand-700 underline">{t('Términos y condiciones')}</Link> {t('y la')}{' '}<Link href="/ayuda#privacidad" className="font-semibold text-brand-700 underline">{t('Política de privacidad')}</Link>.</span>
+            <span>{t('Acepto los')}{' '}<Link href="/terminos" className="font-semibold text-brand-700 underline">{t('Términos y condiciones')}</Link> {t('y la')}{' '}<Link href="/privacidad" className="font-semibold text-brand-700 underline">{t('Política de privacidad')}</Link>.</span>
           </label>
           {captcha.widget}
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
