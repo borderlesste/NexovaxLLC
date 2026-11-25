@@ -781,6 +781,66 @@ export class MailService {
     });
   }
 
+  /** The store hears about every free preorder reservation (the buyer's identity is not shared). */
+  async preorderReserved(reservationId: string, dedupeKey: string) {
+    const r = await this.db.one(
+      `select r.quantity, r.product_title, r.variant_title, o.arrival_at, o.capacity, p.id as product_id, p.seller_id, ssp.timezone,
+              (select coalesce(sum(x.quantity),0)::int from public.nx_preorder_reservations x
+                where x.offer_id = o.id and x.cancelled_at is null) as reserved
+         from public.nx_preorder_reservations r join public.nx_preorder_offers o on o.id = r.offer_id
+         join public.product_variants v on v.id = o.variant_id join public.products p on p.id = v.product_id
+         left join public.seller_store_profiles ssp on ssp.seller_id = p.seller_id
+        where r.id = $1 and r.cancelled_at is null`,
+      [reservationId],
+    );
+    if (!r) return;
+    const s = await this.sellerContact(r.seller_id);
+    if (!s) return;
+    const l = s.locale;
+    const t = tr(l);
+    const product = r.variant_title ? `${r.product_title} (${r.variant_title})` : r.product_title;
+    // The store's own time zone (Configuración de la tienda); UTC when it has none or it is invalid.
+    const fmt = (timeZone: string) => new Date(r.arrival_at).toLocaleString(intlLocale(l), { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone, timeZoneName: 'short' });
+    let arrival: string;
+    try { arrival = fmt(r.timezone || 'UTC'); } catch { arrival = fmt('UTC'); }
+    const title = t('Nueva reserva de preorden', 'New preorder reservation', 'Nouvelle réservation en précommande', 'Nouvo rezèvasyon prekòmand');
+    const line = t(`Un cliente reservó ${r.quantity} u. de «${product}». Llevas ${r.reserved} de ${r.capacity} cupos reservados.`,
+      `A customer reserved ${r.quantity} unit(s) of “${product}”. ${r.reserved} of ${r.capacity} slots are now reserved.`,
+      `Un client a réservé ${r.quantity} unité(s) de « ${product} ». ${r.reserved} places sur ${r.capacity} sont réservées.`,
+      `Yon kliyan rezève ${r.quantity} inite «${product}». ${r.reserved} sou ${r.capacity} plas rezève.`);
+    await this.send({
+      template: 'SELLER_PREORDER_RESERVED', dedupeKey, to: s.email, userId: s.ownerUserId, entityType: 'PRODUCT', entityId: r.product_id,
+      message: layout({ locale: l, subject: `${title}: ${r.product_title}`, preheader: line, title,
+        body: p(esc(line))
+          + rows([[t('Producto', 'Product', 'Produit', 'Pwodwi'), esc(product)], [t('Cantidad reservada', 'Reserved quantity', 'Quantité réservée', 'Kantite rezève'), String(r.quantity)],
+            [t('Cupos reservados', 'Reserved slots', 'Places réservées', 'Plas rezève'), `${r.reserved} / ${r.capacity}`], [t('Llegada estimada', 'Estimated arrival', 'Arrivée estimée', 'Arive estime'), esc(arrival)]])
+          + p(t('La reserva es gratuita: cuando registres el inventario avisaremos al cliente para que compre mientras haya stock disponible.',
+            'The reservation is free: once you add the inventory we will tell the customer so they can buy while stock lasts.',
+            'La réservation est gratuite : dès que vous ajoutez le stock, nous prévenons le client pour qu’il achète tant qu’il y a du stock.',
+            'Rezèvasyon an gratis: lè w ajoute envantè a n ap avèti kliyan an pou l achte pandan gen stòk.')),
+        cta: { label: t('Ver el producto', 'View the product', 'Voir le produit', 'Wè pwodwi a'), url: `${webUrl()}/vendedor/productos/${r.product_id}/editar` }, text: line }),
+    });
+  }
+
+  /** The buyer who reserved a preorder: the inventory arrived and there is stock to buy now. */
+  async preorderAvailable(userId: string, prod: { id: string; slug: string; title: string; price: string; currency: string; store: string }, dedupeKey: string) {
+    const u = await this.userContact(userId);
+    if (!u) return;
+    const t = tr(u.locale);
+    const price = money(prod.price, prod.currency, u.locale);
+    const title = t('Tu reserva ya está disponible', 'Your reservation is now available', 'Votre réservation est disponible', 'Rezèvasyon ou disponib kounye a');
+    const line = t(`Llegó el inventario de «${prod.title}» de ${prod.store} y ya puedes comprarlo a ${price}. La reserva no aparta unidades: cómpralo mientras haya stock disponible.`,
+      `The inventory for “${prod.title}” from ${prod.store} has arrived and you can buy it now at ${price}. The reservation does not hold units: buy it while stock lasts.`,
+      `Le stock de « ${prod.title} » de ${prod.store} est arrivé ; vous pouvez l’acheter à ${price}. La réservation ne bloque pas d’unités : achetez-le tant qu’il y a du stock.`,
+      `Envantè «${prod.title}» nan ${prod.store} rive, ou ka achte l kounye a a ${price}. Rezèvasyon an pa kenbe inite: achte l pandan gen stòk.`);
+    await this.send({
+      template: 'ORDER_PREORDER_AVAILABLE', dedupeKey, to: u.email, userId, entityType: 'PRODUCT', entityId: prod.id,
+      message: layout({ locale: u.locale, subject: `${title}: ${prod.title}`, preheader: line, title,
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(u.name)}, ${esc(line.charAt(0).toLowerCase() + line.slice(1))}`),
+        cta: { label: t('Comprar ahora', 'Buy now', 'Acheter maintenant', 'Achte kounye a'), url: `${webUrl()}/producto/${prod.slug}` }, text: line }),
+    });
+  }
+
   /** A store's coupon offer to someone who has the product in favorites / cart (store never sees who). */
   async productOffer(userId: string, o: { productId: string; slug: string; title: string; store: string; code: string; type: string; value: number; currency: string; endsAt?: string | null; message?: string | null }, dedupeKey: string) {
     const u = await this.userContact(userId);

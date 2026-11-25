@@ -23,7 +23,7 @@ export interface NoticeInput {
 /** E-mail template → notification category (anything not listed is ACCOUNT, always delivered). */
 const TEMPLATE_CATEGORY: [RegExp, NotificationCategory][] = [
   [/^PRODUCT_ALERT_/, 'PRODUCT_ALERTS'],
-  [/^(ORDER_|SELLER_NEW_ORDER|SELLER_ORDER_DELIVERED)/, 'ORDERS'],
+  [/^(ORDER_|SELLER_NEW_ORDER|SELLER_ORDER_DELIVERED|SELLER_PREORDER_)/, 'ORDERS'],
   [/^(BANK_TRANSFER_|PAYOUT_|PAYMENT_INCIDENT_)/, 'PAYMENTS'],
   [/^(RETURN_|REFUND_)/, 'RETURNS'],
   [/^SUPPORT_/, 'SUPPORT'],

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { DbService } from '../db/db.service';
+import { MailService } from '../mail/mail.service';
 import { openPreorderSql, variantHasPhysicalStockSql } from './preorders.sql';
 
 const visible = `p.status in ('ACTIVE','OUT_OF_STOCK') and v.status = 'ACTIVE' and s.status = 'ACTIVE'`;
@@ -44,7 +45,7 @@ function validUnits(value: number) {
 
 @Injectable()
 export class PreordersService {
-  constructor(private readonly db: DbService) {}
+  constructor(private readonly db: DbService, private readonly mail: MailService) {}
 
   // The stock receipt trigger takes the same lock. Always fetch mutable facts in a
   // new statement after acquiring it so concurrent commits are visible at READ COMMITTED.
@@ -138,12 +139,12 @@ export class PreordersService {
 
   async reserve(buyerId: string, sellerIds: string[], offerId: string, quantity: number) {
     validUnits(quantity);
-    return this.db.tx(async (c) => {
+    const saved = await this.db.tx(async (c) => {
       const offer = await this.db.one('select variant_id from public.nx_preorder_offers where id = $1', [offerId], c);
       if (!offer) throw new AppError('NOT_FOUND', 'Preorden no encontrada.', 404);
       await this.lock(c, offer.variant_id);
       const row = await this.db.one(
-        `select ${offerColumns}, ${hasStock} as stocked, r.quantity as previous, s.owner_user_id as owner, s.id as seller
+        `select ${offerColumns}, ${hasStock} as stocked, r.quantity as previous, s.owner_user_id as owner, s.id as seller, p.id as "productId"
            from public.nx_preorder_offers o ${variants}
            left join public.nx_preorder_reservations r on r.offer_id = o.id and r.buyer_id = $2 and r.cancelled_at is null
           where o.id = $1 and ${visible}`, [offerId, buyerId], c,
@@ -162,8 +163,17 @@ export class PreordersService {
          returning id`, [offerId, buyerId, quantity], c,
       );
       if (!reservation) throw conflict('PREORDER_CLOSED', 'Esta preorden ya terminó.');
+      // The buyer is told when the inventory arrives (and there is stock) by the back-in-stock alerts job.
+      await this.db.exec(
+        `insert into public.nx_product_alerts (user_id, product_id, variant_id, created_at) values ($1,$2,$3,clock_timestamp())
+         on conflict (user_id, product_id, coalesce(variant_id, '00000000-0000-0000-0000-000000000000'::uuid)) where status = 'ACTIVE' do nothing`,
+        [buyerId, row.productId, row.variantId], c,
+      );
       return this.db.one(`${buyerRows} where r.id = $1`, [reservation.id], c);
     });
+    // After the commit: the store hears about the reservation (e-mail + bell); never breaks the reservation.
+    this.mail.fire(() => this.mail.preorderReserved(saved.id, `preorder-reserved:${saved.id}:${saved.quantity}:${Date.now()}`));
+    return saved;
   }
 
   async cancel(buyerId: string, id: string) {
@@ -183,6 +193,12 @@ export class PreordersService {
         const alreadyCancelled = await this.db.one('select 1 from public.nx_preorder_reservations where id = $1 and buyer_id = $2 and cancelled_at is not null', [id, buyerId], c);
         if (!alreadyCancelled) throw conflict('PREORDER_CLOSED', 'Esta preorden ya terminó.');
       }
+      // No "available" notice for a reservation the buyer withdrew.
+      await this.db.exec(
+        `update public.nx_product_alerts a set status = 'CANCELLED' from public.nx_preorder_reservations r
+          where r.id = $1 and a.user_id = $2 and a.variant_id = $3 and a.status = 'ACTIVE' and a.created_at >= r.created_at`,
+        [id, buyerId, row.variant_id], c,
+      );
       return { ok: true };
     });
   }

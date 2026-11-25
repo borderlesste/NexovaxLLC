@@ -104,11 +104,30 @@ export class AlertsService {
     setImmediate(() => this.scan(productIds).catch((e) => this.logger.warn(`alerts touch: ${e.message}`)));
   }
 
+  /** Free preorder reservations wait for the inventory like a back-in-stock request (also covers older reservations). */
+  private async syncPreorders(ids: string[] | null) {
+    await this.db.exec(
+      `insert into public.nx_product_alerts (user_id, product_id, variant_id)
+       select distinct r.buyer_id, v.product_id, v.id
+         from public.nx_preorder_reservations r join public.nx_preorder_offers o on o.id = r.offer_id
+         join public.product_variants v on v.id = o.variant_id
+        where r.cancelled_at is null and o.status in ('OPEN','IN_STOCK','EXPIRED') and ($1::uuid[] is null or v.product_id = any($1))
+          and not exists (select 1 from public.nx_product_alerts a where a.user_id = r.buyer_id and a.variant_id = v.id and a.created_at >= r.created_at)
+       on conflict (user_id, product_id, coalesce(variant_id, '00000000-0000-0000-0000-000000000000'::uuid)) where status = 'ACTIVE' do nothing`,
+      [ids],
+    ).catch((e) => this.logger.warn(`preorder alerts: ${e.message}`));
+  }
+
   private async backInStock(ids: string[] | null) {
     const currency = await this.settings.currency();
+    await this.syncPreorders(ids);
     const due = await this.db.many(
       `select a.id, a.user_id, p.id as product_id, p.slug, p.title, ${PRICE_SQL('p.id')}::text as price,
-              coalesce(ssp.display_name, s.slug) as store
+              coalesce(ssp.display_name, s.slug) as store,
+              exists (select 1 from public.nx_preorder_reservations r join public.nx_preorder_offers o on o.id = r.offer_id
+                       join public.product_variants pv on pv.id = o.variant_id
+                      where r.buyer_id = a.user_id and r.cancelled_at is null and pv.product_id = p.id
+                        and (a.variant_id is null or pv.id = a.variant_id)) as preorder
          from public.nx_product_alerts a join public.products p on p.id = a.product_id and p.status = 'ACTIVE'
          join public.sellers s on s.id = p.seller_id and s.status = 'ACTIVE' left join public.seller_store_profiles ssp on ssp.seller_id = s.id
         where a.status = 'ACTIVE' and ($1::uuid[] is null or a.product_id = any($1)) and ${STOCK_SQL('p.id', 'a.variant_id')} > 0
@@ -118,7 +137,8 @@ export class AlertsService {
     for (const a of due) {
       const claimed = await this.db.one(`update public.nx_product_alerts set status = 'SENT', notified_at = now() where id = $1 and status = 'ACTIVE' returning id`, [a.id]);
       if (!claimed) continue;
-      await this.mail.productAlert(a.user_id, 'STOCK', { id: a.product_id, slug: a.slug, title: a.title, price: a.price ?? '0', currency, store: a.store }, `alert-stock:${a.id}`)
+      const prod = { id: a.product_id, slug: a.slug, title: a.title, price: a.price ?? '0', currency, store: a.store };
+      await (a.preorder ? this.mail.preorderAvailable(a.user_id, prod, `alert-stock:${a.id}`) : this.mail.productAlert(a.user_id, 'STOCK', prod, `alert-stock:${a.id}`))
         .catch((e) => this.logger.warn(`stock alert ${a.id}: ${e.message}`));
     }
     return due.length;

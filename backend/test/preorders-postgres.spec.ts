@@ -17,6 +17,7 @@ withPostgres('preorders in PostgreSQL', () => {
   let postgres: Pool;
   let runtime: Pool;
   let preorders: PreordersService;
+  const fired: unknown[] = [];
   const owner = randomUUID(), seller = randomUUID(), product = randomUUID(), buyer = randomUUID(), other = randomUUID();
   const later = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
 
@@ -51,6 +52,10 @@ withPostgres('preorders in PostgreSQL', () => {
       create table public.products (id uuid primary key, seller_id uuid, title text, slug text, status text);
       create table public.product_variants (id uuid primary key, product_id uuid, title text, status text, is_default boolean);
       create table public.inventory_items (variant_id uuid, status text, on_hand int);
+      create table public.nx_product_alerts (id uuid primary key default gen_random_uuid(), user_id uuid, product_id uuid, variant_id uuid,
+        status text not null default 'ACTIVE', created_at timestamptz not null default now());
+      create unique index on public.nx_product_alerts (user_id, product_id, coalesce(variant_id, '00000000-0000-0000-0000-000000000000'::uuid)) where status = 'ACTIVE';
+      grant insert, update on public.nx_product_alerts to nexovax_api_runtime;
       grant select on all tables in schema public to nexovax_api_runtime;
     `);
     const migration = resolve(__dirname, '../../supabase/migrations/20261124110000_nexovax_preorders.sql');
@@ -60,7 +65,7 @@ withPostgres('preorders in PostgreSQL', () => {
     await postgres.query("insert into public.products values ($1,$2,'Producto','producto','ACTIVE')", [product, seller]);
     runtime = new Pool({ host: '127.0.0.1', port, user: 'fixture_api', password, database: 'postgres' });
     const db = Object.assign(Object.create(DbService.prototype), { pool: runtime }) as DbService;
-    preorders = new PreordersService(db);
+    preorders = new PreordersService(db, { fire: (job: () => unknown) => fired.push(job) } as any);
   });
   afterAll(async () => {
     try { await Promise.all([runtime?.end(), postgres?.end()]); } finally {
@@ -195,5 +200,22 @@ withPostgres('preorders in PostgreSQL', () => {
     expect(items.find((i) => i.id === r1.id)?.status).toBe('EXPIRED');
     expect(items.find((i) => i.id === r2.id)?.status).toBe('CLOSED');
     await expect(preorders.reserve(buyer, [], a.offerId, 1)).rejects.toMatchObject({ code: 'PREORDER_CLOSED' });
+  });
+
+  it('notifies the store and waits for stock on behalf of the buyer until the reservation is cancelled', async () => {
+    const vid = await variant();
+    const offer = await preorders.configure(seller, product, vid, { arrivalAt: later(12), capacity: 5 });
+    const before = fired.length;
+    const r = (await preorders.reserve(buyer, [], offer.offerId, 2))!;
+    expect(fired.length).toBe(before + 1);
+    const alerts = () => postgres.query('select status from public.nx_product_alerts where user_id = $1 and variant_id = $2', [buyer, vid]).then((q) => q.rows.map((x) => x.status));
+    expect(await alerts()).toEqual(['ACTIVE']);
+    await preorders.reserve(buyer, [], offer.offerId, 3);
+    expect(await alerts()).toEqual(['ACTIVE']);
+    await preorders.cancel(buyer, r.id);
+    expect(await alerts()).toEqual(['CANCELLED']);
+    await preorders.reserve(buyer, [], offer.offerId, 1);
+    expect((await alerts()).sort()).toEqual(['ACTIVE', 'CANCELLED']);
+    await preorders.close(seller, product, vid);
   });
 });
