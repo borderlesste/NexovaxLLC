@@ -19,8 +19,10 @@ const TITLES: Record<string, [string, string]> = {
  * Recommendation strip. Personalized only with analytics consent; otherwise popular /
  * similar products. Renders nothing when there is nothing to show.
  */
-export function Recommendations({ context, productId, limit = 8, className, gridClassName, fallback, reserveSpace }: {
+export function Recommendations({ context, productId, limit = 8, className, gridClassName, fallback, reserveSpace, showAddToCart, hideSeller }: {
   context: 'home' | 'product' | 'cart'; productId?: string; limit?: number; className?: string; gridClassName?: string; fallback?: React.ReactNode;
+  /** Card options, passed to every ProductCard. */
+  showAddToCart?: boolean; hideSeller?: boolean;
   /** Show placeholders while loading (for sections above other content, e.g. the home page). */
   reserveSpace?: boolean;
 }) {
@@ -60,7 +62,7 @@ export function Recommendations({ context, productId, limit = 8, className, grid
         <p className="text-sm text-muted">{t(subtitle)}</p>
       </div>
       <div className={grid}>
-        {q.data.items.map((p: any) => <ProductCard key={p.id} p={p} />)}
+        {q.data.items.map((p: any) => <ProductCard key={p.id} p={p} showAddToCart={showAddToCart} hideSeller={hideSeller} />)}
       </div>
     </section>
   );

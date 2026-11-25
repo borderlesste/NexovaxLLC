@@ -77,7 +77,7 @@ export function Stars({ value, count, countLabel, size = 'sm' }: { value: number
   );
 }
 
-export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardData; showAddToCart?: boolean; isFavorite?: boolean }) {
+export function ProductCard({ p, showAddToCart, isFavorite, hideSeller }: { p: ProductCardData; showAddToCart?: boolean; isFavorite?: boolean; /** Leave out the store name (e.g. home page; the product page shows the seller). */ hideSeller?: boolean }) {
   const { me } = useAuth();
   const canEarnCommission = p.affiliateCommissionEnabled === true && !me?.sellers.some((seller) => seller.id === p.seller.id);
   const fav = useToggleFavorite();
@@ -118,12 +118,16 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
         </div>
         <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-bold leading-5 text-ink">{p.title}</h3>
       </Link>
-      <div className="mt-1 flex items-center justify-between gap-2">
-        <Link href={`/tienda/${p.seller.slug}`} className="flex min-w-0 items-center gap-1 text-xs text-muted hover:text-brand-700">
-          <Store className="size-3.5 shrink-0" /> <span className="truncate">{p.seller.name}</span>
-        </Link>
-        {p.reviewCount > 0 && <span className="shrink-0"><Stars value={p.rating} count={p.reviewCount} /></span>}
-      </div>
+      {hideSeller ? (
+        p.reviewCount > 0 && <div className="mt-1"><Stars value={p.rating} count={p.reviewCount} /></div>
+      ) : (
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <Link href={`/tienda/${p.seller.slug}`} className="flex min-w-0 items-center gap-1 text-xs text-muted hover:text-brand-700">
+            <Store className="size-3.5 shrink-0" /> <span className="truncate">{p.seller.name}</span>
+          </Link>
+          {p.reviewCount > 0 && <span className="shrink-0"><Stars value={p.rating} count={p.reviewCount} /></span>}
+        </div>
+      )}
       <AvailabilityLine productId={p.id} className="mt-1" />
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
         <span className="whitespace-nowrap text-lg font-extrabold">{p.price ? money(p.price) : '—'}</span>
@@ -132,22 +136,27 @@ export function ProductCard({ p, showAddToCart, isFavorite }: { p: ProductCardDa
       {canEarnCommission && (
         <Badge tone="green" className="mt-1.5 self-start whitespace-normal">{t('Gana comisión al compartir')}</Badge>
       )}
-      {showAddToCart && (upcoming ? (
-        <Button asChild size="sm" className="mt-2 w-full" variant="secondary"><Link href={`/producto/${p.slug}`}>{t('Ver preorden')}</Link></Button>
-      ) : (
-        <Button size="sm" className="mt-2 w-full" onClick={quickAdd} loading={adding} disabled={out}>
-          <ShoppingCart /> {out ? t('Agotado') : t('Añadir al carrito')}
-        </Button>
-      ))}
+      {showAddToCart && (
+        // mt-auto keeps the button on the card's bottom edge so buttons line up across a row.
+        <div className="mt-auto pt-2">
+          {upcoming ? (
+            <Button asChild size="sm" className="w-full" variant="secondary"><Link href={`/producto/${p.slug}`}>{t('Ver preorden')}</Link></Button>
+          ) : (
+            <Button size="sm" className="w-full" onClick={quickAdd} loading={adding} disabled={out}>
+              <ShoppingCart /> {out ? t('Agotado') : t('Añadir al carrito')}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-export function ProductGrid({ items, showAddToCart, cols = 'lg:grid-cols-6' }: { items: ProductCardData[]; showAddToCart?: boolean; cols?: string }) {
+export function ProductGrid({ items, showAddToCart, hideSeller, cols = 'lg:grid-cols-6', gap = 'gap-3 md:gap-4' }: { items: ProductCardData[]; showAddToCart?: boolean; hideSeller?: boolean; cols?: string; gap?: string }) {
   return (
-    <div className={cn('grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4', cols)}>
+    <div className={cn('grid grid-cols-2 sm:grid-cols-3', gap, cols)}>
       {items.map((p) => (
-        <ProductCard key={p.id} p={p} showAddToCart={showAddToCart} />
+        <ProductCard key={p.id} p={p} showAddToCart={showAddToCart} hideSeller={hideSeller} />
       ))}
     </div>
   );

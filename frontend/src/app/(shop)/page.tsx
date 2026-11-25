@@ -10,6 +10,10 @@ import { Empty } from '@/components/ui/misc';
 
 export const revalidate = 30;
 
+/** Product cards on the home page sit closer together than in the catalog. */
+const HOME_GAP = 'gap-2 md:gap-2.5';
+const HOME_GRID = `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 ${HOME_GAP}`;
+
 async function Hero({ preview }: { preview: any[] }) {
   const t = await getT();
   return (
@@ -103,7 +107,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <Recommendations context="home" limit={12} className="mt-7 lg:mt-9" reserveSpace />
+        <Recommendations context="home" limit={12} className="mt-7 lg:mt-9" reserveSpace showAddToCart hideSeller gridClassName={HOME_GRID} />
 
         {featuredOn && <section className="mt-7 lg:mt-9" data-featured-section>
           <div className="mb-3 flex items-end justify-between">
@@ -111,7 +115,7 @@ export default async function HomePage() {
             <Link href="/catalogo" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver más productos')} <ArrowRight className="size-4" /></Link>
           </div>
           {featured.length ? (
-            <ProductGrid items={featured.slice(0, 12)} />
+            <ProductGrid items={featured.slice(0, 12)} showAddToCart hideSeller gap={HOME_GAP} />
           ) : (
             <div className="card"><Empty title={t('Pronto verás productos aquí')} description={t('Los vendedores están preparando su catálogo.')} /></div>
           )}
@@ -123,7 +127,7 @@ export default async function HomePage() {
               <h2 className="text-2xl font-extrabold">{t('Ofertas de la semana')}</h2>
               <Link href="/catalogo?onSale=true" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">{t('Ver ofertas')} <ArrowRight className="size-4" /></Link>
             </div>
-            <ProductGrid items={data.deals} />
+            <ProductGrid items={data.deals} showAddToCart hideSeller gap={HOME_GAP} />
           </section>
         ) : null}
 
