@@ -27,3 +27,18 @@ export function taxIdHint(country?: string | null) {
   };
   return country ? m[country] ?? t('Identificación fiscal') : t('Identificación fiscal');
 }
+
+/**
+ * Optional fiscal data for the API: blank fields are left out, and the entity type (which has a default in the forms)
+ * is only sent when the store actually gives a legal name or tax ID.
+ */
+export function fiscalPayload(f: { legalName?: string; entityType?: string; countryCode?: string; taxId?: string }) {
+  const legalName = f.legalName?.trim() || undefined;
+  const taxId = f.taxId?.trim() || undefined;
+  return {
+    legalName,
+    taxId,
+    entityType: legalName || taxId ? f.entityType || undefined : undefined,
+    countryCode: f.countryCode?.trim() || undefined,
+  };
+}

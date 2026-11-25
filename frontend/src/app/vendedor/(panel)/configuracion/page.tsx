@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ExternalLink, ImageIcon, MapPin, Store, UploadCloud, X } from 'lucide-react';
+import { Check, ExternalLink, FileText, ImageIcon, MapPin, Store, UploadCloud, X } from 'lucide-react';
 import { LogoMark } from '@/components/layout/logo';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put, upload } from '@/lib/api';
@@ -10,10 +10,12 @@ import { fmtDate } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Textarea } from '@/components/ui/input';
+import { Field, Input, Select, Textarea } from '@/components/ui/input';
+import { ENTITY_TYPES, entityLabel, fiscalPayload, taxIdHint } from '@/lib/entities';
+import { useAuth } from '@/lib/auth';
 import { StatusBadge } from '@/components/ui/badge';
 import { PageLoader } from '@/components/ui/misc';
-import { cityLine, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
+import { cityLine, CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { t } from '@/lib/i18n';
 import { DestinationsCard } from '@/components/seller/destinations-card';
 
@@ -49,8 +51,44 @@ function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
   );
 }
 
+/** Fiscal data: optional at sign-up, completed or corrected here by the store owner. */
+function LegalCard({ store, canEdit, onSaved }: { store: any; canEdit: boolean; onSaved: (r: any) => void }) {
+  const [f, setF] = useState({ legalName: store.legalName ?? '', entityType: store.entityType ?? 'COMPANY', countryCode: store.countryCode ?? '', taxId: '' });
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await put('/seller/store/legal', fiscalPayload(f));
+      setF((x) => ({ ...x, taxId: '' }));
+      onSaved(r);
+      toast.success(r.fiscalComplete ? t('Datos fiscales guardados.') : t('Datos fiscales guardados. Completa la identificación fiscal y el país para verificar tu tienda.'));
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card className="p-5 text-sm" data-seller-legal>
+      <p className="flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')}</p>
+      <p className="mt-1 text-muted">{store.fiscalComplete ? t('Completos. Aparecen en los recibos de tus clientes.') : t('Opcionales. Con la razón social, la identificación fiscal y el país completos tu tienda aparece como verificada y tus recibos los muestran.')}</p>
+      <div className="mt-4 grid gap-3">
+        <Field label={t('Nombre o razón social')} required><Input rule="businessName" value={f.legalName} onChange={(e) => setF({ ...f, legalName: e.target.value })} disabled={!canEdit} /></Field>
+        <Field label={t('Tipo de entidad')}><Select value={f.entityType} onChange={(e) => setF({ ...f, entityType: e.target.value })} disabled={!canEdit}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select></Field>
+        <CountrySelect label={t('País de registro')} value={f.countryCode} onChange={(v) => setF({ ...f, countryCode: v })} />
+        <Field label={taxIdHint(f.countryCode)} hint={store.hasTaxId ? t('Guardada: termina en {a}. Déjala vacía para conservarla.', { a: store.taxIdLast4 ?? '••••' }) : t('(se guarda cifrado)')}>
+          <Input rule="taxId" value={f.taxId} onChange={(e) => setF({ ...f, taxId: e.target.value })} disabled={!canEdit} />
+        </Field>
+      </div>
+      {canEdit ? <Button className="mt-4 w-full" onClick={save} loading={busy} disabled={!f.legalName.trim()}><Check /> {t('Guardar datos fiscales')}</Button>
+        : <p className="mt-3 text-xs text-muted">{t('Solo el propietario de la tienda puede cambiar los datos fiscales.')}</p>}
+    </Card>
+  );
+}
+
 export default function StoreSettingsPage() {
   const qc = useQueryClient();
+  const { seller } = useAuth();
   const q = useQuery({ queryKey: ['seller-store'], queryFn: () => get('/seller/store') });
   const [f, setF] = useState({ displayName: '', shortDescription: '', description: '', supportEmail: '', supportPhone: '' });
   const [busy, setBusy] = useState(false);
@@ -149,11 +187,12 @@ export default function StoreSettingsPage() {
             <div className="mt-3 space-y-2">
               <div className="flex justify-between"><span className="text-muted">{t('Estado')}</span><StatusBadge status={s.status} /></div>
               <div className="flex justify-between"><span className="text-muted">{t('Verificación')}</span><StatusBadge status={s.verificationStatus === 'VERIFIED' ? 'VERIFIED' : 'PENDING'} /></div>
-              <div className="flex justify-between"><span className="text-muted">{t('Razón social')}</span><b>{s.legalName}</b></div>
+              <div className="flex justify-between"><span className="text-muted">{t('Razón social')}</span>{s.legalName ? <b>{s.legalName}</b> : <span className="text-amber-700">{t('Pendiente')}</span>}</div>
               <div className="flex justify-between"><span className="text-muted">{t('Registrada')}</span><b>{fmtDate(s.createdAt)}</b></div>
             </div>
             {s.shipFrom && <p className="mt-4 flex gap-2 rounded-lg bg-surface p-3"><MapPin className="size-4 shrink-0 text-brand-600" /> <span><b>{t('Almacén principal:')}</b> {s.shipFrom.line1} · {cityLine(s.shipFrom)}</span></p>}
           </Card>
+          <LegalCard store={s} canEdit={!!seller?.isOwner} onSaved={(r) => qc.setQueryData(['seller-store'], r)} />
           <ShipFromCard store={s} onSaved={() => qc.invalidateQueries({ queryKey: ['seller-store'] })} />
           <DestinationsCard shipFromCountry={s.shipFrom?.countryCode ?? null} />
         </div>

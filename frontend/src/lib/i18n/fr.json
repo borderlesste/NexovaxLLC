@@ -3155,5 +3155,15 @@
 "Reservada": "Réservée",
 "Llegó al inventario": "Stock reçu",
 "Próximamente en stock": "Bientôt en stock",
-"Ver preorden": "Voir la précommande"
+"Ver preorden": "Voir la précommande",
+"Puedes completarlos ahora o más tarde desde Configuración. Con los datos fiscales completos tu tienda aparece como verificada y tus recibos muestran tu razón social e identificación fiscal.": "Vous pouvez les remplir maintenant ou plus tard depuis Paramètres. Avec des informations fiscales complètes, votre boutique apparaît comme vérifiée et vos reçus affichent votre raison sociale et votre identifiant fiscal.",
+"(requerido con la identificación fiscal)": "(requis avec l'identifiant fiscal)",
+"Sin datos fiscales": "Sans informations fiscales",
+"Datos fiscales guardados.": "Informations fiscales enregistrées.",
+"Datos fiscales guardados. Completa la identificación fiscal y el país para verificar tu tienda.": "Informations fiscales enregistrées. Ajoutez l'identifiant fiscal et le pays pour vérifier votre boutique.",
+"Completos. Aparecen en los recibos de tus clientes.": "Complètes. Elles apparaissent sur les reçus de vos clients.",
+"Opcionales. Con la razón social, la identificación fiscal y el país completos tu tienda aparece como verificada y tus recibos los muestran.": "Facultatives. Avec la raison sociale, l'identifiant fiscal et le pays renseignés, votre boutique apparaît comme vérifiée et vos reçus les affichent.",
+"Guardada: termina en {a}. Déjala vacía para conservarla.": "Enregistré : se termine par {a}. Laissez vide pour le conserver.",
+"Guardar datos fiscales": "Enregistrer les informations fiscales",
+"Solo el propietario de la tienda puede cambiar los datos fiscales.": "Seul le propriétaire de la boutique peut modifier les informations fiscales."
 }

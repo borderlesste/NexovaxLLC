@@ -267,6 +267,8 @@ const EN: Record<string, string> = {
   'No puedes retirar más unidades de las que hay en stock.': 'You can’t remove more units than are in stock.',
   'Esta tienda aún no tiene productos publicados.': 'This store has no published products yet.',
   'Ingresa un número de identificación fiscal válido.': 'Enter a valid tax identification number.',
+  'Indica el nombre o razón social junto con la identificación fiscal.': 'Enter the legal name together with the tax ID.',
+  'Indica el nombre o razón social.': 'Enter the legal name.',
   'La tasa debe estar entre 0 % y 99 %.': 'The rate must be between 0% and 99%.',
   'El nombre del producto es obligatorio.': 'The product name is required.',
   'Máximo 8 imágenes por producto.': 'Up to 8 images per product.',

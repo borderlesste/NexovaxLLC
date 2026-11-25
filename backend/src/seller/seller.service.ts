@@ -19,15 +19,25 @@ import { mediaUrl } from '../catalog/catalog.sql';
 import { realOrder, TEST_PENDING } from '../common/live-orders';
 import { inPreviousWindow, inWindow, sellerNetExpr, sellerOrderRefunds, soldSellerOrder } from '../common/sales-sql';
 
+type EntityType = 'INDIVIDUAL' | 'SOLE_PROPRIETOR' | 'COMPANY' | 'PARTNERSHIP' | 'NONPROFIT' | 'OTHER';
+
+export interface LegalInput {
+  legalName?: string;
+  entityType?: EntityType;
+  countryCode?: string;
+  taxId?: string;
+}
+
 export interface OnboardingInput {
   storeName: string;
   shortDescription?: string;
   supportEmail?: string;
   supportPhone?: string;
-  legalName: string;
-  entityType: 'INDIVIDUAL' | 'SOLE_PROPRIETOR' | 'COMPANY' | 'PARTNERSHIP' | 'NONPROFIT' | 'OTHER';
-  countryCode: string; // registration country (ISO 3166-1 alpha-2)
-  taxId: string; // national tax identifier (EIN, RFC, NIF, RNC, CUIT…)
+  // Fiscal data is optional at sign-up: the store can complete it later from its settings.
+  legalName?: string;
+  entityType?: EntityType;
+  countryCode?: string; // registration country (ISO 3166-1 alpha-2)
+  taxId?: string; // national tax identifier (EIN, RFC, NIF, RNC, CUIT…)
   timezone?: string;
   address: ShipFromInput;
 }
@@ -106,11 +116,7 @@ export class SellerService {
     if (input.acceptTerms !== true) throw badRequest('SELLER_TERMS_REQUIRED', 'Debes aceptar los términos para vendedores.');
     if (!(await this.settings.get('features.seller_registration')))
       throw new AppError('SELLER_REGISTRATION_CLOSED', 'El registro de vendedores está cerrado temporalmente.', HttpStatus.FORBIDDEN);
-    if (!ENTITY_TYPES.includes(input.entityType)) throw badRequest('ENTITY_TYPE_INVALID', 'Tipo de entidad inválido.');
-    const taxDigits = input.taxId.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (taxDigits.length < 4 || taxDigits.length > 20)
-      throw badRequest('TAX_ID_INVALID', 'Ingresa un número de identificación fiscal válido.');
-    const registration = { countryCode: await normalizeCountry(this.db, input.countryCode) };
+    const legal = await this.normalizeLegal(input);
     const geo = await normalizeAddress(this.db, input.address);
     const me = await this.db.one(`select locale from public.users where id = $1`, [user.id]);
     const currency = await this.settings.currency();
@@ -127,16 +133,11 @@ export class SellerService {
       await this.db.exec(
         `insert into public.seller_store_profiles (seller_id, display_name, short_description, support_email, support_phone, locale, timezone)
          values ($1,$2,$3,$4,$5,$6,$7)`,
-        [id, input.storeName.trim(), input.shortDescription?.trim() || null, input.supportEmail?.trim() || null, normalizePhone(await countryGeo(this.db, registration.countryCode), input.supportPhone),
+        [id, input.storeName.trim(), input.shortDescription?.trim() || null, input.supportEmail?.trim() || null, normalizePhone(await countryGeo(this.db, legal.countryCode ?? geo.countryCode), input.supportPhone),
          me?.locale === 'en' ? 'en' : 'es', validTimezone(input.timezone)],
         c,
       );
-      await this.db.exec(
-        `insert into public.seller_legal_profiles (seller_id, legal_name, entity_type_code, registration_country_code, tax_identifier_ciphertext, encryption_key_version)
-         values ($1,$2,$3,$4,$5,$6)`,
-        [id, input.legalName.trim(), input.entityType, registration.countryCode, encrypt(taxDigits), KEY_VERSION],
-        c,
-      );
+      if (legal.legalName) await this.writeLegal(id, legal, c);
       const cityId = await resolveCityId(this.db, geo.countryCode, geo.city, geo.region, c);
       const addr = await this.db.one(
         `insert into public.seller_ship_from_addresses (seller_id, label, warehouse_code, contact_name, company_name, line1, line2, city, city_id,
@@ -159,14 +160,10 @@ export class SellerService {
         [user.id],
         c,
       );
-      await this.db.exec(
-        `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, verified_at, metadata)
-         values ($1,'KYB','AUTO','VERIFIED',now(),now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
-        [id, last4(taxDigits), input.entityType, registration.countryCode],
-        c,
-      ).catch(() => undefined);
       // Stores go live on sign-up; the admin can still suspend them later. Payout accounts keep their own verification.
-      await this.db.exec(`update public.sellers set status = 'ACTIVE', verification_status = 'VERIFIED', activated_at = coalesce(activated_at, now()) where id = $1`, [id], c);
+      // The store is only marked "verified" once its fiscal data is complete; without it, it sells as an unverified store.
+      await this.db.exec(`update public.sellers set status = 'ACTIVE', activated_at = coalesce(activated_at, now()) where id = $1`, [id], c);
+      await this.autoVerify(id, legal, c);
       await this.db.exec(
         `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason) values ($1,'DRAFT','ACTIVE',$2,'Alta automática')`,
         [id, user.id],
@@ -190,7 +187,7 @@ export class SellerService {
   async store(sellerId: string) {
     const s = await this.db.one(
       `select s.id, s.slug, s.status, s.verification_status, s.created_at, s.activated_at, ssp.*, slp.legal_name, slp.entity_type_code,
-              slp.registration_country_code,
+              slp.registration_country_code, slp.tax_identifier_last4, (slp.tax_identifier_ciphertext is not null) as has_tax_id,
               a.id as address_id, a.contact_name, a.line1, a.line2, a.city, a.region, a.postal_code, a.country_code, a.phone as address_phone
          from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
          left join public.seller_legal_profiles slp on slp.seller_id = s.id
@@ -216,6 +213,9 @@ export class SellerService {
       legalName: s.legal_name,
       entityType: s.entity_type_code,
       countryCode: s.registration_country_code,
+      taxIdLast4: s.tax_identifier_last4 ?? null,
+      hasTaxId: !!s.has_tax_id,
+      fiscalComplete: !!(s.legal_name && s.has_tax_id && s.registration_country_code),
       locale: s.locale,
       timezone: s.timezone,
       shipFrom: s.address_id
@@ -236,6 +236,72 @@ export class SellerService {
       [sellerId, input.contactName.trim(), input.line1.trim(), input.line2?.trim() || null, geo.city, geo.region, geo.postalCode, geo.countryCode, geo.phone, cityId],
     );
     if (!n) throw notFound('Dirección de despacho');
+    return this.store(sellerId);
+  }
+
+  /**
+   * Fiscal data (optional at sign-up). Every field is validated only when given; a tax ID needs a legal name,
+   * because receipts print them together.
+   */
+  private async normalizeLegal(input: LegalInput) {
+    const legalName = input.legalName?.trim() || undefined;
+    const rawTax = input.taxId?.trim();
+    const taxDigits = rawTax ? rawTax.toUpperCase().replace(/[^A-Z0-9]/g, '') : undefined;
+    if (rawTax && (taxDigits!.length < 4 || taxDigits!.length > 20))
+      throw badRequest('TAX_ID_INVALID', 'Ingresa un número de identificación fiscal válido.');
+    if (input.entityType && !ENTITY_TYPES.includes(input.entityType)) throw badRequest('ENTITY_TYPE_INVALID', 'Tipo de entidad inválido.');
+    if (taxDigits && !legalName) throw badRequest('LEGAL_NAME_REQUIRED', 'Indica el nombre o razón social junto con la identificación fiscal.');
+    const countryCode = input.countryCode?.trim() ? await normalizeCountry(this.db, input.countryCode) : undefined;
+    return { legalName, entityType: input.entityType || undefined, countryCode, taxDigits };
+  }
+
+  /** Upserts the legal profile; a tax ID left blank keeps the one already stored. */
+  private async writeLegal(sellerId: string, legal: Awaited<ReturnType<SellerService['normalizeLegal']>>, c?: any) {
+    await this.db.exec(
+      `insert into public.seller_legal_profiles (seller_id, legal_name, entity_type_code, registration_country_code, tax_identifier_ciphertext, tax_identifier_last4, encryption_key_version)
+       values ($1,$2,$3,$4,$5,$6,case when $5::bytea is null then null else $7::int end)
+       on conflict (seller_id) do update set legal_name = excluded.legal_name, entity_type_code = excluded.entity_type_code,
+              registration_country_code = excluded.registration_country_code,
+              tax_identifier_ciphertext = coalesce(excluded.tax_identifier_ciphertext, seller_legal_profiles.tax_identifier_ciphertext),
+              tax_identifier_last4 = coalesce(excluded.tax_identifier_last4, seller_legal_profiles.tax_identifier_last4),
+              encryption_key_version = coalesce(excluded.encryption_key_version, seller_legal_profiles.encryption_key_version)`,
+      [sellerId, legal.legalName, legal.entityType ?? null, legal.countryCode ?? null, legal.taxDigits ? encrypt(legal.taxDigits) : null,
+       legal.taxDigits ? last4(legal.taxDigits) : null, KEY_VERSION],
+      c,
+    );
+  }
+
+  /**
+   * Automatic KYB: a store with complete fiscal data (legal name, tax ID and registration country) is verified.
+   * Stores without it stay NOT_STARTED; a verification the admin rejected (FAILED) is never overridden here.
+   */
+  private async autoVerify(sellerId: string, legal: { legalName?: string; entityType?: string; countryCode?: string; taxDigits?: string }, c?: any) {
+    const p = await this.db.one<{ legal_name: string | null; has_tax: boolean; country: string | null; last4: string | null; entity: string | null; vstatus: string }>(
+      `select slp.legal_name, (slp.tax_identifier_ciphertext is not null) as has_tax, slp.registration_country_code as country, slp.tax_identifier_last4 as last4,
+              slp.entity_type_code as entity, s.verification_status as vstatus
+         from public.sellers s left join public.seller_legal_profiles slp on slp.seller_id = s.id where s.id = $1`,
+      [sellerId],
+      c,
+    );
+    if (!p || p.vstatus === 'VERIFIED' || p.vstatus === 'FAILED') return;
+    if (!(p.legal_name && p.has_tax && p.country)) return;
+    await this.db.exec(
+      `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, verified_at, metadata)
+       values ($1,'KYB','AUTO','VERIFIED',now(),now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
+      [sellerId, legal.taxDigits ? last4(legal.taxDigits) : p.last4, p.entity, p.country],
+      c,
+    ).catch(() => undefined);
+    await this.db.exec(`update public.sellers set verification_status = 'VERIFIED' where id = $1`, [sellerId], c);
+  }
+
+  /** The store completes or corrects its fiscal data from its settings. */
+  async updateLegal(sellerId: string, input: LegalInput) {
+    const legal = await this.normalizeLegal(input);
+    if (!legal.legalName) throw badRequest('LEGAL_NAME_REQUIRED', 'Indica el nombre o razón social.');
+    await this.db.tx(async (c) => {
+      await this.writeLegal(sellerId, legal, c);
+      await this.autoVerify(sellerId, legal, c);
+    });
     return this.store(sellerId);
   }
 
@@ -1085,8 +1151,12 @@ export class SellerService {
     const currency = (input.currency ?? (await this.settings.currency())).toUpperCase();
     const cur = await this.db.one(`select 1 from public.currencies where code = $1 and is_active`, [currency]);
     if (!cur) throw badRequest('CURRENCY_INVALID', 'Moneda no soportada.');
-    const store = await this.db.one(`select registration_country_code from public.seller_legal_profiles where seller_id = $1`, [sellerId]);
-    const country = (input.countryCode ?? store?.registration_country_code ?? 'US').toUpperCase();
+    const store = await this.db.one(
+      `select (select registration_country_code from public.seller_legal_profiles where seller_id = $1) as registration_country_code,
+              (select country_code from public.seller_ship_from_addresses where seller_id = $1 and status = 'ACTIVE' order by is_default desc limit 1) as ship_country`,
+      [sellerId],
+    );
+    const country = (input.countryCode ?? store?.registration_country_code ?? store?.ship_country ?? 'US').toUpperCase();
     if (!(await this.db.one(`select 1 from public.countries where alpha2 = $1`, [country]))) throw badRequest('COUNTRY_INVALID', 'Selecciona un país válido.');
     const details: Record<string, string | undefined> = { holder_name: input.holderName.trim() };
     let label: string;

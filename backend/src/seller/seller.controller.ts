@@ -55,12 +55,21 @@ export class OnboardingDto {
   @IsOptional() @IsCleanText(0, 200) shortDescription?: string;
   @IsOptional() @IsEmailAddress() supportEmail?: string;
   @IsOptional() @IsPhone() supportPhone?: string;
-  @IsBusinessName(3, 160) legalName: string;
-  @IsIn(['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER']) entityType: any;
-  @IsCountryCode() countryCode: string;
-  @IsTaxId() taxId: string;
+  // Fiscal data: optional; each field is validated only when it is sent.
+  @IsOptional() @IsBusinessName(3, 160) legalName?: string;
+  @IsOptional() @IsIn(['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER']) entityType?: any;
+  @IsOptional() @IsCountryCode() countryCode?: string;
+  @IsOptional() @IsTaxId() taxId?: string;
   @IsOptional() @IsTimeZone() timezone?: string;
   @ValidateNested() @Type(() => ShipFromDto) address: ShipFromDto;
+}
+
+export class LegalDto {
+  @IsBusinessName(3, 160) legalName: string;
+  @IsOptional() @IsIn(['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER']) entityType?: any;
+  @IsOptional() @IsCountryCode() countryCode?: string;
+  /** Left out keeps the tax ID already stored. */
+  @IsOptional() @IsTaxId() taxId?: string;
 }
 
 export class StoreDto {
@@ -219,6 +228,12 @@ export class SellerController {
   @Put('products/:id/destinations')
   updateProductDestinations(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DestinationsDto, @Headers('x-seller-id') h?: string) {
     return this.availability.set(this.sid(user, h, 'PRODUCTS'), id, user.id, dto);
+  }
+
+  /** Fiscal data: owner only, since it is the store's legal identity. */
+  @Put('store/legal')
+  updateLegal(@CurrentUser() user: RequestUser, @Body() dto: LegalDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.updateLegal(this.ownerSid(user, h), dto);
   }
 
   @Put('store')

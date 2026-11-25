@@ -395,5 +395,15 @@
 "Reservada": "Reserved",
 "Llegó al inventario": "Stock arrived",
 "Próximamente en stock": "Coming soon",
-"Ver preorden": "View preorder"
+"Ver preorden": "View preorder",
+"Puedes completarlos ahora o más tarde desde Configuración. Con los datos fiscales completos tu tienda aparece como verificada y tus recibos muestran tu razón social e identificación fiscal.": "You can fill them in now or later from Settings. With complete tax details your store shows as verified and your receipts show your legal name and tax ID.",
+"(requerido con la identificación fiscal)": "(required with the tax ID)",
+"Sin datos fiscales": "No tax details",
+"Datos fiscales guardados.": "Tax details saved.",
+"Datos fiscales guardados. Completa la identificación fiscal y el país para verificar tu tienda.": "Tax details saved. Add the tax ID and country to verify your store.",
+"Completos. Aparecen en los recibos de tus clientes.": "Complete. They appear on your customers' receipts.",
+"Opcionales. Con la razón social, la identificación fiscal y el país completos tu tienda aparece como verificada y tus recibos los muestran.": "Optional. With the legal name, tax ID and country filled in, your store shows as verified and your receipts show them.",
+"Guardada: termina en {a}. Déjala vacía para conservarla.": "Saved: ends in {a}. Leave it blank to keep it.",
+"Guardar datos fiscales": "Save tax details",
+"Solo el propietario de la tienda puede cambiar los datos fiscales.": "Only the store owner can change the tax details."
 }

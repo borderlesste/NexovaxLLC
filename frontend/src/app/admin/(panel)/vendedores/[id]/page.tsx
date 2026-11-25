@@ -44,7 +44,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
   };
   return (
     <>
-      <PageHeader crumbs={[{ label: t('Vendedores'), href: '/admin/vendedores' }, { label: store.displayName }]} title={store.displayName} description={t('{a} · registrada el {b}', { a: store.legalName ?? '', b: fmtDate(store.createdAt) })}
+      <PageHeader crumbs={[{ label: t('Vendedores'), href: '/admin/vendedores' }, { label: store.displayName }]} title={store.displayName} description={t('{a} · registrada el {b}', { a: store.legalName || t('Sin datos fiscales'), b: fmtDate(store.createdAt) })}
         actions={<>
           {store.status === 'ACTIVE' && <Button variant="secondary" asChild><Link href={`/tienda/${store.slug}`} target="_blank"><ExternalLink /> {t('Ver tienda')}</Link></Button>}
           {['PENDING_VERIFICATION', 'DRAFT', 'REJECTED'].includes(store.status) && <Button onClick={() => act('APPROVE')} loading={busy === 'APPROVE'}><Check /> {t('Aprobar tienda')}</Button>}

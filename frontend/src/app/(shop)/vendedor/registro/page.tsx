@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/input';
 import { PageLoader } from '@/components/ui/misc';
 import { CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
-import { ENTITY_TYPES, entityLabel, taxIdHint } from '@/lib/entities';
+import { ENTITY_TYPES, entityLabel, fiscalPayload, taxIdHint } from '@/lib/entities';
 import { t } from '@/lib/i18n';
 
 export default function SellerOnboardingPage() {
@@ -44,7 +44,7 @@ export default function SellerOnboardingPage() {
       await post('/seller/onboarding', {
         acceptTerms: accept,
         storeName: f.storeName, shortDescription: f.shortDescription || undefined, supportEmail: f.supportEmail || undefined, supportPhone: f.supportPhone || undefined,
-        legalName: f.legalName, entityType: f.entityType, countryCode: f.countryCode, taxId: f.taxId,
+        ...fiscalPayload(f),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         address: { contactName: f.contactName || me?.displayName, line1: f.line1, line2: f.line2 || undefined, countryCode: geo.countryCode, city: f.city, region: f.region || undefined, postalCode: f.postalCode || undefined, phone: f.phone },
       });
@@ -72,14 +72,15 @@ export default function SellerOnboardingPage() {
             <Field label={t('Correo de atención')}><Input rule="email" type="email" value={f.supportEmail} onChange={set('supportEmail')} placeholder={t('ventas@mitienda.com')} /></Field>
             <Field label={t('Teléfono de atención')}><PhoneInput countryCode={f.countryCode || geo.countryCode} value={f.supportPhone} onChange={(v) => setF((s) => ({ ...s, supportPhone: v }))} /></Field>
           </div>
-          <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')}</h2>
+          <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')} <span className="text-sm font-normal text-muted">{t('(opcional)')}</span></h2>
+          <p className="text-sm text-muted">{t('Puedes completarlos ahora o más tarde desde Configuración. Con los datos fiscales completos tu tienda aparece como verificada y tus recibos muestran tu razón social e identificación fiscal.')}</p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={t('Nombre o razón social')} required><Input rule="businessName" value={f.legalName} onChange={set('legalName')} placeholder={t('Ej. Urban Style LLC')} /></Field>
-            <Field label={t('Tipo de entidad')} required>
+            <Field label={t('Nombre o razón social')} hint={f.taxId ? t('(requerido con la identificación fiscal)') : undefined}><Input rule="businessName" value={f.legalName} onChange={set('legalName')} placeholder={t('Ej. Urban Style LLC')} /></Field>
+            <Field label={t('Tipo de entidad')}>
               <Select value={f.entityType} onChange={set('entityType')}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select>
             </Field>
-            <CountrySelect label={t('País de registro')} value={f.countryCode} onChange={(v) => setF({ ...f, countryCode: v })} required />
-            <Field label={taxIdHint(f.countryCode)} required hint={t('(se guarda cifrado)')}><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
+            <CountrySelect label={t('País de registro')} value={f.countryCode} onChange={(v) => setF({ ...f, countryCode: v })} />
+            <Field label={taxIdHint(f.countryCode)} hint={t('(se guarda cifrado)')}><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><MapPin className="size-5 text-brand-600" /> {t('Dirección de despacho')}</h2>
           <p className="text-sm text-muted">{t('Desde aquí se calculan las tarifas de envío y se generan las etiquetas.')}</p>
@@ -91,7 +92,7 @@ export default function SellerOnboardingPage() {
             <GeoFields value={geo} onChange={(p) => { if (p.countryCode !== undefined) setShipCountry(p.countryCode); setF((s) => ({ ...s, ...('city' in p ? { city: p.city! } : {}), ...('region' in p ? { region: p.region! } : {}), ...('postalCode' in p ? { postalCode: p.postalCode! } : {}) })); }} />
           </div>
           <label className="mt-6 flex items-start gap-2 text-sm"><input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" data-seller-terms /> <span>{t('Acepto los términos para vendedores, la comisión vigente del marketplace y las políticas de contenido.')}{' '}<Link href="/ayuda#terminos-vendedores" target="_blank" className="font-semibold text-brand-700 underline">{t('Leer los términos para vendedores')}</Link></span></label>
-          <Button size="lg" className="mt-6 w-full sm:w-auto" onClick={submit} loading={busy} disabled={!f.storeName || !f.legalName || !f.taxId || !f.countryCode || !f.line1 || !f.city || !geo.countryCode || !f.phone}><Check /> {t('Enviar solicitud')}</Button>
+          <Button size="lg" className="mt-6 w-full sm:w-auto" onClick={submit} loading={busy} disabled={!f.storeName || (!!f.taxId.trim() && !f.legalName.trim()) || !f.line1 || !f.city || !geo.countryCode || !f.phone}><Check /> {t('Enviar solicitud')}</Button>
         </div>
         <aside className="space-y-4">
           {[[Building2, t('Crea tu tienda'), t('Publica tu catálogo con variantes, fotos e inventario.')], [Users, t('Llega a más clientes'), t('Vende en tu país y al exterior con envíos y pagos integrados.')], [TrendingUp, t('Haz crecer tus ventas'), t('Panel de ventas, inventario y finanzas en tiempo real.')]].map(([I, title, d]: any) => (

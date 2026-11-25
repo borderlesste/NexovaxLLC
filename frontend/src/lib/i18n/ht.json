@@ -3155,5 +3155,15 @@
 "Reservada": "Rezève",
 "Llegó al inventario": "Estòk la rive",
 "Próximamente en stock": "Pral gen nan estòk",
-"Ver preorden": "Gade prekòmann"
+"Ver preorden": "Gade prekòmann",
+"Puedes completarlos ahora o más tarde desde Configuración. Con los datos fiscales completos tu tienda aparece como verificada y tus recibos muestran tu razón social e identificación fiscal.": "Ou ka ranpli yo kounye a oswa pita nan Paramèt. Avèk enfòmasyon fiskal konplè, magazen ou parèt kòm verifye epi resi ou yo montre non legal ak nimewo fiskal ou.",
+"(requerido con la identificación fiscal)": "(obligatwa avèk nimewo fiskal la)",
+"Sin datos fiscales": "San enfòmasyon fiskal",
+"Datos fiscales guardados.": "Enfòmasyon fiskal yo anrejistre.",
+"Datos fiscales guardados. Completa la identificación fiscal y el país para verificar tu tienda.": "Enfòmasyon fiskal yo anrejistre. Ajoute nimewo fiskal la ak peyi a pou verifye magazen ou.",
+"Completos. Aparecen en los recibos de tus clientes.": "Konplè. Yo parèt sou resi kliyan ou yo.",
+"Opcionales. Con la razón social, la identificación fiscal y el país completos tu tienda aparece como verificada y tus recibos los muestran.": "Opsyonèl. Avèk non legal la, nimewo fiskal la ak peyi a ranpli, magazen ou parèt kòm verifye epi resi ou yo montre yo.",
+"Guardada: termina en {a}. Déjala vacía para conservarla.": "Anrejistre: fini ak {a}. Kite l vid pou kenbe l.",
+"Guardar datos fiscales": "Anrejistre enfòmasyon fiskal yo",
+"Solo el propietario de la tienda puede cambiar los datos fiscales.": "Se sèlman pwopriyetè magazen an ki ka chanje enfòmasyon fiskal yo."
 }

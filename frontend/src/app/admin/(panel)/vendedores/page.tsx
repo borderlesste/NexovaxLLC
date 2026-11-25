@@ -15,7 +15,7 @@ import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
 import { Avatar, Dialog, Empty, Pagination, Segmented, Spinner } from '@/components/ui/misc';
 import { GeoFields, PhoneInput } from '@/components/shop/geo-fields';
-import { ENTITY_TYPES, entityLabel, taxIdHint } from '@/lib/entities';
+import { ENTITY_TYPES, entityLabel, fiscalPayload, taxIdHint } from '@/lib/entities';
 import { t } from '@/lib/i18n';
 
 function NewSellerDialog({ onClose }: { onClose: () => void }) {
@@ -28,7 +28,7 @@ function NewSellerDialog({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const r = await post('/admin/sellers', {
-        ownerName: f.ownerName, ownerEmail: f.ownerEmail, storeName: f.storeName, legalName: f.legalName, entityType: f.entityType, countryCode: f.countryCode, taxId: f.taxId,
+        ownerName: f.ownerName, ownerEmail: f.ownerEmail, storeName: f.storeName, ...fiscalPayload({ ...f, countryCode: f.legalName.trim() || f.taxId.trim() ? f.countryCode : '' }),
         address: { contactName: f.ownerName, line1: f.line1, countryCode: f.countryCode, city: f.city, region: f.region || undefined, postalCode: f.postalCode || undefined, phone: f.phone },
       });
       setResult(r);
@@ -49,9 +49,9 @@ function NewSellerDialog({ onClose }: { onClose: () => void }) {
           <Field label={t('Nombre del propietario')} required><Input rule="personName" value={f.ownerName} onChange={set('ownerName')} /></Field>
           <Field label={t('Correo del propietario')} required><Input rule="email" type="email" value={f.ownerEmail} onChange={set('ownerEmail')} /></Field>
           <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} /></Field>
-          <Field label={t('Razón social')} required><Input rule="businessName" value={f.legalName} onChange={set('legalName')} /></Field>
-          <Field label={t('Tipo de entidad')} required><Select value={f.entityType} onChange={set('entityType')}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select></Field>
-          <Field label={taxIdHint(f.countryCode)} required><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
+          <Field label={t('Razón social')} hint={t('(opcional)')}><Input rule="businessName" value={f.legalName} onChange={set('legalName')} /></Field>
+          <Field label={t('Tipo de entidad')} hint={t('(opcional)')}><Select value={f.entityType} onChange={set('entityType')}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select></Field>
+          <Field label={taxIdHint(f.countryCode)} hint={t('(opcional)')}><Input rule="taxId" value={f.taxId} onChange={set('taxId')} /></Field>
           <Field label={t('Dirección de despacho')} required className="sm:col-span-2"><Input value={f.line1} onChange={set('line1')} /></Field>
           <GeoFields value={f} onChange={(p) => setF((s) => ({ ...s, ...p }))} />
           <Field label={t('Teléfono')} required><PhoneInput countryCode={f.countryCode} value={f.phone} onChange={(v) => setF((s) => ({ ...s, phone: v }))} required /></Field>
