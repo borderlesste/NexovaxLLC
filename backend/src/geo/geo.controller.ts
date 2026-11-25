@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
-import { ArrayMaxSize, IsArray, IsString, IsUUID, Matches } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -11,6 +11,8 @@ import { AvailabilityService, MAX_AVAILABILITY_ITEMS } from './availability';
 export class AvailabilityDto {
   @IsString() @Matches(/^[A-Za-z]{2}$/) country!: string;
   @IsArray() @ArrayMaxSize(MAX_AVAILABILITY_ITEMS) @IsUUID('all', { each: true }) productIds!: string[];
+  /** Selected variants: evaluated with the origin of the warehouse that stocks them. */
+  @IsOptional() @IsArray() @ArrayMaxSize(MAX_AVAILABILITY_ITEMS) @IsUUID('all', { each: true }) variantIds?: string[];
 }
 import { badRequest } from '../common/errors';
 import { countryGeo, matchRegion, normalizeCountry, REAL_COUNTRY, regionValue } from '../common/geo';
@@ -48,7 +50,7 @@ export class GeoController {
   @Post('availability')
   async productAvailability(@Body() dto: AvailabilityDto, @Res({ passthrough: true }) res: Response) {
     res.setHeader('Cache-Control', 'private, no-store');
-    return this.availability.forProducts(dto.country, dto.productIds);
+    return this.availability.forItems(dto.country, dto.productIds, dto.variantIds ?? []);
   }
 
   /**

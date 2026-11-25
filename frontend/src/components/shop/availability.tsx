@@ -13,23 +13,25 @@ const TONE = {
 
 const textOf = (a: Availability, country: string) => availabilityText(a, country, t, (c) => countryName(c) || c);
 
-/** One line on product cards: only when the product can't be shipped to the destination, or confirmed available. */
+/** One line on product cards with the three states (NX-GEO-001 §4): Disponible, No disponible or Por confirmar. */
 export function AvailabilityLine({ productId, className }: { productId: string; className?: string }) {
   const { availability: a, country } = useAvailability(productId);
-  if (!a || !country || a.status === 'UNCONFIRMED' || a.reason === 'NO_SHIPPING_NEEDED') return null;
+  if (!a || !country || a.reason === 'NO_SHIPPING_NEEDED' || a.reason === 'NOT_FOUND') return null;
   const tone = TONE[a.status];
   const Icon = tone.icon;
+  const c = countryName(country) || country;
+  const label = a.status === 'AVAILABLE' ? t('Envía a {c}', { c }) : a.status === 'UNAVAILABLE' ? t('No envía a {c}', { c }) : t('Envío a {c} por confirmar', { c });
   return (
-    <p className={cn('flex items-center gap-1 text-[11px] font-semibold', tone.text, className)} data-availability={a.status}>
+    <p className={cn('flex items-center gap-1 text-[11px] font-semibold', tone.text, className)} data-availability={a.status} title={textOf(a, country).detail || undefined}>
       <Icon className="size-3.5 shrink-0" />
-      <span className="truncate">{a.status === 'AVAILABLE' ? t('Envía a {c}', { c: countryName(country) || country }) : t('No envía a {c}', { c: countryName(country) || country })}</span>
+      <span className="truncate">{label}</span>
     </p>
   );
 }
 
-/** Product page panel: state, reason and a way to change the destination. */
-export function AvailabilityPanel({ productId, className }: { productId: string; className?: string }) {
-  const { availability: a, country } = useAvailability(productId);
+/** Product page panel for the selected variant: state, reason and a way to change the destination. */
+export function AvailabilityPanel({ productId, variantId, className }: { productId: string; variantId?: string | null; className?: string }) {
+  const { availability: a, country } = useAvailability(productId, variantId);
   if (!a || !country) return null;
   const tone = TONE[a.status];
   const Icon = tone.icon;
@@ -47,8 +49,8 @@ export function AvailabilityPanel({ productId, className }: { productId: string;
 }
 
 /** Cart line warning: only for "No disponible" (the checkout confirms the rest with the address). */
-export function AvailabilityWarning({ productId }: { productId: string }) {
-  const { availability: a, country } = useAvailability(productId);
+export function AvailabilityWarning({ productId, variantId }: { productId: string; variantId?: string | null }) {
+  const { availability: a, country } = useAvailability(productId, variantId);
   if (!a || !country || a.status !== 'UNAVAILABLE') return null;
   const { title, detail } = textOf(a, country);
   return (
@@ -62,8 +64,8 @@ export function AvailabilityWarning({ productId }: { productId: string }) {
  * Cart summary for the browsing destination: how many items can't be shipped there, with the
  * selector to change it. Changing the destination re-evaluates every line (NX-GEO-001 §4).
  */
-export function CartDestinationBanner({ productIds }: { productIds: string[] }) {
-  const { country, isApproximate, byProduct } = useAvailabilityMany(productIds);
+export function CartDestinationBanner({ lines }: { lines: { productId: string; variantId?: string | null }[] }) {
+  const { country, isApproximate, byProduct } = useAvailabilityMany(lines);
   if (!country) return null;
   const blocked = [...byProduct.values()].filter((a) => a.status === 'UNAVAILABLE').length;
   const unsure = [...byProduct.values()].filter((a) => a.status === 'UNCONFIRMED').length;

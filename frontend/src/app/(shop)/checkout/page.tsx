@@ -146,14 +146,16 @@ export default function CheckoutPage() {
   const stripeKey: string | null = cardMethod?.provider === 'STRIPE' ? cardMethod.publishableKey ?? null : null;
   const paypalMethod = q?.paymentMethods.find((m: any) => m.code === 'PAYPAL' && m.available);
 
+  const QUOTE_CHANGED = ['CHECKOUT_ADDRESS_CHANGED', 'CHECKOUT_TOTAL_CHANGED', 'SHIPPING_ORIGIN_CHANGED', 'SHIPPING_OPTION_UNAVAILABLE', 'CART_CHANGED'];
   const submitCheckout = async (payment: PaymentDetails) => {
     if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
     if (destBlocked || Object.values(shippingSelection).some((code) => !code)) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
     if (!addressVersion || readyPlacementKey.current !== resetKey) throw new Error(t('Cargando…'));
     try {
-      return await post<PlacedCheckout>('/checkout/place', { addressId, addressVersion, shipping: shippingSelection, coupons: applied, ...payment });
+      // The total the buyer accepted goes with the order: the API refuses it if the amount changed.
+      return await post<PlacedCheckout>('/checkout/place', { addressId, addressVersion, shipping: shippingSelection, coupons: applied, quotedTotal: q.total, ...payment });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && e.code === 'CHECKOUT_ADDRESS_CHANGED') refreshAddressesAndQuote();
+      if (e instanceof ApiError && e.status === 409 && QUOTE_CHANGED.includes(e.code)) refreshAddressesAndQuote();
       throw e;
     }
   };

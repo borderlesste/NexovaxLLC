@@ -6,19 +6,20 @@ import { ShippingService } from '../src/shipping/shipping.service';
 describe('checkout destination check', () => {
   const blocks = (CheckoutService.prototype as any).destinationBlocks;
   const groups = [
-    { sellerId: 's1', items: [{ productId: 'p1', purchasable: true }, { productId: 'p2', purchasable: true }] },
-    { sellerId: 's2', items: [{ productId: 'p3', purchasable: true }, { productId: 'p4', purchasable: false }] },
+    { sellerId: 's1', items: [{ productId: 'p1', variantId: 'v1', purchasable: true }, { productId: 'p2', variantId: 'v2', purchasable: true }] },
+    { sellerId: 's2', items: [{ productId: 'p3', variantId: 'v3', purchasable: true }, { productId: 'p4', variantId: 'v4', purchasable: false }] },
   ];
   const availability = {
-    forProducts: jest.fn(async (_c: string, ids: string[]) => ({
-      items: Object.fromEntries(ids.map((id) => [id, id === 'p2' ? { status: 'UNAVAILABLE', reason: 'STORE_EXCLUDED' } : { status: id === 'p3' ? 'UNCONFIRMED' : 'AVAILABLE', reason: 'X' }])),
+    forItems: jest.fn(async (_c: string, _p: string[], ids: string[]) => ({
+      items: {},
+      variants: Object.fromEntries(ids.map((id) => [id, id === 'v2' ? { status: 'UNAVAILABLE', reason: 'STORE_EXCLUDED' } : { status: id === 'v3' ? 'UNCONFIRMED' : 'AVAILABLE', reason: 'X' }])),
     })),
   };
 
-  it('blocks only confirmed restrictions, per shipping group, for the address country', async () => {
+  it('blocks only confirmed restrictions, per cart variant, for the address country', async () => {
     const r: Map<string, string> = await blocks.call({ availability }, groups, 'DO');
-    expect([...r.entries()]).toEqual([['p2', 'STORE_EXCLUDED']]);
-    expect(availability.forProducts).toHaveBeenCalledWith('DO', ['p1', 'p2', 'p3']);
+    expect([...r.entries()]).toEqual([['v2', 'STORE_EXCLUDED']]);
+    expect(availability.forItems).toHaveBeenCalledWith('DO', [], ['v1', 'v2', 'v3']);
   });
 
   it('without an address nothing is blocked yet', async () => {
@@ -40,13 +41,15 @@ describe('checkout address version', () => {
       one: jest.fn(async (sql: string, _params?: unknown[], _client?: object) => {
         if (sql.includes('from public.addresses')) return storedAddress && { ...storedAddress };
         if (sql.includes('cs.idempotency_key')) return null;
+        if (sql.includes('seller_ship_from_addresses')) return { id: 'origin', country_code: 'US' };
         return { id: 'checkout', currency_code: 'USD', amount: '15.00', cfg_id: 'config', acc_id: 'account' };
       }),
       many: jest.fn(async (sql: string) => {
         if (sql.includes('from public.checkout_items')) {
           return [{ id: 'item', seller_id: 'seller', variant_id: 'variant', product_id: 'product', quantity: 1, seller_group_id: 'seller-group', unit_price: '10.00' }];
         }
-        if (sql.includes('from public.inventory_items')) return [{ id: 'stock', location_id: 'location', ship_from_address_id: 'origin', available: 2 }];
+        if (sql.includes('from public.cart_items')) return [{ seller_id: 'seller', variant_id: 'variant', qty: 1 }];
+        if (sql.includes('from public.inventory_items')) return [{ id: 'stock', variant_id: 'variant', seller_id: 'seller', location_id: 'location', ship_from_address_id: 'origin', available: 2 }];
         return [];
       }),
       exec: jest.fn(async (_sql: string, _params: unknown[], _client: object) => 1),
@@ -68,7 +71,7 @@ describe('checkout address version', () => {
     });
     const shipping = { originFor: jest.fn(async () => ({})), options: jest.fn(async (_origin: unknown, to: typeof address) => rateFor(to)) };
     const availability = {
-      forProducts: jest.fn(async (country: string) => ({ items: { product: { status: country === 'CA' ? 'UNAVAILABLE' : 'AVAILABLE', reason: 'STORE_EXCLUDED' } } })),
+      forItems: jest.fn(async (country: string) => ({ items: {}, variants: { variant: { status: country === 'CA' ? 'UNAVAILABLE' : 'AVAILABLE', reason: 'STORE_EXCLUDED' } } })),
     };
     const payments = {
       providerFor: jest.fn(() => ({ code: 'STRIPE', environment: 'TEST' })), releaseAbandoned: jest.fn(), startProviderPayment: jest.fn(),
@@ -111,6 +114,16 @@ describe('checkout address version', () => {
     expect(f.payments.startProviderPayment).toHaveBeenCalledTimes(1);
   });
 
+  it('refuses the order when the amount to charge is not the total the buyer accepted', async () => {
+    const f = checkout();
+    const q = await f.quote();
+    await expect(f.svc.placeOrder(buyer, { addressId: address.id, addressVersion: q.addressVersion!, shipping: { seller: 'FLAT:STANDARD' },
+      paymentMethod: 'CARD', idempotencyKey: 'checkout-total', quotedTotal: '12.00' })).rejects.toMatchObject({ code: 'CHECKOUT_TOTAL_CHANGED' });
+    expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
+    await expect(f.svc.placeOrder(buyer, { addressId: address.id, addressVersion: q.addressVersion!, shipping: { seller: 'FLAT:STANDARD' },
+      paymentMethod: 'CARD', idempotencyKey: 'checkout-total-2', quotedTotal: '15.00' })).resolves.toMatchObject({ checkoutId: 'checkout' });
+  });
+
   it('returns a previously created checkout on an idempotent retry without a version', async () => {
     const f = checkout();
     f.db.one.mockResolvedValueOnce({ id: 'previous', currency_code: 'USD', amount: '15.00', cfg_id: 'config', acc_id: 'account' });
@@ -140,7 +153,7 @@ describe('checkout address version', () => {
 
     if (editedAddress?.country_code === 'CA') {
       const fresh = await f.quote();
-      expect(fresh.groups[0].destinationBlocked).toEqual([{ productId: 'product', reason: 'STORE_EXCLUDED' }]);
+      expect(fresh.groups[0].destinationBlocked).toEqual([{ productId: 'product', variantId: 'variant', reason: 'STORE_EXCLUDED' }]);
       await expect(f.place(fresh.addressVersion)).rejects.toMatchObject({ code: 'DESTINATION_UNAVAILABLE' });
       expect(f.db.tx).toHaveBeenCalledTimes(1);
     }

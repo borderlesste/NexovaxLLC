@@ -96,14 +96,41 @@ export class AvailabilityService {
 
   /** Availability of up to 100 published products for one destination country. */
   async forProducts(countryCode: string, productIds: string[]): Promise<{ country: string; items: Record<string, Availability> }> {
+    const r = await this.forItems(countryCode, productIds, []);
+    return { country: r.country, items: r.items };
+  }
+
+  /**
+   * Availability by product and, when given, by variant: a variant ships from the warehouse that
+   * holds its stock (its origin may differ from the store's default), so its route is evaluated
+   * with that origin. Restrictions stay per store and product.
+   */
+  async forItems(countryCode: string, productIds: string[], variantIds: string[] = []) {
     const country = await this.country(countryCode);
-    const ids = [...new Set(productIds.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))].slice(0, MAX_AVAILABILITY_ITEMS);
+    const uuid = (x: string) => /^[0-9a-f-]{36}$/i.test(x);
+    const ids = [...new Set(productIds.filter(uuid))].slice(0, MAX_AVAILABILITY_ITEMS);
+    const vids = [...new Set(variantIds.filter(uuid))].slice(0, MAX_AVAILABILITY_ITEMS);
     const items: Record<string, Availability> = {};
-    if (!ids.length) return { country, items };
+    const variants: Record<string, Availability> = {};
+    if (!ids.length && !vids.length) return { country, items, variants };
     const s = await this.settings.all();
     const geo = s['geo.delivery'] ?? { ipDetection: true, showSelector: true, countries: [] };
     const days = Math.min(Math.max(Number(geo.laneHistoryDays ?? 90) || 90, 1), 365);
     const liveRates = this.shippo.enabled && !!s['shipping.shippo_enabled'];
+    // Variants: their own origin (the highest-priority active fulfillment location that stocks them).
+    const vrows = vids.length
+      ? await this.db.many<{ id: string; product_id: string; origin: string | null }>(
+          `select v.id, v.product_id,
+                  (select a.country_code from public.inventory_items ii
+                     join public.inventory_locations il on il.id = ii.location_id
+                     join public.seller_ship_from_addresses a on a.id = il.ship_from_address_id and a.status = 'ACTIVE'
+                    where ii.variant_id = v.id and ii.status = 'ACTIVE' and il.status = 'ACTIVE' and il.fulfillment_enabled
+                    order by (ii.available_to_sell > 0) desc, il.fulfillment_priority, ii.available_to_sell desc limit 1) as origin
+             from public.product_variants v where v.id = any($1::uuid[])`,
+          [vids],
+        )
+      : [];
+    const allIds = [...new Set([...ids, ...vrows.map((v) => v.product_id)])];
     const rows = await this.db.many<{
       id: string; seller_id: string; requires_shipping: boolean; origin: string | null;
       store_mode: RestrictionMode | null; store_countries: string[] | null; product_mode: RestrictionMode | null; product_countries: string[] | null; lane: boolean;
@@ -120,23 +147,32 @@ export class AvailabilityService {
          left join public.destination_restrictions sr on sr.seller_id = p.seller_id and sr.product_id is null
          left join public.destination_restrictions pr on pr.product_id = p.id
         where p.id = any($1::uuid[]) and p.status = 'ACTIVE'`,
-      [ids, country, liveRates, days],
+      [allIds, country, liveRates, days],
     );
     const offered = (geo.countries ?? []).map((c: string) => c.toUpperCase());
-    for (const r of rows)
-      items[r.id] = evaluateRoute({
-        destination: country,
-        offered,
-        requiresShipping: r.requires_shipping !== false,
-        origin: r.origin,
-        store: r.store_mode ? { mode: r.store_mode, countries: r.store_countries ?? [] } : null,
-        product: r.product_mode ? { mode: r.product_mode, countries: r.product_countries ?? [] } : null,
-        flatRates: s['shipping.rates'] ?? [],
-        liveRates,
-        knownLane: r.lane,
-      });
-    for (const id of ids) items[id] ??= { status: 'UNCONFIRMED', reason: 'NOT_FOUND', shipsFrom: null };
-    return { country, items };
+    const facts = (r: (typeof rows)[number], origin: string | null): RouteFacts => ({
+      destination: country,
+      offered,
+      requiresShipping: r.requires_shipping !== false,
+      origin,
+      store: r.store_mode ? { mode: r.store_mode, countries: r.store_countries ?? [] } : null,
+      product: r.product_mode ? { mode: r.product_mode, countries: r.product_countries ?? [] } : null,
+      flatRates: s['shipping.rates'] ?? [],
+      liveRates,
+      knownLane: r.lane,
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    for (const id of ids) {
+      const r = byId.get(id);
+      items[id] = r ? evaluateRoute(facts(r, r.origin)) : { status: 'UNCONFIRMED', reason: 'NOT_FOUND', shipsFrom: null };
+    }
+    const vById = new Map(vrows.map((v) => [v.id, v]));
+    for (const vid of vids) {
+      const v = vById.get(vid);
+      const r = v ? byId.get(v.product_id) : undefined;
+      variants[vid] = r ? evaluateRoute(facts(r, v!.origin ?? r.origin)) : { status: 'UNCONFIRMED', reason: 'NOT_FOUND', shipsFrom: null };
+    }
+    return { country, items, variants };
   }
 
   // ------------------------------------------------------------ store / product rules

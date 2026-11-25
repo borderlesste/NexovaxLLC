@@ -28,6 +28,8 @@ export class PlaceOrderDto {
   @IsUUID() addressId: string;
   // An existing checkout can still be replayed by idempotency key after this field is introduced.
   @IsOptional() @Matches(/^[0-9a-f]{64}$/) addressVersion?: string;
+  /** Total the buyer accepted (from the quote); the order is refused if the amount changed. */
+  @IsOptional() @Matches(/^\d{1,12}(\.\d{1,4})?$/) quotedTotal?: string;
   @IsObject() shipping: Record<string, string>;
   @IsIn(['CARD', 'PAYPAL', 'BANK_TRANSFER']) paymentMethod: 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
   @IsOptional() @ValidateNested() @Type(() => CardDto) card?: CardDto;

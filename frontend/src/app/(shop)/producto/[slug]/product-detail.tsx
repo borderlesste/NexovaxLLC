@@ -188,7 +188,7 @@ export function ProductDetail({ initial }: { initial: any }) {
                 </span>
               </div>
             </div>}
-            <AvailabilityPanel productId={p.id} className="mt-5" />
+            <AvailabilityPanel productId={p.id} variantId={variant?.id ?? null} className="mt-5" />
             {preorder ? (
               <div className="mt-4 space-y-2">
                 <ProductPreorder key={preorder.offerId} offer={preorder} productId={p.id} sellerId={p.seller.id} />

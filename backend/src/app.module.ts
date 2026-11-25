@@ -87,8 +87,11 @@ import { AccountDeletionController } from './account/account-deletion.controller
         transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty', options: { singleLine: true } },
         redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-nx-proxy-secret"]'],
         // Query strings can carry secrets (e.g. the Shippo webhook token) and personal data: never log them.
+        // No IP addresses either (NX-GEO-001 / privacy notice): the visitor IP is used in memory to
+        // estimate the country and for rate limits, and is never written to the logs.
         serializers: {
-          req: (req: any) => ({ id: req.id, method: req.method, url: String(req.url ?? '').split('?')[0], remoteAddress: req.raw?.clientIp ?? req.remoteAddress }),
+          req: (req: any) => ({ id: req.id, method: req.method, url: String(req.url ?? '').split('?')[0] }),
+          res: (res: any) => ({ statusCode: res.statusCode }),
         },
         autoLogging: { ignore: (req) => (req.url ?? '').startsWith('/api/media/') },
       },

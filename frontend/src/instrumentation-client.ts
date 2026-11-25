@@ -7,6 +7,12 @@ if (dsn) {
       dsn,
       environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV,
       tracesSampleRate: 0,
+      // No IP addresses or other personal data (privacy notice).
+      beforeSend(event) {
+        if (event.user) delete event.user.ip_address;
+        if (event.request?.headers) for (const h of Object.keys(event.request.headers)) if (/cookie|authorization|forwarded|real-ip|client-ip|connecting-ip/i.test(h)) delete event.request.headers[h];
+        return event;
+      },
       // Noise from browser extensions and aborted navigations.
       ignoreErrors: ['ResizeObserver loop', 'AbortError', 'Load failed', 'NEXT_REDIRECT', 'NEXT_NOT_FOUND'],
     }),

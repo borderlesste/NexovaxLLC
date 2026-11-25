@@ -58,7 +58,7 @@ export default function CartPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 lg:px-8">
       <Breadcrumbs items={[{ label: t('Carrito') }]} />
       <h1 className="mt-4 text-3xl font-extrabold">{t('Tu carrito')}</h1>
-      {!!c?.groups.length && <CartDestinationBanner productIds={c.groups.flatMap((g: any) => g.items.map((i: any) => i.productId))} />}
+      {!!c?.groups.length && <CartDestinationBanner lines={c.groups.flatMap((g: any) => g.items.map((i: any) => ({ productId: i.productId, variantId: i.variantId })))} />}
       {pp && (
         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center" data-pending-payment>
           <Clock className="size-5 shrink-0" />
@@ -99,7 +99,7 @@ export default function CartPage() {
                         <Link href={`/producto/${i.slug}`} className="line-clamp-2 font-semibold hover:text-brand-700">{i.title}</Link>
                         <p className="mt-0.5 text-sm text-muted">{Object.entries(i.attributes ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || i.sku}</p>
                         {i.issue && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-700"><AlertTriangle className="size-3.5" /> {i.issue}</p>}
-                        <AvailabilityWarning productId={i.productId} />
+                        <AvailabilityWarning productId={i.productId} variantId={i.variantId} />
                         <div className="mt-3 flex flex-wrap items-center gap-4">
                           <div className="inline-flex items-center rounded-lg border border-line">
                             <button className="grid size-9 place-items-center disabled:opacity-40" disabled={i.quantity <= 1 || upd.isPending} onClick={() => upd.mutate({ id: i.id, quantity: i.quantity - 1 })} aria-label={t('Menos')}><Minus className="size-4" /></button>

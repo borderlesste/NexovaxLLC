@@ -67,7 +67,7 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
 
 - **Idiomas:** español e inglés. El idioma se elige con el selector de la cabecera (cookie `nx_locale`) y se guarda en la cuenta (`users.locale`); los correos y los mensajes de error de la API usan el idioma de cada usuario. Los textos de la interfaz usan el español como clave (`frontend/src/lib/i18n/en-*.json`); la taxonomía del catálogo (categorías y atributos) se devuelve en inglés desde la API.
 - **Moneda:** una sola moneda del marketplace (USD por defecto), configurable en Administración → Configuración. Los pedidos y saldos anteriores conservan su moneda; los vendedores pueden retirar saldos en otras monedas.
-- **Impuestos:** tabla `marketplace_tax_rates` por país de destino (IVA, VAT, GST, ITBIS…), editable desde el panel; cada pedido guarda el impuesto aplicado como evidencia. Las tasas iniciales son de referencia: confírmalas con un asesor fiscal (EE. UU. queda en 0 % hasta conectar un proveedor de sales tax).
+- **Impuestos:** tabla `marketplace_tax_rates` por país de destino (IVA, VAT, GST, ITBIS…), editable desde el panel; cada pedido guarda el impuesto aplicado como evidencia. En EE. UU. cada estado puede tener su propia tasa (Administración → Configuración → Impuestos → Estados) o usarse Stripe Tax para el impuesto exacto por dirección. Las tasas iniciales son de referencia: confírmalas con un asesor fiscal.
 - **Direcciones:** cualquier país ISO; estado y código postal validados donde las transportadoras los exigen (EE. UU., Canadá, México…).
 
 ## Pagos (Stripe y PayPal)
@@ -80,7 +80,7 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
 
 ## Envíos con Shippo
 
-- **Checkout:** por cada tienda se cotiza en vivo con Shippo desde la dirección de despacho del vendedor hasta la del comprador (USPS, UPS, DHL Express, Canada Post, etc.), con etiquetas «Más económico» / «Más rápido». Si la ruta no tiene transportadoras (p. ej. envíos domésticos dentro de RD), se ofrecen las tarifas fijas del marketplace; el retiro en tienda aparece cuando origen y destino están en el mismo país.
+- **Checkout:** por cada tienda se cotiza en vivo con Shippo desde la dirección de despacho del almacén que tiene el stock (si los artículos de una tienda salen de varios almacenes, se cotiza cada origen, solo se ofrecen los métodos comunes y se cobra la suma) hasta la del comprador (USPS, UPS, DHL Express, Canada Post, etc.), con etiquetas «Más económico» / «Más rápido». Si la ruta no tiene transportadoras (p. ej. envíos domésticos dentro de RD), se ofrecen las tarifas fijas del marketplace; el retiro en tienda aparece cuando origen y destino están en el mismo país.
 - **Etiquetas:** el vendedor compra la etiqueta del servicio pagado por el cliente («Comprar etiqueta»); los envíos internacionales generan la declaración de aduanas automáticamente. Etiqueta, factura comercial y costo quedan en el pedido. También puede registrar una guía manual con cualquier transportadora.
 - **Rastreo:** webhook `POST /api/webhooks/shippo?token=<SHIPPO_WEBHOOK_TOKEN>` (evento `track_updated`, configurar en Shippo → Settings → Webhooks con la URL pública de la API), sondeo cada 30 min como respaldo y botón «Actualizar rastreo». Al entregarse se liberan los fondos del vendedor y se envían los correos.
 - **Modo prueba:** con `shippo_test_…` las etiquetas no se cobran y, como Shippo no rastrea transportadoras reales en pruebas, «Actualizar rastreo» avanza con los eventos de prueba de Shippo (tránsito → entregado).
@@ -88,7 +88,7 @@ Toda la lógica financiera usa las funciones del dominio en PostgreSQL: snapshot
 
 ## Decisiones y límites del MVP
 
-- **Pagos:** Stripe (tarjetas) y PayPal en modo prueba; transferencia bancaria confirmada por finanzas. La comisión de Stripe/PayPal no se registra aún como gasto en el libro mayor. Pago contra entrega no disponible.
+- **Pagos:** Stripe (tarjetas) en producción con claves en vivo, PayPal cuando se cargan sus claves, y transferencia bancaria confirmada por finanzas. La comisión de Stripe/PayPal no se registra aún como gasto en el libro mayor. Pago contra entrega no disponible.
 - **Correo (Resend):** la API envía los correos transaccionales directamente con Resend desde `no-reply@nexovax.com` (dominio verificado). Cada evento se registra en `public.email_deliveries` y se envía una sola vez (`dedupe_key` + `Idempotency-Key`); un fallo de correo nunca bloquea la operación.
   - Comprador: bienvenida, recuperación de contraseña, pedido confirmado, instrucciones y rechazo de transferencia, pedido enviado (con guía) y entregado, reporte recibido, respuesta y resolución de soporte.
   - Vendedor: solicitud recibida, tienda aprobada/rechazada/suspendida/reactivada, nueva venta, pedido entregado, moderación de productos, retiro pagado/fallido/cancelado.
@@ -103,6 +103,15 @@ País, estado, ciudad, código postal y teléfono se validan juntos según el pa
 - Fuente: [GeoNames](https://www.geonames.org) (CC BY 4.0, atribución en el pie de página): prefijos y formatos postales de 250 países, 3.865 estados/provincias, ~70.000 ciudades de más de 5.000 habitantes y códigos postales de AR, BR, CA, CL, CO, DE, DO, ES, FR, IT, MX, PE, PR y US.
 - Endpoints públicos: `GET /api/geo/countries/:code`, `GET /api/geo/cities?country=&region=&q=`, `GET /api/geo/postal?country=&code=` (sugerencias).
 - Reimportar: descargar los archivos en `scripts/data/geonames/` (ver cabecera de `scripts/geo-import.mjs`), conceder temporalmente los permisos de la migración `20261114140000_nexovax_geo_reference.sql` y ejecutar `node ../scripts/geo-import.mjs` desde `backend/`.
+
+## País de entrega y disponibilidad (NX-GEO-001)
+
+- **Destino de navegación:** elección manual (cookie `nx_delivery_country`, independiente del idioma) > preferencia de la cuenta > país estimado por IP > país predeterminado. Ajustes en Administración → Configuración → General (`geo.delivery`). Una elección hecha sin sesión pasa a la cuenta al iniciar sesión; si no la hubo, la cookie toma el país guardado en la cuenta.
+- **Disponibilidad:** `POST /api/geo/availability` (Disponible / No disponible / Por confirmar, con motivo) por producto y por variante; cada variante se evalúa con el origen del almacén que tiene su stock. Reglas de destino por tienda y por producto en el panel del vendedor.
+- **Carrito invitado:** vive en el navegador y se une al de la cuenta al iniciar sesión (`POST /api/cart/merge`), una sola vez por carrito gracias a `mergeKey` y la tabla `cart_merge_receipts`.
+- **Checkout:** lo que se cobra es lo que vio el comprador. El pedido lleva el total y la versión de la dirección cotizados; la API rechaza el pedido si cambió la dirección (`CHECKOUT_ADDRESS_CHANGED`), el almacén de origen (`SHIPPING_ORIGIN_CHANGED`) o el total (`CHECKOUT_TOTAL_CHANGED`) y la página vuelve a cotizar.
+- **Privacidad:** la IP solo se usa en memoria (país sugerido y límites de frecuencia); no se guarda en la base de datos ni en los registros HTTP ni en Sentry. Aviso en `/ayuda#ubicacion`.
+- Matriz de aceptación y pruebas: [`docs/NX-GEO-001-aceptacion.md`](docs/NX-GEO-001-aceptacion.md) · `pnpm e2e:geo`.
 
 ## Protección anti-bots (Cloudflare Turnstile)
 
@@ -126,7 +135,7 @@ La API usa la clave de administrador de Supabase en esos tres endpoints, que se 
 El navegador llama a la API a través del proxy `/api` de Next.js, así que sin ayuda la API solo ve la IP del servidor web y **todos los visitantes compartirían el mismo límite** (p. ej. 5 registros por minuto para todo el sitio).
 
 - **Web (`frontend/src/middleware.ts`):** en cada `/api/*` toma la IP del visitante **solo** de la cabecera que pone tu borde (`CLIENT_IP_HEADER`: `cf-connecting-ip` detrás de Cloudflare, `x-real-ip` en Vercel o detrás de nginx; en Vercel se usa `x-real-ip` por defecto) y la envía a la API en `x-nx-client-ip` junto con `x-nx-proxy-secret`. Lo que mande el navegador en esas cabeceras se descarta.
-- **API (`backend/src/common/client-ip.ts`):** solo confía en `x-nx-client-ip` si el secreto coincide; nunca en `X-Forwarded-For`. Con esa IP: límites de frecuencia por visitante, logs, y la cabecera `Sb-Forwarded-For` en las llamadas de administración a Supabase Auth.
+- **API (`backend/src/common/client-ip.ts`):** solo confía en `x-nx-client-ip` si el secreto coincide; nunca en `X-Forwarded-For`. Con esa IP: límites de frecuencia por visitante, país sugerido de entrega y la cabecera `Sb-Forwarded-For` en las llamadas de administración a Supabase Auth.
 - **Configuración:** el mismo valor aleatorio en `PROXY_SHARED_SECRET` en la web y en la API (`.secrets/proxy_shared_secret`; `openssl rand -hex 32`) y `CLIENT_IP_HEADER` en la web. Sin ellas todo funciona, pero los límites de la API se aplican a la IP del servidor web.
 - **Supabase → Authentication → Attack Protection:** activa *Enable IP address forwarding* para que Supabase respete `Sb-Forwarded-For` (solo con claves `sb_secret_…`). El inicio de sesión va directo del navegador a Supabase, así que ahí Supabase ya ve la IP real.
 - **Supabase → Authentication → Rate Limits:** ajusta los límites por IP (inicio de sesión/registro, verificación, renovación de tokens). Los correos de NEXOVAX salen por Resend desde la API, no por el SMTP de Supabase.
@@ -161,7 +170,7 @@ Se rechazan las contraseñas que aparecen en filtraciones conocidas (Have I Been
 - **Tarjeta simulada:** sin Stripe configurado la tarjeta aparece como no disponible. `PAYMENT_SANDBOX_ENABLED=true` habilita capturas simuladas solo en desarrollo (nunca con `NODE_ENV=production` ni `PAYMENT_ENVIRONMENT=LIVE`).
 - **Entregas:** la transportista confirma los envíos con rastreo automático. Para una guía manual, el vendedor registra la entrega desde el seguimiento del envío después del despacho. La entrega acreditada actualiza las cantidades entregadas y permite evaluar la liberación de fondos.
 - **Enlaces de rastreo:** para transportadoras conocidas el enlace se genera desde el número de guía; para otras solo se acepta `https` y se muestra el dominio como «sitio externo».
-- **Webhooks:** con claves live de Shippo el estado se vuelve a consultar en la API de Shippo (el payload no es fuente de verdad). Los logs HTTP nunca incluyen la query string. El webhook de PayPal descarta peticiones sin cabeceras de firma válidas antes de llamar a PayPal y tiene límite de frecuencia.
+- **Webhooks:** con claves live de Shippo el estado se vuelve a consultar en la API de Shippo (el payload no es fuente de verdad). Los logs HTTP nunca incluyen la query string ni la IP del visitante. El webhook de PayPal descarta peticiones sin cabeceras de firma válidas antes de llamar a PayPal y tiene límite de frecuencia.
 - **Imágenes:** máx. 8 MB, 8000 px por lado y 40 MP, se valida el formato real (no el declarado), sin animaciones, procesamiento con concurrencia limitada y límite de subidas por minuto.
 - **Moderación:** con moderación obligatoria, cualquier cambio de contenido visible (textos, marca, atributos, opciones, variantes o imágenes) de un producto activo lo devuelve a revisión; precio y stock no.
 - **Administración:** solo un super administrador puede modificar cuentas o roles de administradores; siempre queda al menos un super administrador activo.

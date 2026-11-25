@@ -18,9 +18,12 @@ if (dsn) {
         delete event.request.data;
         delete event.request.cookies;
         if (event.request.headers) {
-          for (const h of Object.keys(event.request.headers)) if (/authorization|cookie|secret|token/i.test(h)) delete event.request.headers[h];
+          for (const h of Object.keys(event.request.headers)) if (/authorization|cookie|secret|token|forwarded|real-ip|client-ip|connecting-ip/i.test(h)) delete event.request.headers[h];
         }
+        delete (event.request as any).env;
       }
+      // No IP addresses (privacy notice): neither the visitor's nor the one Sentry would infer.
+      if (event.user) delete event.user.ip_address;
       return event;
     },
   });

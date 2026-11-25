@@ -5,6 +5,9 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "El total de tu pedido cambió mientras lo confirmabas. Revisa el resumen e inténtalo de nuevo.": "Your order total changed while you were confirming it. Review the summary and try again.",
+  "El almacén desde el que se despacha uno de tus productos cambió. Revisa el envío y el total e inténtalo de nuevo.": "The warehouse that ships one of your products changed. Review shipping and the total and try again.",
+  "Los productos de esta tienda salen de varios almacenes y no hay un método de envío común a todos.": "This store’s products ship from several warehouses and no shipping method covers all of them.",
   "Indica una cantidad entera entre 1 y 1.000.000.": "Enter a whole number between 1 and 1,000,000.",
   "Indica la zona horaria de llegada.": "Include the time zone for the expected arrival.",
   "Indica una fecha de llegada con zona horaria.": "Enter the expected arrival date with its time zone.",

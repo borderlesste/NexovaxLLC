@@ -6,7 +6,7 @@ import { SettingsService } from '../settings/settings.service';
 import { TaxService } from '../tax/tax.service';
 import { lineTax, normalizeTaxClass, shippingTax, TaxClass } from '../tax/tax-calc';
 import { StripeTaxLine, StripeTaxService } from '../tax/stripe-tax.service';
-import { Parcel, ShippingService } from '../shipping/shipping.service';
+import { OriginAddress, Parcel, ShippingOption, ShippingService } from '../shipping/shipping.service';
 import { CartService } from '../cart/cart.service';
 import { AppError, badRequest, conflict, notFound } from '../common/errors';
 import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money';
@@ -37,6 +37,8 @@ export interface PlaceOrderInput {
   /** Store coupon codes typed by the buyer (one per store). */
   coupons?: string[];
   idempotencyKey: string;
+  /** Total the buyer saw and accepted (from the quote); the order is refused when it no longer matches. */
+  quotedTotal?: string;
 }
 
 function checkoutAddressVersion(address: { id: string; row_version: string }) {
@@ -107,16 +109,17 @@ export class CheckoutService {
   ) {}
 
   /**
-   * Confirmed restrictions (marketplace, store or product) for the confirmed address country (NX-GEO-001 §5).
+   * Confirmed restrictions (marketplace, store or product) for the confirmed address country (NX-GEO-001 §5),
+   * evaluated per cart variant (each one ships from the warehouse that stocks it). Keyed by variant id.
    * Only UNAVAILABLE blocks; uncertainty is settled by the live shipping options.
    */
   private async destinationBlocks(groups: any[], country: string | null | undefined) {
     const blocked = new Map<string, string>();
     if (!country) return blocked;
-    const ids = groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => i.productId as string));
+    const ids = groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => i.variantId as string));
     for (let i = 0; i < ids.length; i += 100) {
-      const r = await this.availability.forProducts(country, ids.slice(i, i + 100));
-      for (const [id, a] of Object.entries(r.items)) if (a.status === 'UNAVAILABLE') blocked.set(id, a.reason);
+      const r = await this.availability.forItems(country, [], ids.slice(i, i + 100));
+      for (const [id, a] of Object.entries(r.variants)) if (a.status === 'UNAVAILABLE') blocked.set(id, a.reason);
     }
     return blocked;
   }
@@ -189,7 +192,49 @@ export class CheckoutService {
     );
   }
 
-  /** Shipping options for every seller group of the current cart (also used to validate the order). */
+  /**
+   * Physical origins of each seller's cart lines: the same allocation the order will make (highest
+   * fulfillment priority first), read without locks. Returns, per seller, the lines grouped by the
+   * ship-from address of the warehouse that will dispatch them. Lines without enough stock fall back
+   * to the store's default origin (the order then fails with INSUFFICIENT_INVENTORY anyway).
+   */
+  private async originPlan(dims: any[]) {
+    const plan = new Map<string, Map<string, any[]>>(); // sellerId -> shipFromId|'' -> lines with qty
+    const vids = [...new Set(dims.map((d: any) => d.variant_id))];
+    const stock = vids.length
+      ? await this.db.many(
+          `select ii.variant_id, ii.seller_id, ii.available_to_sell::int as available, il.ship_from_address_id
+             from public.inventory_items ii join public.inventory_locations il on il.id = ii.location_id
+            where ii.variant_id = any($1::uuid[]) and ii.status = 'ACTIVE' and il.status = 'ACTIVE' and il.fulfillment_enabled
+            order by ii.variant_id, il.fulfillment_priority, ii.available_to_sell desc`,
+          [vids],
+        )
+      : [];
+    const add = (sellerId: string, origin: string, line: any, qty: number) => {
+      if (!plan.has(sellerId)) plan.set(sellerId, new Map());
+      const m = plan.get(sellerId)!;
+      m.set(origin, [...(m.get(origin) ?? []), { ...line, qty }]);
+    };
+    for (const d of dims) {
+      let need = Number(d.qty);
+      for (const s of stock) {
+        if (need <= 0) break;
+        if (s.variant_id !== d.variant_id || s.seller_id !== d.seller_id || !s.ship_from_address_id) continue;
+        const take = Math.min(need, s.available);
+        if (take <= 0) continue;
+        add(d.seller_id, s.ship_from_address_id, d, take);
+        need -= take;
+      }
+      if (need > 0) add(d.seller_id, '', d, need);
+    }
+    return plan;
+  }
+
+  /**
+   * Shipping options for every seller group of the current cart (also used to validate the order).
+   * A store whose items leave from several warehouses is quoted once per origin: it offers only the
+   * methods every origin can ship, priced as the sum of each origin's rate (what the order charges).
+   */
   private async groupOptions(cartId: string, groups: any[], address: any, currency: string) {
     const addressVersion = checkoutAddressVersion(address);
     const dims = await this.db.many(
@@ -198,14 +243,51 @@ export class CheckoutService {
         where ci.cart_id = $1 and ci.status = 'ACTIVE'`,
       [cartId],
     );
-    const out = new Map<string, Awaited<ReturnType<ShippingService['options']>> & { parcel: Parcel }>();
+    type Opts = Awaited<ReturnType<ShippingService['options']>>;
+    const out = new Map<string, Opts & { parcel: Parcel; origins: { id: string | null; parcel: Parcel; options: ShippingOption[] }[] }>();
+    const purchasableDims = dims.filter((d: any) =>
+      groups.some((g: any) => g.sellerId === d.seller_id && g.items.some((i: any) => i.purchasable && i.variantId === d.variant_id)),
+    );
+    const plan = await this.originPlan(purchasableDims);
     await Promise.all(
       groups.map(async (g: any) => {
-        const purchasable = new Set(g.items.filter((i: any) => i.purchasable).map((i: any) => i.variantId));
-        const parcel = ShippingService.parcelFor(dims.filter((d: any) => d.seller_id === g.sellerId && purchasable.has(d.variant_id)));
-        const origin = await this.shipping.originFor(g.sellerId);
-        const res = await this.shipping.options(origin, address, parcel, currency, addressVersion);
-        out.set(g.sellerId, { ...res, parcel });
+        const byOrigin = plan.get(g.sellerId) ?? new Map<string, any[]>([['', []]]);
+        const fallback = byOrigin.has('') ? await this.shipping.originFor(g.sellerId) : null;
+        const quoted = await Promise.all(
+          [...byOrigin.entries()].map(async ([originId, lines]) => {
+            const origin = originId
+              ? await this.db.one<OriginAddress>(
+                  `select id, contact_name, company_name, line1, line2, city, region, postal_code, country_code, phone
+                     from public.seller_ship_from_addresses where id = $1 and seller_id = $2`,
+                  [originId, g.sellerId],
+                )
+              : fallback;
+            const parcel = ShippingService.parcelFor(lines);
+            return { id: origin?.id ?? null, parcel, res: await this.shipping.options(origin, address, parcel, currency, addressVersion) };
+          }),
+        );
+        // The default origin may be the same address as a warehouse already in the plan.
+        const merged = new Map<string | null, (typeof quoted)[number]>();
+        for (const q of quoted) if (!merged.has(q.id)) merged.set(q.id, q);
+        const list = [...merged.values()];
+        const origins = list.map((q) => ({ id: q.id, parcel: q.parcel, options: q.res.options }));
+        if (list.length === 1) {
+          out.set(g.sellerId, { ...list[0].res, parcel: list[0].parcel, origins });
+          return;
+        }
+        const common = list[0].res.options.filter((o) => list.every((q) => q.res.options.some((x) => x.code === o.code)));
+        const options = common.map((o) => {
+          const all = list.map((q) => q.res.options.find((x) => x.code === o.code)!);
+          return {
+            ...o,
+            amount: fromMinor(all.reduce((acc, x) => acc + toMinor(x.amount), 0n)),
+            estimatedDays: all.some((x) => x.estimatedDays == null) ? null : Math.max(...all.map((x) => x.estimatedDays!)),
+            description: o.description,
+          };
+        });
+        const messages = [...new Set(list.flatMap((q) => q.res.messages))];
+        if (!options.length) messages.push('Los productos de esta tienda salen de varios almacenes y no hay un método de envío común a todos.');
+        out.set(g.sellerId, { options, messages, liveRates: list.every((q) => q.res.liveRates), parcel: list[0].parcel, origins });
       }),
     );
     return out;
@@ -248,8 +330,11 @@ export class CheckoutService {
       const opt = optionsBySeller.get(g.sellerId)!;
       const chosen = opt.options.find((o) => o.code === input.shipping?.[g.sellerId]) ?? opt.options[0] ?? null;
       const shipping = chosen ? toMinor(chosen.amount) : 0n;
-      taxAmount += shippingTax(tax, shipping).tax;
-      if (viaStripe) stripeLines.push({ reference: `ship:${g.sellerId}`, amount: shipping, shipping: true, sellerId: g.sellerId });
+      // Taxed per physical origin, as the order does (each origin is its own shipment).
+      const perOrigin = chosen ? (opt.origins ?? []).map((o) => toMinor(o.options.find((x) => x.code === chosen.code)?.amount ?? '0')) : [];
+      for (const amt of perOrigin.length ? perOrigin : [shipping]) taxAmount += shippingTax(tax, amt).tax;
+      if (viaStripe)
+        (perOrigin.length ? perOrigin : [shipping]).forEach((amt, n) => stripeLines.push({ reference: `ship:${g.sellerId}:${n}`, amount: amt, shipping: true, sellerId: g.sellerId }));
       // Inclusive countries: the listed amounts already contain the tax (shown as "includes").
       const groupTotal = subtotal - discount + shipping + (tax.pricesIncludeTax ? 0n : taxAmount);
       totals.subtotal += subtotal;
@@ -266,7 +351,7 @@ export class CheckoutService {
         shippingMessages: opt.messages,
         liveRates: opt.liveRates,
         /** Items that can't be shipped to the address country, with the reason code. */
-        destinationBlocked: items.filter((i: any) => blocked.has(i.productId)).map((i: any) => ({ productId: i.productId, reason: blocked.get(i.productId) })),
+        destinationBlocked: items.filter((i: any) => blocked.has(i.variantId)).map((i: any) => ({ productId: i.productId, variantId: i.variantId, reason: blocked.get(i.variantId) })),
         selectedShipping: chosen?.code ?? null,
         subtotal: fromMinor(subtotal),
         discount: fromMinor(discount),
@@ -463,8 +548,17 @@ export class CheckoutService {
         );
       }
 
+      // ---- the origins the order ships from must be the ones the buyer's shipping price was quoted for
+      for (const sellerId of new Set(allocations.map((a) => a.item.seller_id as string))) {
+        const actual = new Set(allocations.filter((a) => a.item.seller_id === sellerId).map((a) => a.shipFrom));
+        const quoted = optionsBySeller.get(sellerId)?.origins ?? [];
+        if (actual.size !== quoted.length || quoted.some((o) => !o.id || !actual.has(o.id)))
+          throw conflict('SHIPPING_ORIGIN_CHANGED', 'El almacén desde el que se despacha uno de tus productos cambió. Revisa el envío y el total e inténtalo de nuevo.');
+      }
+
       // ---- packages, quotes and selected rate per group
       const shippingBySeller = new Map<string, Minor>();
+      const chargedOrigins = new Set<string>();
       const taxInfo = await this.tax.forDestination(address.country_code, address.region, c);
       const shippingLines: ShippingTaxLine[] = [];
       for (const [key, groupId] of groupIds) {
@@ -495,17 +589,21 @@ export class CheckoutService {
           );
         await this.db.exec(`select public.mark_checkout_package_plan_ready($1)`, [plan!.id], c);
 
-        // Shipping options were quoted for the whole seller cart; a seller with several origin
-        // locations is charged once (on its first group) and the rest ship under the same option.
+        // Shipping was quoted per physical origin (see groupOptions): each origin is charged its own
+        // rate for the chosen method, once, even when several locations share that ship-from address.
         const opt = optionsBySeller.get(sellerId)!;
-        const chosen = opt.options.find((o) => o.code === input.shipping![sellerId])!;
-        const firstGroupOfSeller = !shippingBySeller.has(sellerId);
+        const shipFrom = groupAllocs[0].shipFrom;
+        const origin = opt.origins.find((o) => o.id === shipFrom)!;
+        const originOptions = origin.options;
+        const chosen = originOptions.find((o) => o.code === input.shipping![sellerId])!;
+        const firstGroupOfOrigin = !chargedOrigins.has(`${sellerId}:${shipFrom}`);
+        chargedOrigins.add(`${sellerId}:${shipFrom}`);
         // The stored shipping is tax-exclusive; its tax (when the country taxes shipping) is kept per group.
-        const shipSplit = shippingTax(taxInfo, firstGroupOfSeller ? toMinor(chosen.amount) : 0n);
+        const shipSplit = shippingTax(taxInfo, firstGroupOfOrigin ? toMinor(chosen.amount) : 0n);
         const charge = shipSplit.amount;
         shippingLines.push({ groupId, sellerId, amount: charge, tax: shipSplit.tax, rate: shipSplit.rate });
         const quoteIds = new Map<string, string>();
-        for (const provider of Array.from(new Set(opt.options.map((o) => o.provider)))) {
+        for (const provider of Array.from(new Set(originOptions.map((o) => o.provider)))) {
           const qid: string = (await this.db.one(
             `select public.create_shipping_quote_request($1,$2,$3,$4,$5,null,$6::jsonb,$7) as id`,
             [sessionId, groupId, plan!.id, provider, `${input.idempotencyKey}:quote:${groupId}:${provider}`,
@@ -515,7 +613,7 @@ export class CheckoutService {
           quoteIds.set(provider, qid);
         }
         let chosenRateId: string | null = null;
-        for (const o of opt.options) {
+        for (const o of originOptions) {
           const ro = await this.db.one(
             `insert into public.shipping_rate_options (quote_request_id, fulfillment_group_id, seller_id, shipping_provider_code,
                      provider_rate_id, carrier_code, carrier_name, service_token, service_name, provider_amount,
@@ -539,7 +637,7 @@ export class CheckoutService {
         await this.db.exec(
           `select public.select_checkout_shipping_rate($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`,
           [sessionId, groupId, chosenRateId, fromMinor(charge), `${input.idempotencyKey}:ship:${groupId}`, userId,
-           JSON.stringify({ option_code: chosen.code, provider: chosen.provider, provider_rate_id: chosen.providerRateId, charged_on_first_group: firstGroupOfSeller }), corr],
+           JSON.stringify({ option_code: chosen.code, provider: chosen.provider, provider_rate_id: chosen.providerRateId, charged_on_first_group_of_origin: firstGroupOfOrigin, ship_from_address_id: shipFrom }), corr],
           c,
         );
         shippingBySeller.set(sellerId, (shippingBySeller.get(sellerId) ?? 0n) + charge);
@@ -594,6 +692,9 @@ export class CheckoutService {
         c,
       ))!.id;
       const pay = await this.db.one(`select expected_amount::text as amount, currency_code from public.payments where id = $1`, [paymentId], c);
+      // The amount charged must be the one the buyer accepted (address, origins, shipping, tax, coupons).
+      if (input.quotedTotal != null && toMinor(input.quotedTotal) !== toMinor(pay!.amount))
+        throw conflict('CHECKOUT_TOTAL_CHANGED', 'El total de tu pedido cambió mientras lo confirmabas. Revisa el resumen e inténtalo de nuevo.');
 
       if (online) {
         const ref = await this.db.one(
@@ -947,3 +1048,4 @@ function cartSignature(lines: Array<{ sellerId: string; variantId: string; quant
   for (const l of lines) agg.set(`${l.sellerId}|${l.variantId}`, (agg.get(`${l.sellerId}|${l.variantId}`) ?? 0) + Number(l.quantity));
   return [...agg.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, q]) => `${k}:${q}`).join(',');
 }
+

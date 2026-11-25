@@ -22,7 +22,7 @@ const PID = '11111111-1111-4111-8111-111111111111';
 
 describe('NX-GEO-001 over HTTP', () => {
   let app: INestApplication;
-  const availability = { forProducts: jest.fn(async (country: string, ids: string[]) => ({ country, items: Object.fromEntries(ids.map((i) => [i, { status: 'UNCONFIRMED', reason: 'NEEDS_ADDRESS', shipsFrom: 'US' }])) })) };
+  const availability = { forItems: jest.fn(async (country: string, ids: string[], vids: string[] = []) => ({ country, items: Object.fromEntries(ids.map((i) => [i, { status: 'UNCONFIRMED', reason: 'NEEDS_ADDRESS', shipsFrom: 'US' }])), variants: Object.fromEntries(vids.map((i) => [i, { status: 'AVAILABLE', reason: 'ROUTE_OK', shipsFrom: 'US' }])) })) };
   const cart = { preview: jest.fn(async () => ({ guest: true, groups: [] })), merge: jest.fn() };
 
   jest.setTimeout(60_000);
@@ -76,6 +76,10 @@ describe('NX-GEO-001 over HTTP', () => {
     await s.post('/api/geo/availability').send({ country: 'D0', productIds: [PID] }).expect(400);
     await s.post('/api/geo/availability').send({ country: 'DO', productIds: ['nope'] }).expect(400);
     await s.post('/api/geo/availability').send({ country: 'DO', productIds: Array(101).fill(PID) }).expect(400);
+    // the selected variant is evaluated with its own warehouse origin
+    const v = await s.post('/api/geo/availability').send({ country: 'DO', productIds: [PID], variantIds: [PID] }).expect(201);
+    expect(v.body.variants[PID]).toMatchObject({ status: 'AVAILABLE' });
+    await s.post('/api/geo/availability').send({ country: 'DO', productIds: [PID], variantIds: ['nope'] }).expect(400);
   });
 
   it('guest cart is public; account cart, merge and seller rules require a session', async () => {

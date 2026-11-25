@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     merging.current = me.id;
     const items = guestCart.lines();
     if (!items.length) return;
-    post<{ cart: any; skipped: string[] }>('/cart/merge', { items })
+    post<{ cart: any; skipped: string[] }>('/cart/merge', { items, mergeKey: guestCart.mergeKey() })
       .then((r) => {
         guestCart.clear();
         qc.setQueryData(['cart'], r.cart);
