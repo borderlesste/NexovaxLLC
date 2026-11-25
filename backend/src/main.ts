@@ -21,6 +21,8 @@ async function bootstrap() {
   // Don't advertise the framework, and basic hardening headers for a JSON/media API.
   const http = app.getHttpAdapter().getInstance();
   http.disable?.('x-powered-by');
+  // The API is not a website: tell crawlers to skip it (the shop and its images are crawled on the web domain).
+  http.get?.('/robots.txt', (_req: unknown, res: { type: (t: string) => { send: (b: string) => void } }) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
