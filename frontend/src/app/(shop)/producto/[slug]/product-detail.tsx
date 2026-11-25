@@ -16,6 +16,7 @@ import { ProductPreorder, useProductPreorders } from '@/components/shop/product-
 import { AvailabilityPanel } from '@/components/shop/availability';
 import { Recommendations } from '@/components/shop/recommendations';
 import { trackProductView } from '@/lib/analytics';
+import { rememberViewed } from '@/lib/recently-viewed';
 import { ga, type GaItem } from '@/lib/ga';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -36,6 +37,7 @@ export function ProductDetail({ initial }: { initial: any }) {
   const router = useRouter();
   const { session } = useAuth();
   useEffect(() => trackProductView(initial.id), [initial.id]);
+  useEffect(() => rememberViewed(initial.id), [initial.id]);
   const q = useQuery({ queryKey: ['product', initial.slug, !!session], queryFn: () => get(`/products/${initial.slug}`), initialData: initial });
   const p = q.data;
   const [qty, setQty] = useState(1);

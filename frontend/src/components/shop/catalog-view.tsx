@@ -76,7 +76,7 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
   const siblings = current ? (current.children?.length ? current.children : path.length > 1 ? path[path.length - 2].children : cats.data) : cats.data;
   const [min, setMin] = useState(sp.get('minPrice') ?? '');
   const [max, setMax] = useState(sp.get('maxPrice') ?? '');
-  const title = current?.name ?? (sp.get('q') ? t('Resultados para “{a}”', { a: sp.get('q') }) : sp.get('onSale') ? t('Ofertas') : t('Todos los productos'));
+  const title = current?.name ?? (sp.get('q') ? t('Resultados para “{a}”', { a: sp.get('q') }) : sp.get('onSale') ? t('Ofertas') : sp.get('preorder') ? t('Próximamente') : t('Todos los productos'));
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-4 lg:px-8">

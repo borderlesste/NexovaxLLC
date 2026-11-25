@@ -2,6 +2,7 @@ import { Locale, setMailRuntime } from '../mail/mail.templates';
 import { Injectable } from '@nestjs/common';
 import { DbService, Queryable } from '../db/db.service';
 import { badRequest } from '../common/errors';
+import { defaultHomeLayout, HomeLayout, normalizeHomeLayout } from '../catalog/home-layout';
 
 export interface ShippingRate {
   code: string;
@@ -155,6 +156,8 @@ export interface PlatformSettings {
   'geo.delivery': GeoDeliverySettings;
   'google.integrations': GoogleSettings;
   'company.info': CompanyInfo;
+  /** Home page sections: order, on/off, titles and item counts (Admin → Configuración → Portada). */
+  'home.layout': HomeLayout;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -206,6 +209,7 @@ const DEFAULTS: PlatformSettings = {
     merchantCondition: 'new', merchantIncludeOutOfStock: false, merchantStoreAsBrand: false,
   },
   'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', taxId: '', legalRepresentative: '', phone: '', supportHours: '', footerText: '' },
+  'home.layout': defaultHomeLayout(),
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */
@@ -236,6 +240,7 @@ export class SettingsService {
     for (const r of rows) out[r.setting_key] = r.value;
     out['google.integrations'] = { ...DEFAULTS['google.integrations'], ...(out['google.integrations'] ?? {}) };
     out['company.info'] = { ...DEFAULTS['company.info'], ...(out['company.info'] ?? {}) };
+    out['home.layout'] = normalizeHomeLayout(out['home.layout']);
     if (!client) {
       this.cache = { at: Date.now(), value: out };
       setMailRuntime({
@@ -262,7 +267,7 @@ export class SettingsService {
     await this.db.tx(async (c) => {
       for (const key of keys) {
         if (!(key in DEFAULTS)) throw badRequest('UNKNOWN_SETTING', `Configuración desconocida: ${key}`);
-        const value = patch[key];
+        const value = key === 'home.layout' ? normalizeHomeLayout(patch[key]) : patch[key];
         if (JSON.stringify(value) === JSON.stringify(current[key])) continue;
         const row = await this.db.one<{ id: string }>(
           `insert into public.system_setting_values (setting_key, version_number, scope_type, value, checksum, created_by_user_id)

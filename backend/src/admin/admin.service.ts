@@ -1,3 +1,4 @@
+import { defaultHomeLayout } from '../catalog/home-layout';
 import { Injectable, Logger } from '@nestjs/common';
 import { decrypt } from '../common/crypto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -884,7 +885,7 @@ export class AdminService {
               (select count(*) from public.role_permissions rp where rp.role_id = r.id and rp.revoked_at is null)::int as permissions
          from public.roles r where r.is_active order by r.code`,
     );
-    return { settings, commission, payoutPolicy: payout, roles, system, taxRates, currencies };
+    return { settings, commission, payoutPolicy: payout, roles, system, taxRates, currencies, homeLayoutDefaults: defaultHomeLayout() };
   }
 
   /** Uploads the default share image; the admin then saves it in SEO settings. */

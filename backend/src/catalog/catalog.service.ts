@@ -5,8 +5,10 @@ import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
 import { notFound } from '../common/errors';
 import { clampPage, clampPageSize } from '../common/paging';
+import { soldOrder } from '../common/sales-sql';
 import { productHasPreorderSql } from '../preorders/preorders.sql';
 import { mapProductCard, mediaUrl, PRODUCT_CARD_JOINS, PRODUCT_CARD_SELECT } from './catalog.sql';
+import type { HomeSection, HomeSectionKey } from './home-layout';
 
 export interface ProductQuery {
   q?: string;
@@ -19,6 +21,16 @@ export interface ProductQuery {
   onSale?: boolean;
   /** Only products the team featured (home page). */
   featured?: boolean;
+  /** Only these products (recently viewed, max 24). */
+  ids?: string[];
+  /** Only out-of-stock products with an open preorder. */
+  preorder?: boolean;
+  /** Only products sold in the last N days, best sellers of the window first (home "Más vendidos"). */
+  soldDays?: number;
+  /** Only products published in the last N days. */
+  publishedDays?: number;
+  /** Only products discounted at least this % (home "Ofertas relámpago"). */
+  minDiscount?: number;
   sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling' | 'featured';
   page?: number;
   pageSize?: number;
@@ -27,6 +39,12 @@ export interface ProductQuery {
 }
 
 const FACET_LIMIT = 12;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Units of the product sold in the last N days (paid, not cancelled, real orders). */
+const recentSales = (daysParam: string) =>
+  `coalesce((select sum(oi.quantity) from public.order_items oi join public.orders o on o.id = oi.order_id
+     where oi.product_id = p.id and ${soldOrder('o')} and o.placed_at >= now() - make_interval(days => ${daysParam}::int)), 0)`;
 
 /** Words of a search term, normalized (no accents, lower case). */
 const searchWords = (param: string) =>
@@ -92,6 +110,11 @@ export class CatalogService {
     if (query.maxPrice != null) where.push(`pr.min_amount <= ${add(query.maxPrice)}`);
     if (query.inStock) where.push(`coalesce(st.available, 0) > 0`);
     if (query.onSale) where.push(`pr.compare_at > pr.min_amount`);
+    if (query.minDiscount) where.push(`pr.compare_at > 0 and pr.min_amount <= pr.compare_at * (1 - ${add(query.minDiscount)}::numeric / 100)`);
+    if (query.ids) where.push(`p.id = any(${add(query.ids.filter((x) => UUID.test(x)).slice(0, 24))}::uuid[])`);
+    if (query.preorder) where.push(`coalesce(st.available, 0) <= 0 and ${productHasPreorderSql('p')}`);
+    if (query.publishedDays) where.push(`p.published_at >= now() - make_interval(days => ${add(Math.trunc(query.publishedDays))}::int)`);
+    if (query.soldDays) where.push(`${recentSales(add(Math.trunc(query.soldDays)))} > 0`);
     if (withAttrs)
       for (const [code, values] of Object.entries(query.attrs ?? {}).slice(0, 10)) {
         if (!values.length) continue;
@@ -108,6 +131,7 @@ export class CatalogService {
     const { where, params } = this.listingWhere(query, currency);
     const q = query.q?.trim().slice(0, 120);
     const scored = q && (query.sort ?? 'relevance') === 'relevance' ? `${searchScore(`$${params.push(q)}`)} desc, ` : '';
+    const recent = query.soldDays ? `${recentSales(`$${params.push(Math.trunc(query.soldDays))}`)} desc, ` : '';
 
     const order =
       {
@@ -127,7 +151,7 @@ export class CatalogService {
         from public.products p
         ${PRODUCT_CARD_JOINS('$1')}
        where ${where.join(' and ')}
-       order by ${scored}${order}, p.id
+       order by ${scored}${recent}${order}, p.id
        limit ${pageSize} offset ${(page - 1) * pageSize}`;
     const rows = await this.db.many(sql, params);
     return {
@@ -483,31 +507,127 @@ export class CatalogService {
     };
   }
 
+  /**
+   * Home page: the sections of Admin → Configuración → Portada, in their order, each with what it shows.
+   * Sections with nothing to show come back empty and the page leaves them out. Cached for 30 s (the web
+   * revalidates the page every 30 s too), so the many listings here run at most twice a minute.
+   */
   async home() {
-    // "Producto destacado" on: the products the team featured (best sellers until it picks some); off: no featured section.
-    const featuredOn = !!(await this.settings.get('features.featured_products'));
-    const [categories, popular, curated, newest, deals, sellers] = await Promise.all([
+    if (this.homeCache && Date.now() - this.homeCache.at < 30_000) return this.homeCache.value;
+    const value = await this.buildHome();
+    this.homeCache = { at: Date.now(), value };
+    return value;
+  }
+
+  private homeCache?: { at: number; value: Awaited<ReturnType<CatalogService['buildHome']>> };
+
+  private async buildHome() {
+    const [layout, featuredOn, categories, popular] = await Promise.all([
+      this.settings.get('home.layout'),
+      this.settings.get('features.featured_products').then((v) => !!v),
       this.categories(),
       this.listProducts({ sort: 'relevance', pageSize: 12 }),
-      featuredOn ? this.listProducts({ featured: true, sort: 'featured', pageSize: 12 }) : Promise.resolve(null),
-      this.listProducts({ sort: 'newest', pageSize: 6 }),
-      this.listProducts({ onSale: true, sort: 'relevance', pageSize: 18 }),
-      this.sellers(),
     ]);
-    const featured = !featuredOn ? [] : curated?.items.length ? curated.items : popular.items;
-    // "Ofertas de la semana" never repeats what "Productos destacados" already shows right above it.
-    const shown = new Set(featured.map((p: any) => p.id));
+    const on = layout.sections.filter((s) => s.enabled);
+    // Sections that may skip products shown above them: fetch more, so they still fill up.
+    const extra = (limit: number) => (layout.avoidRepeats ? Math.min(60, limit * 2) : limit);
+    const list = (q: ProductQuery) => this.listProducts(q).then((r) => r.items);
+    const fetchers: Partial<Record<HomeSectionKey, (s: HomeSection) => Promise<unknown>>> = {
+      flash_deals: async (s) =>
+        s.endsAt && Date.parse(s.endsAt) > Date.now() ? list({ minDiscount: s.minDiscount, sort: 'relevance', pageSize: extra(s.limit) }) : [],
+      best_sellers: (s) => list({ soldDays: s.days || 30, sort: 'relevance', pageSize: extra(s.limit) }),
+      featured: async (s) => {
+        if (!featuredOn) return [];
+        const curated = await list({ featured: true, sort: 'featured', pageSize: extra(s.limit) });
+        return curated.length ? curated : popular.items;
+      },
+      new_arrivals: (s) => list({ sort: 'newest', publishedDays: s.days || undefined, pageSize: extra(s.limit) }),
+      deals: (s) => list({ onSale: true, sort: 'relevance', pageSize: extra(s.limit) }),
+      preorders: (s) => list({ preorder: true, sort: 'newest', pageSize: extra(s.limit) }),
+      category_rows: async (s) => {
+        const pool = categories.filter((c) => c.productCount > 0);
+        const all = new Map<string, any>();
+        const walk = (cs: any[]) => cs.forEach((c) => { all.set(c.slug, c); walk(c.children); });
+        walk(categories);
+        const picked = s.categories?.length
+          ? s.categories.map((slug) => all.get(slug)).filter((c) => c && c.productCount > 0)
+          : [...pool].sort((a, b) => b.productCount - a.productCount);
+        const rows = await Promise.all(
+          picked.slice(0, s.rows ?? 4).map(async (c: any) => ({
+            category: { id: c.id, slug: c.slug, name: c.name },
+            items: await list({ category: c.slug, sort: 'relevance', pageSize: s.limit }),
+          })),
+        );
+        return rows.filter((r) => r.items.length);
+      },
+      price_ranges: async (s) => {
+        const ranges = await Promise.all(
+          (s.thresholds ?? []).map(async (max) => ({ max, items: await list({ maxPrice: max, sort: 'relevance', pageSize: s.limit }) })),
+        );
+        return ranges.filter((r) => r.items.length);
+      },
+      top_stores: (s) => this.topStores(s.limit, s.minRating ?? 0),
+    };
+    const loaded = await Promise.all(on.map((s) => (fetchers[s.key] ? fetchers[s.key]!(s) : Promise.resolve(null))));
+
+    // Same product in two rows looks repetitive: skip it below, unless the section would be left too short.
+    const shown = new Set<string>();
+    const sections = on.map((s, i) => {
+      const data: any = loaded[i];
+      const base = { key: s.key, title: s.title, titleEn: s.titleEn, titleFr: s.titleFr, titleHt: s.titleHt, limit: s.limit };
+      if (s.key === 'category_rows') return { ...base, rows: data };
+      if (s.key === 'price_ranges') return { ...base, ranges: data };
+      if (s.key === 'top_stores') return { ...base, stores: data };
+      if (!Array.isArray(data)) return base; // rendered by the web (categories, recommended, recently viewed, banners)
+      let items = data as any[];
+      if (layout.avoidRepeats) {
+        const fresh = items.filter((p) => !shown.has(p.id));
+        if (fresh.length >= Math.min(4, items.length)) items = fresh;
+      }
+      items = items.slice(0, s.limit);
+      items.forEach((p) => shown.add(p.id));
+      return {
+        ...base,
+        items,
+        ...(s.key === 'flash_deals' ? { endsAt: s.endsAt } : {}),
+        ...(s.key === 'best_sellers' ? { days: s.days || 30 } : {}),
+      };
+    });
+    const pick = (k: HomeSectionKey) => (sections.find((x) => x.key === k) as any)?.items ?? [];
     return {
       categories: categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, productCount: c.productCount })),
-      featured,
-      featuredEnabled: featuredOn,
-      featuredCurated: !!curated?.items.length,
+      sections,
+      // Kept for the hero preview and for older web builds.
+      featured: pick('featured'),
+      featuredEnabled: featuredOn && on.some((s) => s.key === 'featured'),
       popular: popular.items,
-      newest: newest.items,
-      deals: deals.items.filter((p: any) => !shown.has(p.id)).slice(0, 6),
-      sellers: sellers.slice(0, 8),
+      newest: pick('new_arrivals'),
+      deals: pick('deals'),
       currency: popular.currency,
     };
+  }
+
+  /** Stores with published products, best rated first (home "Tiendas destacadas"). */
+  private async topStores(limit: number, minRating: number) {
+    const rows = await this.db.many(
+      `select s.id, s.slug, coalesce(ssp.display_name, s.slug) as name, ssp.short_description, ssp.logo_asset_id, ssp.banner_asset_id,
+              (s.verification_status = 'VERIFIED') as verified, x.products, coalesce(r.rating, 0)::numeric(3,2)::text as rating, coalesce(r.reviews, 0)::int as reviews
+         from public.sellers s
+         left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+         join lateral (select count(*)::int as products from public.products p where p.seller_id = s.id and p.status = 'ACTIVE') x on x.products > 0
+         left join lateral (select avg(pr.rating) as rating, count(*) as reviews from public.product_reviews pr
+                             where pr.seller_id = s.id and pr.status = 'PUBLISHED') r on true
+        where s.status = 'ACTIVE' and coalesce(r.rating, 0) >= $1
+        order by coalesce(r.rating, 0) desc, coalesce(r.reviews, 0) desc, (s.verification_status = 'VERIFIED') desc, x.products desc, s.created_at
+        limit $2`,
+      [minRating, limit],
+    );
+    return rows.map((r: any) => ({
+      id: r.id, slug: r.slug, name: r.name, shortDescription: r.short_description,
+      logoUrl: r.logo_asset_id ? mediaUrl(r.logo_asset_id) : null,
+      bannerUrl: r.banner_asset_id ? mediaUrl(r.banner_asset_id) : null,
+      verified: r.verified, products: r.products, rating: Number(r.rating), reviews: r.reviews,
+    }));
   }
 
   /** Slugs and last change of everything public, for search engines (sitemap.xml holds up to 50,000 URLs). */

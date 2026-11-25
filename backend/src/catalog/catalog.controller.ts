@@ -173,6 +173,8 @@ function listingQuery(raw: Record<string, string | string[]>) {
     maxPrice: num(one('maxPrice')),
     inStock: bool(one('inStock')),
     onSale: bool(one('onSale')),
+    preorder: bool(one('preorder')),
+    ids: one('ids') ? String(one('ids')).split(',').map((x) => x.trim()).filter(Boolean).slice(0, 24) : undefined,
     sort: one('sort') as any,
     page: num(one('page')),
     pageSize: num(one('pageSize')),

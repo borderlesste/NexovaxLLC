@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, BarChart3, Bell, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Search, Wrench } from 'lucide-react';
+  Activity, BarChart3, Bell, LayoutTemplate, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Search, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
 import { cn, fmtDate, money } from '@/lib/utils';
@@ -21,11 +21,13 @@ import { DeliveryCountryCard } from '@/components/admin/delivery-country-card';
 import { HelpEditor } from '@/components/admin/help-editor';
 import { SeoEditor } from '@/components/admin/seo-editor';
 import { GoogleEditor } from '@/components/admin/google-editor';
+import { HomeLayoutEditor } from '@/components/admin/home-layout-editor';
 import { TaxRegionsDialog } from '@/components/admin/tax-regions';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
 
 const TABS = [
   ['general', 'General', Settings],
+  ['home', 'Portada', LayoutTemplate],
   ['taxes', 'Impuestos', Percent],
   ['commissions', 'Comisiones', Coins],
   ['shipping', 'Envíos', Truck],
@@ -281,6 +283,7 @@ export default function SettingsPage() {
               </div>
             </Card>
           )}
+          {tab === 'home' && <HomeLayoutEditor value={s['home.layout']} defaults={d.homeLayoutDefaults} onChange={(v) => set('home.layout', v)} />}
           {tab === 'help' && <HelpEditor settings={s} />}
           {tab === 'seo' && <SeoEditor value={s['seo.defaults']} onChange={(v) => set('seo.defaults', v)} marketplaceName={s['marketplace.name']} />}
           {tab === 'google' && <GoogleEditor value={s['google.integrations']} siteUrl={s['seo.defaults']?.canonicalUrl || s['marketplace.base_url']} defaultCountry={s['marketplace.default_country']} onChange={(v) => set('google.integrations', v)} />}

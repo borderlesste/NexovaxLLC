@@ -19,8 +19,10 @@ const TITLES: Record<string, [string, string]> = {
  * Recommendation strip. Personalized only with analytics consent; otherwise popular /
  * similar products. Renders nothing when there is nothing to show.
  */
-export function Recommendations({ context, productId, limit = 8, className, gridClassName, fallback, reserveSpace, showAddToCart, hideSeller }: {
+export function Recommendations({ context, productId, limit = 8, className, gridClassName, fallback, reserveSpace, showAddToCart, hideSeller, title: customTitle }: {
   context: 'home' | 'product' | 'cart'; productId?: string; limit?: number; className?: string; gridClassName?: string; fallback?: React.ReactNode;
+  /** Replaces the title chosen by the API (home page title set by the admin). */
+  title?: string;
   /** Card options, passed to every ProductCard. */
   showAddToCart?: boolean; hideSeller?: boolean;
   /** Show placeholders while loading (for sections above other content, e.g. the home page). */
@@ -58,7 +60,7 @@ export function Recommendations({ context, productId, limit = 8, className, grid
   return (
     <section className={className} data-recommendations={q.data.title}>
       <div className="mb-4">
-        <h2 className="flex items-center gap-2 text-xl font-bold sm:text-2xl">{q.data.personalized && <Sparkles className="size-5 text-brand-600" />}{t(title)}</h2>
+        <h2 className="flex items-center gap-2 text-xl font-bold sm:text-2xl">{q.data.personalized && <Sparkles className="size-5 text-brand-600" />}{customTitle || t(title)}</h2>
         <p className="text-sm text-muted">{t(subtitle)}</p>
       </div>
       <div className={grid}>
