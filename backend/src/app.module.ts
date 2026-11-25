@@ -59,6 +59,7 @@ import { ReturnsService } from './returns/returns.service';
 import { ReturnsController } from './returns/returns.controller';
 import { CancellationsController } from './orders/cancellations.controller';
 import { PromotionsController } from './promotions/promotions.controller';
+import { FlashDealsService } from './promotions/flash-deals.service';
 import { AnalyticsController } from './analytics/analytics.controller';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AlertsService } from './analytics/alerts.service';
@@ -137,6 +138,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     AffiliatesService,
     SharesService,
     OffersService,
+    FlashDealsService,
     AnalyticsService,
     AlertsService,
     RecommendationsService,

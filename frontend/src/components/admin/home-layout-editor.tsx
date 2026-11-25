@@ -21,7 +21,8 @@ export interface HomeSection {
   categories?: string[];
   minRating?: number;
   minDiscount?: number;
-  endsAt?: string | null;
+  maxHours?: number;
+  maxPerSeller?: number;
   thresholds?: number[];
 }
 export interface HomeLayout { avoidRepeats: boolean; sections: HomeSection[] }
@@ -30,7 +31,7 @@ export interface HomeLayout { avoidRepeats: boolean; sections: HomeSection[] }
 const META: Record<string, { name: string; desc: string; limit?: [string, number, number] }> = {
   categories: { name: 'Explora por categorías', desc: 'Accesos a las categorías principales.', limit: ['Categorías mostradas', 3, 19] },
   recommended: { name: 'Recomendado para ti', desc: 'Según lo que vio y guardó el visitante (con su consentimiento); si no, lo más popular.', limit: ['Productos', 4, 24] },
-  flash_deals: { name: 'Ofertas relámpago', desc: 'Campaña con cuenta regresiva: productos con al menos el descuento indicado hasta la fecha de fin. Sin fecha de fin (o ya pasada) no se muestra.', limit: ['Productos', 2, 24] },
+  flash_deals: { name: 'Ofertas relámpago', desc: 'Rebajas que cada tienda crea con su descuento, inicio y fin, con cuenta regresiva real. Aquí fijas las reglas; abajo puedes retirar ofertas.', limit: ['Productos', 2, 24] },
   best_sellers: { name: 'Más vendidos', desc: 'Lo más comprado en los últimos días (pedidos pagados, sin cancelados).', limit: ['Productos', 4, 24] },
   featured: { name: 'Productos destacados', desc: 'Los que el equipo destacó en Productos; mientras no haya, los más populares. Requiere «Producto destacado» activo en General.', limit: ['Productos', 4, 24] },
   new_arrivals: { name: 'Novedades', desc: 'Productos recién publicados.', limit: ['Productos', 4, 24] },
@@ -52,16 +53,6 @@ const DEFAULT_TITLE: Record<string, string> = {
   guarantees: 'Tu compra, respaldada de principio a fin',
 };
 
-/** ISO ⇄ value of <input type="datetime-local"> (the admin's local time). */
-const toLocalInput = (iso?: string | null) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
-
 function flatten(cs: any[], depth = 0): { slug: string; name: string; depth: number; count: number }[] {
   return cs.flatMap((c) => [{ slug: c.slug, name: c.name, depth, count: c.productCount }, ...flatten(c.children ?? [], depth + 1)]);
 }
@@ -71,7 +62,6 @@ function SectionOptions({ s, set }: { s: HomeSection; set: (patch: Partial<HomeS
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => get<any[]>('/categories'), enabled: s.key === 'category_rows', staleTime: 300_000 });
   const [thr, setThr] = useState((s.thresholds ?? []).join(', '));
   const num = (v: string) => (v === '' ? 0 : Number(v.replace(/[^\d.]/g, '')));
-  const flashEnded = s.key === 'flash_deals' && (!s.endsAt || Date.parse(s.endsAt) <= Date.now());
   return (
     <div className="grid grid-cols-1 gap-4 border-t border-line bg-surface/40 p-4 sm:grid-cols-2">
       <Field label={t('Título (español)')} hint={t('Vacío: «{a}»', { a: t(DEFAULT_TITLE[s.key] ?? '') })}>
@@ -102,17 +92,16 @@ function SectionOptions({ s, set }: { s: HomeSection; set: (patch: Partial<HomeS
       )}
       {s.key === 'flash_deals' && (
         <>
-          <Field label={t('Termina el')} hint={t('Tu hora local')}>
-            <Input type="datetime-local" value={toLocalInput(s.endsAt)} onChange={(e) => set({ endsAt: fromLocalInput(e.target.value) })} data-flash-ends />
+          <Field label={t('Descuento mínimo')} hint={t('Lo mínimo que una tienda debe rebajar')}>
+            <Input inputMode="numeric" suffix="%" value={String(s.minDiscount ?? 10)} onChange={(e) => set({ minDiscount: num(e.target.value) })} data-flash-min />
           </Field>
-          <Field label={t('Descuento mínimo')}>
-            <Input inputMode="numeric" suffix="%" value={String(s.minDiscount ?? 10)} onChange={(e) => set({ minDiscount: num(e.target.value) })} />
+          <Field label={t('Duración máxima (horas)')} hint={t('De 1 a 336')}>
+            <Input inputMode="numeric" value={String(s.maxHours ?? 72)} onChange={(e) => set({ maxHours: num(e.target.value) })} />
           </Field>
-          {flashEnded && (
-            <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900 sm:col-span-2">
-              {t('Sin una fecha de fin futura la sección no se muestra. La cuenta regresiva debe coincidir con el final real de las rebajas de las tiendas.')}
-            </p>
-          )}
+          <Field label={t('Ofertas por tienda a la vez')} hint={t('Activas o programadas')}>
+            <Input inputMode="numeric" value={String(s.maxPerSeller ?? 10)} onChange={(e) => set({ maxPerSeller: num(e.target.value) })} />
+          </Field>
+          <p className="rounded-xl bg-surface p-3 text-xs text-muted sm:col-span-2">{t('Si desactivas esta sección, las tiendas no pueden crear ofertas nuevas; las que ya están en curso terminan a su hora.')}</p>
         </>
       )}
       {s.key === 'price_ranges' && (
@@ -203,7 +192,6 @@ export function HomeLayoutEditor({ value, onChange, defaults }: { value?: HomeLa
                     <b className="block truncate text-sm">{s.title || t(m.name)}</b>
                     <span className="line-clamp-1 text-xs text-muted">{t(m.desc)}</span>
                   </button>
-                  {s.key === 'flash_deals' && s.enabled && (!s.endsAt || Date.parse(s.endsAt) <= Date.now()) && <Badge tone="amber">{t('Sin fecha de fin')}</Badge>}
                   <button type="button" className="rounded-lg p-1.5 text-muted hover:bg-surface" onClick={() => setOpen(isOpen ? null : s.key)} aria-label={t('Opciones')}>
                     <ChevronDown className={cn('size-4 transition', isOpen && 'rotate-180')} />
                   </button>

@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CreditCard, LayoutGrid, Layers, MessageSquare, Package, RotateCcw, Settings, ShoppingCart, Wallet, Clock, AlertTriangle , TicketPercent, Handshake , BarChart3, Users } from 'lucide-react';
+import { CreditCard, LayoutGrid, Layers, MessageSquare, Package, RotateCcw, Settings, ShoppingCart, Wallet, Clock, AlertTriangle , TicketPercent, Handshake , BarChart3, Users, Zap } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { Empty, PageLoader } from '@/components/ui/misc';
 import { useAuth, type SellerArea } from '@/lib/auth';
@@ -18,6 +18,7 @@ const AREA: Record<string, SellerArea | 'OWNER'> = {
   devoluciones: 'ORDERS',
   estadisticas: 'STATS',
   cupones: 'MARKETING',
+  'ofertas-relampago': 'MARKETING',
   afiliados: 'MARKETING',
   finanzas: 'FINANCE',
   'metodos-cobro': 'FINANCE',
@@ -60,6 +61,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         { href: '/vendedor/devoluciones', label: t('Devoluciones'), icon: RotateCcw, badge: returnsPending || null },
         { href: '/vendedor/inventario', label: t('Inventario'), icon: Layers },
         { href: '/vendedor/cupones', label: t('Cupones'), icon: TicketPercent },
+        { href: '/vendedor/ofertas-relampago', label: t('Ofertas relámpago'), icon: Zap },
         { href: '/vendedor/afiliados', label: t('Afiliados'), icon: Handshake },
         { href: '/vendedor/finanzas', label: t('Finanzas'), icon: Wallet },
         { href: '/vendedor/metodos-cobro', label: t('Métodos de cobro'), icon: CreditCard },

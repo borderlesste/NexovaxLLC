@@ -88,7 +88,7 @@ export async function googleMerchantFeed(db: DbService, settings: SettingsServic
            from public.product_variants pv
            join lateral (
              select vpv.amount, vpv.compare_at_amount from public.variant_price_versions vpv
-              where vpv.variant_id = pv.id and vpv.currency_code = $1 and vpv.status = 'ACTIVE'
+              where vpv.variant_id = pv.id and vpv.currency_code = $1 and vpv.status in ('ACTIVE','SCHEDULED')
                 and vpv.effective_from <= now() and (vpv.effective_to is null or vpv.effective_to > now())
               order by vpv.effective_from desc limit 1) ap on true
           where pv.product_id = p.id and pv.status = 'ACTIVE'

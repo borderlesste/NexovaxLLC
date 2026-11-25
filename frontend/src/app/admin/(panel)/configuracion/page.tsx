@@ -22,6 +22,7 @@ import { HelpEditor } from '@/components/admin/help-editor';
 import { SeoEditor } from '@/components/admin/seo-editor';
 import { GoogleEditor } from '@/components/admin/google-editor';
 import { HomeLayoutEditor } from '@/components/admin/home-layout-editor';
+import { FlashDealsAdmin } from '@/components/admin/flash-deals-admin';
 import { TaxRegionsDialog } from '@/components/admin/tax-regions';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
 
@@ -283,7 +284,7 @@ export default function SettingsPage() {
               </div>
             </Card>
           )}
-          {tab === 'home' && <HomeLayoutEditor value={s['home.layout']} defaults={d.homeLayoutDefaults} onChange={(v) => set('home.layout', v)} />}
+          {tab === 'home' && <><HomeLayoutEditor value={s['home.layout']} defaults={d.homeLayoutDefaults} onChange={(v) => set('home.layout', v)} /><FlashDealsAdmin /></>}
           {tab === 'help' && <HelpEditor settings={s} />}
           {tab === 'seo' && <SeoEditor value={s['seo.defaults']} onChange={(v) => set('seo.defaults', v)} marketplaceName={s['marketplace.name']} />}
           {tab === 'google' && <GoogleEditor value={s['google.integrations']} siteUrl={s['seo.defaults']?.canonicalUrl || s['marketplace.base_url']} defaultCountry={s['marketplace.default_country']} onChange={(v) => set('google.integrations', v)} />}

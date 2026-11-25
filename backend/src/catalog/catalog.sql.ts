@@ -11,11 +11,16 @@ export const ACTIVE_PRICE_LATERAL = (variantAlias: string, currencyParam: string
     from public.variant_price_versions vpv
    where vpv.variant_id = ${variantAlias}.id
      and vpv.currency_code = ${currencyParam}
-     and vpv.status = 'ACTIVE'
+     and vpv.status in ('ACTIVE','SCHEDULED') -- SCHEDULED: due price the minute job hasn't activated yet (flash deal start/end)
      and vpv.effective_from <= now()
      and (vpv.effective_to is null or vpv.effective_to > now())
    order by vpv.effective_from desc
    limit 1`;
+
+/** End of the product's running flash deal (a store's own sale with a countdown), or null. */
+export const FLASH_ENDS_SQL = (p: string) =>
+  `(select min(fd.ends_at) from public.nx_flash_deals fd
+     where fd.product_id = ${p}.id and fd.status = 'ACTIVE' and fd.starts_at <= now() and fd.ends_at > now())`;
 
 /** Card-level projection for a product (one row per product). */
 export const PRODUCT_CARD_SELECT = (currencyParam: string) => `
@@ -36,7 +41,8 @@ export const PRODUCT_CARD_SELECT = (currencyParam: string) => `
   (p.status in ('ACTIVE','OUT_OF_STOCK') and exists (
     select 1 from (${activeAffiliateProgramSql('p.seller_id')}) affiliate
      where affiliate.product_ids is null or affiliate.product_ids ? p.id::text
-  )) as affiliate_commission_enabled`;
+  )) as affiliate_commission_enabled,
+  ${FLASH_ENDS_SQL('p')} as flash_ends_at`;
 
 export const PRODUCT_CARD_JOINS = (currencyParam: string) => `
   join public.sellers s on s.id = p.seller_id
@@ -85,6 +91,7 @@ export function mapProductCard(r: any) {
     preorderAvailable: r.preorder_available === true,
     soldCount: r.sold_count,
     affiliateCommissionEnabled: r.affiliate_commission_enabled === true,
+    flashEndsAt: r.flash_ends_at ?? null,
     createdAt: r.created_at,
   };
 }

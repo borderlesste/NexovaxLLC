@@ -17,6 +17,7 @@ import { AvailabilityPanel } from '@/components/shop/availability';
 import { Recommendations } from '@/components/shop/recommendations';
 import { trackProductView } from '@/lib/analytics';
 import { rememberViewed } from '@/lib/recently-viewed';
+import { FlashCountdown } from '@/components/shop/flash-countdown';
 import { ga, type GaItem } from '@/lib/ga';
 import { money, cn, fmtDate } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -138,6 +139,11 @@ export function ProductDetail({ initial }: { initial: any }) {
               {discount ? <Badge tone="violet" className="text-sm">-{discount}%</Badge> : null}
               {discount ? <span className="text-lg text-muted line-through">{money(compare)}</span> : null}
             </div>
+            {p.flashEndsAt && (
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-red-700" data-flash-deal>
+                {t('Oferta relámpago de la tienda')} <FlashCountdown endsAt={p.flashEndsAt} />
+              </p>
+            )}
             {features.length > 0 && (
               <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {features.map((f: any) => (

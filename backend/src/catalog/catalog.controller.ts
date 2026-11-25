@@ -174,6 +174,7 @@ function listingQuery(raw: Record<string, string | string[]>) {
     inStock: bool(one('inStock')),
     onSale: bool(one('onSale')),
     preorder: bool(one('preorder')),
+    flash: bool(one('flash')),
     ids: one('ids') ? String(one('ids')).split(',').map((x) => x.trim()).filter(Boolean).slice(0, 24) : undefined,
     sort: one('sort') as any,
     page: num(one('page')),

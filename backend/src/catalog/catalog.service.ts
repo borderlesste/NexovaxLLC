@@ -7,7 +7,7 @@ import { notFound } from '../common/errors';
 import { clampPage, clampPageSize } from '../common/paging';
 import { soldOrder } from '../common/sales-sql';
 import { productHasPreorderSql } from '../preorders/preorders.sql';
-import { mapProductCard, mediaUrl, PRODUCT_CARD_JOINS, PRODUCT_CARD_SELECT } from './catalog.sql';
+import { FLASH_ENDS_SQL, mapProductCard, mediaUrl, PRODUCT_CARD_JOINS, PRODUCT_CARD_SELECT } from './catalog.sql';
 import type { HomeSection, HomeSectionKey } from './home-layout';
 
 export interface ProductQuery {
@@ -29,9 +29,11 @@ export interface ProductQuery {
   soldDays?: number;
   /** Only products published in the last N days. */
   publishedDays?: number;
-  /** Only products discounted at least this % (home "Ofertas relámpago"). */
+  /** Only products discounted at least this %. */
   minDiscount?: number;
-  sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling' | 'featured';
+  /** Only products with a running store flash deal, ending soonest first (home "Ofertas relámpago"). */
+  flash?: boolean;
+  sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'best_selling' | 'featured' | 'flash_ending';
   page?: number;
   pageSize?: number;
   /** Attribute filters: attribute code -> accepted values (option codes, free text or true/false). */
@@ -111,6 +113,7 @@ export class CatalogService {
     if (query.inStock) where.push(`coalesce(st.available, 0) > 0`);
     if (query.onSale) where.push(`pr.compare_at > pr.min_amount`);
     if (query.minDiscount) where.push(`pr.compare_at > 0 and pr.min_amount <= pr.compare_at * (1 - ${add(query.minDiscount)}::numeric / 100)`);
+    if (query.flash) where.push(`${FLASH_ENDS_SQL('p')} is not null`);
     if (query.ids) where.push(`p.id = any(${add(query.ids.filter((x) => UUID.test(x)).slice(0, 24))}::uuid[])`);
     if (query.preorder) where.push(`coalesce(st.available, 0) <= 0 and ${productHasPreorderSql('p')}`);
     if (query.publishedDays) where.push(`p.published_at >= now() - make_interval(days => ${add(Math.trunc(query.publishedDays))}::int)`);
@@ -141,6 +144,7 @@ export class CatalogService {
         rating: 'coalesce(rv.avg_rating,0) desc, coalesce(rv.review_count,0) desc',
         best_selling: 'coalesce(sold.qty,0) desc',
         relevance: 'coalesce(sold.qty,0) desc, coalesce(rv.avg_rating,0) desc, p.published_at desc',
+        flash_ending: `${FLASH_ENDS_SQL('p')} asc nulls last, p.published_at desc`,
         featured: '(select fp.sort_order from public.nx_featured_products fp where fp.product_id = p.id) asc nulls last, p.published_at desc',
       }[query.sort ?? 'relevance'] ?? 'p.published_at desc';
 
@@ -247,7 +251,7 @@ export class CatalogService {
            from public.product_variants v
            left join lateral (
              select vpv.amount, vpv.compare_at_amount from public.variant_price_versions vpv
-              where vpv.variant_id = v.id and vpv.currency_code = $2 and vpv.status = 'ACTIVE'
+              where vpv.variant_id = v.id and vpv.currency_code = $2 and vpv.status in ('ACTIVE','SCHEDULED')
                 and vpv.effective_from <= now() and (vpv.effective_to is null or vpv.effective_to > now())
               order by vpv.effective_from desc limit 1) ap on true
           where v.product_id = $1 and v.status = 'ACTIVE'
@@ -533,8 +537,7 @@ export class CatalogService {
     const extra = (limit: number) => (layout.avoidRepeats ? Math.min(60, limit * 2) : limit);
     const list = (q: ProductQuery) => this.listProducts(q).then((r) => r.items);
     const fetchers: Partial<Record<HomeSectionKey, (s: HomeSection) => Promise<unknown>>> = {
-      flash_deals: async (s) =>
-        s.endsAt && Date.parse(s.endsAt) > Date.now() ? list({ minDiscount: s.minDiscount, sort: 'relevance', pageSize: extra(s.limit) }) : [],
+      flash_deals: (s) => list({ flash: true, sort: 'flash_ending', pageSize: extra(s.limit) }),
       best_sellers: (s) => list({ soldDays: s.days || 30, sort: 'relevance', pageSize: extra(s.limit) }),
       featured: async (s) => {
         if (!featuredOn) return [];
@@ -589,7 +592,6 @@ export class CatalogService {
       return {
         ...base,
         items,
-        ...(s.key === 'flash_deals' ? { endsAt: s.endsAt } : {}),
         ...(s.key === 'best_sellers' ? { days: s.days || 30 } : {}),
       };
     });

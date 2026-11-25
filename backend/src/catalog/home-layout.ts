@@ -1,7 +1,7 @@
 /**
  * Home page layout (Admin → Configuración → Portada): which sections the home page shows, in which
  * order, with which title and how many items. Every section starts enabled; a section with nothing to
- * show is hidden on its own (no sales in the window, no flash campaign running, no preorders...).
+ * show is hidden on its own (no sales in the window, no store flash deal running, no preorders...).
  */
 export const HOME_SECTION_KEYS = [
   'categories',
@@ -40,10 +40,12 @@ export interface HomeSection {
   categories?: string[];
   /** top_stores: minimum average rating (0 = any). */
   minRating?: number;
-  /** flash_deals: minimum discount in % for a product to enter the campaign. */
+  /** flash_deals: minimum discount (%) a store must give to create a flash deal. */
   minDiscount?: number;
-  /** flash_deals: when the campaign ends (ISO date). Empty or past = the section is hidden. */
-  endsAt?: string | null;
+  /** flash_deals: longest a store's flash deal may last, in hours. */
+  maxHours?: number;
+  /** flash_deals: flash deals one store may have running or scheduled at the same time. */
+  maxPerSeller?: number;
   /** price_ranges: "Menos de X" amounts, in the marketplace currency. */
   thresholds?: number[];
 }
@@ -77,7 +79,7 @@ const EXTRA: Partial<Record<HomeSectionKey, Partial<HomeSection>>> = {
   new_arrivals: { days: 0 },
   category_rows: { rows: 4, categories: [] },
   top_stores: { minRating: 0 },
-  flash_deals: { minDiscount: 10, endsAt: null },
+  flash_deals: { minDiscount: 10, maxHours: 72, maxPerSeller: 10 },
   price_ranges: { thresholds: [10, 25, 50] },
 };
 
@@ -121,7 +123,8 @@ export function normalizeHomeLayout(raw: unknown): HomeLayout {
       out.categories = [...new Set((Array.isArray(s.categories) ? s.categories : []).map((c) => text(c, 120)).filter(Boolean))].slice(0, 12);
     if ('minRating' in ex) out.minRating = Math.min(5, Math.max(0, Math.round(Number(s.minRating ?? 0) * 10) / 10 || 0));
     if ('minDiscount' in ex) out.minDiscount = int(s.minDiscount, ex.minDiscount!, 1, 95);
-    if ('endsAt' in ex) out.endsAt = s.endsAt && !Number.isNaN(Date.parse(s.endsAt)) ? new Date(s.endsAt).toISOString() : null;
+    if ('maxHours' in ex) out.maxHours = int(s.maxHours, ex.maxHours!, 1, 336);
+    if ('maxPerSeller' in ex) out.maxPerSeller = int(s.maxPerSeller, ex.maxPerSeller!, 1, 100);
     if ('thresholds' in ex) {
       const t = [...new Set((Array.isArray(s.thresholds) ? s.thresholds : []).map(Number).filter((n) => Number.isFinite(n) && n > 0 && n < 1e7))]
         .map((n) => Math.round(n * 100) / 100)

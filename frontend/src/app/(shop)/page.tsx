@@ -5,7 +5,7 @@ import { Recommendations } from '@/components/shop/recommendations';
 import { ProductGrid, ProductImage } from '@/components/shop/product-card';
 import { getServerLocale, getT } from '@/lib/i18n/server';
 import { SectionHeading, StoreCards } from '@/components/shop/home-blocks';
-import { FlashCountdown, PriceRanges, RecentlyViewed } from '@/components/shop/home-client';
+import { PriceRanges, RecentlyViewed } from '@/components/shop/home-client';
 import { CategoryIcon } from '@/components/shop/category-icon';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/misc';
@@ -140,7 +140,7 @@ export default async function HomePage() {
         return <Recommendations key={s.key} context="home" limit={s.limit ?? 12} title={custom || undefined} className={SECTION} reserveSpace showAddToCart hideSeller gridClassName={HOME_GRID} />;
       }
       case 'flash_deals':
-        return s.endsAt ? productRow(s, { href: '/catalogo?onSale=true', link: t('Ver ofertas'), extra: <FlashCountdown endsAt={s.endsAt} /> }) : null;
+        return productRow(s, { subtitle: t('Rebajas de las tiendas por tiempo limitado: el precio vuelve a la normalidad al terminar la cuenta'), href: '/catalogo?flash=true', link: t('Ver todo') });
       case 'best_sellers':
         return productRow(s, { subtitle: t('Lo más comprado en los últimos {n} días', { n: s.days ?? 30 }), href: '/catalogo?sort=best_selling', link: t('Ver todo') });
       case 'featured':

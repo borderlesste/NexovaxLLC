@@ -8,6 +8,7 @@ import { CouponsService } from './coupons.service';
 import { AffiliatesService, PAYOUT_METHODS, type PayoutMethod } from './affiliates.service';
 import { OffersService } from './offers.service';
 import { SharesService } from './shares.service';
+import { FlashDealsService } from './flash-deals.service';
 
 export class CouponDto {
   @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]{2,23}$/, { message: 'El código debe tener de 3 a 24 caracteres: letras, números, guion o guion bajo.' }) code: string;
@@ -69,6 +70,15 @@ export class ShareLinkDto {
 export class ShareVisitDto {
   @IsString() @Length(6, 16) code: string;
 }
+export class FlashDealDto {
+  @IsUUID() productId: string;
+  @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(90) discountPercent: number;
+  @IsOptional() @IsString() @Length(10, 40) startsAt?: string | null;
+  @IsString() @Length(10, 40) endsAt: string;
+}
+export class RemoveFlashDealDto {
+  @IsString() @Length(5, 500) reason: string;
+}
 export class PayAffiliateDto {
   @IsString() @Length(3, 80) reference: string;
 }
@@ -81,7 +91,38 @@ export class PromotionsController {
     private readonly affiliates: AffiliatesService,
     private readonly offers: OffersService,
     private readonly shares: SharesService,
+    private readonly flash: FlashDealsService,
   ) {}
+
+  // ---- seller: flash deals (own discount, start and end; real countdown on the home page)
+  @Get('seller/flash-deals')
+  flashDeals(@CurrentUser() u: RequestUser, @Headers('x-seller-id') h?: string) {
+    return this.flash.list(requireSeller(u, h, 'MARKETING').id);
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('seller/flash-deals')
+  createFlashDeal(@CurrentUser() u: RequestUser, @Body() dto: FlashDealDto, @Headers('x-seller-id') h?: string) {
+    return this.flash.create(u, requireSeller(u, h, 'MARKETING').id, dto);
+  }
+
+  @Post('seller/flash-deals/:id/cancel')
+  cancelFlashDeal(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
+    return this.flash.cancel(u, requireSeller(u, h, 'MARKETING').id, id);
+  }
+
+  // ---- admin: oversee every store's flash deals and take one down
+  @Roles('ADMIN', 'MODERATOR')
+  @Get('admin/flash-deals')
+  adminFlashDeals() {
+    return this.flash.adminList();
+  }
+
+  @Roles('ADMIN', 'MODERATOR')
+  @Post('admin/flash-deals/:id/remove')
+  removeFlashDeal(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RemoveFlashDealDto) {
+    return this.flash.remove(u, id, dto.reason);
+  }
 
   // ---- seller: coupon offers to interested buyers (counts only, never identities)
   @Get('seller/offers/audience')

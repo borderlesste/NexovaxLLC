@@ -840,6 +840,24 @@ export class SellerService {
       c,
     );
     if (active && toMinor(active.amount) === toMinor(amount) && (active.compare_at ? toMinor(active.compare_at) : null) === (compare ? toMinor(compare) : null)) return;
+    // A running or scheduled flash deal owns the price until it ends (its end restores the regular price).
+    const flash = await this.db.one(
+      `select 1 from public.nx_flash_deals fd join public.nx_flash_deal_variants fv on fv.deal_id = fd.id
+        where fv.variant_id = $1 and fd.status = 'ACTIVE' and fd.ends_at > now() limit 1`,
+      [variantId],
+      c,
+    );
+    if (flash)
+      throw conflict('FLASH_DEAL_PRICE_LOCKED', 'Este producto tiene una oferta relámpago activa o programada. Cancélala en Ofertas relámpago para cambiar el precio.');
+    await this.publishPrice(c, actor, sellerId, variantId, currency, amount, compare);
+  }
+
+  /**
+   * Publishes a new price version from `effectiveFrom` (now by default; a future time schedules it). Earlier
+   * versions end where it starts, and scheduled ones from that time on are cancelled (publish_variant_price_version).
+   */
+  async publishPrice(c: PoolClient, actor: string, sellerId: string, variantId: string, currency: string, amount: string, compare: string | null, effectiveFrom?: Date) {
+    const at = effectiveFrom ?? new Date();
     const pv = await this.db.one(
       `insert into public.variant_price_versions (variant_id, seller_id, currency_code, version_number, amount, compare_at_amount, status, created_by, updated_by)
        values ($1,$2,$3::varchar,(select coalesce(max(version_number),0)+1 from public.variant_price_versions where variant_id = $1 and currency_code = $3::varchar),$4,$5,'DRAFT',$6,$6)
@@ -847,15 +865,16 @@ export class SellerService {
       [variantId, sellerId, currency, amount, compare, actor],
       c,
     );
-    const hash = await this.db.one(`select public.compute_variant_minimum_price_rule_set_hash($1, now()) as h`, [pv!.id], c);
+    const hash = await this.db.one(`select public.compute_variant_minimum_price_rule_set_hash($1, greatest($2::timestamptz, now())) as h`, [pv!.id, at], c);
     await this.db.exec(
       `insert into public.variant_price_validations (variant_price_version_id, status, proposed_amount, currency_code, calculator_version,
                rule_set_hash, context_snapshot, result_snapshot, calculated_by)
        values ($1,'VALID',$2,$3,'rd-pricing-1.0',$4,$5::jsonb,$6::jsonb,$7)`,
-      [pv!.id, amount, currency, hash!.h, JSON.stringify({ source: 'seller_product_editor' }), JSON.stringify({ minimum_price_rules: 0, result: 'VALID' }), actor],
+      [pv!.id, amount, currency, hash!.h, JSON.stringify({ source: effectiveFrom ? 'flash_deal' : 'seller_product_editor' }), JSON.stringify({ minimum_price_rules: 0, result: 'VALID' }), actor],
       c,
     );
-    await this.db.exec(`select public.publish_variant_price_version($1, $2, now())`, [pv!.id, actor], c);
+    await this.db.exec(`select public.publish_variant_price_version($1, $2, greatest($3::timestamptz, now()))`, [pv!.id, actor, at], c);
+    return pv!.id as string;
   }
 
   /** Sets on-hand stock to `target` through an audited, applied inventory adjustment. */

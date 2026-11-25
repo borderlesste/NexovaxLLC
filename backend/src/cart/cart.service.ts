@@ -270,7 +270,7 @@ function cartLinesSql(source: string, where: string) {
          left join public.seller_store_profiles ssp on ssp.seller_id = s.id
          left join lateral (
            select vpv.amount, vpv.compare_at_amount from public.variant_price_versions vpv
-            where vpv.variant_id = v.id and vpv.currency_code = $2 and vpv.status = 'ACTIVE'
+            where vpv.variant_id = v.id and vpv.currency_code = $2 and vpv.status in ('ACTIVE','SCHEDULED')
               and vpv.effective_from <= now() and (vpv.effective_to is null or vpv.effective_to > now())
             order by vpv.effective_from desc limit 1) ap on true
         ${where}

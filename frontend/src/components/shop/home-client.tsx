@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, History } from 'lucide-react';
+import { History } from 'lucide-react';
 import { get } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { cn, money } from '@/lib/utils';
@@ -43,34 +42,6 @@ export function RecentlyViewed({ title, limit, gap, className }: { title?: strin
       />
       <ProductGrid items={items} showAddToCart hideSeller gap={gap} />
     </section>
-  );
-}
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** Countdown to the end of the flash campaign; refreshes the page when it ends so the section goes away. */
-export function FlashCountdown({ endsAt }: { endsAt: string }) {
-  const router = useRouter();
-  const end = Date.parse(endsAt);
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const left = now === null ? null : Math.max(0, Math.floor((end - now) / 1000));
-  useEffect(() => {
-    if (left === 0) router.refresh();
-  }, [left, router]);
-  if (left === null) return <span className="h-7 w-28 rounded-lg bg-surface" aria-hidden />;
-  const d = Math.floor(left / 86400);
-  const h = Math.floor((left % 86400) / 3600);
-  const m = Math.floor((left % 3600) / 60);
-  const s = left % 60;
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-sm font-bold tabular-nums text-red-700" role="timer" aria-live="off" data-flash-countdown>
-      <Clock className="size-4" /> {left === 0 ? t('Terminó') : <>{t('Termina en')} {d > 0 && `${d}d `}{pad(h)}:{pad(m)}:{pad(s)}</>}
-    </span>
   );
 }
 

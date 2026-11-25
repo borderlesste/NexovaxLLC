@@ -24,7 +24,7 @@ describe('home layout', () => {
         { key: 'best_sellers', limit: 999, days: -5, title: 'x'.repeat(200) },
         { key: 'best_sellers', limit: 4 },
         { key: 'price_ranges', thresholds: [50, 'a', 10, 10, -1] },
-        { key: 'flash_deals', endsAt: 'not a date', minDiscount: 200 },
+        { key: 'flash_deals', maxHours: 9999, minDiscount: 200 },
         { key: 'top_stores', minRating: 9 },
       ],
     });
@@ -34,7 +34,7 @@ describe('home layout', () => {
     expect(by.best_sellers).toMatchObject({ limit: 24, days: 0 });
     expect(by.best_sellers.title).toHaveLength(80);
     expect(by.price_ranges.thresholds).toEqual([10, 50]);
-    expect(by.flash_deals).toMatchObject({ endsAt: null, minDiscount: 95 });
+    expect(by.flash_deals).toMatchObject({ maxHours: 336, minDiscount: 95, maxPerSeller: 10 });
     expect(by.top_stores.minRating).toBe(5);
   });
 

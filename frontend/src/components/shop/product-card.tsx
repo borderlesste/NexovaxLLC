@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { useAddToCart } from './hooks';
 import { t, getIntlLocale } from '@/lib/i18n';
 import { AvailabilityLine } from './availability';
+import { FlashCountdown } from './flash-countdown';
 
 export interface ProductCardData {
   id: string;
@@ -25,6 +26,8 @@ export interface ProductCardData {
   stock?: number;
   preorderAvailable?: boolean;
   affiliateCommissionEnabled?: boolean;
+  /** End of the store's running flash deal (countdown on the card). */
+  flashEndsAt?: string | null;
   seller: { id: string; name: string; slug: string; verified?: boolean };
 }
 
@@ -112,6 +115,7 @@ export function ProductCard({ p, showAddToCart, isFavorite, hideSeller }: { p: P
         <div className="relative aspect-[5/4] overflow-hidden rounded-xl bg-surface">
           <ProductImage src={p.imageUrl} alt={p.title} className="size-full object-cover transition duration-300 group-hover:scale-105" />
           {p.discountPercent ? <span className="absolute left-2 top-2 rounded-md bg-brand-600 px-2 py-0.5 text-xs font-bold text-white">-{p.discountPercent}%</span> : null}
+          {p.flashEndsAt && !out && <FlashCountdown endsAt={p.flashEndsAt} compact className="absolute bottom-2 left-2" />}
           {out && <span className={cn('absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-xs font-semibold', upcoming ? 'bg-amber-100 text-amber-900' : 'bg-ink/80 text-white')}>
             {t(upcoming ? 'Próximamente en stock' : 'Agotado')}
           </span>}
