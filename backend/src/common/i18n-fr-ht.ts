@@ -1,5 +1,9 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+  "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "La devise de la boutique a changé. Vérifiez le minimum avant d’enregistrer.",
+  "Indica un importe positivo o cero con hasta dos decimales.": "Saisissez zéro ou un montant positif avec deux décimales au maximum.",
+  "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Votre boutique prend en charge cette livraison gratuite. Renseignez votre propre numéro de suivi.",
+  "El comprador eligió entrega a domicilio. Selecciona una transportadora o entrega propia.": "L’acheteur a choisi la livraison à domicile. Sélectionnez un transporteur ou la livraison par votre boutique.",
 "El total de tu pedido cambió mientras lo confirmabas. Revisa el resumen e inténtalo de nuevo.": "Le total de votre commande a changé pendant la confirmation. Vérifiez le récapitulatif et réessayez.",
 "El almacén desde el que se despacha uno de tus productos cambió. Revisa el envío y el total e inténtalo de nuevo.": "L’entrepôt qui expédie l’un de vos produits a changé. Vérifiez la livraison et le total, puis réessayez.",
 "Los productos de esta tienda salen de varios almacenes y no hay un método de envío común a todos.": "Les produits de cette boutique partent de plusieurs entrepôts et aucun mode de livraison ne les couvre tous.",
@@ -384,6 +388,10 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+  "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "Lajan boutik la chanje. Verifye minimòm nan anvan ou anrejistre.",
+  "Indica un importe positivo o cero con hasta dos decimales.": "Antre zewo oswa yon montan pozitif ki gen de desimal pou pi plis.",
+  "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Boutik ou kouvri livrezon gratis sa a. Anrejistre livrezon an ak pwòp nimewo swivi ou.",
+  "El comprador eligió entrega a domicilio. Selecciona una transportadora o entrega propia.": "Achtè a chwazi livrezon lakay li. Chwazi yon konpayi transpò oswa fè livrezon an ou menm.",
 "El total de tu pedido cambió mientras lo confirmabas. Revisa el resumen e inténtalo de nuevo.": "Total kòmand ou an chanje pandan w t ap konfime l. Tcheke rezime a epi eseye ankò.",
 "El almacén desde el que se despacha uno de tus productos cambió. Revisa el envío y el total e inténtalo de nuevo.": "Depo ki voye youn nan pwodwi ou yo chanje. Tcheke livrezon an ak total la epi eseye ankò.",
 "Los productos de esta tienda salen de varios almacenes y no hay un método de envío común a todos.": "Pwodwi boutik sa a soti nan plizyè depo e pa gen yon metòd livrezon ki kouvri yo tout.",

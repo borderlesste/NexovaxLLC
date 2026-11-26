@@ -38,7 +38,7 @@ export async function api<T = any>(path: string, init: RequestInit & { json?: un
   const headers = new Headers(init.headers);
   const t = await token();
   if (t) headers.set('Authorization', `Bearer ${t}`);
-  if (sellerContext) headers.set('x-seller-id', sellerContext);
+  if (sellerContext && !headers.has('x-seller-id')) headers.set('x-seller-id', sellerContext);
   headers.set('x-locale', getLocale());
   if (analyticsAllowed()) headers.set('x-nx-consent', 'analytics');
   let body = rest.body;

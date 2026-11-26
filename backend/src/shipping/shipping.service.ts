@@ -5,10 +5,14 @@ import { DbService } from '../db/db.service';
 import { rateCoversRoute, SettingsService } from '../settings/settings.service';
 import { AppError, conflict, notFound } from '../common/errors';
 import { fromMinor, toMinor } from '../common/money';
+import { SELLER_FREE_SHIPPING } from './free-shipping';
 import { normalizeTrack, NormalizedTrackEvent, ShippoAddress, ShippoParcel, ShippoRate, ShippoService } from './shippo.service';
 
 export const SHIPPO = 'SHIPPO';
 export const MARKETPLACE = 'MARKETPLACE';
+
+export const sellerFreeShippingLabelError = () =>
+  conflict('SELLER_FREE_SHIPPING_MANUAL_ONLY', 'Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.');
 
 /** One option the buyer can choose for a seller group. */
 export interface ShippingOption {
@@ -431,7 +435,7 @@ export class ShippingService {
    */
   async buyLabel(shipmentId: string) {
     const s = await this.db.one(
-      `select sh.id, sh.order_id, sh.seller_id, sh.status, o.public_number, osg.service_token, osg.carrier_rate_amount::text as paid_amount,
+      `select sh.id, sh.order_id, sh.seller_id, sh.status, sh.requested_service_token, o.public_number, osg.service_token, osg.carrier_rate_amount::text as paid_amount,
               osg.currency_code, osg.shipping_provider_code
          from public.shipments sh join public.orders o on o.id = sh.order_id
          join public.order_shipping_groups osg on osg.id = sh.order_shipping_group_id
@@ -442,6 +446,7 @@ export class ShippingService {
     if (!['READY_TO_SHIP', 'LABEL_CREATED'].includes(s.status)) throw conflict('SHIPMENT_NOT_READY_FOR_LABEL', 'El envío no está listo para generar etiqueta.');
     const existing = await this.db.one(`select id from public.shipping_labels where shipment_id = $1 and status = 'PURCHASED'`, [shipmentId]);
     if (existing) return { labelId: existing.id, alreadyPurchased: true };
+    if (s.service_token === SELLER_FREE_SHIPPING || s.requested_service_token === SELLER_FREE_SHIPPING) throw sellerFreeShippingLabelError();
 
     const from = await this.db.one(`select * from public.shipment_address_snapshots where shipment_id = $1 and address_type = 'FROM'`, [shipmentId]);
     const to = await this.db.one(`select * from public.shipment_address_snapshots where shipment_id = $1 and address_type = 'TO'`, [shipmentId]);

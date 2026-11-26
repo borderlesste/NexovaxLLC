@@ -5,7 +5,7 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
-import { countryGeo, normalizeAddress, normalizeCountry, normalizePhone, resolveCityId } from '../common/geo';
+import { REAL_COUNTRY, countryGeo, normalizeAddress, normalizeCountry, normalizePhone, resolveCityId } from '../common/geo';
 import { attributeInput, attributeOptions, AttributeValueError, normalizeAttributeValue } from '../common/attributes';
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
@@ -223,6 +223,49 @@ export class SellerService {
             countryCode: s.country_code, phone: s.address_phone }
         : null,
     };
+  }
+
+  /** Store policy for free delivery funded by the seller. */
+  async freeShipping(sellerId: string) {
+    const [currency, row] = await Promise.all([
+      this.settings.currency(),
+      this.db.one(`select enabled, country_codes, minimum_subtotal::text, currency_code
+                     from public.nx_seller_free_shipping where seller_id = $1`, [sellerId]),
+    ]);
+    const changed = row && row.currency_code !== currency;
+    return {
+      currency, enabled: !changed && !!row?.enabled, countries: (row?.country_codes ?? []) as string[],
+      minimumSubtotal: changed ? null : row?.minimum_subtotal ?? null,
+      ...(changed ? { previousCurrency: row.currency_code, previousMinimumSubtotal: row.minimum_subtotal } : {}),
+    };
+  }
+
+  async setFreeShipping(sellerId: string, actor: string, input: {
+    enabled: boolean; countries: string[]; minimumSubtotal?: string | null; expectedCurrency?: string;
+  }) {
+    const currency = await this.settings.currency();
+    if (input.expectedCurrency && currency !== input.expectedCurrency)
+      throw conflict('FREE_SHIPPING_CURRENCY_CHANGED', 'La moneda de la tienda cambió. Revisa el mínimo antes de guardar.');
+    let countries = [...new Set(input.countries.map((c) => c.trim().toUpperCase()))].sort();
+    if (input.enabled && !countries.length) throw badRequest('COUNTRIES_REQUIRED', 'Elige al menos un país.');
+    if (countries.length) {
+      const valid = await this.db.many(
+        `select alpha2 from public.countries where alpha2 = any($1::text[]) and is_active and ${REAL_COUNTRY}`, [countries],
+      );
+      if (valid.length !== countries.length) {
+        if (input.enabled) throw badRequest('COUNTRY_INVALID', 'Selecciona un país válido.');
+        countries = valid.map((country) => country.alpha2 as string).sort();
+      }
+    }
+    const saved = await this.db.one(
+      `insert into public.nx_seller_free_shipping (seller_id, enabled, country_codes, minimum_subtotal, currency_code, updated_by)
+       values ($1,$2,$3,$4,$5,$6)
+       on conflict (seller_id) do update set enabled = excluded.enabled, country_codes = excluded.country_codes,
+         minimum_subtotal = excluded.minimum_subtotal, currency_code = excluded.currency_code, updated_by = excluded.updated_by, updated_at = now()
+       returning enabled, country_codes, minimum_subtotal::text, currency_code`,
+      [sellerId, input.enabled, countries, input.minimumSubtotal ?? null, currency, actor],
+    );
+    return { enabled: saved!.enabled, countries: saved!.country_codes, minimumSubtotal: saved!.minimum_subtotal, currency: saved!.currency_code };
   }
 
   /** Updates the default ship-from address (used for carrier rates and labels). */

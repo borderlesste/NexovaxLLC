@@ -3288,5 +3288,18 @@
 "Leer el documento completo": "Li tout dokiman an",
 "El uso de cookies y del país de entrega se explica en": "Fason nou itilize cookies ak peyi livrezon an eksplike nan",
 "Idioma del navegador": "Lang navigatè a",
-"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "Nan premye vizit la, montre sit la nan lang navigatè a si se youn nan kat lang ki disponib yo. Chwa vizitè a nan seleksyon lang lan toujou pase anvan."
+"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "Nan premye vizit la, montre sit la nan lang navigatè a si se youn nan kat lang ki disponib yo. Chwa vizitè a nan seleksyon lang lan toujou pase anvan.",
+"Envío gratis": "Livrezon gratis",
+"La tienda paga el envío y registra su propia guía.": "Boutik ou peye livrezon an epi li antre pwòp nimewo swivi li.",
+"Ofrecer envío gratis": "Ofri livrezon gratis",
+"Subtotal mínimo ({currency})": "Soutotal minimòm ({currency})",
+"Se suman los productos de tu tienda antes de los cupones. Deja el campo vacío para ofrecer envío gratis sin mínimo.": "Yo konte pwodwi boutik ou a anvan koupon yo. Kite chan sa a vid pou ofri livrezon gratis san minimòm.",
+"Guardar envío gratis": "Anrejistre livrezon gratis",
+"Configuración de envío gratis guardada.": "Paramèt livrezon gratis yo anrejistre.",
+"La moneda cambió de {old} a {current}. Revisa el mínimo y guarda la configuración para volver a ofrecer envío gratis.": "Lajan an chanje soti nan {old} pou vin {current}. Verifye minimòm nan epi anrejistre paramèt yo pou ofri livrezon gratis ankò.",
+"Mínimo anterior": "Ansyen minimòm",
+"La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "Lajan boutik la chanje. Verifye minimòm nan anvan ou anrejistre.",
+"Indica un importe positivo o cero con hasta dos decimales.": "Antre zewo oswa yon montan pozitif ki gen de desimal pou pi plis.",
+"Envío gestionado por la tienda.": "Boutik la jere livrezon an.",
+"Tu tienda cubre el costo del envío. Registra aquí la guía que compraste o los datos de tu entrega propia.": "Boutik ou kouvri livrezon an. Antre nimewo swivi ou achte a oswa detay pwòp livrezon ou."
 }

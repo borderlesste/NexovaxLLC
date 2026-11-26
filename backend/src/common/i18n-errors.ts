@@ -5,6 +5,10 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "The store currency changed. Review the minimum before saving.",
+  "Indica un importe positivo o cero con hasta dos decimales.": "Enter zero or a positive amount with up to two decimal places.",
+  "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Your store covers this free delivery. Record the shipment with your own tracking number.",
+  "El comprador eligió entrega a domicilio. Selecciona una transportadora o entrega propia.": "The buyer chose home delivery. Select a carrier or delivery by your store.",
   "El total de tu pedido cambió mientras lo confirmabas. Revisa el resumen e inténtalo de nuevo.": "Your order total changed while you were confirming it. Review the summary and try again.",
   "El almacén desde el que se despacha uno de tus productos cambió. Revisa el envío y el total e inténtalo de nuevo.": "The warehouse that ships one of your products changed. Review shipping and the total and try again.",
   "Los productos de esta tienda salen de varios almacenes y no hay un método de envío común a todos.": "This store’s products ship from several warehouses and no shipping method covers all of them.",

@@ -18,6 +18,7 @@ import { orderRef, paymentRef } from '../common/refs';
 import { ONLINE_PAYMENT_TTL_MIN, PaymentsService } from '../payments/payments.service';
 import { MailService } from '../mail/mail.service';
 import { AvailabilityService } from '../geo/availability';
+import { freeShippingPolicies, qualifiesForFreeShipping, SELLER_FREE_SHIPPING, sellerFreeShippingOption } from '../shipping/free-shipping';
 
 const ENGINE = 'nx-checkout-2.0';
 const SANDBOX_PROVIDER = 'RD_SANDBOX';
@@ -47,6 +48,14 @@ function checkoutAddressVersion(address: { id: string; row_version: string }) {
 
 function addressChanged() {
   return conflict('CHECKOUT_ADDRESS_CHANGED', 'La dirección de envío cambió. Revisa la nueva cotización antes de confirmar.');
+}
+
+function shippingUnavailable() {
+  return conflict('SHIPPING_OPTION_UNAVAILABLE', 'Una opción de envío ya no está disponible. Revisa los métodos de envío.');
+}
+
+function destinationUnavailable() {
+  return conflict('DESTINATION_UNAVAILABLE', 'Algunos productos no se envían al país de tu dirección. Quítalos del carrito o elige otra dirección.');
 }
 
 interface LineCalc {
@@ -113,12 +122,12 @@ export class CheckoutService {
    * evaluated per cart variant (each one ships from the warehouse that stocks it). Keyed by variant id.
    * Only UNAVAILABLE blocks; uncertainty is settled by the live shipping options.
    */
-  private async destinationBlocks(groups: any[], country: string | null | undefined) {
+  private async destinationBlocks(groups: any[], country: string | null | undefined, client?: PoolClient) {
     const blocked = new Map<string, string>();
     if (!country) return blocked;
     const ids = groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => i.variantId as string));
     for (let i = 0; i < ids.length; i += 100) {
-      const r = await this.availability.forItems(country, [], ids.slice(i, i + 100));
+      const r = await this.availability.forItems(country, [], ids.slice(i, i + 100), client);
       for (const [id, a] of Object.entries(r.variants)) if (a.status === 'UNAVAILABLE') blocked.set(id, a.reason);
     }
     return blocked;
@@ -235,14 +244,19 @@ export class CheckoutService {
    * A store whose items leave from several warehouses is quoted once per origin: it offers only the
    * methods every origin can ship, priced as the sum of each origin's rate (what the order charges).
    */
-  private async groupOptions(cartId: string, groups: any[], address: any, currency: string) {
+  private async groupOptions(cartId: string, groups: any[], address: any, currency: string, blocked?: ReadonlyMap<string, string>) {
     const addressVersion = checkoutAddressVersion(address);
-    const dims = await this.db.many(
-      `select ci.seller_id, ci.variant_id, ci.quantity::int as qty, v.weight_value, v.weight_unit, v.length_value, v.width_value, v.height_value, v.dimension_unit
-         from public.cart_items ci join public.product_variants v on v.id = ci.variant_id
-        where ci.cart_id = $1 and ci.status = 'ACTIVE'`,
-      [cartId],
-    );
+    const [dims, freePolicies] = await Promise.all([
+      this.db.many(
+        `select ci.seller_id, ci.variant_id, ci.quantity::int as qty, p.requires_shipping,
+                v.weight_value, v.weight_unit, v.length_value, v.width_value, v.height_value, v.dimension_unit
+           from public.cart_items ci join public.product_variants v on v.id = ci.variant_id
+           join public.products p on p.id = v.product_id
+          where ci.cart_id = $1 and ci.status = 'ACTIVE'`,
+        [cartId],
+      ),
+      freeShippingPolicies(this.db, groups.map((group) => group.sellerId)),
+    ]);
     type Opts = Awaited<ReturnType<ShippingService['options']>>;
     const out = new Map<string, Opts & { parcel: Parcel; origins: { id: string | null; parcel: Parcel; options: ShippingOption[] }[] }>();
     const purchasableDims = dims.filter((d: any) =>
@@ -269,7 +283,19 @@ export class CheckoutService {
         // The default origin may be the same address as a warehouse already in the plan.
         const merged = new Map<string | null, (typeof quoted)[number]>();
         for (const q of quoted) if (!merged.has(q.id)) merged.set(q.id, q);
-        const list = [...merged.values()];
+        const policy = freePolicies.get(g.sellerId);
+        const items = g.items.filter((item: any) => item.purchasable);
+        const warehouses = [...merged.values()];
+        const canOfferFree = policy && items.length > 0
+          && !items.some((item: any) => blocked?.has(item.variantId))
+          && purchasableDims.some((line) => line.seller_id === g.sellerId && line.requires_shipping !== false)
+          && warehouses.every((q) => q.id && q.res.options.some((o) => o.code !== 'PICKUP'))
+          && qualifiesForFreeShipping(policy, address.country_code, currency,
+            items.reduce((sum: Minor, item: any) => sum + toMinor(item.unitPrice) * BigInt(item.quantity), 0n));
+        // Keep live/cached rates as-is. The store uses its own carrier on this additional route.
+        const list = canOfferFree ? warehouses.map((q) => ({
+          ...q, res: { ...q.res, options: [sellerFreeShippingOption(currency), ...q.res.options] },
+        })) : warehouses;
         const origins = list.map((q) => ({ id: q.id, parcel: q.parcel, options: q.res.options }));
         if (list.length === 1) {
           out.set(g.sellerId, { ...list[0].res, parcel: list[0].parcel, origins });
@@ -300,11 +326,11 @@ export class CheckoutService {
     const address = await this.buyerAddress(userId, input.addressId);
     const tax = await this.tax.forDestination(address?.country_code, address?.region);
     const classOf = await this.tax.classesFor(cart.groups.flatMap((g: any) => g.items.map((i: any) => i.productId)));
+    const blocked = await this.destinationBlocks(cart.groups, address?.country_code);
     // No address yet: no shipping options or amount until the buyer adds one.
     const optionsBySeller = address
-      ? await this.groupOptions(cart.id, cart.groups, address, cart.currency)
+      ? await this.groupOptions(cart.id, cart.groups, address, cart.currency, blocked)
       : (new Map(cart.groups.map((g: any) => [g.sellerId, { options: [], messages: [], liveRates: false }])) as unknown as Awaited<ReturnType<CheckoutService['groupOptions']>>);
-    const blocked = await this.destinationBlocks(cart.groups, address?.country_code);
     const groups = [];
     const totals = { subtotal: 0n, discount: 0n, shipping: 0n, tax: 0n };
     const lines = cart.groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => ({ key: i.variantId, sellerId: g.sellerId, productId: i.productId, gross: toMinor(i.unitPrice) * BigInt(i.quantity) })));
@@ -347,6 +373,7 @@ export class CheckoutService {
         shippingOptions: opt.options.map((o) => ({
           code: o.code, provider: o.provider, carrierName: o.carrierName, serviceName: o.serviceName, description: o.description,
           amount: o.amount, estimatedDays: o.estimatedDays, attributes: o.attributes, carrierLogo: o.carrierLogo,
+          freeShipping: o.code === SELLER_FREE_SHIPPING,
         })),
         shippingMessages: opt.messages,
         liveRates: opt.liveRates,
@@ -439,14 +466,13 @@ export class CheckoutService {
     // Live shipping options are fetched before the transaction (external API calls).
     const preCart = await this.carts.getCart(userId);
     if (!preCart.groups.length) throw conflict('CART_EMPTY', 'Tu carrito está vacío.');
-    if ((await this.destinationBlocks(preCart.groups, address.country_code)).size)
-      throw conflict('DESTINATION_UNAVAILABLE', 'Algunos productos no se envían al país de tu dirección. Quítalos del carrito o elige otra dirección.');
+    if ((await this.destinationBlocks(preCart.groups, address.country_code)).size) throw destinationUnavailable();
     const optionsBySeller = await this.groupOptions(preCart.id, preCart.groups, address, preCart.currency);
     for (const g of preCart.groups) {
       const code = input.shipping?.[g.sellerId];
-      if (!code || !optionsBySeller.get(g.sellerId)!.options.some((o) => o.code === code))
-        throw conflict('SHIPPING_OPTION_UNAVAILABLE', 'Una opción de envío ya no está disponible. Revisa los métodos de envío.');
+      if (!code || !optionsBySeller.get(g.sellerId)!.options.some((o) => o.code === code)) throw shippingUnavailable();
     }
+    const freeSellerIds = preCart.groups.filter((g: any) => input.shipping[g.sellerId] === SELLER_FREE_SHIPPING).map((g: any) => g.sellerId);
 
     // Shipping was quoted for exactly these lines; the transaction must bill the same cart.
     const quotedCart = cartSignature(preCart.groups.flatMap((g: any) => g.items.map((i: any) => ({ sellerId: g.sellerId, variantId: i.variantId, quantity: i.quantity }))));
@@ -491,6 +517,19 @@ export class CheckoutService {
       );
       if (cartSignature(items.map((i: any) => ({ sellerId: i.seller_id, variantId: i.variant_id, quantity: i.quantity }))) !== quotedCart)
         throw conflict('CART_CHANGED', 'Tu carrito cambió mientras confirmabas el pedido. Revisa el resumen e inténtalo de nuevo.');
+
+      // A promotion can change after the quote, and the checkout snapshot can reprice a cart line.
+      const freePolicies = await freeShippingPolicies(this.db, freeSellerIds, c);
+      for (const sellerId of freeSellerIds) {
+        const lines = items.filter((item) => item.seller_id === sellerId);
+        const subtotal = lines.reduce((sum, item) => sum + toMinor(item.unit_price) * BigInt(item.quantity), 0n);
+        if (!lines.some((item) => item.requires_shipping !== false)
+          || !qualifiesForFreeShipping(freePolicies.get(sellerId), address.country_code, currency, subtotal)) throw shippingUnavailable();
+      }
+      if (freeSellerIds.length) {
+        const groups = preCart.groups.filter((group: any) => freeSellerIds.includes(group.sellerId));
+        if ((await this.destinationBlocks(groups, address.country_code, c)).size) throw destinationUnavailable();
+      }
 
       // ---- inventory allocation per location (highest fulfillment priority first)
       type Alloc = { item: any; inventoryItemId: string; locationId: string; shipFrom: string; qty: number };

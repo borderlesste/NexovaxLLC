@@ -18,6 +18,7 @@ import { PageLoader } from '@/components/ui/misc';
 import { cityLine, CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { t } from '@/lib/i18n';
 import { DestinationsCard } from '@/components/seller/destinations-card';
+import { FreeShippingCard } from '@/components/seller/free-shipping-card';
 
 function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
   const a = store.shipFrom ?? {};
@@ -195,6 +196,7 @@ export default function StoreSettingsPage() {
           <LegalCard store={s} canEdit={!!seller?.isOwner} onSaved={(r) => qc.setQueryData(['seller-store'], r)} />
           <ShipFromCard store={s} onSaved={() => qc.invalidateQueries({ queryKey: ['seller-store'] })} />
           <DestinationsCard shipFromCountry={s.shipFrom?.countryCode ?? null} />
+          <FreeShippingCard />
         </div>
       </div>
     </>

@@ -285,18 +285,20 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
 }
 
 function ShipDialog({ so, onClose, onDone }: { so: any; onClose: () => void; onDone: () => void }) {
-  const viaShippo = so.shippingMethod.provider === 'SHIPPO';
+  const sellerFree = so.shippingMethod.sellerArrangedFree;
+  const viaShippo = !sellerFree && so.shippingMethod.provider === 'SHIPPO';
   const [mode, setMode] = useState<'LABEL' | 'MANUAL'>(viaShippo ? 'LABEL' : 'MANUAL');
   const [carriers, setCarriers] = useState<any[]>([]);
-  const [f, setF] = useState({ carrierCode: so.shippingMethod.code === 'PICKUP' ? 'PICKUP' : '', carrierName: '', trackingNumber: '', trackingUrl: '' });
+  const [f, setF] = useState({ carrierCode: !sellerFree && so.shippingMethod.code === 'PICKUP' ? 'PICKUP' : '', carrierName: '', trackingNumber: '', trackingUrl: '' });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
   useEffect(() => {
     get('/seller/carriers').then((c) => {
-      setCarriers(c);
-      setF((s) => ({ ...s, carrierCode: s.carrierCode || c[0]?.code || '' }));
+      const available = sellerFree ? c.filter((carrier: { code: string }) => carrier.code !== 'PICKUP') : c;
+      setCarriers(available);
+      setF((s) => ({ ...s, carrierCode: s.carrierCode || available[0]?.code || '' }));
     }).catch(() => undefined);
-  }, []);
+  }, [sellerFree]);
   const internal = ['OWN_DELIVERY', 'PICKUP'].includes(f.carrierCode);
   const submit = async () => {
     setBusy(true);
@@ -350,6 +352,7 @@ function ShipDialog({ so, onClose, onDone }: { so: any; onClose: () => void; onD
           </div>
         ) : (
           <>
+            {sellerFree && <p className="text-sm text-muted">{t('Tu tienda cubre el costo del envío. Registra aquí la guía que compraste o los datos de tu entrega propia.')}</p>}
             <Field label={t('Transportadora')} required>
               <Select value={f.carrierCode} onChange={(e) => setF({ ...f, carrierCode: e.target.value })}>
                 {carriers.map((c) => <option key={c.code} value={c.code}>{t(c.name)}</option>)}

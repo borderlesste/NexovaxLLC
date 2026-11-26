@@ -166,7 +166,7 @@ export function GeoFields({ value, onChange }: { value: GeoValue; onChange: (pat
  */
 export function PhoneInput({ countryCode, value, onChange, required }: { countryCode?: string | null; value: string; onChange: (v: string) => void; required?: boolean }) {
   const geo = useCountryGeo(countryCode).data;
-  const prefix = geo?.code === countryCode ? geo!.phonePrefix : null;
+  const prefix = geo && geo.code === countryCode ? geo.phonePrefix : null;
   const intl = value.trim().startsWith('+');
   const nanp = prefix === '1';
   return (

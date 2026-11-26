@@ -108,7 +108,11 @@ export default function CheckoutPage() {
       item_id: i.productId, item_name: i.title, price: ga.num(i.unitPrice), quantity: i.quantity, affiliation: g.sellerName, item_variant: i.variantTitle ?? undefined,
     }))), ga.num(q.subtotal));
   }, [q]);
-  const selectedFor = (g: any) => (g.shippingOptions.some((o: any) => o.code === shipping[g.sellerId]) ? shipping[g.sellerId] : g.selectedShipping);
+  const selectedFor = (g: any): string | null => {
+    const requested = shipping[g.sellerId];
+    if (g.shippingOptions.some((o: any) => o.code === requested)) return requested;
+    return g.shippingOptions.find((o: any) => o.code === g.selectedShipping)?.code ?? null;
+  };
   const stripeCards = q?.paymentMethods?.some((m: any) => m.code === 'CARD' && m.provider === 'STRIPE');
   const savedCards = useQuery({ queryKey: ['cards'], queryFn: () => get<{ enabled: boolean; cards: any[] }>('/me/cards'), enabled: !!session && !!stripeCards });
   const usableCards = (savedCards.data?.cards ?? []).filter((c: any) => !c.expired);
@@ -118,7 +122,9 @@ export default function CheckoutPage() {
   const addressVersion = quote.isSuccess && !quote.isPlaceholderData && quote.fetchStatus === 'idle'
     && addresses.isSuccess && addresses.fetchStatus === 'idle' && addresses.data.some((a) => a.id === addressId)
     && q?.addressId === addressId && typeof q.addressVersion === 'string' ? q.addressVersion : null;
-  const canPlace = !!addressVersion && !destBlocked;
+  const selectedCodes = Object.values(shippingSelection);
+  const shippingAvailable = !destBlocked && selectedCodes.length > 0 && selectedCodes.every(Boolean);
+  const canPlace = !!addressVersion && shippingAvailable;
   const resetKey = q ? JSON.stringify([addressId, q.addressVersion, shippingSelection, q.total, applied]) : '';
   const readyPlacementKey = useRef<string | null>(null);
   // A provider can defer the placement callback while the buyer changes checkout inputs.
@@ -141,15 +147,23 @@ export default function CheckoutPage() {
   if (!q)
     return <div className="mx-auto max-w-3xl px-4 py-16"><ErrorBox message={errorMessage(checkoutError)} onRetry={refreshAddressesAndQuote} /></div>;
 
+  const addressChanging = quote.isPlaceholderData && q.addressId !== addressId;
+  const pickupOnly = shippingAvailable && selectedCodes.every((code) => code === 'PICKUP');
+  let shippingSummary = money(q.shipping, q.currency);
+  if (quote.isPlaceholderData) shippingSummary = t('Cargando…');
+  else if (q.needsAddress) shippingSummary = t('Agrega tu dirección');
+  else if (checkoutError || !shippingAvailable) shippingSummary = t('No disponible');
+  else if (Number(q.shipping) === 0) shippingSummary = t('Gratis');
+
   const cardMethod = q?.paymentMethods.find((m: any) => m.code === 'CARD');
   const chosenCard = cardChoice === 'new' ? null : usableCards.find((c: any) => c.id === cardChoice) ?? (cardChoice === null ? usableCards.find((c: any) => c.isDefault) ?? usableCards[0] : null);
   const stripeKey: string | null = cardMethod?.provider === 'STRIPE' ? cardMethod.publishableKey ?? null : null;
   const paypalMethod = q?.paymentMethods.find((m: any) => m.code === 'PAYPAL' && m.available);
 
-  const QUOTE_CHANGED = ['CHECKOUT_ADDRESS_CHANGED', 'CHECKOUT_TOTAL_CHANGED', 'SHIPPING_ORIGIN_CHANGED', 'SHIPPING_OPTION_UNAVAILABLE', 'CART_CHANGED'];
+  const QUOTE_CHANGED = ['CHECKOUT_ADDRESS_CHANGED', 'CHECKOUT_TOTAL_CHANGED', 'SHIPPING_ORIGIN_CHANGED', 'SHIPPING_OPTION_UNAVAILABLE', 'DESTINATION_UNAVAILABLE', 'CART_CHANGED'];
   const submitCheckout = async (payment: PaymentDetails) => {
     if (!addressId) throw new Error(t('Selecciona una dirección de envío.'));
-    if (destBlocked || Object.values(shippingSelection).some((code) => !code)) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
+    if (!shippingAvailable) throw new Error(t('No hay métodos de envío disponibles para esta dirección.'));
     if (!addressVersion || readyPlacementKey.current !== resetKey) throw new Error(t('Cargando…'));
     try {
       // The total the buyer accepted goes with the order: the API refuses it if the amount changed.
@@ -240,15 +254,15 @@ export default function CheckoutPage() {
               <Truck className="mt-0.5 size-6 text-brand-600" />
               <div><h2 className="text-lg font-bold">{t('Método de envío')}</h2><p className="text-sm text-muted">{t('Elige cómo deseas recibir tu pedido')}{q.groups.length > 1 ? t(' de cada tienda') : ''}.</p></div>
             </div>
-            {!q.needsAddress && <AddressCountryNotice addressCountry={q.destinationCountry} />}
-            {q.needsAddress ? (
+            {!addressChanging && !q.needsAddress && <AddressCountryNotice addressCountry={q.destinationCountry} />}
+            {addressChanging ? <p className="text-sm text-muted" role="status">{t('Cargando…')}</p> : q.needsAddress ? (
               <p className="flex items-center gap-2 rounded-xl bg-surface px-4 py-3 text-sm text-muted" data-shipping-needs-address><MapPin className="size-4 shrink-0 text-brand-600" /> {t('Agrega tu dirección para calcular el envío.')}</p>
             ) : (
             <div className="space-y-5">
               {q.groups.map((g: any) => (
                 <div key={g.sellerId}>
                   {q.groups.length > 1 && <p className="mb-2 flex items-center gap-1.5 text-sm font-bold"><Store className="size-4 text-brand-600" /> {g.sellerName}</p>}
-                  {g.liveRates && <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><Zap className="size-3.5" /> {t('Tarifas en vivo de transportadoras')}</p>}
+                  {g.liveRates && !g.destinationBlocked?.length && <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><Zap className="size-3.5" /> {t('Tarifas en vivo de transportadoras')}</p>}
                   {!!g.destinationBlocked?.length && (
                     <div className="mb-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800" data-destination-blocked>
                       <p className="font-semibold">{t('No se envían a {c}:', { c: countryName(q.destinationCountry) || q.destinationCountry })}</p>
@@ -258,32 +272,33 @@ export default function CheckoutPage() {
                       <p className="mt-1 text-xs">{t('Quítalos del carrito o elige una dirección en otro país para continuar.')}</p>
                     </div>
                   )}
-                  <div className="space-y-2">
+                  {!g.destinationBlocked?.length && <div className="space-y-2">
                     {g.shippingOptions.map((r: any) => {
                       const sel = selectedFor(g) === r.code;
+                      const sellerFree = (r.freeShipping === true || r.code === 'NX_SELLER_FREE_SHIPPING') && Number(r.amount) === 0;
                       return (
                         <label key={r.code} className={cn('flex cursor-pointer items-center gap-3 rounded-xl border p-4', sel ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200' : 'border-line')}>
-                          <input type="radio" checked={sel} onChange={() => setShipping((s) => ({ ...s, [g.sellerId]: r.code }))} className="size-4 accent-brand-600" />
+                          <input type="radio" name={`shipping-${g.sellerId}`} checked={sel} onChange={() => setShipping((s) => ({ ...s, [g.sellerId]: r.code }))} className="size-4 accent-brand-600" />
                           {r.carrierLogo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={r.carrierLogo} alt={r.carrierName} className="h-6 w-10 shrink-0 object-contain" />
                           ) : r.code === 'PICKUP' ? <Store className="size-5 shrink-0" /> : <Truck className="size-5 shrink-0" />}
                           <div className="min-w-0 flex-1 text-sm">
                             <p className="flex flex-wrap items-center gap-1.5 font-bold">
-                              {t(r.serviceName)}
+                              {sellerFree ? t('Envío gratis') : t(r.serviceName)}
                               {r.attributes?.includes('CHEAPEST') && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">{t('Más económico')}</span>}
                               {r.attributes?.includes('FASTEST') && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">{t('Más rápido')}</span>}
                             </p>
                             <p className="text-muted">{r.estimatedDays ? t('Entrega estimada: {n} días', { n: r.estimatedDays }) : t(r.description)}</p>
                           </div>
-                          <span className="whitespace-nowrap font-bold">{Number(r.amount) === 0 ? t('Gratis') : money(r.amount, q.currency)}</span>
+                          <span className={cn('whitespace-nowrap font-bold', sellerFree && 'text-emerald-700')}>{Number(r.amount) === 0 ? t('Gratis') : money(r.amount, q.currency)}</span>
                         </label>
                       );
                     })}
                     {!g.shippingOptions.length && (
                       <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('Esta tienda no envía a la dirección seleccionada.')} {g.shippingMessages?.[0] ?? ''}</p>
                     )}
-                  </div>
+                  </div>}
                 </div>
               ))}
             </div>
@@ -402,7 +417,7 @@ export default function CheckoutPage() {
           <dl className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{money(q.subtotal, q.currency)}</dd></div>
             {Number(q.discount) > 0 && <div className="flex justify-between text-emerald-700" data-checkout-discount><dt>{t('Descuento')}</dt><dd>-{money(q.discount, q.currency)}</dd></div>}
-            <div className="flex justify-between"><dt>{t('Envío')}</dt><dd>{q.needsAddress ? <span className="text-muted">{t('Agrega tu dirección')}</span> : Number(q.shipping) === 0 ? t('Gratis') : money(q.shipping, q.currency)}</dd></div>
+            <div className="flex justify-between"><dt>{pickupOnly && !quote.isPlaceholderData ? t('Retiro en tienda') : t('Envío')}</dt><dd aria-live="polite">{shippingSummary}</dd></div>
             <div className={`flex justify-between${q.tax.included ? ' text-muted' : ''}`} data-checkout-tax={q.tax.included ? 'included' : 'added'}>
               <dt>{q.tax.included ? t('Incluye {a}', { a: q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('impuestos') }) : q.tax.rate > 0 ? `${q.tax.name} (${+(q.tax.rate * 100).toFixed(2)} %)` : t('Impuestos')}{q.tax.country && <span className="text-muted"> · {countryName(q.tax.country)}</span>}</dt>
               <dd>{money(q.taxTotal, q.currency)}</dd>

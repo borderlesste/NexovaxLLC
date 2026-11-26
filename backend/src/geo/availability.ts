@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DbService } from '../db/db.service';
+import { DbService, Queryable } from '../db/db.service';
 import { REAL_COUNTRY } from '../common/geo';
 import { badRequest } from '../common/errors';
 import { rateCoversRoute, SettingsService, ShippingRate } from '../settings/settings.service';
@@ -87,9 +87,9 @@ export class AvailabilityService {
     private readonly shippo: ShippoService,
   ) {}
 
-  private async country(code: string) {
+  private async country(code: string, client?: Queryable) {
     const cc = (code ?? '').trim().toUpperCase();
-    if (!/^[A-Z]{2}$/.test(cc) || !(await this.db.one(`select 1 from public.countries where alpha2 = $1 and is_active and ${REAL_COUNTRY}`, [cc])))
+    if (!/^[A-Z]{2}$/.test(cc) || !(await this.db.one(`select 1 from public.countries where alpha2 = $1 and is_active and ${REAL_COUNTRY}`, [cc], client)))
       throw badRequest('COUNTRY_INVALID', 'Selecciona un país válido.');
     return cc;
   }
@@ -105,15 +105,15 @@ export class AvailabilityService {
    * holds its stock (its origin may differ from the store's default), so its route is evaluated
    * with that origin. Restrictions stay per store and product.
    */
-  async forItems(countryCode: string, productIds: string[], variantIds: string[] = []) {
-    const country = await this.country(countryCode);
+  async forItems(countryCode: string, productIds: string[], variantIds: string[] = [], client?: Queryable) {
+    const country = await this.country(countryCode, client);
     const uuid = (x: string) => /^[0-9a-f-]{36}$/i.test(x);
     const ids = [...new Set(productIds.filter(uuid))].slice(0, MAX_AVAILABILITY_ITEMS);
     const vids = [...new Set(variantIds.filter(uuid))].slice(0, MAX_AVAILABILITY_ITEMS);
     const items: Record<string, Availability> = {};
     const variants: Record<string, Availability> = {};
     if (!ids.length && !vids.length) return { country, items, variants };
-    const s = await this.settings.all();
+    const s = await this.settings.all(client);
     const geo = s['geo.delivery'] ?? { ipDetection: true, showSelector: true, countries: [] };
     const days = Math.min(Math.max(Number(geo.laneHistoryDays ?? 90) || 90, 1), 365);
     const liveRates = this.shippo.enabled && !!s['shipping.shippo_enabled'];
@@ -127,7 +127,7 @@ export class AvailabilityService {
                     where ii.variant_id = v.id and ii.status = 'ACTIVE' and il.status = 'ACTIVE' and il.fulfillment_enabled
                     order by (ii.available_to_sell > 0) desc, il.fulfillment_priority, ii.available_to_sell desc limit 1) as origin
              from public.product_variants v where v.id = any($1::uuid[])`,
-          [vids],
+          [vids], client,
         )
       : [];
     const allIds = [...new Set([...ids, ...vrows.map((v) => v.product_id)])];
@@ -147,7 +147,7 @@ export class AvailabilityService {
          left join public.destination_restrictions sr on sr.seller_id = p.seller_id and sr.product_id is null
          left join public.destination_restrictions pr on pr.product_id = p.id
         where p.id = any($1::uuid[]) and p.status = 'ACTIVE'`,
-      [allIds, country, liveRates, days],
+      [allIds, country, liveRates, days], client,
     );
     const offered = (geo.countries ?? []).map((c: string) => c.toUpperCase());
     const facts = (r: (typeof rows)[number], origin: string | null): RouteFacts => ({

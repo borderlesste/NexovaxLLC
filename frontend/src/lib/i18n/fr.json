@@ -3288,5 +3288,18 @@
 "Leer el documento completo": "Lire le document complet",
 "El uso de cookies y del país de entrega se explica en": "L’utilisation des cookies et du pays de livraison est expliquée dans",
 "Idioma del navegador": "Langue du navigateur",
-"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "Lors de la première visite, affiche le site dans la langue du navigateur si elle fait partie des quatre disponibles. Le choix du visiteur dans le sélecteur de langue est toujours prioritaire."
+"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "Lors de la première visite, affiche le site dans la langue du navigateur si elle fait partie des quatre disponibles. Le choix du visiteur dans le sélecteur de langue est toujours prioritaire.",
+"Envío gratis": "Livraison gratuite",
+"La tienda paga el envío y registra su propia guía.": "Votre boutique paie la livraison et renseigne son propre numéro de suivi.",
+"Ofrecer envío gratis": "Offrir la livraison gratuite",
+"Subtotal mínimo ({currency})": "Sous-total minimum ({currency})",
+"Se suman los productos de tu tienda antes de los cupones. Deja el campo vacío para ofrecer envío gratis sin mínimo.": "Le minimum porte sur les articles de votre boutique avant les coupons. Laissez ce champ vide pour offrir la livraison sans minimum.",
+"Guardar envío gratis": "Enregistrer la livraison gratuite",
+"Configuración de envío gratis guardada.": "Paramètres de livraison gratuite enregistrés.",
+"La moneda cambió de {old} a {current}. Revisa el mínimo y guarda la configuración para volver a ofrecer envío gratis.": "La devise est passée de {old} à {current}. Vérifiez le minimum et enregistrez les paramètres pour proposer de nouveau la livraison gratuite.",
+"Mínimo anterior": "Ancien minimum",
+"La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "La devise de la boutique a changé. Vérifiez le minimum avant d’enregistrer.",
+"Indica un importe positivo o cero con hasta dos decimales.": "Saisissez zéro ou un montant positif avec deux décimales au maximum.",
+"Envío gestionado por la tienda.": "Livraison organisée par la boutique.",
+"Tu tienda cubre el costo del envío. Registra aquí la guía que compraste o los datos de tu entrega propia.": "Votre boutique couvre la livraison. Renseignez le numéro de suivi acheté ou les détails de votre propre livraison."
 }

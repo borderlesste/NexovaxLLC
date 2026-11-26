@@ -29,6 +29,14 @@ export class DestinationsDto {
   @IsOptional() @IsString() @MaxLength(300) note?: string | null;
 }
 
+class FreeShippingDto {
+  @IsBoolean() enabled: boolean;
+  @IsArray() @ArrayMaxSize(249) @IsString({ each: true }) countries: string[];
+  @IsOptional() @Matches(/^\d{1,16}(?:\.\d{1,2})?$/, { message: 'Indica un importe positivo o cero con hasta dos decimales.' })
+  minimumSubtotal?: string | null;
+  @IsOptional() @IsCurrencyCode() expectedCurrency?: string;
+}
+
 export class ProductStatusDto {
   @IsIn(['PAUSE', 'RESUME', 'ARCHIVE']) action: 'PAUSE' | 'RESUME' | 'ARCHIVE';
 }
@@ -207,6 +215,18 @@ export class SellerController {
   @Put('store/ship-from')
   updateShipFrom(@CurrentUser() user: RequestUser, @Body() dto: ShipFromDto, @Headers('x-seller-id') h?: string) {
     return this.seller.updateShipFrom(this.sid(user, h, 'SETTINGS'), dto);
+  }
+
+  @FreshUser()
+  @Get('store/free-shipping')
+  freeShipping(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
+    return this.seller.freeShipping(this.sid(user, h, 'SETTINGS'));
+  }
+
+  @FreshUser()
+  @Put('store/free-shipping')
+  setFreeShipping(@CurrentUser() user: RequestUser, @Body() dto: FreeShippingDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.setFreeShipping(this.sid(user, h, 'SETTINGS'), user.id, dto);
   }
 
   /** Where the store ships to (NX-GEO-001): every destination, only its country, only some, or all but some. */

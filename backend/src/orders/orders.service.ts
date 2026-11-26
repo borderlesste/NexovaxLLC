@@ -6,7 +6,8 @@ import { MailService } from '../mail/mail.service';
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { clampPage, clampPageSize } from '../common/paging';
 import { mediaUrl } from '../catalog/catalog.sql';
-import { CARRIERS, ShippingService } from '../shipping/shipping.service';
+import { CARRIERS, sellerFreeShippingLabelError, ShippingService } from '../shipping/shipping.service';
+import { SELLER_FREE_SHIPPING } from '../shipping/free-shipping';
 import { orderRef, parseOrderRef, paymentRef, returnRef, ticketRef } from '../common/refs';
 import { fromMinor, toMinor } from '../common/money';
 import { decrypt } from '../common/crypto';
@@ -209,6 +210,7 @@ export class OrdersService {
                   where ops.order_id = so.order_id and ops.application_snapshot->>'sellerId' = so.seller_id::text) as coupon,
                 sofs.referral_commission_total::text as affiliate,
                 osg.id as shipping_group_id, osg.service_name, osg.carrier_name, osg.service_token, osg.customer_shipping_amount::text as shipping_amount,
+                exists (select 1 from public.order_shipping_groups g where g.seller_order_id = so.id and g.service_token = $3) as seller_free_shipping,
                 osg.estimated_days, osg.shipping_provider_code, sfa.city as origin_city, sfa.region as origin_region, sfa.country_code as origin_country,
                 ${CANCELLABLE_SQL('so', 'o')} as cancellable
            from public.seller_orders so join public.orders o on o.id = so.order_id join public.sellers s on s.id = so.seller_id
@@ -219,7 +221,7 @@ export class OrdersService {
            left join public.seller_ship_from_addresses sfa on sfa.id = osg.ship_from_address_id
           where so.order_id = $1 and ($2::uuid is null or so.seller_id = $2)
           order by so.created_at`,
-        [o.id, sellerFilter],
+        [o.id, sellerFilter, SELLER_FREE_SHIPPING],
       ),
       this.db.many(
         `select oi.id, oi.seller_order_id, oi.product_id, oi.variant_id, oi.quantity::int as quantity,
@@ -310,7 +312,7 @@ export class OrdersService {
         totals: { subtotal: so.gross_subtotal ?? so.subtotal, discount: so.discount ?? '0', shipping: so.shipping, tax: so.tax, total: so.total, commission: scope.kind === 'customer' ? undefined : so.commission,
           affiliate: scope.kind === 'customer' ? undefined : so.affiliate,
           sellerNet: scope.kind === 'customer' ? undefined : fromMinor(toMinor(so.seller_net) - toMinor(so.affiliate ?? 0)) },
-        shippingMethod: { name: so.service_name, carrier: so.carrier_name, code: so.service_token, provider: so.shipping_provider_code ?? 'MARKETPLACE', amount: so.shipping_amount, estimatedDays: so.estimated_days },
+        shippingMethod: { name: so.service_name, carrier: so.carrier_name, code: so.service_token, provider: so.shipping_provider_code ?? 'MARKETPLACE', sellerArrangedFree: so.seller_free_shipping, amount: so.shipping_amount, estimatedDays: so.estimated_days },
         origin: so.origin_country ? { city: so.origin_city, region: so.origin_region, countryCode: so.origin_country } : null,
         items: items
           .filter((i: any) => i.seller_order_id === so.id)
@@ -551,7 +553,7 @@ export class OrdersService {
     actorUserId: string,
     input: { mode?: 'LABEL' | 'MANUAL'; carrierCode?: string; carrierName?: string; trackingNumber?: string; trackingUrl?: string },
   ) {
-    const pending = await this.db.tx(async (c) => {
+    const { pending, mode } = await this.db.tx(async (c) => {
       const so = await this.sellerOrderFor(sellerId, sellerOrderId, c);
       const fulfillments = await this.db.many(
         `select f.id, f.order_shipping_group_id from public.fulfillments f
@@ -616,20 +618,27 @@ export class OrdersService {
           );
         await this.db.exec(`select public.mark_shipment_ready($1)`, [shipmentId], c);
       }
-      const ready = await this.db.many(
-        `select sh.id, sh.shipping_provider_code, sa.city as from_city
-           from public.shipments sh left join public.shipment_address_snapshots sa on sa.shipment_id = sh.id and sa.address_type = 'FROM'
+      const ready = await this.db.many<{ id: string; shipping_provider_code: string; from_city: string; seller_free_shipping: boolean }>(
+        `select sh.id, sh.shipping_provider_code, sa.city as from_city,
+                ($2 in (sh.requested_service_token, g.service_token)) is true as seller_free_shipping
+           from public.shipments sh join public.order_shipping_groups g on g.id = sh.order_shipping_group_id
+           left join public.shipment_address_snapshots sa on sa.shipment_id = sh.id and sa.address_type = 'FROM'
           where sh.seller_order_id = $1 and sh.status in ('READY_TO_SHIP','LABEL_CREATED')
             and not exists (select 1 from public.shipment_trackings st where st.shipment_id = sh.id)
           order by sh.created_at`,
-        [so.id],
+        [so.id, SELLER_FREE_SHIPPING],
         c,
       );
       if (!ready.length && !fulfillments.length) throw conflict('NOTHING_TO_SHIP', 'Primero marca el pedido como "En preparación".');
-      return ready as { id: string; shipping_provider_code: string; from_city: string }[];
+      const sellerFree = ready.some((shipment) => shipment.seller_free_shipping);
+      if (input.mode === 'LABEL' && sellerFree) throw sellerFreeShippingLabelError();
+      if (sellerFree && input.carrierCode === 'PICKUP') {
+        throw badRequest('SELLER_FREE_SHIPPING_REQUIRES_DELIVERY', 'El comprador eligió entrega a domicilio. Selecciona una transportadora o entrega propia.');
+      }
+      const usePlatformLabel = !sellerFree && this.shipping.shippoEnabled && ready.some((shipment) => shipment.shipping_provider_code === 'SHIPPO');
+      return { pending: ready, mode: input.mode ?? (usePlatformLabel ? 'LABEL' : 'MANUAL') };
     });
 
-    const mode = input.mode ?? (pending.some((p) => p.shipping_provider_code === 'SHIPPO') && this.shipping.shippoEnabled ? 'LABEL' : 'MANUAL');
     const results: any[] = [];
     for (const p of pending) {
       if (mode === 'LABEL') {

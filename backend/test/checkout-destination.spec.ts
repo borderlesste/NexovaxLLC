@@ -1,5 +1,6 @@
 jest.mock('jose', () => ({ createRemoteJWKSet: () => ({}), jwtVerify: jest.fn() }));
 import { CheckoutService } from '../src/checkout/checkout.service';
+import { SELLER_FREE_SHIPPING } from '../src/shipping/free-shipping';
 import { ShippingService } from '../src/shipping/shipping.service';
 
 // Checkout validates restrictions with the confirmed address country (NX-GEO-001 §5).
@@ -19,7 +20,7 @@ describe('checkout destination check', () => {
   it('blocks only confirmed restrictions, per cart variant, for the address country', async () => {
     const r: Map<string, string> = await blocks.call({ availability }, groups, 'DO');
     expect([...r.entries()]).toEqual([['v2', 'STORE_EXCLUDED']]);
-    expect(availability.forItems).toHaveBeenCalledWith('DO', [], ['v1', 'v2', 'v3']);
+    expect(availability.forItems).toHaveBeenCalledWith('DO', [], ['v1', 'v2', 'v3'], undefined);
   });
 
   it('without an address nothing is blocked yet', async () => {
@@ -36,6 +37,9 @@ describe('checkout address version', () => {
 
   function checkout() {
     let storedAddress: typeof address | null = { ...address };
+    let freeShipping: { seller_id: string; country_codes: string[]; minimum_subtotal: string | null; currency_code: string } | null = null;
+    let checkoutUnitPrice = '10.00';
+    let beforeTx: (() => void) | undefined;
     const client = {};
     const db = {
       one: jest.fn(async (sql: string, _params?: unknown[], _client?: object) => {
@@ -45,15 +49,16 @@ describe('checkout address version', () => {
         return { id: 'checkout', currency_code: 'USD', amount: '15.00', cfg_id: 'config', acc_id: 'account' };
       }),
       many: jest.fn(async (sql: string) => {
+        if (sql.includes('nx_seller_free_shipping')) return freeShipping ? [freeShipping] : [];
         if (sql.includes('from public.checkout_items')) {
-          return [{ id: 'item', seller_id: 'seller', variant_id: 'variant', product_id: 'product', quantity: 1, seller_group_id: 'seller-group', unit_price: '10.00' }];
+          return [{ id: 'item', seller_id: 'seller', variant_id: 'variant', product_id: 'product', quantity: 1, seller_group_id: 'seller-group', unit_price: checkoutUnitPrice }];
         }
         if (sql.includes('from public.cart_items')) return [{ seller_id: 'seller', variant_id: 'variant', qty: 1 }];
         if (sql.includes('from public.inventory_items')) return [{ id: 'stock', variant_id: 'variant', seller_id: 'seller', location_id: 'location', ship_from_address_id: 'origin', available: 2 }];
         return [];
       }),
       exec: jest.fn(async (_sql: string, _params: unknown[], _client: object) => 1),
-      tx: jest.fn(async (run: (c: object) => Promise<string>) => run(client)),
+      tx: jest.fn(async (run: (c: object) => Promise<string>) => { beforeTx?.(); return run(client); }),
     };
     const carts = {
       getCart: jest.fn(async () => ({
@@ -84,9 +89,17 @@ describe('checkout address version', () => {
     return {
       svc, db, shipping, availability, payments, rateFor, client,
       updateAddress: (next: typeof address | null) => { storedAddress = next; },
+      enableFreeShipping: () => { freeShipping = { seller_id: 'seller', country_codes: ['US'], minimum_subtotal: '10.00', currency_code: 'USD' }; },
+      changeInTransaction: (change: 'disable' | 'reprice' | 'destination') => { beforeTx = () => {
+        if (change === 'disable') freeShipping = null;
+        if (change === 'reprice') checkoutUnitPrice = '9.99';
+        if (change === 'destination') availability.forItems.mockResolvedValueOnce({
+          items: {}, variants: { variant: { status: 'UNAVAILABLE', reason: 'PRODUCT_EXCLUDED' } },
+        });
+      }; },
       quote: () => svc.quote(buyer, { addressId: address.id }),
-      place: (addressVersion?: string | null) => svc.placeOrder(buyer, { addressId: address.id, addressVersion: addressVersion ?? undefined,
-        shipping: { seller: 'FLAT:STANDARD' }, paymentMethod: 'CARD', idempotencyKey: 'checkout-attempt' }),
+      place: (addressVersion?: string | null, rate = 'FLAT:STANDARD') => svc.placeOrder(buyer, { addressId: address.id, addressVersion: addressVersion ?? undefined,
+        shipping: { seller: rate }, paymentMethod: 'CARD', idempotencyKey: 'checkout-attempt' }),
     };
   }
 
@@ -131,6 +144,51 @@ describe('checkout address version', () => {
     await expect(f.place()).resolves.toMatchObject({ checkoutId: 'checkout' });
     expect(f.svc.resultFor).toHaveBeenCalledWith('previous', buyer);
     expect(f.db.tx).not.toHaveBeenCalled();
+    expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
+  });
+
+  it('quotes and persists a free seller-paid rate without replacing paid alternatives', async () => {
+    const f = checkout();
+    f.enableFreeShipping();
+    const q = await f.quote();
+    expect(q.shipping).toBe('0.00');
+    expect(q.groups[0]).toMatchObject({ selectedShipping: SELLER_FREE_SHIPPING });
+    expect(q.groups[0].shippingOptions).toEqual([
+      expect.objectContaining({ code: SELLER_FREE_SHIPPING, amount: '0.00', freeShipping: true }),
+      expect.objectContaining({ code: 'FLAT:STANDARD', amount: '5.00' }),
+    ]);
+    await expect(f.place(q.addressVersion, SELLER_FREE_SHIPPING)).resolves.toMatchObject({ checkoutId: 'checkout' });
+    expect(f.db.one).toHaveBeenCalledWith(expect.stringContaining('insert into public.shipping_rate_options'),
+      expect.arrayContaining([SELLER_FREE_SHIPPING, 'MARKETPLACE', '0.00']), f.client);
+    expect(f.db.exec).toHaveBeenCalledWith(expect.stringContaining('select_checkout_shipping_rate'),
+      expect.arrayContaining(['0.00']), f.client);
+  });
+
+  it.each(['disable', 'reprice'] as const)('checks confirmed promotion eligibility after a concurrent %s', async (change) => {
+    const f = checkout();
+    f.enableFreeShipping();
+    const q = await f.quote();
+    f.changeInTransaction(change);
+    await expect(f.place(q.addressVersion, SELLER_FREE_SHIPPING)).rejects.toMatchObject({ code: 'SHIPPING_OPTION_UNAVAILABLE' });
+    expect(f.db.tx).toHaveBeenCalledTimes(1);
+    expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
+  });
+
+  it('suppresses the promotion for a confirmed destination restriction', async () => {
+    const f = checkout();
+    f.enableFreeShipping();
+    f.availability.forItems.mockResolvedValueOnce({ items: {}, variants: { variant: { status: 'UNAVAILABLE', reason: 'STORE_EXCLUDED' } } });
+    const q = await f.quote();
+    expect(q.groups[0].shippingOptions.map((option: any) => option.code)).not.toContain(SELLER_FREE_SHIPPING);
+  });
+
+  it('rechecks destination restrictions in the transaction before accepting a free shipment', async () => {
+    const f = checkout();
+    f.enableFreeShipping();
+    const q = await f.quote();
+    f.changeInTransaction('destination');
+    await expect(f.place(q.addressVersion, SELLER_FREE_SHIPPING)).rejects.toMatchObject({ code: 'DESTINATION_UNAVAILABLE' });
+    expect(f.availability.forItems).toHaveBeenLastCalledWith('US', [], ['variant'], f.client);
     expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
   });
 

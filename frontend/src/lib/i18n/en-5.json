@@ -528,5 +528,18 @@
 "Leer el documento completo": "Read the full document",
 "El uso de cookies y del país de entrega se explica en": "How we use cookies and your delivery country is explained in",
 "Idioma del navegador": "Browser language",
-"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "On a first visit, show the site in the browser's language when it is one of the four available. The visitor's choice in the language selector always takes priority."
+"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "On a first visit, show the site in the browser's language when it is one of the four available. The visitor's choice in the language selector always takes priority.",
+"Envío gratis": "Free shipping",
+"La tienda paga el envío y registra su propia guía.": "Your store pays for shipping and provides its own tracking number.",
+"Ofrecer envío gratis": "Offer free shipping",
+"Subtotal mínimo ({currency})": "Minimum subtotal ({currency})",
+"Se suman los productos de tu tienda antes de los cupones. Deja el campo vacío para ofrecer envío gratis sin mínimo.": "Products from your store count before coupons. Leave this blank to offer free shipping with no minimum.",
+"Guardar envío gratis": "Save free shipping settings",
+"Configuración de envío gratis guardada.": "Free shipping settings saved.",
+"La moneda cambió de {old} a {current}. Revisa el mínimo y guarda la configuración para volver a ofrecer envío gratis.": "The currency changed from {old} to {current}. Review the minimum and save your settings to offer free shipping again.",
+"Mínimo anterior": "Previous minimum",
+"La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "The store currency changed. Review the minimum before saving.",
+"Indica un importe positivo o cero con hasta dos decimales.": "Enter zero or a positive amount with up to two decimal places.",
+"Envío gestionado por la tienda.": "Delivery arranged by the store.",
+"Tu tienda cubre el costo del envío. Registra aquí la guía que compraste o los datos de tu entrega propia.": "Your store covers delivery. Enter the tracking number you purchased or your own delivery details."
 }
