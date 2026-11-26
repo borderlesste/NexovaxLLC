@@ -156,6 +156,8 @@ export interface PlatformSettings {
   'features.email_notifications': boolean;
   /** Only administrators can use the marketplace while it is on. */
   'features.maintenance_mode': boolean;
+  /** First visit without a saved language: use the browser's language when it is one of the four supported. */
+  'features.browser_language': boolean;
   'help.faq': HelpFaq[];
   'help.sellers': { sections: HelpSection[] };
   'help.commissions': HelpCommissions;
@@ -185,6 +187,7 @@ const DEFAULTS: PlatformSettings = {
   'features.mandatory_moderation': false,
   'features.email_notifications': true,
   'features.maintenance_mode': false,
+  'features.browser_language': true,
   'help.faq': [
     { q: '¿Cómo compro en NEXOVAX?', a: 'Agrega productos al carrito desde cualquier tienda, ve a "Finalizar compra", elige tu dirección, el método de envío de cada tienda y paga con tarjeta o transferencia bancaria.' },
     { q: '¿Qué métodos de pago aceptan?', a: 'Tarjetas de crédito y débito, y transferencias bancarias. Con transferencia reservamos tu inventario por 72 horas mientras validamos el pago.' },

@@ -526,5 +526,7 @@
 "Quién opera este sitio": "Who operates this site",
 "Documentos legales": "Legal documents",
 "Leer el documento completo": "Read the full document",
-"El uso de cookies y del país de entrega se explica en": "How we use cookies and your delivery country is explained in"
+"El uso de cookies y del país de entrega se explica en": "How we use cookies and your delivery country is explained in",
+"Idioma del navegador": "Browser language",
+"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "On a first visit, show the site in the browser's language when it is one of the four available. The visitor's choice in the language selector always takes priority."
 }

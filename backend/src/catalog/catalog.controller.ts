@@ -37,6 +37,7 @@ export class CatalogController {
       name: s['marketplace.name'],
       currency: s['marketplace.currency'],
       locale: s['marketplace.locale'],
+      browserLanguage: s['features.browser_language'] !== false,
       defaultCountry: s['marketplace.default_country'],
       supportEmail: s['marketplace.support_email'],
       liveShippingRates: !!s['shipping.shippo_enabled'],

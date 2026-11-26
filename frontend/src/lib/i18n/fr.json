@@ -3286,5 +3286,7 @@
 "Quién opera este sitio": "Qui exploite ce site",
 "Documentos legales": "Documents juridiques",
 "Leer el documento completo": "Lire le document complet",
-"El uso de cookies y del país de entrega se explica en": "L’utilisation des cookies et du pays de livraison est expliquée dans"
+"El uso de cookies y del país de entrega se explica en": "L’utilisation des cookies et du pays de livraison est expliquée dans",
+"Idioma del navegador": "Langue du navigateur",
+"En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "Lors de la première visite, affiche le site dans la langue du navigateur si elle fait partie des quatre disponibles. Le choix du visiteur dans le sélecteur de langue est toujours prioritaire."
 }
