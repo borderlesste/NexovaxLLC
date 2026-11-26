@@ -158,8 +158,6 @@ export interface PlatformSettings {
   'features.maintenance_mode': boolean;
   /** First visit without a saved language: use the browser's language when it is one of the four supported. */
   'features.browser_language': boolean;
-  /** "Haiti Tracking by Nexovax" banner on orders shipped to Haiti and on the shipping policy page. */
-  'features.haiti_tracking': boolean;
   'help.faq': HelpFaq[];
   'help.sellers': { sections: HelpSection[] };
   'help.commissions': HelpCommissions;
@@ -190,7 +188,6 @@ const DEFAULTS: PlatformSettings = {
   'features.email_notifications': true,
   'features.maintenance_mode': false,
   'features.browser_language': true,
-  'features.haiti_tracking': true,
   'help.faq': [
     { q: '¿Cómo compro en NEXOVAX?', a: 'Agrega productos al carrito desde cualquier tienda, ve a "Finalizar compra", elige tu dirección, el método de envío de cada tienda y paga con tarjeta o transferencia bancaria.' },
     { q: '¿Qué métodos de pago aceptan?', a: 'Tarjetas de crédito y débito, y transferencias bancarias. Con transferencia reservamos tu inventario por 72 horas mientras validamos el pago.' },

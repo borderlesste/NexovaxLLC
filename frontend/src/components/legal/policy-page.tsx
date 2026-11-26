@@ -53,8 +53,7 @@ const SHIPPING_REFUND: Record<string, string> = {
  * Admin → Ajustes → Políticas legales; the returns page also lists the conditions in force
  * from the marketplace return rules, so both always agree.
  */
-/** banner: optional block shown under the breadcrumbs (e.g. the Haiti Tracking banner on the shipping policy). */
-export async function PolicyPage({ code, banner }: { code: PublicPolicyCode; banner?: React.ReactNode }) {
+export async function PolicyPage({ code }: { code: PublicPolicyCode }) {
   const t = await getT();
   const locale = await getServerLocale();
   const numLocale = ({ es: 'es-US', en: 'en-US', fr: 'fr-FR', ht: 'fr-HT' } as const)[locale];
@@ -112,7 +111,6 @@ export async function PolicyPage({ code, banner }: { code: PublicPolicyCode; ban
   return (
     <div className="mx-auto max-w-[900px] px-4 py-6 lg:px-8" data-public-policy={code}>
       <Breadcrumbs items={about ? [{ label: POLICY_PAGES[code].label }] : [{ label: 'Ayuda', href: '/ayuda' }, { label: POLICY_PAGES[code].label }]} />
-      {banner && <div className="mt-4">{banner}</div>}
       <div className="mt-4 rounded-3xl bg-gradient-to-r from-brand-50 to-brand-100 p-6 sm:p-8">
         <Icon className="size-9 text-brand-600" />
         <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">{p.title}</h1>

@@ -19,8 +19,6 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { ProductImage } from '@/components/shop/product-card';
 import { CancellationPanel, CancelPurchaseDialog } from './cancellation';
 import { OrderIssuesCard } from './order-issues';
-import { HaitiBanner } from '@/components/shop/haiti-tracking';
-import { usePublicConfig } from '@/lib/config';
 
 type Role = 'customer' | 'seller' | 'admin';
 
@@ -375,9 +373,6 @@ function RouteCard({ order, lastEvent }: { order: any; lastEvent: any }) {
   const sh = so?.shipments?.[0];
   const from = sh?.from?.countryCode ? sh.from : so?.origin;
   const to = order.shippingAddress;
-  const cfg = usePublicConfig();
-  // Orders shipped to Haiti carry the "Haiti Tracking by Nexovax" banner (Admin → Configuración → General).
-  const haiti = String(to?.countryCode ?? '').toUpperCase() === 'HT' && cfg?.haitiTracking !== false;
   const steps = order.timeline.steps;
   const doneCount = steps.filter((s: any) => s.done).length;
   const progress = Math.max(0.06, Math.min(1, (doneCount - 1) / (steps.length - 1)));
@@ -396,11 +391,6 @@ function RouteCard({ order, lastEvent }: { order: any; lastEvent: any }) {
           : { title: t('Esperando que la tienda prepare el pedido'), detail: t('Verás aquí los eventos de la transportadora cuando se despache.') };
   return (
     <div className="card p-5">
-      {haiti && (
-        <HaitiBanner size="sm" className="mb-4">
-          <p className="text-xs text-white/85">{t('Envío con destino Haití: cada paso del recorrido aparece aquí.')}</p>
-        </HaitiBanner>
-      )}
       <p className="flex items-center gap-2 text-lg font-bold"><MapPin className="size-5 text-brand-600" /> {t('Ruta del paquete')}</p>
       <div className="mt-5 flex items-center gap-3">
         <div className="min-w-0 text-sm">

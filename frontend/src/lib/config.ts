@@ -13,8 +13,6 @@ export interface PublicConfig {
   sellerRegistration: boolean;
   /** Maintenance mode: only administrators can use the site. */
   maintenance?: boolean;
-  /** "Haiti Tracking by Nexovax" banner on orders shipped to Haiti (Admin → Configuración → General). */
-  haitiTracking?: boolean;
   stripePublishableKey?: string | null;
   /** Cloudflare Turnstile site key; null when the anti-bot check is off. */
   turnstileSiteKey?: string | null;
