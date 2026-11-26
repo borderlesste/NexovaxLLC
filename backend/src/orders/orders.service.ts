@@ -669,7 +669,7 @@ export class OrdersService {
           await this.db.exec(`select public.dispatch_shipment($1)`, [p.id], c);
           const tr = await this.db.one(`select id from public.shipment_trackings where shipment_id = $1 order by created_at desc limit 1`, [p.id], c);
           if (provider) await this.db.exec(`update public.shipment_trackings set provider_tracking_id = $2 where id = $1`, [tr!.id, provider], c);
-          await this.trackingEvent(c, tr!.id, 'IN_TRANSIT', `El vendedor despachó el paquete con ${carrierName}.`, p.from_city, actorUserId);
+          await this.trackingEvent(c, tr!.id, 'IN_TRANSIT', `El vendedor despachó el paquete con ${carrierName}.`, p.from_city, { sellerUserId: actorUserId });
         });
         await this.settlement.settle(p.id, actorUserId);
         if (provider) this.shipping.watchManualTracking(provider, tracking, p.id).catch(() => undefined);
@@ -744,7 +744,7 @@ export class OrdersService {
     return n;
   }
 
-  /** Applies staff progress updates or a seller's manual delivery confirmation. */
+  /** Applies manual progress updates or the buyer's delivery confirmation. */
   async updateTracking(
     scope: ShipmentActor,
     shipmentId: string,
@@ -752,11 +752,17 @@ export class OrdersService {
     detail?: string,
     city?: string,
   ) {
-    if (scope.kind === 'customer' || (status === 'DELIVERED' && scope.kind !== 'seller')) throw forbidden();
+    // A delivery event releases funds and changes the buyer's return lifecycle. For a
+    // manual shipment, only the order's buyer is independent of the seller and may
+    // provide that confirmation. Sellers and staff retain non-delivery progress updates.
+    if (status === 'DELIVERED' ? scope.kind !== 'customer' : scope.kind === 'customer') throw forbidden();
     const applied = await this.db.tx(async (c) => {
       const s = await this.db.one(
         `select sh.id, sh.seller_id, sh.order_id, sh.shipped_at, sh.status, o.customer_id,
-                st.id as tracking_id, st.provider_tracking_id, st.current_status
+                st.id as tracking_id, st.provider_tracking_id, st.current_status,
+                (exists (select 1 from public.sellers own where own.id = sh.seller_id and own.owner_user_id = o.customer_id)
+                 or exists (select 1 from public.seller_members m where m.seller_id = sh.seller_id and m.user_id = o.customer_id and m.status = 'ACTIVE'))
+                  as customer_controls_seller
            from public.shipments sh join public.shipment_trackings st on st.shipment_id = sh.id
            join public.orders o on o.id = sh.order_id
           where sh.id = $1 order by st.created_at desc limit 1 for update of st, sh`,
@@ -765,7 +771,8 @@ export class OrdersService {
       );
       if (!s) throw notFound('Envío');
       if (scope.kind === 'seller' && s.seller_id !== scope.sellerId) throw notFound('Envío');
-      if (scope.kind === 'seller' && status === 'DELIVERED' && scope.userId === s.customer_id) throw forbidden();
+      if (scope.kind === 'customer' && s.customer_id !== scope.userId) throw notFound('Envío');
+      if (scope.kind === 'customer' && s.customer_controls_seller) throw forbidden();
       if (s.provider_tracking_id) throw conflict('TRACKING_AUTOMATIC', 'Este envío se actualiza automáticamente con la transportista.');
       if (['CANCELLED', 'RETURNED'].includes(s.status) || s.current_status === 'RETURNED') throw conflict('SHIPMENT_CLOSED', 'Este envío está cerrado.');
       if (s.status === 'DELIVERED' || s.current_status === 'DELIVERED') {
@@ -776,10 +783,15 @@ export class OrdersService {
       const labels: Record<string, string> = {
         IN_TRANSIT: 'El paquete está en tránsito.',
         OUT_FOR_DELIVERY: 'El paquete salió a entrega.',
-        DELIVERED: 'El vendedor confirmó la entrega.',
+        DELIVERED: 'El comprador confirmó que recibió el paquete.',
         EXCEPTION: 'Se registró una incidencia en el envío.',
       };
-      await this.trackingEvent(c, s.tracking_id, status, detail?.trim() || labels[status], city, scope.kind === 'seller' ? scope.userId : undefined);
+      const actor = scope.kind === 'customer'
+        ? { customerUserId: scope.userId }
+        : scope.kind === 'seller'
+          ? { sellerUserId: scope.userId }
+          : undefined;
+      await this.trackingEvent(c, s.tracking_id, status, detail?.trim() || labels[status], city, actor);
       if (status === 'DELIVERED') await this.releaseDeliveredFunds(c, s.order_id);
       return true;
     });
@@ -787,10 +799,18 @@ export class OrdersService {
     return { ok: true };
   }
 
-  private async trackingEvent(c: PoolClient, trackingId: string, status: string, detail: string, city?: string | null, sellerUserId?: string) {
+  private async trackingEvent(
+    c: PoolClient,
+    trackingId: string,
+    status: string,
+    detail: string,
+    city?: string | null,
+    actor?: { sellerUserId?: string; customerUserId?: string },
+  ) {
     await this.db.exec(
       `select public.apply_tracking_event($1,$2,$3,now(),$4,null,$5,$6,null,null,null,null,null,$7::jsonb)`,
-      [trackingId, `manual:${trackingId}:${status}:${Date.now()}`, status, status.toLowerCase(), detail, city ?? null, JSON.stringify({ source: 'manual', sellerUserId })],
+      [trackingId, `manual:${trackingId}:${status}:${Date.now()}`, status, status.toLowerCase(), detail, city ?? null,
+       JSON.stringify({ source: actor?.customerUserId ? 'customer' : 'manual', ...actor })],
       c,
     );
   }

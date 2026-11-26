@@ -15,6 +15,7 @@ const seller = { kind: 'seller' as const, sellerId: 'shop', userId: 'seller-memb
 const shipment = {
   id: 'shipment', tracking_id: 'tracking', order_id: 'order', seller_id: 'shop', customer_id: 'buyer',
   status: 'SHIPPED', shipped_at: new Date(), current_status: 'OUT_FOR_DELIVERY', provider_tracking_id: null,
+  customer_controls_seller: false,
 };
 
 function fixture(overrides: Record<string, unknown> = {}) {
@@ -35,17 +36,17 @@ function fixture(overrides: Record<string, unknown> = {}) {
 }
 
 describe('delivery authority', () => {
-  it('retires the buyer confirmation route and limits delivery in the tracking DTOs to sellers', async () => {
+  it('exposes buyer confirmation and excludes delivery from seller and staff tracking DTOs', async () => {
     const routes = Object.values(Object.getOwnPropertyDescriptors(OrdersController.prototype))
       .filter((desc) => typeof desc.value === 'function')
       .map((desc) => Reflect.getMetadata(PATH_METADATA, desc.value));
     expect(routes).toContain('shipments/:id/refresh-tracking');
-    expect(routes).not.toContain('shipments/:id/confirm-delivery');
-    await expect(validate(Object.assign(new TrackingDto(), { status: 'DELIVERED' }))).resolves.toHaveLength(0);
+    expect(routes).toContain('shipments/:id/confirm-delivery');
+    await expect(validate(Object.assign(new TrackingDto(), { status: 'DELIVERED' }))).resolves.toHaveLength(1);
     await expect(validate(Object.assign(new AdminTrackingDto(), { status: 'DELIVERED' }))).resolves.toHaveLength(1);
   });
 
-  it.each([customer, { kind: 'admin' as const }])('rejects a manual confirmation from $kind', async (actor) => {
+  it.each([seller, { kind: 'admin' as const }])('rejects a manual confirmation from $kind', async (actor) => {
     const { orders, db } = fixture();
     await expect(orders.updateTracking(actor, 'shipment', 'DELIVERED')).rejects.toMatchObject({ code: 'FORBIDDEN' });
     expect(db.tx).not.toHaveBeenCalled();
@@ -54,13 +55,13 @@ describe('delivery authority', () => {
   it('requires permission to manage orders at the store', () => {
     const { controller, db } = fixture();
     const user = { id: seller.userId, sellers: [{ id: 'shop', isOwner: false, areas: ['PRODUCTS'] }] } as RequestUser;
-    expect(() => controller.tracking(user, 'shipment', { status: 'DELIVERED' }, 'shop')).toThrow(/permiso/);
+    expect(() => controller.tracking(user, 'shipment', { status: 'IN_TRANSIT' }, 'shop')).toThrow(/permiso/);
     expect(db.tx).not.toHaveBeenCalled();
   });
 
   it.each([
-    [{ seller_id: 'another-shop' }, 'NOT_FOUND'],
-    [{ customer_id: seller.userId }, 'FORBIDDEN'],
+    [{ customer_id: 'another-buyer' }, 'NOT_FOUND'],
+    [{ customer_controls_seller: true }, 'FORBIDDEN'],
     [{ provider_tracking_id: 'ups' }, 'TRACKING_AUTOMATIC'],
     [{ shipped_at: null }, 'SHIPMENT_NOT_DISPATCHED'],
     [{ status: 'CANCELLED' }, 'SHIPMENT_CLOSED'],
@@ -68,25 +69,33 @@ describe('delivery authority', () => {
     [{ status: 'RETURNED' }, 'SHIPMENT_CLOSED'],
   ] as const)('rejects an ineligible shipment %j', async (overrides, code) => {
     const { orders, db, mail } = fixture(overrides);
-    await expect(orders.updateTracking(seller, 'shipment', 'DELIVERED')).rejects.toMatchObject({ code });
+    await expect(orders.updateTracking(customer, 'shipment', 'DELIVERED')).rejects.toMatchObject({ code });
     expect(db.exec).not.toHaveBeenCalled();
     expect(mail.fire).not.toHaveBeenCalled();
   });
 
-  it('records a single timestamped, attributable delivery and evaluates payout on the same transaction', async () => {
-    const { controller, db, row, mail, connection } = fixture();
-    const user = { id: seller.userId, sellers: [{ id: 'shop', isOwner: false, areas: ['ORDERS'] }] } as RequestUser;
-    const confirm = () => controller.tracking(user, 'shipment', { status: 'DELIVERED' }, 'shop');
+  it('records one buyer-attributable delivery and evaluates payout on the same transaction', async () => {
+    const { orders, db, row, mail, connection } = fixture();
+    const confirm = () => orders.updateTracking(customer, 'shipment', 'DELIVERED');
     await expect(confirm()).resolves.toEqual({ ok: true });
     expect(db.one).toHaveBeenCalledWith(expect.stringContaining('for update of st, sh'), ['shipment'], connection);
     expect(db.exec).toHaveBeenCalledWith(expect.stringContaining('apply_tracking_event($1,$2,$3,now()'),
-      ['tracking', expect.any(String), 'DELIVERED', 'delivered', 'El vendedor confirmó la entrega.', null,
-        JSON.stringify({ source: 'manual', sellerUserId: seller.userId })], connection);
+      ['tracking', expect.any(String), 'DELIVERED', 'delivered', 'El comprador confirmó que recibió el paquete.', null,
+        JSON.stringify({ source: 'customer', customerUserId: customer.userId })], connection);
     expect(db.many).toHaveBeenCalledWith(expect.stringContaining('so.fulfillment_status'), ['order'], connection);
     row.status = 'DELIVERED';
     await expect(confirm()).resolves.toEqual({ ok: true });
     expect(db.exec).toHaveBeenCalledTimes(1);
     expect(mail.shipmentDelivered).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves seller progress updates without evaluating delivery payouts', async () => {
+    const { orders, db, connection } = fixture({ current_status: 'IN_TRANSIT' });
+    await expect(orders.updateTracking(seller, 'shipment', 'OUT_FOR_DELIVERY')).resolves.toEqual({ ok: true });
+    expect(db.exec).toHaveBeenCalledWith(expect.stringContaining('apply_tracking_event'),
+      ['tracking', expect.any(String), 'OUT_FOR_DELIVERY', 'out_for_delivery', 'El paquete salió a entrega.', null,
+        JSON.stringify({ source: 'manual', sellerUserId: seller.userId })], connection);
+    expect(db.many).not.toHaveBeenCalled();
   });
 
   it.each([customer, { ...seller, userId: 'buyer' }, { kind: 'admin' as const }])('a refresh by $kind cannot simulate carrier delivery', async (actor) => {

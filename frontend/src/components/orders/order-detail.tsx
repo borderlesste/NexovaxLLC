@@ -29,7 +29,7 @@ const blocked = (so: any) => !!so.cancellation && ['REQUESTED', 'APPROVED', 'REF
 export function OrderDetailView({ order, role, onChanged }: { order: any; role: Role; onChanged: () => void }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { can, me } = useAuth();
+  const { can } = useAuth();
   const [shipFor, setShipFor] = useState<any>(null);
   const [trackFor, setTrackFor] = useState<any>(null);
   const [reviewFor, setReviewFor] = useState<any>(null);
@@ -184,6 +184,12 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
                       <RefreshCw /> {t('Actualizar rastreo')}
                     </Button>
                   )}
+                  {role === 'customer' && s.shippedAt && !s.automaticTracking && !['DELIVERED', 'RETURNED'].includes(s.trackingStatus) && !['DELIVERED', 'RETURNED'].includes(s.status) && (
+                    <Button size="sm" variant="outline" loading={busy === `confirm-${s.id}`}
+                      onClick={() => act(`confirm-${s.id}`, () => post(`/orders/shipments/${s.id}/confirm-delivery`), t('Entrega confirmada.'))}>
+                      <PackageCheck /> {t('Confirmar recepción')}
+                    </Button>
+                  )}
                   {(role === 'seller' || (role === 'admin' && can('orders.tracking'))) && s.shippedAt && !s.automaticTracking && !['DELIVERED', 'RETURNED'].includes(s.trackingStatus) && !['DELIVERED', 'RETURNED'].includes(s.status) && (
                     <Button size="sm" variant="outline" onClick={() => setTrackFor(s)}>{t('Actualizar seguimiento')}</Button>
                   )}
@@ -272,7 +278,7 @@ export function OrderDetailView({ order, role, onChanged }: { order: any; role: 
 
       {shipFor && <ShipDialog so={shipFor} onClose={() => setShipFor(null)} onDone={() => { setShipFor(null); onChanged(); }} />}
       {cancelFor && <CancelPurchaseDialog role={role} order={order} so={cancelFor} onClose={() => setCancelFor(null)} onDone={() => { setCancelFor(null); onChanged(); qc.invalidateQueries(); }} />}
-      {trackFor && <TrackingDialog shipment={trackFor} role={role} canConfirmDelivery={role === 'seller' && !!me && me.id !== order.customer.id} onClose={() => setTrackFor(null)} onDone={() => { setTrackFor(null); onChanged(); }} />}
+      {trackFor && <TrackingDialog shipment={trackFor} role={role} onClose={() => setTrackFor(null)} onDone={() => { setTrackFor(null); onChanged(); }} />}
       {reviewFor && <ReviewDialog item={reviewFor} onClose={() => setReviewFor(null)} onDone={() => { setReviewFor(null); onChanged(); }} />}
     </div>
   );
@@ -413,7 +419,7 @@ function RouteCard({ order, lastEvent }: { order: any; lastEvent: any }) {
   );
 }
 
-function TrackingDialog({ shipment, role, canConfirmDelivery, onClose, onDone }: { shipment: any; role: Role; canConfirmDelivery: boolean; onClose: () => void; onDone: () => void }) {
+function TrackingDialog({ shipment, role, onClose, onDone }: { shipment: any; role: Role; onClose: () => void; onDone: () => void }) {
   const [f, setF] = useState({ status: shipment.trackingStatus === 'IN_TRANSIT' ? 'OUT_FOR_DELIVERY' : 'IN_TRANSIT', detail: '', city: '' });
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -434,7 +440,7 @@ function TrackingDialog({ shipment, role, canConfirmDelivery, onClose, onDone }:
       <div className="grid gap-4">
         <Field label={t('Nuevo estado')} required>
           <Select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
-            <option value="IN_TRANSIT">{t('En tránsito')}</option><option value="OUT_FOR_DELIVERY">{t('Salió a entrega')}</option>{canConfirmDelivery && <option value="DELIVERED">{t('Entregado')}</option>}<option value="EXCEPTION">{t('Incidencia')}</option>
+            <option value="IN_TRANSIT">{t('En tránsito')}</option><option value="OUT_FOR_DELIVERY">{t('Salió a entrega')}</option><option value="EXCEPTION">{t('Incidencia')}</option>
           </Select>
         </Field>
         <Field label={t('Detalle')}><Textarea rows={2} value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} placeholder={t('Ej. El paquete llegó al centro de distribución.')} /></Field>

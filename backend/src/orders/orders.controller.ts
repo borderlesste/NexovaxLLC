@@ -3,7 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { IsCleanMultiline, IsCleanText, ToNumber } from '../common/validators';
-import { CurrentUser, RequestUser } from '../auth/auth';
+import { CurrentUser, FreshUser, RequestUser } from '../auth/auth';
 import { OrdersService } from './orders.service';
 import { DbService } from '../db/db.service';
 import { conflict, notFound } from '../common/errors';
@@ -35,6 +35,12 @@ export class OrdersController {
   @Post('shipments/:id/refresh-tracking')
   refreshTracking(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.orders.refreshShipmentTracking({ kind: 'customer', userId: user.id }, id);
+  }
+
+  @FreshUser()
+  @Post('shipments/:id/confirm-delivery')
+  confirmDelivery(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.orders.updateTracking({ kind: 'customer', userId: user.id }, id, 'DELIVERED');
   }
 
   @Post('items/:itemId/review')
