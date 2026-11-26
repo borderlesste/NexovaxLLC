@@ -7,6 +7,7 @@ import { getServerLocale, getT } from '@/lib/i18n/server';
 import { SectionHeading, StoreCards } from '@/components/shop/home-blocks';
 import { PriceRanges, RecentlyViewed } from '@/components/shop/home-client';
 import { CategoryIcon } from '@/components/shop/category-icon';
+import { HaitiBanner } from '@/components/shop/haiti-tracking';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/misc';
 
@@ -78,6 +79,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   price_ranges: 'Por rango de precio',
   seller_banner: '¿Tienes una marca o tienda? Llega a compradores globales',
   guarantees: 'Tu compra, respaldada de principio a fin',
+  haiti_banner: 'Compra en línea y sigue tu paquete hasta Haití',
 };
 
 /** Layout of API builds that don't send `sections` yet: the four sections the home page always had. */
@@ -188,6 +190,21 @@ export default async function HomePage() {
               </div>
               <span className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">{t('Empezar a vender')} <ArrowRight className="size-4" /></span>
             </Link>
+          </section>
+        );
+      case 'haiti_banner':
+        return (
+          <section key={s.key} className={SECTION} data-home-section={s.key}>
+            <HaitiBanner>
+              <div className="max-w-xl">
+                <h2 className="text-xl font-extrabold text-balance sm:text-2xl">{titleOf(s)}</h2>
+                <p className="mt-1 text-sm text-white/85">{t('Ves el costo del envío antes de pagar y cada paso del recorrido en tu pedido, desde la tienda hasta tu puerta.')}</p>
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                <Link href="/catalogo" className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-50"><ShoppingCart className="size-4" /> {t('Explorar catálogo')}</Link>
+                <Link href="/politica-de-envios" className="inline-flex items-center gap-2 rounded-lg border border-white/40 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"><Truck className="size-4" /> {t('Ver política de envíos')}</Link>
+              </div>
+            </HaitiBanner>
           </section>
         );
       case 'guarantees':

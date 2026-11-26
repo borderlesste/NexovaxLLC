@@ -42,6 +42,7 @@ const META: Record<string, { name: string; desc: string; limit?: [string, number
   preorders: { name: 'Próximamente', desc: 'Productos agotados con preorden abierta (reserva sin pago).', limit: ['Productos', 2, 24] },
   price_ranges: { name: 'Por rango de precio', desc: 'Pestañas «Menos de …» con productos de cada rango.', limit: ['Productos por rango', 2, 12] },
   seller_banner: { name: 'Banner para vendedores', desc: 'Invita a abrir una tienda.' },
+  haiti_banner: { name: 'Banner Haiti Tracking', desc: 'Logo «Haiti Tracking by Nexovax» sobre la foto de la costa de Haití, con enlaces al catálogo y a la política de envíos.' },
   guarantees: { name: 'Garantías de compra', desc: 'Costos claros, protección al comprador, vendedores identificados y atención.' },
 };
 /** Sections whose title the visitor sees with a default when left empty. */
@@ -51,6 +52,7 @@ const DEFAULT_TITLE: Record<string, string> = {
   preorders: 'Próximamente',
   seller_banner: '¿Tienes una marca o tienda? Llega a compradores globales',
   guarantees: 'Tu compra, respaldada de principio a fin',
+  haiti_banner: 'Compra en línea y sigue tu paquete hasta Haití',
 };
 
 function flatten(cs: any[], depth = 0): { slug: string; name: string; depth: number; count: number }[] {

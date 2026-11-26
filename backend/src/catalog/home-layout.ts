@@ -17,6 +17,7 @@ export const HOME_SECTION_KEYS = [
   'preorders',
   'price_ranges',
   'seller_banner',
+  'haiti_banner',
   'guarantees',
 ] as const;
 
@@ -71,6 +72,7 @@ const LIMITS: Record<HomeSectionKey, [number, number, number]> = {
   preorders: [6, 2, 24],
   price_ranges: [6, 2, 12],
   seller_banner: [0, 0, 0],
+  haiti_banner: [0, 0, 0],
   guarantees: [0, 0, 0],
 };
 
