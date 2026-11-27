@@ -196,7 +196,7 @@ const DEFAULTS: PlatformSettings = {
   'features.browser_language': true,
   'help.faq': [
     { q: '¿Cómo compro en NEXOVAX?', a: 'Agrega productos al carrito desde cualquier tienda, ve a "Finalizar compra", elige tu dirección, el método de envío de cada tienda y paga con tarjeta o transferencia bancaria.' },
-    { q: '¿Qué métodos de pago aceptan?', a: 'Tarjetas de crédito y débito, y transferencias bancarias. Con transferencia reservamos tu inventario por 72 horas mientras validamos el pago.' },
+    { q: '¿Qué métodos de pago aceptan?', a: 'Tarjetas de crédito y débito, y transferencias bancarias. Con transferencia reservamos tu inventario por un tiempo limitado mientras validamos el pago.' },
     { q: '¿Cuánto cuesta el envío?', a: 'Depende del origen de la tienda y de tu dirección. Mostramos tarifas en vivo de transportadoras (USPS, UPS, DHL Express y otras) o las tarifas del marketplace, y el retiro en tienda cuando está disponible.' },
     { q: '¿Hacen envíos internacionales?', a: 'Sí. Las tiendas despachan desde distintos países; en el checkout verás las transportadoras disponibles para tu país. Los envíos internacionales pueden estar sujetos a impuestos y aranceles de importación del país de destino.' },
     { q: '¿Cómo se calculan los impuestos?', a: 'Aplicamos el impuesto al consumo del país de destino (IVA, VAT, GST, ITBIS…) sobre el precio de los productos. Verás el detalle antes de confirmar la compra.' },

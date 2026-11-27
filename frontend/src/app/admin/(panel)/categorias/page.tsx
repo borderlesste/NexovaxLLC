@@ -16,6 +16,7 @@ import { Dialog, Empty, PageLoader, Pagination } from '@/components/ui/misc';
 import { Donut } from '@/components/charts/charts';
 import { CategoryIcon } from '@/components/shop/category-icon';
 import { t, getIntlLocale } from '@/lib/i18n';
+import { toCsv } from '@/lib/csv';
 
 export default function CategoriesAdminPage() {
   const qc = useQueryClient();
@@ -50,7 +51,7 @@ export default function CategoriesAdminPage() {
   const exportCsv = () => {
     const rows = [[t('Categoría'), t('Slug'), t('Padre'), t('Productos'), t('Subcategorías'), t('Estado')], ...all.map((c: any) => [c.name, c.slug, all.find((p: any) => p.id === c.parentId)?.name ?? '', c.products, c.children, c.status])];
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + rows.map((r) => r.map((x: any) => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' }));
+    a.href = URL.createObjectURL(new Blob(['﻿' + toCsv(rows)], { type: 'text/csv' }));
     a.download = 'categorias.csv'; a.click();
   };
   if (q.isLoading) return <PageLoader />;

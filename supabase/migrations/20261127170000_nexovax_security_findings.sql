@@ -74,3 +74,20 @@ grant select, insert, update, delete on public.nx_purchase_claims to nexovax_api
 
 -- 5) Hourly analytics aggregation and purge filter by time: index it so a flooded table stays cheap.
 create index if not exists idx_nx_product_events_occurred_at on public.nx_product_events (occurred_at);
+
+-- 6) Account deletion: an account that talked to other people (conversations, product questions,
+--    support tickets) is anonymized instead of hard-deleted, so the cascade never removes
+--    messages or replies written by sellers or staff.
+create or replace function public.nx_account_has_history(p_user uuid)
+returns boolean language sql stable security definer set search_path = pg_catalog, public as $$
+  select exists (select 1 from public.orders where customer_id = p_user)
+      or exists (select 1 from public.payments where customer_id = p_user)
+      or exists (select 1 from public.refunds where customer_id = p_user)
+      or exists (select 1 from public.seller_orders so join public.sellers s on s.id = so.seller_id where s.owner_user_id = p_user)
+      or exists (select 1 from public.payouts p join public.sellers s on s.id = p.seller_id where s.owner_user_id = p_user)
+      or exists (select 1 from public.ledger_accounts la where la.owner_user_id = p_user
+                  or la.owner_seller_id in (select id from public.sellers where owner_user_id = p_user))
+      or exists (select 1 from public.conversations c where c.requester_user_id = p_user)
+      or exists (select 1 from public.conversation_messages m where m.sender_user_id = p_user)
+      or exists (select 1 from public.support_tickets t where t.requester_user_id = p_user);
+$$;

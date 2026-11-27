@@ -295,7 +295,7 @@ export const GUIDES: Guide[] = [
           'Opciones: activa o desactiva los productos destacados, el registro de vendedores, la moderación obligatoria y las notificaciones por correo.',
           'Comisiones y pagos: comisión global por venta (sobre el precio después de descuentos, sin envío ni impuestos), días de liberación de fondos, monto mínimo de retiro y aprobación manual o automática de retiros.',
           'Envíos: activa las tarifas en vivo de Shippo, elige las transportadoras y define las tarifas fijas de respaldo y el retiro en tienda por zona.',
-          'Transferencia bancaria: actívala y completa banco, titular, número de cuenta, SWIFT/IBAN e instrucciones. El inventario se reserva 72 horas hasta que confirmes el pago.',
+          'Transferencia bancaria: actívala y completa banco, titular, número de cuenta, SWIFT/IBAN e instrucciones. El inventario se reserva durante el plazo fijado en Configuración → Seguridad hasta que confirmes el pago.',
           'Impuestos: agrega la tasa de cada país de destino (IVA, VAT, GST…). Los países sin tasa quedan con 0 %. Confirma las tasas con tu asesor fiscal.',
           'Estado del sistema: comprueba si los servicios (pagos, correo, envíos) están activos o en modo prueba.',
         ],

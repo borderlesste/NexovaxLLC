@@ -634,7 +634,7 @@ async function main() {
   const labels = await db.query(`select count(*)::int n from public.shipping_labels where status = 'PURCHASED' and shipping_provider_code = 'SHIPPO'`);
   ok(`etiquetas Shippo compradas: ${labels.rows[0].n}`);
 
-  console.log('\n\x1b[32mSeed + E2E completado.\x1b[0m Cuentas (contraseña: ' + PASSWORD + '):');
+  console.log('\n\x1b[32mSeed + E2E completado.\x1b[0m Cuentas (contraseña: la de SEED_PASSWORD, no se muestra):');
   console.log('  admin@ · soporte@demo.nexovax.com (administración / soporte y moderación)');
   console.log('  deportiva@ (RD) · techstore@ (EE. UU.) · modaactiva@ (España) · hogarplus@demo.nexovax.com (México) — vendedores');
   console.log('  juan.perez@ (español) · maria.gomez@demo.nexovax.com (inglés) — compradores');

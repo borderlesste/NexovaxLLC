@@ -274,7 +274,22 @@ export class AccountService {
     return { deliveryCountry: cc };
   }
 
-  async changePassword(user: RequestUser, password: string) {
+  /**
+   * Accounts with a password must prove they know it before replacing it, so a stolen session
+   * cannot lock the owner out. OAuth-only accounts (no password yet) can set a first one.
+   */
+  async changePassword(user: RequestUser, password: string, currentPassword?: string, captchaToken?: string | null) {
+    if (await this.supa.hasPasswordIdentity(user.id)) {
+      if (!currentPassword) throw badRequest('CURRENT_PASSWORD_REQUIRED', 'Escribe tu contraseña actual.');
+      try {
+        await this.supa.signInWithPassword(user.email, currentPassword, captchaToken);
+      } catch (e) {
+        if (e instanceof AppError && e.code === 'INVALID_CREDENTIALS')
+          throw new AppError('CURRENT_PASSWORD_WRONG', 'La contraseña actual no es correcta.', HttpStatus.FORBIDDEN);
+        throw e;
+      }
+      if (currentPassword === password) throw badRequest('PASSWORD_UNCHANGED', 'La nueva contraseña debe ser distinta de la actual.');
+    }
     await assertPasswordAcceptable(password);
     await this.supa.updateUserPassword(user.id, password);
     return { ok: true };

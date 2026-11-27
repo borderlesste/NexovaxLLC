@@ -40,6 +40,15 @@ interface CaptureEvidence {
  *   confirm_payment_capture → order + ledger + SALE allocation.
  * Every step is idempotent: the API confirmation and the webhook can race safely.
  */
+
+/** PayPal event types this service acts on; anything else is acknowledged without verification. */
+const PAYPAL_EVENTS = new Set([
+  'CHECKOUT.ORDER.APPROVED', 'PAYMENT.CAPTURE.COMPLETED', 'PAYMENT.CAPTURE.PENDING', 'PAYMENT.CAPTURE.DENIED',
+  'PAYMENT.CAPTURE.DECLINED', 'PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED',
+  'CUSTOMER.DISPUTE.CREATED', 'CUSTOMER.DISPUTE.UPDATED', 'CUSTOMER.DISPUTE.RESOLVED',
+]);
+const PAYPAL_VERIFY_CONCURRENCY = 4;
+let paypalVerifying = 0;
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -167,13 +176,33 @@ export class PaymentsService {
     }
     if (order.status !== 'COMPLETED' || !capture || capture.status !== 'COMPLETED')
       throw new AppError('PAYMENT_NOT_COMPLETED', 'PayPal aún no confirma el pago.', HttpStatus.PAYMENT_REQUIRED, { paypalStatus: order.status, captureStatus: capture?.status });
-    const orderId = await this.finalize(p.id, {
+    const orderId = await this.finalizePaypalCapture(p.id, {
       externalChargeId: capture.id,
       amount: Number(capture.amount.value).toFixed(2),
       currency: capture.amount.currency_code,
       eventAt: capture.create_time ? new Date(capture.create_time) : new Date(),
     }, userId);
     return { status: 'PAID', orderId };
+  }
+
+  /**
+   * PayPal money was captured but the local payment may have been cancelled meanwhile (the buyer
+   * left the checkout while PayPal was approving). Then no order can be created, so the capture is
+   * refunded right away (idempotent per capture) instead of keeping money without an order.
+   */
+  private async finalizePaypalCapture(paymentId: string, ev: CaptureEvidence, actorUserId: string | null) {
+    try {
+      return await this.finalize(paymentId, ev, actorUserId);
+    } catch (e) {
+      if (!(e instanceof AppError) || e.code !== 'PAYMENT_NOT_PENDING') throw e;
+      const now = await this.db.one<{ status: string; order_id: string | null }>(`select status, order_id from public.payments where id = $1`, [paymentId]);
+      if (now?.status === 'PAID') return now.order_id as string;
+      // Only a payment closed without ever being paid has an orphan capture (not a later refund/dispute).
+      if (!now || !['CANCELLED', 'EXPIRED', 'FAILED'].includes(now.status)) throw e;
+      this.logger.warn(`PayPal capture ${ev.externalChargeId} for closed payment ${paymentId} (${now?.status}): refunding`);
+      await this.paypal.refundCapture(ev.externalChargeId, ev.amount, ev.currency, `orphan-${ev.externalChargeId}`, 'Pedido cancelado antes de confirmar el pago.');
+      throw new AppError('PAYMENT_REFUNDED_AFTER_CANCEL', 'El pedido ya estaba cancelado: PayPal te devolverá el cobro.', HttpStatus.CONFLICT);
+    }
   }
 
   /**
@@ -241,8 +270,10 @@ export class PaymentsService {
       if (after.status !== 'canceled') throw conflict('PAYMENT_CANCEL_FAILED', 'No se pudo cancelar el pago con el procesador. Inténtalo de nuevo.');
     }
     if (p.provider_code === 'PAYPAL' && p.external_intent_id) {
+      // Unknown provider state: never cancel locally on a guess (PayPal may be capturing right now).
       const order = await this.paypal.getOrder(p.external_intent_id).catch(() => null);
-      if (order?.status === 'COMPLETED' || order?.status === 'APPROVED') return this.capturePaypal(checkoutId, p.customer_id);
+      if (!order) throw conflict('PAYMENT_CANCEL_FAILED', 'No se pudo confirmar el estado del pago con PayPal. Inténtalo de nuevo.');
+      if (order.status === 'COMPLETED' || order.status === 'APPROVED') return this.capturePaypal(checkoutId, p.customer_id);
     }
     await this.cancelLocally(p, reason);
     return { status: 'CANCELLED' };
@@ -425,8 +456,25 @@ export class PaymentsService {
    *   CUSTOMER.DISPUTE.CREATED | UPDATED | RESOLVED.
    */
   async handlePaypalWebhook(headers: Record<string, any>, event: any) {
-    if (!(await this.paypal.verifyWebhook(headers, event)))
-      throw new AppError('WEBHOOK_SIGNATURE_INVALID', 'Firma de webhook inválida.', HttpStatus.BAD_REQUEST);
+    // Cheap filters before the outbound signature check: events we never act on, and deliveries
+    // already processed, need no call to PayPal. Unknown/duplicate events change nothing here.
+    if (!event || typeof event !== 'object' || typeof event.id !== 'string' || event.id.length > 100 || !PAYPAL_EVENTS.has(event.event_type))
+      return { received: true, ignored: true };
+    const seen = await this.db.one<{ status: string }>(
+      `select status from public.integration_webhook_receipts where provider_code = 'PAYPAL' and deduplication_key = $1`, [event.id],
+    ).catch(() => null);
+    if (seen?.status === 'PROCESSED') return { received: true, duplicate: true };
+    // Bounded outbound verification work: extra deliveries get 503 and PayPal retries them later.
+    if (paypalVerifying >= PAYPAL_VERIFY_CONCURRENCY)
+      throw new AppError('WEBHOOK_BUSY', 'Servicio ocupado, reintenta más tarde.', HttpStatus.SERVICE_UNAVAILABLE);
+    paypalVerifying++;
+    let ok = false;
+    try {
+      ok = await this.paypal.verifyWebhook(headers, event);
+    } finally {
+      paypalVerifying--;
+    }
+    if (!ok) throw new AppError('WEBHOOK_SIGNATURE_INVALID', 'Firma de webhook inválida.', HttpStatus.BAD_REQUEST);
     return this.processPaypalEvent(event);
   }
 
@@ -462,7 +510,7 @@ export class PaymentsService {
       case 'PAYMENT.CAPTURE.COMPLETED': {
         const own = await this.pendingPayment(r.custom_id, 'PAYPAL');
         if (!own) return false;
-        await this.finalize(own.id, { externalChargeId: r.id, amount: Number(r.amount.value).toFixed(2), currency: r.amount.currency_code, eventAt: new Date(r.create_time ?? Date.now()), webhookReceiptId: receiptId }, null);
+        await this.finalizePaypalCapture(own.id, { externalChargeId: r.id, amount: Number(r.amount.value).toFixed(2), currency: r.amount.currency_code, eventAt: new Date(r.create_time ?? Date.now()), webhookReceiptId: receiptId }, null);
         return true;
       }
       case 'PAYMENT.CAPTURE.PENDING': {

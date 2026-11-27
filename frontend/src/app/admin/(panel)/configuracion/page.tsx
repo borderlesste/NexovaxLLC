@@ -299,7 +299,7 @@ export default function SettingsPage() {
               <CardHeader icon={<Landmark />} title={t('Transferencia bancaria')} subtitle={t('Datos que reciben los compradores que pagan por transferencia.')} />
               <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 <div className="flex items-center justify-between rounded-xl border border-line p-4 sm:col-span-2">
-                  <span><b className="block text-sm">{t('Aceptar pagos por transferencia')}</b><span className="text-xs text-muted">{t('El inventario se reserva 72 h hasta que finanzas confirme el pago.')}</span></span>
+                  <span><b className="block text-sm">{t('Aceptar pagos por transferencia')}</b><span className="text-xs text-muted">{t('El inventario se reserva hasta que finanzas confirme el pago (plazo en Seguridad).')}</span></span>
                   <Switch checked={!!bt.enabled} onCheckedChange={(v) => setBt('enabled', v)} />
                 </div>
                 <Field label={t('Banco')} required><Input rule="businessName" value={bt.bank_name ?? ''} onChange={(e) => setBt('bank_name', e.target.value)} /></Field>

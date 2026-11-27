@@ -22,7 +22,6 @@ import { freeShippingPolicies, qualifiesForFreeShipping, SELLER_FREE_SHIPPING, s
 
 const ENGINE = 'nx-checkout-2.0';
 const SANDBOX_PROVIDER = 'RD_SANDBOX';
-const TRANSFER_TTL_MIN = 60 * 72; // bank transfers may take up to 72 h to confirm
 
 export type PaymentMethod = 'CARD' | 'PAYPAL' | 'BANK_TRANSFER';
 
@@ -459,6 +458,18 @@ export class CheckoutService {
     else if (input.paymentMethod === 'PAYPAL' && !online) throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
     else if (input.paymentMethod === 'BANK_TRANSFER' && !(await this.settings.get('payments.bank_transfer'))?.enabled)
       throw badRequest('PAYMENT_METHOD_UNAVAILABLE', 'Método de pago no disponible.');
+    // Unpaid transfers hold stock: cap how long and how many at once (Admin → Configuración → Seguridad).
+    const security = await this.settings.get('security.controls');
+    if (input.paymentMethod === 'BANK_TRANSFER') {
+      const open = await this.db.one<{ n: number }>(
+        `select count(*)::int as n from public.payments p
+          where p.customer_id = $1 and p.status = 'REQUIRES_ACTION' and p.provider_code = 'RD_SANDBOX'
+            and exists (select 1 from public.payment_provider_intents bi where bi.payment_id = p.id and bi.sanitized_metadata->>'method' = 'BANK_TRANSFER')`,
+        [userId],
+      );
+      if ((open?.n ?? 0) >= security.bankTransferMaxOpenOrders)
+        throw conflict('BANK_TRANSFER_LIMIT', 'Ya tienes transferencias pendientes de confirmar. Paga o cancela una antes de crear otra.');
+    }
 
     const address = await this.buyerAddress(userId, input.addressId);
     if (!address || checkoutAddressVersion(address) !== input.addressVersion) throw addressChanged();
@@ -486,7 +497,7 @@ export class CheckoutService {
       const currentAddress = await this.buyerAddress(userId, input.addressId, c);
       if (!currentAddress || checkoutAddressVersion(currentAddress) !== input.addressVersion) throw addressChanged();
 
-      const expiresAt = new Date(Date.now() + (input.paymentMethod === 'BANK_TRANSFER' ? TRANSFER_TTL_MIN : ONLINE_PAYMENT_TTL_MIN) * 60_000);
+      const expiresAt = new Date(Date.now() + (input.paymentMethod === 'BANK_TRANSFER' ? security.bankTransferReserveHours * 60 : ONLINE_PAYMENT_TTL_MIN) * 60_000);
       const sessionId: string = (await this.db.one(
         `select public.create_checkout_from_cart($1, $2, $3, $4, $5) as id`,
         [cart.id, userId, input.idempotencyKey, expiresAt, corr],

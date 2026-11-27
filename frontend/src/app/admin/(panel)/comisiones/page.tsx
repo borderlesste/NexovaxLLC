@@ -16,6 +16,7 @@ import { PayoutActions } from '@/components/admin/payout-actions';
 import { ScheduledPayouts } from '@/components/admin/scheduled-payouts';
 import { AffiliatePayouts } from '@/components/admin/affiliate-payouts';
 import { t, getIntlLocale } from '@/lib/i18n';
+import { toCsv } from '@/lib/csv';
 
 const monthLabel = (m: string) => new Date(m + '-15').toLocaleDateString(getIntlLocale(), { month: 'short', year: 'numeric' });
 
@@ -33,7 +34,7 @@ export default function CommissionsPage() {
   const exportCsv = () => {
     const rows = [[t('Vendedor'), t('Código'), t('Ventas'), t('Comisión'), t('Neto'), t('Disponible')], ...d.sellers.map((s: any) => [s.name, s.code, s.sales, s.commission, s.net, s.available])];
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + rows.map((r: any[]) => r.map((x) => `"${x}"`).join(',')).join('\n')], { type: 'text/csv' }));
+    a.href = URL.createObjectURL(new Blob(['﻿' + toCsv(rows)], { type: 'text/csv' }));
     a.download = 'comisiones.csv'; a.click();
   };
   const payoutTable = (rows: any[], actions: boolean) => rows.length ? (

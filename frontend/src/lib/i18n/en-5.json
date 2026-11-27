@@ -578,5 +578,7 @@
 "Se suman los productos de tu tienda en el carrito antes de los cupones. Deja el campo vacío para ofrecer envío gratis sin mínimo.": "Products from your store in the cart count before coupons. Leave this blank to offer free shipping with no minimum.",
 "Si el comprador lleva en el mismo pedido otro producto de tu tienda sin envío gratis, paga el envío normal.": "If the buyer orders another product from your store without free shipping, they pay regular shipping.",
 "Envío gratis del producto guardado.": "Product free shipping saved.",
-"Elige al menos un país para el envío gratis.": "Choose at least one country for free shipping."
+"Elige al menos un país para el envío gratis.": "Choose at least one country for free shipping.",
+"Contraseña actual": "Current password",
+"Si entraste con Google o Apple y aún no tienes contraseña, déjalo vacío.": "If you signed in with Google or Apple and don’t have a password yet, leave it blank."
 }

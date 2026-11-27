@@ -91,7 +91,7 @@ export class AdminService {
                 (select count(*) from public.inventory_items where status = 'ACTIVE' and available_to_sell <= coalesce(low_stock_threshold, 5))::int as low_stock,
                 (select count(*) from public.support_tickets where status in ('OPEN','IN_PROGRESS'))::int as open_tickets,
                 (select count(*) from public.payouts where status = 'APPROVAL_REQUIRED')::int as payouts_pending,
-                (select count(*) from public.payments where status = 'REQUIRES_ACTION'${paymentsLive() ? " and environment = 'LIVE'" : ''})::int as transfers_pending,
+                (select count(*) from public.payments p where p.status = 'REQUIRES_ACTION' and p.provider_code = 'RD_SANDBOX' and exists (select 1 from public.payment_provider_intents bi where bi.payment_id = p.id and bi.sanitized_metadata->>'method' = 'BANK_TRANSFER')${paymentsLive() ? " and p.environment = 'LIVE'" : ''})::int as transfers_pending,
                 (select count(*) from public.seller_payout_accounts where verification_status = 'PENDING' and status <> 'DISABLED')::int as payout_accounts_pending,
                 (select count(*) from public.return_requests where status in ('REQUESTED','UNDER_REVIEW','RECEIVED','INSPECTING'))::int as returns_pending,
                 (select count(*) from public.nx_order_cancellations where status = 'APPROVED')::int as cancellations_pending,

@@ -16,6 +16,7 @@ import { Empty, Pagination, Segmented, Skeleton } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { t } from '@/lib/i18n';
 import { FeaturedOrder } from '@/components/admin/featured-order';
+import { toCsv } from '@/lib/csv';
 
 function AdminProducts() {
   const sp = useSearchParams();
@@ -51,7 +52,7 @@ function AdminProducts() {
   const exportCsv = () => {
     const rows = [[t('Producto'), 'SKU', t('Categoría'), t('Vendedor'), t('Precio'), t('Stock'), t('Estado')], ...(q.data?.items ?? []).map((p: any) => [p.title, p.sku, p.category, p.seller.name, p.price, p.stock, p.status])];
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + rows.map((r) => r.map((x: any) => `"${String(x ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' }));
+    a.href = URL.createObjectURL(new Blob(['﻿' + toCsv(rows)], { type: 'text/csv' }));
     a.download = 'productos.csv';
     a.click();
   };

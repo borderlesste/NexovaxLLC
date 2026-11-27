@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Lock, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, put } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { useCaptcha } from '@/components/ui/turnstile';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
@@ -11,20 +12,28 @@ import { DeleteAccountCard } from '@/components/account/delete-account';
 
 export default function SecurityPage() {
   const { me, signOut } = useAuth();
+  const [current, setCurrent] = useState('');
   const [pw, setPw] = useState('');
+  const captcha = useCaptcha('change_password');
   const [pw2, setPw2] = useState('');
   const [busy, setBusy] = useState(false);
   const save = async () => {
     if (pw !== pw2) return toast.error(t('Las contraseñas no coinciden.'));
     setBusy(true);
     try {
-      await put('/me/password', { password: pw });
+      await api('/me/password', {
+        method: 'PUT',
+        json: { password: pw, currentPassword: current || undefined },
+        headers: captcha.token ? { 'cf-turnstile-response': captcha.token } : undefined,
+      });
       toast.success(t('Contraseña actualizada.'));
+      setCurrent('');
       setPw('');
       setPw2('');
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
+      captcha.reset();
       setBusy(false);
     }
   };
@@ -35,9 +44,12 @@ export default function SecurityPage() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card p-6">
           <h2 className="flex items-center gap-2 text-lg font-bold"><Lock className="size-5 text-brand-600" /> {t('Cambiar contraseña')}</h2>
-          <Field label={t('Nueva contraseña')} className="mt-4"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" /></Field>
+          <Field label={t('Contraseña actual')} className="mt-4"><Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" /></Field>
+          <p className="mt-1 text-xs text-muted">{t('Si entraste con Google o Apple y aún no tienes contraseña, déjalo vacío.')}</p>
+          <Field label={t('Nueva contraseña')} className="mt-3"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" /></Field>
           <Field label={t('Confirmar contraseña')} className="mt-3"><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" /></Field>
           <p className="mt-2 text-xs text-muted">{t('Mínimo 8 caracteres, con letras y números.')}</p>
+          <div className="mt-3">{captcha.widget}</div>
           <Button className="mt-4" onClick={save} loading={busy} disabled={!pw}>{t('Actualizar contraseña')}</Button>
         </div>
         <div className="card p-6">

@@ -132,6 +132,16 @@ export class SupabaseAdminService {
     return data.user!;
   }
 
+  /** True when the account has an e-mail/password identity (OAuth-only accounts have none yet). */
+  async hasPasswordIdentity(userId: string): Promise<boolean> {
+    const { data, error } = await this.admin.auth.admin.getUserById(userId);
+    if (error || !data.user) {
+      this.logger.warn(`getUserById failed: ${error?.message ?? 'not found'}`);
+      throw new AppError('AUTH_PROVIDER_ERROR', 'No se pudo verificar la cuenta. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
+    return (data.user.identities ?? []).some((i) => i.provider === 'email');
+  }
+
   async updateUserPassword(userId: string, password: string) {
     const { error } = await this.admin.auth.admin.updateUserById(userId, { password });
     if (error && /password/i.test(error.message))

@@ -70,6 +70,8 @@ export class WelcomeBadgeDto {
 
 export class PasswordDto {
   @IsString() @MinLength(8) @MaxLength(72) password: string;
+  /** Required when the account already has a password. */
+  @IsOptional() @IsString() @MaxLength(72) currentPassword?: string;
 }
 
 export class AddressDto {
@@ -199,9 +201,10 @@ export class AccountController {
     return this.account.saveWelcomeBadge(user, dto, file);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Put('me/password')
-  changePassword(@CurrentUser() user: RequestUser, @Body() dto: PasswordDto) {
-    return this.account.changePassword(user, dto.password);
+  changePassword(@CurrentUser() user: RequestUser, @Body() dto: PasswordDto, @Headers('cf-turnstile-response') captcha?: string) {
+    return this.account.changePassword(user, dto.password, dto.currentPassword, captcha || null);
   }
 
   @Put('me/delivery-country')

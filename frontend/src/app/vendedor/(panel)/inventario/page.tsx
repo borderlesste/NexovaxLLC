@@ -15,11 +15,12 @@ import { Dialog, Empty, PageLoader } from '@/components/ui/misc';
 import { AreaTrend } from '@/components/charts/charts';
 import { ProductImage } from '@/components/shop/product-card';
 import { t } from '@/lib/i18n';
+import { toCsv } from '@/lib/csv';
 
 function exportCsv(items: any[]) {
   const head = ['SKU', t('Producto'), t('Variante'), t('Stock actual'), t('Reservado'), t('Disponible'), t('Stock mínimo'), t('Precio'), t('Valor'), t('Ubicación')];
   const rows = items.map((i) => [i.sku, i.title, i.variantTitle ?? '', i.onHand, i.reserved, i.available, i.minStock, i.price ?? '', i.value, i.location]);
-  const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const csv = toCsv([head, ...rows]);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = `inventario-${new Date().toISOString().slice(0, 10)}.csv`;

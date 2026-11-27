@@ -14,6 +14,7 @@ import { Dialog, Empty, PageLoader } from '@/components/ui/misc';
 import { Bars, dayLabel } from '@/components/charts/charts';
 import { PayoutActions } from '@/components/admin/payout-actions';
 import { t } from '@/lib/i18n';
+import { toCsv } from '@/lib/csv';
 
 export default function AdminFinancePage() {
   const qc = useQueryClient();
@@ -49,7 +50,7 @@ export default function AdminFinancePage() {
   const exportCsv = () => {
     const rows = [[t('Día'), t('Comisiones'), t('Pagos a vendedores')], ...d.series.map((s: any) => [s.day, s.commission, s.sellers])];
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + rows.map((r: any[]) => r.join(',')).join('\n')], { type: 'text/csv' }));
+    a.href = URL.createObjectURL(new Blob(['﻿' + toCsv(rows)], { type: 'text/csv' }));
     a.download = `finanzas-${days}d.csv`; a.click();
   };
   const k = d.kpis;

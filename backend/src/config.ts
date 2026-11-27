@@ -117,8 +117,11 @@ export const config = {
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',
   mailReplyTo: process.env.MAIL_REPLY_TO || undefined,
-  /** Development/QA: deliver every e-mail to this address instead of the real recipient. */
-  mailRedirectTo: process.env.MAIL_REDIRECT_TO?.trim() || undefined,
+  /**
+   * Development/QA: deliver every e-mail to this address instead of the real recipient.
+   * Ignored in production: it would send every reset link and receipt to one inbox.
+   */
+  mailRedirectTo: process.env.NODE_ENV === 'production' ? undefined : process.env.MAIL_REDIRECT_TO?.trim() || undefined,
   /** Recipient domains that never receive e-mail (demo/seed accounts), to protect sender reputation. */
   mailSuppressDomains: (process.env.MAIL_SUPPRESS_DOMAINS ?? 'rdmarketplace.do,demo.nexovax.com,example.com,example.org,test.local')
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),

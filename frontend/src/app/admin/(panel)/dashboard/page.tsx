@@ -13,11 +13,12 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Empty, PageLoader, Pills } from '@/components/ui/misc';
 import { AreaTrend, Donut } from '@/components/charts/charts';
 import { t, getIntlLocale } from '@/lib/i18n';
+import { toCsv } from '@/lib/csv';
 
 const MIX: Record<string, string> = { DELIVERED: 'Completados', COMPLETED: 'Completados', CLOSED: 'Completados', PROCESSING: 'En proceso', SHIPPED: 'Enviados', PARTIALLY_SHIPPED: 'Enviados', PARTIALLY_DELIVERED: 'Enviados', PREPARING: 'En proceso', PAID: 'En proceso', PENDING: 'Pendientes', PENDING_PAYMENT: 'Pendientes', CANCELLED: 'Cancelados', RETURNED: 'Devueltos', REFUNDED: 'Devueltos' };
 
 function download(name: string, rows: any[][]) {
-  const csv = rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const csv = toCsv(rows);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = name;

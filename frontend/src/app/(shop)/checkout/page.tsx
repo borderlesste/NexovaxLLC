@@ -380,7 +380,7 @@ export default function CheckoutPage() {
             )}
             {method === 'BANK_TRANSFER' && (
               <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
-                {t('Al confirmar recibirás los datos bancarios y una referencia. Reservamos tu inventario por 72 horas y confirmaremos tu pedido cuando validemos la transferencia.')}
+                {t('Al confirmar recibirás los datos bancarios y una referencia. Reservamos tu inventario por un tiempo limitado y confirmaremos tu pedido cuando validemos la transferencia.')}
               </p>
             )}
           </section>
