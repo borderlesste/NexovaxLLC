@@ -90,11 +90,25 @@ export class SupportService {
       input.storeName ? `Tienda/vendedor: ${input.storeName}` : null,
     ].filter(Boolean);
     const message = `${input.description.trim()}${context.length ? '\n\n— ' + context.join('\n— ') : ''}`;
+    // Urgency is the reporter's claim: an account may keep only a couple of urgent reports open, and the
+    // staff bell rings at most once per account per day (staff still see the priority in the queue).
+    let priority = input.priority;
+    let alert = priority === 'HIGH' || priority === 'CRITICAL';
+    if (alert) {
+      const recent = await this.db.one<{ open: number; today: number }>(
+        `select count(*) filter (where status not in ('RESOLVED','CLOSED','CANCELLED'))::int as open,
+                count(*) filter (where created_at > now() - interval '24 hours')::int as today
+           from public.support_tickets where requester_user_id = $1 and priority_code in ('HIGH','CRITICAL')`,
+        [user.id],
+      ).catch(() => ({ open: 0, today: 0 }));
+      if ((recent?.open ?? 0) >= 2) priority = 'NORMAL';
+      alert = priority !== 'NORMAL' && (recent?.today ?? 0) === 0;
+    }
     const evidence = await this.messaging.uploadFiles(user.id, files);
     const id = await this.db.tx(async (c) => {
       const r = await this.db.one(
         `select public.create_support_ticket($1, null, $2, $3, $4, $5, $6, null, null, $7) as id`,
-        [user.id, cat.id, input.priority, input.subject.trim(), message, orderId, randomUUID()],
+        [user.id, cat.id, priority, input.subject.trim(), message, orderId, randomUUID()],
         c,
       );
       const team = await this.db.one(`select id from public.support_teams where code = 'SUPPORT'`, [], c);
@@ -117,7 +131,7 @@ export class SupportService {
     });
     this.mail.fire(() => this.mail.supportTicketCreated(id));
     const t = await this.db.one(`select public_number from public.support_tickets where id = $1`, [id]);
-    if (input.priority === 'HIGH' || input.priority === 'CRITICAL') await this.alertStaff(id, ticketRef(t!.public_number), input.priority, input.subject.trim());
+    if (alert) await this.alertStaff(id, ticketRef(t!.public_number), priority as 'HIGH' | 'CRITICAL', input.subject.trim());
     return { id, code: ticketRef(t!.public_number) };
   }
 

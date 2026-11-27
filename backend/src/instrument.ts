@@ -15,6 +15,9 @@ if (dsn) {
     tracesSampleRate: 0,
     beforeSend(event) {
       if (event.request) {
+        // Query strings carry secrets (webhook ?token=, recovery codes): keep only the path.
+        if (typeof event.request.url === 'string') event.request.url = event.request.url.replace(/[?#].*$/, '');
+        delete event.request.query_string;
         delete event.request.data;
         delete event.request.cookies;
         if (event.request.headers) {
@@ -24,6 +27,8 @@ if (dsn) {
       }
       // No IP addresses (privacy notice): neither the visitor's nor the one Sentry would infer.
       if (event.user) delete event.user.ip_address;
+      for (const b of event.breadcrumbs ?? []) if (b.data && typeof b.data.url === 'string') b.data.url = b.data.url.replace(/[?#].*$/, '');
+      if (event.transaction) event.transaction = event.transaction.replace(/[?#].*$/, '');
       return event;
     },
   });

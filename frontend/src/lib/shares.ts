@@ -13,7 +13,7 @@ export const shareUrl = (slug: string, code?: string | null, ref?: string | null
   return `${typeof window !== 'undefined' ? window.location.origin : ''}/producto/${slug}${q ? `?${q}` : ''}`;
 };
 
-type Stored = { code: string; at: number }[];
+type Stored = { code: string; slug?: string; at: number }[];
 const read = (): Stored => {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? '[]');
@@ -36,7 +36,10 @@ export function rememberShare() {
   if (typeof window === 'undefined') return;
   const code = new URLSearchParams(window.location.search).get('s')?.trim().toUpperCase();
   if (!code || !/^[A-Z0-9]{6,16}$/.test(code)) return;
-  write([...read().filter((x) => x.code !== code), { code, at: Date.now() }]);
+  // A code only counts on the product page it was made for (the API checks the pair).
+  const slug = /^\/producto\/([a-z0-9-]{1,200})\/?$/.exec(window.location.pathname)?.[1];
+  if (!slug) return;
+  write([...read().filter((x) => x.code !== code), { code, slug, at: Date.now() }]);
   try {
     const seen: string[] = JSON.parse(sessionStorage.getItem(SEEN) ?? '[]');
     if (seen.includes(code)) return;
@@ -49,7 +52,7 @@ export function rememberShare() {
 
 /** Tells the API that the signed-in buyer arrived through the remembered shared links. */
 export async function flushShares() {
-  const codes = read().map((x) => x.code);
+  const codes = read().filter((x) => x.slug).map((x) => `${x.code}@${x.slug}`);
   if (!codes.length) return;
   try {
     await post('/shares/track', { codes });

@@ -8,6 +8,8 @@ import { mediaUrl } from '../catalog/catalog.sql';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from(randomBytes(8), (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
 const CODE_RE = /^[A-Z0-9]{6,16}$/;
+/** Fewest distinct visitors a link needs before its sales are reported to its owner. */
+const SHARE_MIN_COHORT = 5;
 /** A buyer who arrived through a shared link counts for that link during this many days. */
 export const SHARE_WINDOW_DAYS = 30;
 
@@ -55,14 +57,25 @@ export class SharesService {
 
   /** Remembers that a signed-in buyer arrived through these links (own links are ignored). */
   async track(user: RequestUser, codes: string[]) {
-    const list = [...new Set((codes ?? []).map((x) => String(x ?? '').trim().toUpperCase()).filter((x) => CODE_RE.test(x)))].slice(0, 10);
+    // Each entry is "CODE@product-slug": a code only counts on the page of the product it was made for,
+    // so a code can't be slipped onto an unrelated link to watch what one person buys.
+    const pairs = new Map<string, string>();
+    for (const raw of codes ?? []) {
+      const [code, slug] = String(raw ?? '').trim().split('@');
+      const c = (code ?? '').toUpperCase();
+      if (CODE_RE.test(c) && slug && /^[a-z0-9-]{1,200}$/.test(slug)) pairs.set(c, slug);
+    }
+    const list = [...pairs.keys()].slice(0, 10);
     if (!list.length) return { tracked: 0 };
     const rows = await this.db.many(
       `insert into public.nx_share_attributions (link_id, customer_id, attributed_at, expires_at)
-       select l.id, $2, now(), now() + $3 * interval '1 day' from public.nx_share_links l where l.code = any($1::text[]) and l.user_id <> $2
+       select l.id, $2, now(), now() + $4 * interval '1 day'
+         from public.nx_share_links l join public.products p on p.id = l.product_id
+         join unnest($1::text[], $3::text[]) as x(code, slug) on x.code = l.code and x.slug = p.slug
+        where l.user_id <> $2
        on conflict (link_id, customer_id) do update set attributed_at = now(), expires_at = excluded.expires_at
        returning link_id`,
-      [list, user.id, SHARE_WINDOW_DAYS],
+      [list, user.id, list.map((c) => pairs.get(c)!), SHARE_WINDOW_DAYS],
     );
     return { tracked: rows.length };
   }
@@ -98,7 +111,11 @@ export class SharesService {
       product: { id: r.product_id, slug: r.slug, title: r.title, active: r.status === 'ACTIVE', imageUrl: r.image_id ? mediaUrl(r.image_id) : null },
       createdAt: r.created_at, lastSharedAt: r.last_shared_at, lastClickAt: r.last_click_at,
       clicks: r.clicks, visitors: r.visitors,
-      orders: r.orders ?? 0, units: r.units ?? 0, amount: r.amount ?? '0', currency: r.currency, lastSaleAt: r.last_sale_at,
+      // Sales are shown only for links several people used, and without exact amounts or times, so a
+      // link sent to one person never reveals what that person bought.
+      ...(r.visitors >= SHARE_MIN_COHORT
+        ? { orders: r.orders ?? 0, units: r.units ?? 0, amount: null, currency: r.currency, lastSaleAt: null }
+        : { orders: 0, units: 0, amount: null, currency: r.currency, lastSaleAt: null, hidden: (r.orders ?? 0) > 0 }),
     }));
     return {
       windowDays: SHARE_WINDOW_DAYS,

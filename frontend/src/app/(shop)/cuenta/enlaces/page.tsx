@@ -66,7 +66,7 @@ export default function SharedLinksPage() {
                   </p>
                   {l.orders > 0 && (
                     <p className="mt-1 text-sm font-semibold text-emerald-700">
-                      {l.orders === 1 ? t('1 pedido') : t('{a} pedidos', { a: l.orders })} · {l.units} {t('unidades')} · {money(l.amount, l.currency)}
+                      {l.orders === 1 ? t('1 pedido') : t('{a} pedidos', { a: l.orders })} · {l.units} {t('unidades')}{l.amount != null ? <> · {money(l.amount, l.currency)}</> : null}
                       {l.lastSaleAt && <span className="font-normal text-muted"> · {t('última el {a}', { a: fmtDate(l.lastSaleAt) })}</span>}
                     </p>
                   )}

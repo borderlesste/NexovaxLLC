@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested , MaxLength } from 'class-validator';
 import { CurrentUser, Public, RequestUser, Roles, requireSeller } from '../auth/auth';
 import { CouponsService } from './coupons.service';
 import { AffiliatesService, PAYOUT_METHODS, type PayoutMethod } from './affiliates.service';
@@ -33,7 +33,7 @@ export class ProgramDto {
   @IsOptional() @IsArray() @ArrayMaxSize(500) @IsUUID('all', { each: true }) productIds?: string[];
 }
 export class TrackDto {
-  @IsArray() @ArrayMaxSize(10) @IsString({ each: true }) codes: string[];
+  @IsArray() @ArrayMaxSize(10) @IsString({ each: true }) @MaxLength(240, { each: true }) codes: string[];
 }
 class BankDto {
   @IsOptional() @IsString() @Length(0, 80) holderName?: string;

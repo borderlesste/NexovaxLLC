@@ -893,7 +893,15 @@ export class AdminService {
         throw conflict('TAX_REMITTANCE_EXCEEDS_PENDING', 'El monto supera el impuesto pendiente por declarar.');
       const cash = await this.db.one<{ id: string }>(`select public.get_or_create_ledger_account('BANK_CASH',$1,null,null,null) as id`, [currency], c);
       const corr = randomUUID();
-      const key = `tax-remittance:${corr}`;
+      // One remittance per authority payment reference: a replayed or retried request can't post it twice.
+      const ref = dto.reference.trim().toUpperCase().replace(/\s+/g, ' ');
+      const dup = await this.db.one(
+        `select 1 from public.ledger_batches where batch_type = 'TAX_REMITTANCE' and currency_code = $1 and upper(regexp_replace(metadata->>'reference', '\\s+', ' ', 'g')) = $2 limit 1`,
+        [currency, ref],
+        c,
+      );
+      if (dup) throw conflict('TAX_REMITTANCE_DUPLICATE', 'Ya registraste un pago de impuestos con esa referencia.');
+      const key = `tax-remittance:${currency}:${ref}`.slice(0, 200);
       const batch = await this.db.one<{ id: string }>(
         `insert into public.ledger_batches (batch_type, status, currency_code, source_type, idempotency_key, actor_user_id, correlation_id, description, metadata)
          values ('TAX_REMITTANCE','DRAFT',$1,'TAX_REMITTANCE',$2,$3,$4,$5,$6::jsonb) returning id`,

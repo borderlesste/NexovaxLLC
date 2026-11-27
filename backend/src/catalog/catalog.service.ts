@@ -500,7 +500,8 @@ export class CatalogService {
       categories: cats,
       isFollowing: !!follow,
       isOwnStore: viewerSellerIds.includes(s.id),
-      shipsFrom: shipFrom ? { city: shipFrom.city, countryCode: shipFrom.country_code } : null,
+      // Country only: the city comes from the private ship-from address (it can be a home address).
+      shipsFrom: shipFrom ? { city: null, countryCode: shipFrom.country_code } : null,
     };
   }
 
