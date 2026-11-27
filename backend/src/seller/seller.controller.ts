@@ -217,16 +217,17 @@ export class SellerController {
     return this.seller.updateShipFrom(this.sid(user, h, 'SETTINGS'), dto);
   }
 
+  /** Free shipping the store pays for this product (countries and optional store-subtotal minimum). */
   @FreshUser()
-  @Get('store/free-shipping')
-  freeShipping(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.seller.freeShipping(this.sid(user, h, 'SETTINGS'));
+  @Get('products/:id/free-shipping')
+  productFreeShipping(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Headers('x-seller-id') h?: string) {
+    return this.seller.freeShipping(this.sid(user, h, 'PRODUCTS'), id);
   }
 
   @FreshUser()
-  @Put('store/free-shipping')
-  setFreeShipping(@CurrentUser() user: RequestUser, @Body() dto: FreeShippingDto, @Headers('x-seller-id') h?: string) {
-    return this.seller.setFreeShipping(this.sid(user, h, 'SETTINGS'), user.id, dto);
+  @Put('products/:id/free-shipping')
+  setProductFreeShipping(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: FreeShippingDto, @Headers('x-seller-id') h?: string) {
+    return this.seller.setFreeShipping(this.sid(user, h, 'PRODUCTS'), id, user.id, dto);
   }
 
   /** Where the store ships to (NX-GEO-001): every destination, only its country, only some, or all but some. */

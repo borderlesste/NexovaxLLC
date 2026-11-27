@@ -19,6 +19,7 @@ import { SellerProductPreorders } from '@/components/seller/product-preorders';
 import { MediaVariantSelect } from '@/components/seller/media-variant-select';
 import { ShippingDimensions } from '@/components/seller/shipping-dimensions';
 import { DestinationsCard, type DestinationDraft } from '@/components/seller/destinations-card';
+import { emptyFreeShipping, FreeShippingCard, freeShippingBody, freeShippingError, type FreeShippingDraft } from '@/components/seller/free-shipping-card';
 import { isColorOption, presetsFor, quickOptions, sameOption, sameWord, swatchFor } from '@/lib/variant-words';
 
 interface Opt { name: string; values: { label: string; swatch?: string | null }[] }
@@ -43,6 +44,7 @@ export function ProductEditor({ productId }: { productId?: string }) {
   const moderation = useQuery({ queryKey: ['public-config'], queryFn: () => get<any>('/config/public'), staleTime: 60_000 }).data?.productModeration === true;
   const [loaded, setLoaded] = useState(!productId);
   const [dest, setDest] = useState<DestinationDraft>({ mode: 'ALL', countries: [] });
+  const [freeShipping, setFreeShipping] = useState<FreeShippingDraft>(emptyFreeShipping);
   const [f, setF] = useState({ title: '', parentCategoryId: '', categoryId: '', condition: 'NEW', sizeGuide: '', brandName: '', shortDescription: '', description: '', slug: '', metaTitle: '', metaDescription: '' });
   const [options, setOptions] = useState<Opt[]>([]);
   const [variants, setVariants] = useState<Var[]>([{ key: 'default', optionValues: {}, sku: '', price: '', compareAtPrice: '', stock: '0', active: true }]);
@@ -130,6 +132,8 @@ export function ProductEditor({ productId }: { productId?: string }) {
     if (variants.some((v) => v.active && (!v.sku.trim() || !(Number(v.price) > 0)))) return toast.error(t('Cada variante necesita SKU y precio mayor que cero.'));
     if (![ship.weightKg, ship.lengthCm, ship.widthCm, ship.heightCm].every((x) => Number(x) > 0)) return toast.error(t('Indica el peso y las dimensiones del paquete (sección Envío y dimensiones).'));
     if (!productId && dest.mode !== 'ALL' && !dest.countries.length) return toast.error(t('Elige al menos un país en Destinos de este producto.'));
+    const freeShippingProblem = productId ? null : freeShippingError(freeShipping);
+    if (freeShippingProblem) return toast.error(freeShippingProblem);
     setSaving(action === 'SUBMIT' ? 'submit' : 'draft');
     try {
       const r = productId ? await put(`/seller/products/${productId}`, payload(action)) : await post('/seller/products', payload(action));
@@ -137,6 +141,11 @@ export function ProductEditor({ productId }: { productId?: string }) {
         // The product exists now: store where it ships. If this fails the product stays saved and
         // the seller can retry from the edit page, where the same card is shown.
         await put(`/seller/products/${r.id}/destinations`, dest).catch((e) => toast.error(errorMessage(e)));
+        qc.invalidateQueries({ queryKey: ['availability'] });
+      }
+      if (!productId && freeShipping.enabled) {
+        // Same as destinations: the product stays saved and the seller can retry from the edit page.
+        await put(`/seller/products/${r.id}/free-shipping`, freeShippingBody(freeShipping)).catch((e) => toast.error(errorMessage(e)));
         qc.invalidateQueries({ queryKey: ['availability'] });
       }
       qc.invalidateQueries({ queryKey: ['seller-products'] });
@@ -368,6 +377,8 @@ export function ProductEditor({ productId }: { productId?: string }) {
           </Card>
 
           {productId ? <DestinationsCard productId={productId} /> : <DestinationsCard draft={dest} onDraftChange={setDest} />}
+
+          {productId ? <FreeShippingCard productId={productId} /> : <FreeShippingCard draft={freeShipping} onDraftChange={setFreeShipping} />}
 
           <Card>
             <CardHeader icon={<Layers />} title={t('Organización y estado')} subtitle={t('Visibilidad y estado del producto en el marketplace.')} />

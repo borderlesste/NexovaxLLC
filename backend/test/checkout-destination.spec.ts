@@ -37,7 +37,7 @@ describe('checkout address version', () => {
 
   function checkout() {
     let storedAddress: typeof address | null = { ...address };
-    let freeShipping: { seller_id: string; country_codes: string[]; minimum_subtotal: string | null; currency_code: string } | null = null;
+    let freeShipping: { product_id: string; country_codes: string[]; minimum_subtotal: string | null; currency_code: string } | null = null;
     let checkoutUnitPrice = '10.00';
     let beforeTx: (() => void) | undefined;
     const client = {};
@@ -49,7 +49,7 @@ describe('checkout address version', () => {
         return { id: 'checkout', currency_code: 'USD', amount: '15.00', cfg_id: 'config', acc_id: 'account' };
       }),
       many: jest.fn(async (sql: string) => {
-        if (sql.includes('nx_seller_free_shipping')) return freeShipping ? [freeShipping] : [];
+        if (sql.includes('nx_product_free_shipping')) return freeShipping ? [freeShipping] : [];
         if (sql.includes('from public.checkout_items')) {
           return [{ id: 'item', seller_id: 'seller', variant_id: 'variant', product_id: 'product', quantity: 1, seller_group_id: 'seller-group', unit_price: checkoutUnitPrice }];
         }
@@ -89,7 +89,7 @@ describe('checkout address version', () => {
     return {
       svc, db, shipping, availability, payments, rateFor, client,
       updateAddress: (next: typeof address | null) => { storedAddress = next; },
-      enableFreeShipping: (minimum = '10.00') => { freeShipping = { seller_id: 'seller', country_codes: ['US'], minimum_subtotal: minimum, currency_code: 'USD' }; },
+      enableFreeShipping: (minimum = '10.00') => { freeShipping = { product_id: 'product', country_codes: ['US'], minimum_subtotal: minimum, currency_code: 'USD' }; },
       changeInTransaction: (change: 'disable' | 'reprice' | 'destination') => { beforeTx = () => {
         if (change === 'disable') freeShipping = null;
         if (change === 'reprice') checkoutUnitPrice = '9.99';

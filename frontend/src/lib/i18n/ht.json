@@ -3332,5 +3332,11 @@
   "Continuar": "Kontinye",
   "Recibos": "Resi",
   "Qué tiendas muestran su identificación fiscal en el recibo del comprador.": "Ki boutik ki montre nimewo fiskal yo sou resi achtè a.",
-  "La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.": "Nimewo fiskal moun fizik, antrepriz endividyèl / travayè endepandan ak « Lòt » pa janm parèt, paske li ka yon nimewo idantite pèsonèl (SSN, Cédula, CPF). Se achtè a sèlman ki wè l sou resi li; vandè yo ak anplwaye yo pa resevwa l nan detay kòmand lan."
+  "La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.": "Nimewo fiskal moun fizik, antrepriz endividyèl / travayè endepandan ak « Lòt » pa janm parèt, paske li ka yon nimewo idantite pèsonèl (SSN, Cédula, CPF). Se achtè a sèlman ki wè l sou resi li; vandè yo ak anplwaye yo pa resevwa l nan detay kòmand lan.",
+"Tu tienda paga el envío de este producto y registra su propia guía.": "Boutik ou peye livrezon pwodwi sa a epi li antre pwòp nimewo swivi li.",
+"Ofrecer envío gratis en este producto": "Ofri livrezon gratis pou pwodwi sa a",
+"Se suman los productos de tu tienda en el carrito antes de los cupones. Deja el campo vacío para ofrecer envío gratis sin mínimo.": "Yo konte pwodwi boutik ou a ki nan panye a anvan koupon yo. Kite chan sa a vid pou ofri livrezon gratis san minimòm.",
+"Si el comprador lleva en el mismo pedido otro producto de tu tienda sin envío gratis, paga el envío normal.": "Si achtè a pran yon lòt pwodwi nan boutik ou san livrezon gratis nan menm kòmand lan, li peye livrezon nòmal.",
+"Envío gratis del producto guardado.": "Livrezon gratis pwodwi a anrejistre.",
+"Elige al menos un país para el envío gratis.": "Chwazi omwen yon peyi pou livrezon gratis."
 }

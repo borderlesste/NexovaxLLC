@@ -18,7 +18,7 @@ describe('checkout: physical origins', () => {
   const opt = (code: string, amount: string, days = 3) => ({ code, provider: 'MARKETPLACE', amount, estimatedDays: days, description: '' });
   const ctx = (rates: Record<string, any[]>, policies: unknown[] = []) => {
     const db = {
-      many: async (sql: string) => sql.includes('nx_seller_free_shipping') ? policies : sql.includes('inventory_items') ? stock : dims,
+      many: async (sql: string) => sql.includes('nx_product_free_shipping') ? policies : sql.includes('inventory_items') ? stock : dims,
       one: async (_sql: string, p: any[]) => ({ id: p[0], country_code: 'US' }),
     };
     const shipping = { originFor: jest.fn(async () => ({ id: 'A', country_code: 'US' })), options: jest.fn(async (o: any) => ({ options: rates[o.id], messages: [], liveRates: false })) };
@@ -27,9 +27,9 @@ describe('checkout: physical origins', () => {
     return self;
   };
   const groups = [{ sellerId: 's1', items: [
-    { variantId: 'v1', purchasable: true, quantity: 3, unitPrice: '10.00' },
-    { variantId: 'v2', purchasable: true, quantity: 1, unitPrice: '15.00' },
-    { variantId: 'v3', purchasable: false, quantity: 1, unitPrice: '100.00' },
+    { productId: 'p1', variantId: 'v1', purchasable: true, quantity: 3, unitPrice: '10.00' },
+    { productId: 'p2', variantId: 'v2', purchasable: true, quantity: 1, unitPrice: '15.00' },
+    { productId: 'p3', variantId: 'v3', purchasable: false, quantity: 1, unitPrice: '100.00' },
   ] }];
 
   it('splits lines by the warehouse that will ship them (same priority as the order)', async () => {
@@ -55,17 +55,18 @@ describe('checkout: physical origins', () => {
     expect(r.messages.join(' ')).toContain('varios almacenes');
   });
 
-  const policy = { seller_id: 's1', country_codes: ['US'], minimum_subtotal: '45.00', currency_code: 'USD' };
+  const policyFor = (productId: string, minimum = '45.00') => ({ product_id: productId, country_codes: ['US'], minimum_subtotal: minimum, currency_code: 'USD' });
+  const both = [policyFor('p1'), policyFor('p2', null as any)];
 
   it('offers one free seller-arranged option across origins with different delivery methods', async () => {
-    const self = ctx({ A: [opt('FLAT:STD', '6.99')], B: [opt('FLAT:EXP', '8.00')] }, [policy]);
+    const self = ctx({ A: [opt('FLAT:STD', '6.99')], B: [opt('FLAT:EXP', '8.00')] }, both);
     const r = (await groupOptions.call(self, 'cart', groups, { country_code: 'US' }, 'USD')).get('s1');
     expect(r.options).toEqual([expect.objectContaining({ code: SELLER_FREE_SHIPPING, amount: '0.00', provider: 'MARKETPLACE' })]);
     expect(r.origins.map((o: any) => o.options[0].serviceToken)).toEqual([SELLER_FREE_SHIPPING, SELLER_FREE_SHIPPING]);
   });
 
   it('keeps pickup and offers free delivery when a warehouse has no paid rate', async () => {
-    const self = ctx({ A: [opt('PICKUP', '0.00'), opt('FLAT:STD', '6.99')], B: [opt('PICKUP', '0.00')] }, [policy]);
+    const self = ctx({ A: [opt('PICKUP', '0.00'), opt('FLAT:STD', '6.99')], B: [opt('PICKUP', '0.00')] }, both);
     const r = (await groupOptions.call(self, 'cart', groups, { country_code: 'US' }, 'USD')).get('s1');
     expect(r.options.map((option: any) => [option.code, option.amount])).toEqual([[SELLER_FREE_SHIPPING, '0.00'], ['PICKUP', '0.00']]);
   });
@@ -76,9 +77,15 @@ describe('checkout: physical origins', () => {
     ['subtotal below the minimum, even with an unavailable line', ['US'], 'USD', '45.01', 'FLAT:STD'],
   ])('keeps the promotion hidden for %s', async (_case, countries, policyCurrency, minimum, method) => {
     const self = ctx({ A: [opt('FLAT:STD', '6.99')], B: [opt(method as string, '8.00')] }, [
-      { ...policy, country_codes: countries, minimum_subtotal: minimum, currency_code: policyCurrency },
+      { ...policyFor('p1'), country_codes: countries, minimum_subtotal: minimum, currency_code: policyCurrency }, policyFor('p2', '0.00'),
     ]);
     const r = (await groupOptions.call(self, 'cart', groups, { country_code: 'US' }, 'USD')).get('s1');
     expect(r.options.map((o: any) => o.code)).not.toContain(SELLER_FREE_SHIPPING);
+  });
+
+  it('charges regular shipping when one product of the store has no free shipping', async () => {
+    const self = ctx({ A: [opt('FLAT:STD', '6.99')], B: [opt('FLAT:STD', '8.00')] }, [policyFor('p1', '0.00')]);
+    const r = (await groupOptions.call(self, 'cart', groups, { country_code: 'US' }, 'USD')).get('s1');
+    expect(r.options.map((o: any) => o.code)).toEqual(['FLAT:STD']);
   });
 });

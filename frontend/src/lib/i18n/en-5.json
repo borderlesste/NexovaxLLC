@@ -572,5 +572,11 @@
   "Continuar": "Continue",
   "Recibos": "Receipts",
   "Qué tiendas muestran su identificación fiscal en el recibo del comprador.": "Which stores show their tax ID on the buyer's receipt.",
-  "La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.": "The tax ID of individuals, sole proprietors and “Other” is never shown, because it can be a personal ID number (SSN, Cédula, CPF). Only the buyer sees it on their receipt; sellers and staff do not get it in the order detail."
+  "La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.": "The tax ID of individuals, sole proprietors and “Other” is never shown, because it can be a personal ID number (SSN, Cédula, CPF). Only the buyer sees it on their receipt; sellers and staff do not get it in the order detail.",
+"Tu tienda paga el envío de este producto y registra su propia guía.": "Your store pays to ship this product and provides its own tracking number.",
+"Ofrecer envío gratis en este producto": "Offer free shipping on this product",
+"Se suman los productos de tu tienda en el carrito antes de los cupones. Deja el campo vacío para ofrecer envío gratis sin mínimo.": "Products from your store in the cart count before coupons. Leave this blank to offer free shipping with no minimum.",
+"Si el comprador lleva en el mismo pedido otro producto de tu tienda sin envío gratis, paga el envío normal.": "If the buyer orders another product from your store without free shipping, they pay regular shipping.",
+"Envío gratis del producto guardado.": "Product free shipping saved.",
+"Elige al menos un país para el envío gratis.": "Choose at least one country for free shipping."
 }

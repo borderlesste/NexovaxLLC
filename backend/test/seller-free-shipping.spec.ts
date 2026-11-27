@@ -13,18 +13,20 @@ import { AvailabilityService } from '../src/geo/availability';
 import { OrdersService } from '../src/orders/orders.service';
 import { AlertsService } from '../src/analytics/alerts.service';
 
-describe('seller free shipping settings over HTTP', () => {
+describe('product free shipping settings over HTTP', () => {
   let app: INestApplication;
   let currency = 'USD';
   let stored: any;
-  const path = '/seller/store/free-shipping';
   const sellerId = '10000000-0000-4000-8000-000000000001';
+  const productId = '30000000-0000-4000-8000-000000000001';
+  const path = `/seller/products/${productId}/free-shipping`;
   const userId = '20000000-0000-4000-8000-000000000001';
   const fixture = { enabled: true, countries: ['do', 'US', 'DO'], minimumSubtotal: '19.95' };
   const db = {
     one: async (sql: string, args: any[]) => {
-      if (sql.includes('insert into public.nx_seller_free_shipping')) {
-        stored = { enabled: args[1], country_codes: args[2], minimum_subtotal: args[3], currency_code: args[4] };
+      if (sql.includes('from public.products')) return args[0] === productId && args[1] === sellerId ? { '?column?': 1 } : null;
+      if (sql.includes('insert into public.nx_product_free_shipping')) {
+        stored = { enabled: args[2], country_codes: args[3], minimum_subtotal: args[4], currency_code: args[5] };
       }
       return stored;
     },
@@ -44,7 +46,7 @@ describe('seller free shipping settings over HTTP', () => {
     app.use((req: any, _res: any, next: () => void) => {
       const role = req.headers['x-fixture-role'];
       if (role) req.user = { id: userId, status: 'ACTIVE', roles: [], sellers: [
-        { id: sellerId, status: 'ACTIVE', isOwner: role === 'owner', areas: role === 'staff' ? ['SETTINGS'] : ['ORDERS'] },
+        { id: sellerId, status: 'ACTIVE', isOwner: role === 'owner', areas: role === 'staff' ? ['PRODUCTS'] : ['ORDERS'] },
       ] };
       next();
     });
@@ -61,6 +63,7 @@ describe('seller free shipping settings over HTTP', () => {
     await put(fixture, 'warehouse').expect(403);
     await http.put(path).set('x-fixture-role', 'owner').set('x-seller-id', userId).send(fixture).expect(403);
     await put(fixture, 'staff').expect(200);
+    await http.get(path.replace(productId, '30000000-0000-4000-8000-000000000002')).set('x-fixture-role', 'owner').expect(404);
   });
 
   it('defaults off and round-trips countries, an optional exact threshold and explicit opt-out', async () => {

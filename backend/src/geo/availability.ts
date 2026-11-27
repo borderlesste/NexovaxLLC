@@ -147,7 +147,7 @@ export class AvailabilityService {
               (select a.country_code from public.seller_ship_from_addresses a where a.seller_id = p.seller_id and a.status = 'ACTIVE'
                 order by a.is_default desc, a.created_at limit 1) as origin,
               sr.mode as store_mode, sr.countries::text[] as store_countries, pr.mode as product_mode, pr.countries::text[] as product_countries,
-              (case when fs.seller_id is not null then coalesce(fs.minimum_subtotal, 0) end)::text as free_shipping_minimum,
+              (case when fs.product_id is not null then coalesce(fs.minimum_subtotal, 0) end)::text as free_shipping_minimum,
               ($3 and exists (select 1 from public.shipping_quote_requests q
                          join public.shipping_rate_options o on o.quote_request_id = q.id and o.shipping_provider_code = 'SHIPPO'
                         where q.seller_id = p.seller_id and q.request_snapshot -> 'destination' ->> 'country' = $2
@@ -155,7 +155,7 @@ export class AvailabilityService {
          from public.products p
          left join public.destination_restrictions sr on sr.seller_id = p.seller_id and sr.product_id is null
          left join public.destination_restrictions pr on pr.product_id = p.id
-         left join public.nx_seller_free_shipping fs on fs.seller_id = p.seller_id and fs.enabled
+         left join public.nx_product_free_shipping fs on fs.product_id = p.id and fs.enabled
            and fs.currency_code = $5 and $2 = any(fs.country_codes)
         where p.id = any($1::uuid[]) and p.status = 'ACTIVE'`,
       [allIds, country, liveRates, days, s['marketplace.currency'] || 'USD'], client,

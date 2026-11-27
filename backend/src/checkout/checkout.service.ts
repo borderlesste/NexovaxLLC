@@ -255,7 +255,7 @@ export class CheckoutService {
           where ci.cart_id = $1 and ci.status = 'ACTIVE'`,
         [cartId],
       ),
-      freeShippingPolicies(this.db, groups.map((group) => group.sellerId)),
+      freeShippingPolicies(this.db, groups.flatMap((group) => group.items.map((item: any) => item.productId))),
     ]);
     type Opts = Awaited<ReturnType<ShippingService['options']>>;
     const out = new Map<string, Opts & { parcel: Parcel; origins: { id: string | null; parcel: Parcel; options: ShippingOption[] }[] }>();
@@ -283,14 +283,16 @@ export class CheckoutService {
         // The default origin may be the same address as a warehouse already in the plan.
         const merged = new Map<string | null, (typeof quoted)[number]>();
         for (const q of quoted) if (!merged.has(q.id)) merged.set(q.id, q);
-        const policy = freePolicies.get(g.sellerId);
         const items = g.items.filter((item: any) => item.purchasable);
         const warehouses = [...merged.values()];
-        const canOfferFree = policy && items.length > 0
+        const lines = items.map((item: any) => ({
+          productId: item.productId,
+          requiresShipping: purchasableDims.find((line) => line.variant_id === item.variantId)?.requires_shipping,
+        }));
+        const canOfferFree = items.length > 0
           && !items.some((item: any) => blocked?.has(item.variantId))
-          && purchasableDims.some((line) => line.seller_id === g.sellerId && line.requires_shipping !== false)
           && warehouses.every((q) => q.id)
-          && qualifiesForFreeShipping(policy, address.country_code, currency,
+          && qualifiesForFreeShipping(freePolicies, lines, address.country_code, currency,
             items.reduce((sum: Minor, item: any) => sum + toMinor(item.unitPrice) * BigInt(item.quantity), 0n));
         // Keep live/cached rates as-is. The store uses its own carrier on this additional route.
         const list = canOfferFree ? warehouses.map((q) => ({
@@ -519,12 +521,13 @@ export class CheckoutService {
         throw conflict('CART_CHANGED', 'Tu carrito cambió mientras confirmabas el pedido. Revisa el resumen e inténtalo de nuevo.');
 
       // A promotion can change after the quote, and the checkout snapshot can reprice a cart line.
-      const freePolicies = await freeShippingPolicies(this.db, freeSellerIds, c);
+      const freeLines = items.filter((item) => freeSellerIds.includes(item.seller_id));
+      const freePolicies = await freeShippingPolicies(this.db, freeLines.map((item) => item.product_id), c);
       for (const sellerId of freeSellerIds) {
-        const lines = items.filter((item) => item.seller_id === sellerId);
+        const lines = freeLines.filter((item) => item.seller_id === sellerId);
         const subtotal = lines.reduce((sum, item) => sum + toMinor(item.unit_price) * BigInt(item.quantity), 0n);
-        if (!lines.some((item) => item.requires_shipping !== false)
-          || !qualifiesForFreeShipping(freePolicies.get(sellerId), address.country_code, currency, subtotal)) throw shippingUnavailable();
+        if (!qualifiesForFreeShipping(freePolicies, lines.map((item) => ({ productId: item.product_id, requiresShipping: item.requires_shipping })),
+          address.country_code, currency, subtotal)) throw shippingUnavailable();
       }
       if (freeSellerIds.length) {
         const groups = preCart.groups.filter((group: any) => freeSellerIds.includes(group.sellerId));

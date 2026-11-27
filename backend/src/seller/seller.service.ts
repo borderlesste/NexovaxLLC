@@ -225,13 +225,15 @@ export class SellerService {
     };
   }
 
-  /** Store policy for free delivery funded by the seller. */
-  async freeShipping(sellerId: string) {
-    const [currency, row] = await Promise.all([
+  /** Free delivery funded by the seller for one of its products. */
+  async freeShipping(sellerId: string, productId: string) {
+    const [currency, product, row] = await Promise.all([
       this.settings.currency(),
+      this.db.one(`select 1 from public.products where id = $1 and seller_id = $2`, [productId, sellerId]),
       this.db.one(`select enabled, country_codes, minimum_subtotal::text, currency_code
-                     from public.nx_seller_free_shipping where seller_id = $1`, [sellerId]),
+                     from public.nx_product_free_shipping where product_id = $1 and seller_id = $2`, [productId, sellerId]),
     ]);
+    if (!product) throw notFound('Producto');
     const changed = row && row.currency_code !== currency;
     return {
       currency, enabled: !changed && !!row?.enabled, countries: (row?.country_codes ?? []) as string[],
@@ -240,12 +242,13 @@ export class SellerService {
     };
   }
 
-  async setFreeShipping(sellerId: string, actor: string, input: {
+  async setFreeShipping(sellerId: string, productId: string, actor: string, input: {
     enabled: boolean; countries: string[]; minimumSubtotal?: string | null; expectedCurrency?: string;
   }) {
     const currency = await this.settings.currency();
     if (input.expectedCurrency && currency !== input.expectedCurrency)
       throw conflict('FREE_SHIPPING_CURRENCY_CHANGED', 'La moneda de la tienda cambió. Revisa el mínimo antes de guardar.');
+    if (!(await this.db.one(`select 1 from public.products where id = $1 and seller_id = $2`, [productId, sellerId]))) throw notFound('Producto');
     let countries = [...new Set(input.countries.map((c) => c.trim().toUpperCase()))].sort();
     if (input.enabled && !countries.length) throw badRequest('COUNTRIES_REQUIRED', 'Elige al menos un país.');
     if (countries.length) {
@@ -258,12 +261,12 @@ export class SellerService {
       }
     }
     const saved = await this.db.one(
-      `insert into public.nx_seller_free_shipping (seller_id, enabled, country_codes, minimum_subtotal, currency_code, updated_by)
-       values ($1,$2,$3,$4,$5,$6)
-       on conflict (seller_id) do update set enabled = excluded.enabled, country_codes = excluded.country_codes,
+      `insert into public.nx_product_free_shipping (product_id, seller_id, enabled, country_codes, minimum_subtotal, currency_code, updated_by)
+       values ($1,$2,$3,$4,$5,$6,$7)
+       on conflict (product_id) do update set enabled = excluded.enabled, country_codes = excluded.country_codes,
          minimum_subtotal = excluded.minimum_subtotal, currency_code = excluded.currency_code, updated_by = excluded.updated_by, updated_at = now()
        returning enabled, country_codes, minimum_subtotal::text, currency_code`,
-      [sellerId, input.enabled, countries, input.minimumSubtotal ?? null, currency, actor],
+      [productId, sellerId, input.enabled, countries, input.minimumSubtotal ?? null, currency, actor],
     );
     return { enabled: saved!.enabled, countries: saved!.country_codes, minimumSubtotal: saved!.minimum_subtotal, currency: saved!.currency_code };
   }
