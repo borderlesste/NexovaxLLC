@@ -1,3 +1,4 @@
+import { invalidateCached } from '../common/single-flight';
 import { invalidSecurityControl, normalizeSecurityControls } from '../common/security-controls';
 import { defaultHomeLayout } from '../catalog/home-layout';
 import { Injectable, Logger } from '@nestjs/common';
@@ -557,6 +558,7 @@ export class AdminService {
   }
 
   async saveCategory(input: { id?: string; name: string; parentId?: string | null; status?: 'ACTIVE' | 'INACTIVE'; sortOrder?: number; description?: string; taxClass?: 'STANDARD' | 'REDUCED' | 'EXEMPT' }) {
+    invalidateCached('catalog:categories');
     const slugBase = slugify(input.name, 60);
     return this.db.tx(async (c) => {
       if (input.parentId) {
@@ -586,6 +588,7 @@ export class AdminService {
   }
 
   async archiveCategory(id: string) {
+    invalidateCached('catalog:categories');
     const used = await this.db.one(
       `with recursive t as (select id from public.categories where id = $1 union all select k.id from public.categories k join t on k.parent_id = t.id)
        select (select count(*) from public.products where category_id in (select id from t) and status <> 'ARCHIVED')::int as products,
@@ -938,6 +941,8 @@ export class AdminService {
     await this.validateSettings(rest);
     if (rest['marketplace.currency']) await this.ensurePayoutPolicy(admin, rest['marketplace.currency']);
     if (Object.keys(rest).length) await this.settings.update(admin.id, rest);
+    invalidateCached('feed:');
+    invalidateCached('catalog:');
     if (commissionRate != null) {
       if (commissionRate < 0 || commissionRate > 0.5) throw badRequest('COMMISSION_INVALID', 'La comisión debe estar entre 0 % y 50 %.');
       const cur = await this.currentCommission();

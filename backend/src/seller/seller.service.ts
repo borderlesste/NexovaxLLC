@@ -408,13 +408,37 @@ export class SellerService {
 
   async uploadStoreImage(user: RequestUser, sellerId: string, kind: 'logo' | 'banner', file: Express.Multer.File) {
     const assetId = await this.supa.uploadSellerImage(sellerId, user.id, file, 'store', 'PUBLIC');
-    await this.db.exec(`update public.seller_store_profiles set ${kind === 'logo' ? 'logo_asset_id' : 'banner_asset_id'} = $2 where seller_id = $1`, [sellerId, assetId]);
+    const col = kind === 'logo' ? 'logo_asset_id' : 'banner_asset_id';
+    await this.db.tx(async (c) => {
+      const old = await this.db.one(`select ${col} as id from public.seller_store_profiles where seller_id = $1 for update`, [sellerId], c);
+      await this.db.exec(`update public.seller_store_profiles set ${col} = $2 where seller_id = $1`, [sellerId, assetId], c);
+      if (old?.id && old.id !== assetId) await this.retireAsset(c, sellerId, old.id);
+    });
     return { url: mediaUrl(assetId) };
   }
 
   async removeStoreImage(sellerId: string, kind: 'logo' | 'banner') {
-    await this.db.exec(`update public.seller_store_profiles set ${kind === 'logo' ? 'logo_asset_id' : 'banner_asset_id'} = null where seller_id = $1`, [sellerId]);
+    const col = kind === 'logo' ? 'logo_asset_id' : 'banner_asset_id';
+    await this.db.tx(async (c) => {
+      const old = await this.db.one(`select ${col} as id from public.seller_store_profiles where seller_id = $1 for update`, [sellerId], c);
+      await this.db.exec(`update public.seller_store_profiles set ${col} = null where seller_id = $1`, [sellerId], c);
+      if (old?.id) await this.retireAsset(c, sellerId, old.id);
+    });
     return { ok: true };
+  }
+
+  /** A removed or replaced store/product image stops being served once nothing uses it any more. */
+  private async retireAsset(c: PoolClient, sellerId: string, assetId: string) {
+    await this.db.optional(c, () =>
+      this.db.exec(
+        `update public.assets set status = 'DELETED', deleted_at = now()
+          where id = $1 and owner_seller_id = $2 and status = 'READY'
+            and not exists (select 1 from public.product_media pm where pm.asset_id = $1)
+            and not exists (select 1 from public.seller_store_profiles sp where sp.logo_asset_id = $1 or sp.banner_asset_id = $1)`,
+        [assetId, sellerId],
+        c,
+      ),
+    );
   }
 
   // ------------------------------------------------------------------ products
@@ -872,9 +896,10 @@ export class SellerService {
 
   async removeMedia(sellerId: string, productId: string, mediaId: string, actor: string | null = null) {
     await this.db.tx(async (c) => {
-      const m = await this.db.one(`select is_primary from public.product_media where id = $1 and product_id = $2 and seller_id = $3`, [mediaId, productId, sellerId], c);
+      const m = await this.db.one(`select is_primary, asset_id from public.product_media where id = $1 and product_id = $2 and seller_id = $3`, [mediaId, productId, sellerId], c);
       if (!m) throw notFound('Imagen');
       await this.db.exec(`delete from public.product_media where id = $1`, [mediaId], c);
+      await this.retireAsset(c, sellerId, m.asset_id);
       if (m.is_primary)
         await this.db.exec(
           `update public.product_media set is_primary = true where id = (select id from public.product_media where product_id = $1 order by sort_order limit 1)`,

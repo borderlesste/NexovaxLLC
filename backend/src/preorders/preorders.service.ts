@@ -169,11 +169,15 @@ export class PreordersService {
          on conflict (user_id, product_id, coalesce(variant_id, '00000000-0000-0000-0000-000000000000'::uuid)) where status = 'ACTIVE' do nothing`,
         [buyerId, row.productId, row.variantId], c,
       );
-      return this.db.one(`${buyerRows} where r.id = $1`, [reservation.id], c);
+      const out = await this.db.one(`${buyerRows} where r.id = $1`, [reservation.id], c);
+      return { out, previous: row.previous == null ? null : Number(row.previous) };
     });
-    // After the commit: the store hears about the reservation (e-mail + bell); never breaks the reservation.
-    this.mail.fire(() => this.mail.preorderReserved(saved.id, `preorder-reserved:${saved.id}:${saved.quantity}:${Date.now()}`));
-    return saved;
+    // After the commit: the store hears about a new or changed reservation (e-mail + bell); a repeated
+    // request with the same quantity notifies nobody, and the key is stable so retries are deduplicated.
+    const { out, previous } = saved;
+    if (previous !== quantity)
+      this.mail.fire(() => this.mail.preorderReserved(out.id, `preorder-reserved:${out.id}:${previous ?? 'new'}:${quantity}`));
+    return out;
   }
 
   async cancel(buyerId: string, id: string) {

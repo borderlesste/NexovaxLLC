@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query, Res } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, Res, ServiceUnavailableException } from '@nestjs/common';
 import sharp from 'sharp';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -36,10 +36,42 @@ class Lru {
   }
 }
 
+/** Bounded concurrency: at most `max` jobs run at once; the rest wait in line (or are refused when the line is full). */
+class Gate {
+  private running = 0;
+  private queue: (() => void)[] = [];
+  constructor(private readonly max: number, private readonly maxQueue: number) {}
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.running >= this.max) {
+      if (this.queue.length >= this.maxQueue) throw new ServiceUnavailableException('Servidor ocupado, inténtalo de nuevo.');
+      await new Promise<void>((r) => this.queue.push(r));
+    }
+    this.running++;
+    try {
+      return await fn();
+    } finally {
+      this.running--;
+      this.queue.shift()?.();
+    }
+  }
+}
+
 @ApiTags('media')
 @Controller('media')
 export class MediaController {
   private cache = new Lru(96 * 1024 * 1024);
+  /** Same file or same resized copy requested by many visitors at once: one download / one resize. */
+  private inflight = new Map<string, Promise<{ buf: Buffer; type: string }>>();
+  private downloads = new Gate(8, 200);
+  private resizes = new Gate(2, 100);
+
+  private once(key: string, fn: () => Promise<{ buf: Buffer; type: string }>) {
+    const cur = this.inflight.get(key);
+    if (cur) return cur;
+    const p = fn().finally(() => this.inflight.delete(key));
+    this.inflight.set(key, p);
+    return p;
+  }
 
   constructor(
     private readonly db: DbService,
@@ -69,8 +101,8 @@ export class MediaController {
     }
     let hit = asset.visibility === 'PUBLIC' ? this.cache.get(id) : undefined;
     if (!hit) {
-      const buf = await this.storage.download(asset.storage_bucket, asset.storage_key);
-      hit = { buf, type: asset.mime_type };
+      const load = () => this.downloads.run(async () => ({ buf: await this.storage.download(asset.storage_bucket, asset.storage_key), type: asset.mime_type }));
+      hit = asset.visibility === 'PUBLIC' ? await this.once(id, load) : await load();
       if (asset.visibility === 'PUBLIC') this.cache.set(id, hit);
     }
     // Resized copy (public images only; unknown widths and other files are served as they are).
@@ -79,12 +111,18 @@ export class MediaController {
       const key = `${id}:w${width}`;
       let small = this.cache.get(key);
       if (!small) {
-        try {
-          const buf = await sharp(hit.buf, { failOn: 'none', pages: 1 }).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
-          small = buf.length < hit.buf.length ? { buf, type: 'image/webp' } : hit;
-        } catch {
-          small = hit;
-        }
+        const original = hit;
+        small = await this.once(key, () =>
+          this.resizes.run(async () => {
+            try {
+              const buf = await sharp(original.buf, { failOn: 'none', pages: 1, limitInputPixels: 40_000_000 })
+                .rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+              return buf.length < original.buf.length ? { buf, type: 'image/webp' } : original;
+            } catch {
+              return original;
+            }
+          }),
+        );
         this.cache.set(key, small);
       }
       hit = small;

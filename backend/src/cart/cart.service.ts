@@ -103,7 +103,9 @@ export class CartService {
         `(select r.variant_id as id, r.quantity, r.variant_id, v.product_id, p.seller_id, now() + make_interval(secs => r.ord::int) as created_at
             from unnest($1::uuid[], $3::int[]) with ordinality as r(variant_id, quantity, ord)
             join public.product_variants v on v.id = r.variant_id
-            join public.products p on p.id = v.product_id and p.published_at is not null)`,
+            join public.products p on p.id = v.product_id and p.published_at is not null and p.status in ('ACTIVE','OUT_OF_STOCK')
+            join public.sellers sx on sx.id = p.seller_id and sx.status = 'ACTIVE'
+           where v.status = 'ACTIVE')`,
         '',
       ),
       [[...merged.keys()], currency, [...merged.values()]],

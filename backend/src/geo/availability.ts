@@ -191,9 +191,12 @@ export class AvailabilityService {
 
   private async cleanCountries(list: unknown) {
     if (!Array.isArray(list) || list.length > 300) throw badRequest('COUNTRIES_INVALID', 'Lista de países inválida.');
+    // Dedupe and shape-check first; then validate each distinct code once (at most ~250 countries exist).
+    const unique = [...new Set(list.map((c) => String(c ?? '').trim().toUpperCase()))];
+    if (unique.length > 260 || unique.some((c) => !/^[A-Z]{2}$/.test(c))) throw badRequest('COUNTRIES_INVALID', 'Lista de países inválida.');
     const out: string[] = [];
-    for (const c of list) {
-      const cc = await this.country(String(c));
+    for (const c of unique) {
+      const cc = await this.country(c);
       if (!out.includes(cc)) out.push(cc);
     }
     return out;

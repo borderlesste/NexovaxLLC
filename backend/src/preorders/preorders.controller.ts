@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { IsISO8601, IsInt, IsUUID, Matches, Max, Min } from 'class-validator';
@@ -33,6 +34,7 @@ export class PreordersController {
   }
 
   @FreshUser()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('me/preorders')
   reserve(@CurrentUser() user: RequestUser, @Body() body: ReservePreorderDto) {
     return this.preorders.reserve(user.id, user.sellers.map((store) => store.id), body.offerId, body.quantity);

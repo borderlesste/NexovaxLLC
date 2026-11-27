@@ -108,6 +108,7 @@ export class ProductImportService {
     try {
       if (isZip || name.endsWith('.xlsx')) {
         if (!isZip) throw new ImportFileError('El archivo .xlsx está dañado. Vuelve a guardarlo desde Excel o Google Sheets.');
+        assertSafeZip(file.buffer);
         const { readSheet } = await import('read-excel-file/node');
         const sheet = await readSheet(file.buffer);
         return rowsFromSheet(sheet as unknown[][]);
@@ -456,5 +457,38 @@ export class ProductImportService {
     }
     plan.creates = plan.creates.filter((c) => c.dto);
     return plan;
+  }
+}
+
+/**
+ * Zip-bomb guard for .xlsx uploads: reads the ZIP central directory (without inflating anything) and
+ * rejects archives whose declared uncompressed size, entry count or compression ratio is excessive.
+ */
+export function assertSafeZip(buf: Buffer, limits = { maxEntries: 400, maxEntryBytes: 25 * 1024 * 1024, maxTotalBytes: 60 * 1024 * 1024, maxRatio: 120 }) {
+  const fail = () => {
+    throw new ImportFileError('El archivo .xlsx es demasiado grande una vez descomprimido. Divídelo en archivos más pequeños.');
+  };
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65_535); i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new ImportFileError('El archivo .xlsx está dañado. Vuelve a guardarlo desde Excel o Google Sheets.');
+  const entries = buf.readUInt16LE(eocd + 10);
+  const cdOffset = buf.readUInt32LE(eocd + 16);
+  if (entries === 0xffff || cdOffset === 0xffffffff || entries > limits.maxEntries) fail();
+  let p = cdOffset;
+  let total = 0;
+  for (let n = 0; n < entries; n++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) throw new ImportFileError('El archivo .xlsx está dañado. Vuelve a guardarlo desde Excel o Google Sheets.');
+    const compressed = buf.readUInt32LE(p + 20);
+    const size = buf.readUInt32LE(p + 24);
+    if (size === 0xffffffff || compressed === 0xffffffff || size > limits.maxEntryBytes) fail();
+    if (size > 1024 * 1024 && size / Math.max(1, compressed) > limits.maxRatio) fail();
+    total += size;
+    if (total > limits.maxTotalBytes) fail();
+    p += 46 + buf.readUInt16LE(p + 28) + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
   }
 }

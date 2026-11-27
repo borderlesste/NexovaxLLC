@@ -1,3 +1,4 @@
+import { cached } from '../common/single-flight';
 import { Injectable } from '@nestjs/common';
 import { taxonomyOptionLabel } from '../common/i18n-catalog';
 import { attributeLabel } from '../common/attributes';
@@ -50,7 +51,8 @@ const recentSales = (daysParam: string) =>
 
 /** Words of a search term, normalized (no accents, lower case). */
 const searchWords = (param: string) =>
-  `(select array_agg(w) from unnest(regexp_split_to_array(public.nx_search_norm(${param}), '[^[:alnum:]]+')) w where w <> '')`;
+  `(select array_agg(w) from (select distinct w from unnest(regexp_split_to_array(public.nx_search_norm(${param}), '[^[:alnum:]]+')) w
+     where w <> '' limit 6) x)`;
 
 /**
  * Every word of the term must appear (accent/case-insensitive) in the product title, description, store, brand or
@@ -173,6 +175,11 @@ export class CatalogService {
    * attributes that the matching products actually have, with how many products carry each value.
    */
   async facets(query: ProductQuery) {
+    // Same filters → same facets for 60 s, built once (single-flight) however many visitors ask.
+    return cached(`catalog:facets:${JSON.stringify(query)}`.slice(0, 600), 60_000, () => this.buildFacets(query));
+  }
+
+  private async buildFacets(query: ProductQuery) {
     const currency = await this.settings.currency();
     const { where, params } = this.listingWhere(query, currency, false);
     const rows = await this.db.many(
@@ -183,7 +190,8 @@ export class CatalogService {
          join public.attribute_definitions ad on ad.id = pav.attribute_definition_id and ad.status = 'ACTIVE'
          left join public.category_attribute_definitions cad on cad.attribute_definition_id = ad.id
         where ad.data_type = 'BOOLEAN' or ad.validation_rules->>'input' in ('select','combobox')
-        group by 1,2,3,4,5`,
+        group by 1,2,3,4,5
+        order by n desc limit 2000`,
       params,
     );
     type Facet = { code: string; name: string; type: string; total: number; filterable: boolean; options: { code: string; label: string; labelEn: string; count: number }[] };
@@ -376,6 +384,10 @@ export class CatalogService {
   }
 
   async categories() {
+    return cached('catalog:categories', 60_000, () => this.buildCategories());
+  }
+
+  private async buildCategories() {
     const rows = await this.db.many(
       `select c.id, c.parent_id, c.name, c.slug, c.description, c.sort_order, c.image_asset_id, c.tax_class,
               (select count(*) from public.products p where p.category_id = c.id and p.status = 'ACTIVE')::int as direct_products
@@ -397,6 +409,11 @@ export class CatalogService {
   }
 
   async sellers(q?: string) {
+    const term = q?.trim().slice(0, 80) || null;
+    return cached(`catalog:sellers:${term ?? ''}`, term ? 30_000 : 60_000, () => this.buildSellers(term));
+  }
+
+  private async buildSellers(term: string | null) {
     const rows = await this.db.many(
       `select s.id, s.slug, coalesce(ssp.display_name, s.slug) as name, ssp.short_description, ssp.logo_asset_id,
               (s.verification_status = 'VERIFIED') as verified,
@@ -405,8 +422,8 @@ export class CatalogService {
               (select count(*) from public.product_reviews r where r.seller_id = s.id and r.status='PUBLISHED')::int as reviews
          from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
         where s.status = 'ACTIVE' and ($1::text is null or coalesce(ssp.display_name, s.slug) ilike '%' || $1 || '%')
-        order by products desc, name`,
-      [q?.trim() || null],
+        order by products desc, name limit 200`,
+      [term],
     );
     return rows.map((r: any) => ({
       id: r.id,
@@ -518,13 +535,8 @@ export class CatalogService {
    * revalidates the page every 30 s too), so the many listings here run at most twice a minute.
    */
   async home() {
-    if (this.homeCache && Date.now() - this.homeCache.at < 30_000) return this.homeCache.value;
-    const value = await this.buildHome();
-    this.homeCache = { at: Date.now(), value };
-    return value;
+    return cached('catalog:home', 30_000, () => this.buildHome());
   }
-
-  private homeCache?: { at: number; value: Awaited<ReturnType<CatalogService['buildHome']>> };
 
   private async buildHome() {
     const [layout, featuredOn, categories, popular] = await Promise.all([

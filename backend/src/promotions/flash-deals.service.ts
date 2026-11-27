@@ -123,12 +123,14 @@ export class FlashDealsService {
       );
       if (open!.n >= rules.maxPerSeller)
         throw conflict('FLASH_DEAL_LIMIT', `Puedes tener hasta ${rules.maxPerSeller} ofertas relámpago activas o programadas a la vez.`);
+      // One live or scheduled deal per product at a time: a second deal would be priced off the first
+      // deal's discounted price (and restore to it), compounding discounts past the 90 % cap.
       const overlap = await this.db.one(
-        `select 1 from public.nx_flash_deals where product_id = $1 and status = 'ACTIVE' and ends_at > $2 and starts_at < $3 limit 1`,
-        [i.productId, startAt, end],
+        `select 1 from public.nx_flash_deals where product_id = $1 and status = 'ACTIVE' and ends_at > now() limit 1`,
+        [i.productId],
         c,
       );
-      if (overlap) throw conflict('FLASH_DEAL_OVERLAP', 'Este producto ya tiene una oferta relámpago en esas fechas.');
+      if (overlap) throw conflict('FLASH_DEAL_OVERLAP', 'Este producto ya tiene una oferta relámpago activa o programada. Espera a que termine para crear otra.');
       const variants = await this.db.many(
         `select v.id, ep.amount::text as amount, ep.compare_at_amount::text as compare_at
            from public.product_variants v

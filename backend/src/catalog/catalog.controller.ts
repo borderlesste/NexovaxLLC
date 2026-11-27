@@ -1,3 +1,5 @@
+import { cached } from '../common/single-flight';
+import { Throttle } from '@nestjs/throttler';
 import { DbService } from '../db/db.service';
 import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
@@ -21,6 +23,7 @@ export class CatalogController {
     private readonly db: DbService,
   ) {}
 
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Get('home')
   home() {
     return this.catalog.home();
@@ -97,12 +100,14 @@ export class CatalogController {
     return this.catalog.categories();
   }
 
+  @Throttle({ default: { limit: 90, ttl: 60_000 } })
   @Get('products')
   products(@Query() q: Record<string, string | string[]>) {
     return this.catalog.listProducts(listingQuery(q));
   }
 
   @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get('products/facets')
   facets(@Query() q: Record<string, string | string[]>) {
     return this.catalog.facets(listingQuery(q));
@@ -141,14 +146,17 @@ export class CatalogController {
 
   /** Google Merchant Center product feed (Admin → Configuración → Google). 404 while it is off. */
   @Get('feeds/google-merchant.xml')
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
   async googleMerchant(@Res() res: Response) {
-    const body = await googleMerchantFeed(this.db, this.settings);
+    // Built at most once every 15 minutes (single-flight); query strings never bypass it.
+    const body = await cached('feed:google-merchant', 15 * 60_000, () => googleMerchantFeed(this.db, this.settings));
     if (body == null) throw new NotFoundException('El feed de Google Merchant Center está desactivado.');
     res.setHeader('content-type', 'application/xml; charset=utf-8');
     res.setHeader('cache-control', 'public, max-age=900');
     res.send(body);
   }
 
+  @Throttle({ default: { limit: 90, ttl: 60_000 } })
   @Get('search/suggest')
   suggest(@Query('q') q: string) {
     return this.catalog.searchSuggestions(q);
