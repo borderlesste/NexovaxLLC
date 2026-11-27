@@ -44,6 +44,7 @@ type Part = { text: string; vars: Record<string, string | number> };
 @Injectable()
 export class AdminService {
   private readonly payoutLog = new Logger('PayoutAccounts');
+  private readonly sellerLog = new Logger('SellerVerification');
 
   constructor(
     private readonly db: DbService,
@@ -344,12 +345,8 @@ export class AdminService {
           c,
         ),
       );
-      await this.db.exec(
-        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason)
-         select id, status, status, $2, $3 from public.sellers where id = $1`,
-        [sellerId, admin.id, approve ? 'Datos fiscales verificados' : `Verificación rechazada: ${reason!.trim()}`],
-        c,
-      );
+      // seller_status_history only records status changes (from <> to); this one is logged instead.
+      this.sellerLog.log(`seller ${sellerId}: ${approve ? 'Datos fiscales verificados' : `Verificación rechazada: ${reason!.trim()}`} by ${admin.id}`);
     });
     return this.sellerDetail(admin, sellerId);
   }
@@ -370,12 +367,8 @@ export class AdminService {
         [sellerId],
         c,
       );
-      await this.db.exec(
-        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason)
-         select id, status, status, $2, $3 from public.sellers where id = $1`,
-        [sellerId, admin.id, `Identidad verificada retirada: ${reason.trim()}`],
-        c,
-      );
+      // seller_status_history only records status changes (from <> to); this one is logged instead.
+      this.sellerLog.log(`seller ${sellerId}: ${`Identidad verificada retirada: ${reason.trim()}`} by ${admin.id}`);
     });
     return this.sellerDetail(admin, sellerId);
   }

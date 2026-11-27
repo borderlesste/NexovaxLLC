@@ -225,12 +225,8 @@ export class IdentityVerificationService {
           c,
         );
       const label = r.document_type === 'GOVERNMENT_ID' ? 'documento de identidad oficial' : 'registro oficial de la empresa';
-      await this.db.exec(
-        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason)
-         select id, status, status, $2, $3 from public.sellers where id = $1`,
-        [r.seller_id, admin.id, approve ? `Identidad verificada (${label})` : `Identidad no verificada: ${reason}${note?.trim() ? ` · ${note.trim()}` : ''}`],
-        c,
-      );
+      // The decision is recorded in nx_identity_verification_log (seller_status_history only takes status changes).
+      this.logger.log(`seller ${r.seller_id}: ${approve ? `Identidad verificada (${label})` : `Identidad no verificada: ${reason}${note?.trim() ? ` · ${note.trim()}` : ''}`} by ${admin.id}`);
       await this.log(id, approve ? 'APPROVE' : 'REJECT', admin.id, null, c);
       return r.seller_id as string;
     });
