@@ -109,16 +109,28 @@ export class OffersService {
       });
     } else throw badRequest('OFFER_COUPON_REQUIRED', 'Elige un cupón o crea uno para esta oferta.');
 
+    let sendTo = recipients;
     const campaign = await this.db.tx(async (c) => {
+      // Caps are checked again under one lock: concurrent requests can't each see "no campaign yet".
+      // (Per-user caps span every store, so the lock is marketplace-wide; campaigns are rare.)
+      await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:offer-campaigns'))`, [], c);
+      const again = await this.db.one(
+        `select 1 from public.nx_offer_campaigns where product_id = $1 and created_at > now() - interval '${PRODUCT_COOLDOWN_DAYS} days' limit 1`,
+        [i.productId],
+        c,
+      );
+      if (again) throw conflict('OFFER_COOLDOWN', `Ya enviaste una oferta de este producto en los últimos ${PRODUCT_COOLDOWN_DAYS} días. Podrás enviar otra después.`);
+      sendTo = (await this.db.many<{ id: string }>(`${this.eligibleSql(i.audience)} limit ${MAX_RECIPIENTS}`, [i.productId, sellerId], c)).map((r) => r.id);
+      if (!sendTo.length) throw conflict('OFFER_NO_AUDIENCE', 'No hay personas a quienes enviar esta oferta en este momento.');
       const row = await this.db.one<{ id: string }>(
         `insert into public.nx_offer_campaigns (seller_id, product_id, promotion_code_id, audience, message, recipients, created_by)
          values ($1,$2,$3,$4,$5,$6,$7) returning id`,
-        [sellerId, i.productId, coupon.id, i.audience, message, recipients.length, user.id],
+        [sellerId, i.productId, coupon.id, i.audience, message, sendTo.length, user.id],
         c,
       );
       await this.db.exec(
         `insert into public.nx_offer_recipients (campaign_id, user_id, seller_id) select $1, x, $2 from unnest($3::uuid[]) x`,
-        [row!.id, sellerId, recipients],
+        [row!.id, sellerId, sendTo],
         c,
       );
       return row!.id;
@@ -126,9 +138,9 @@ export class OffersService {
     const store = await this.db.one<{ name: string }>(`select coalesce(ssp.display_name, s.slug) as name from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id where s.id = $1`, [sellerId]);
     const offer = { productId: p.id, slug: p.slug, title: p.title, store: store?.name ?? '', code: coupon.code, type: coupon.type, value: coupon.value, currency: await this.settings.currency(), endsAt: coupon.endsAt, message };
     this.mail.fire(async () => {
-      for (const u of recipients) await this.mail.productOffer(u, offer, `offer:${campaign}:${u}`).catch((e) => this.logger.warn(`offer ${campaign}: ${e.message}`));
+      for (const u of sendTo) await this.mail.productOffer(u, offer, `offer:${campaign}:${u}`).catch((e) => this.logger.warn(`offer ${campaign}: ${e.message}`));
     });
-    return { id: campaign, recipients: recipients.length, code: coupon.code };
+    return { id: campaign, recipients: sendTo.length, code: coupon.code };
   }
 
   /** Campaign results, in totals only. */

@@ -1,3 +1,4 @@
+import { currentClientIp } from '../common/client-ip';
 import { Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -29,13 +30,25 @@ export class AnalyticsService {
 
   // ------------------------------------------------------------------ intake
   /** Browser events (views). Anonymous unless the visitor accepted analytics cookies. */
+  private readonly limiter = new ViewLimiter();
+
   async record(events: ClientEvent[], ctx: { userId?: string | null; visitorId?: string | null; consent: boolean; userAgent?: string }) {
     if (!events?.length || BOT_UA.test(ctx.userAgent ?? '') || !ctx.userAgent) return { recorded: 0 };
-    const visitorId = ctx.consent && ctx.visitorId && UUID.test(ctx.visitorId) ? ctx.visitorId : null;
+    const ip = currentClientIp()?.ip ?? 'unknown';
+    // A browser keeps one visitor id; a source that rotates them is fabricating visitors, so only the
+    // first few ids seen from an IP in an hour count as identities.
+    let visitorId = ctx.consent && ctx.visitorId && UUID.test(ctx.visitorId) ? ctx.visitorId : null;
+    if (visitorId && !ctx.userId && !this.limiter.visitorAllowed(ip, visitorId)) visitorId = null;
     const userId = ctx.consent ? ctx.userId ?? null : null;
+    const who = userId ?? visitorId ?? `ip:${ip}`;
     let recorded = 0;
+    const seen = new Set<string>();
     for (const e of events.slice(0, 20)) {
       if (e?.type !== 'VIEW' || !UUID.test(String(e.productId ?? ''))) continue;
+      // One view per product per batch, per viewer (or IP) per 30 minutes, and a cap per IP and hour.
+      if (seen.has(e.productId)) continue;
+      seen.add(e.productId);
+      if (!this.limiter.viewAllowed(ip, who, e.productId)) continue;
       const dwell = Number.isFinite(Number(e.dwellMs)) ? Math.min(Math.max(Math.round(Number(e.dwellMs)), 0), 3600000) : null;
       const source = SOURCES.includes(String(e.source)) ? String(e.source) : null;
       const r = await this.db.one(
@@ -199,4 +212,50 @@ function suggest(r: any, conversion: number | null, days: number) {
   if (r.orders >= 5 && (conversion ?? 0) >= 0.05)
     out.push({ code: 'TOP', tone: 'green', message: 'Se vende bien: asegúrate de tener inventario suficiente.', actions: ['STOCK'] });
   return out;
+}
+
+/**
+ * In-process abuse limits for public view beacons (no personal data stored: keys live in memory for
+ * at most an hour). Not a distributed limit, but it bounds what one source can inject per instance.
+ */
+class ViewLimiter {
+  private views = new Map<string, number>();
+  private perIp = new Map<string, { n: number; at: number }>();
+  private visitors = new Map<string, { ids: Set<string>; at: number }>();
+  private static readonly VIEW_TTL = 30 * 60_000;
+  private static readonly IP_HOURLY = 300;
+  private static readonly VISITORS_PER_IP = 5;
+
+  private sweep() {
+    if (this.views.size < 50_000 && this.perIp.size < 20_000 && this.visitors.size < 20_000) return;
+    const now = Date.now();
+    for (const [k, at] of this.views) if (now - at > ViewLimiter.VIEW_TTL) this.views.delete(k);
+    for (const [k, v] of this.perIp) if (now - v.at > 3_600_000) this.perIp.delete(k);
+    for (const [k, v] of this.visitors) if (now - v.at > 3_600_000) this.visitors.delete(k);
+  }
+
+  visitorAllowed(ip: string, visitorId: string) {
+    this.sweep();
+    const now = Date.now();
+    let v = this.visitors.get(ip);
+    if (!v || now - v.at > 3_600_000) this.visitors.set(ip, (v = { ids: new Set(), at: now }));
+    if (v.ids.has(visitorId)) return true;
+    if (v.ids.size >= ViewLimiter.VISITORS_PER_IP) return false;
+    v.ids.add(visitorId);
+    return true;
+  }
+
+  viewAllowed(ip: string, who: string, productId: string) {
+    this.sweep();
+    const now = Date.now();
+    const key = `${who}:${productId}`;
+    const last = this.views.get(key);
+    if (last && now - last < ViewLimiter.VIEW_TTL) return false;
+    let c = this.perIp.get(ip);
+    if (!c || now - c.at > 3_600_000) this.perIp.set(ip, (c = { n: 0, at: now }));
+    if (c.n >= ViewLimiter.IP_HOURLY) return false;
+    c.n++;
+    this.views.set(key, now);
+    return true;
+  }
 }

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { timingSafeEqual } from 'node:crypto';
-import { isIP } from 'node:net';
+import { BlockList, isIP } from 'node:net';
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { config } from '../config';
@@ -42,6 +42,29 @@ function isPrivate(ip: string) {
   );
 }
 
+let proxies: BlockList | null | undefined;
+/** Explicit proxy ranges (TRUSTED_PROXY_CIDRS); null when none are configured. */
+function trustedProxies(): BlockList | null {
+  if (proxies !== undefined) return proxies;
+  if (!config.trustedProxyCidrs.length) return (proxies = null);
+  const list = new BlockList();
+  for (const c of config.trustedProxyCidrs) {
+    const [addr, bits] = c.split('/');
+    const family = isIP(addr) === 6 ? 'ipv6' : 'ipv4';
+    if (!isIP(addr)) continue;
+    if (bits == null) list.addAddress(addr, family);
+    else list.addSubnet(addr, Number(bits), family);
+  }
+  return (proxies = list);
+}
+
+function isTrustedProxy(socket: string) {
+  const list = trustedProxies();
+  if (!list) return isPrivate(socket);
+  const fam = isIP(socket);
+  return fam > 0 && list.check(socket, fam === 6 ? 'ipv6' : 'ipv4');
+}
+
 /** True when the request came through our web proxy (it carries the shared secret). */
 export function fromTrustedProxy(req: any) {
   const v = req.headers?.[PROXY_SECRET_HEADER];
@@ -63,7 +86,7 @@ export function resolveClientIp(req: any): ClientIp {
   const socket = String(req.socket?.remoteAddress ?? 'unknown').replace(/^::ffff:/, '');
   // Direct requests (uploads, downloads) arrive through the host's load balancer, on a private address:
   // read the visitor IP it sets. A public socket peer is the visitor itself and headers are ignored.
-  if (config.clientIpHeader && isPrivate(socket)) {
+  if (config.clientIpHeader && isTrustedProxy(socket)) {
     const raw = header(config.clientIpHeader);
     const value = (config.clientIpHeader === 'x-forwarded-for' ? raw?.split(',').pop() : raw)?.trim().replace(/^::ffff:/, '');
     if (value && isIP(value)) return { ip: value, trusted: true };

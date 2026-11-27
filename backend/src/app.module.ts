@@ -8,6 +8,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MaintenanceGuard } from './auth/maintenance.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ClientIpThrottlerGuard } from './common/client-ip';
+import { UploadBudgetGuard } from './common/upload-budget';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { DbService } from './db/db.service';
@@ -150,6 +151,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: MaintenanceGuard },
+    { provide: APP_GUARD, useClass: UploadBudgetGuard },
   ],
 })
 export class AppModule {}

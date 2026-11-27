@@ -108,6 +108,11 @@ export const config = {
    * `cf-connecting-ip` or `true-client-ip`. Only read when the socket peer is a private address.
    */
   clientIpHeader: (process.env.CLIENT_IP_HEADER ?? '').trim().toLowerCase(),
+  /**
+   * Proxies allowed to set CLIENT_IP_HEADER, as comma-separated CIDRs (e.g. the host's load balancer range).
+   * Without it any private-network peer is trusted, which is only safe when the edge always overwrites the header.
+   */
+  trustedProxyCidrs: (process.env.TRUSTED_PROXY_CIDRS ?? '').split(/[\s,]+/).map((x) => x.trim()).filter(Boolean),
   /** Transactional e-mail (Resend). Without a key, e-mails are skipped and logged. */
   resendApiKey: secret('RESEND_API_KEY', 'resend_api_key'),
   mailFrom: process.env.MAIL_FROM ?? 'NEXOVAX <no-reply@nexovax.com>',

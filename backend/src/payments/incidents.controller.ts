@@ -49,7 +49,7 @@ export class PaymentIncidentsController {
   }
 
   @Post(':id/dispute-response')
-  @UseInterceptors(FilesInterceptor('files', 4, { limits: { fileSize: 4 * 1024 * 1024, files: 4 } }))
+  @UseInterceptors(FilesInterceptor('files', 4, { limits: { fileSize: 4 * 1024 * 1024, files: 4, fields: 10, parts: 16, fieldSize: 64 * 1024 } }))
   respond(@CurrentUser() u: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DisputeAnswerDto, @UploadedFiles() files: Express.Multer.File[] = []) {
     const kinds = (dto.kinds ?? '').split(',');
     const ok = (k: string): k is EvidenceFileKind => ['RECEIPT', 'SHIPPING', 'COMMUNICATION', 'OTHER'].includes(k);

@@ -71,3 +71,6 @@ create table if not exists public.nx_purchase_claims (
 alter table public.nx_purchase_claims enable row level security;
 revoke all on public.nx_purchase_claims from anon, authenticated;
 grant select, insert, update, delete on public.nx_purchase_claims to nexovax_api_runtime;
+
+-- 5) Hourly analytics aggregation and purge filter by time: index it so a flooded table stays cheap.
+create index if not exists idx_nx_product_events_occurred_at on public.nx_product_events (occurred_at);
