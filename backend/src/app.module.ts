@@ -55,6 +55,8 @@ import { PaymentsWebhooksController } from './payments/payments.controller';
 import { PaymentIncidentsController } from './payments/incidents.controller';
 import { PaymentIncidentsService } from './payments/incidents.service';
 import { NotificationsService } from './notifications/notifications.service';
+import { IdentityVerificationService } from './seller/identity-verification.service';
+import { AdminIdentityController, SellerIdentityController } from './seller/identity-verification.controller';
 import { NotificationsController } from './notifications/notifications.controller';
 import { ReturnsService } from './returns/returns.service';
 import { ReturnsController } from './returns/returns.controller';
@@ -101,9 +103,10 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController, PreordersController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController, PreordersController, SellerIdentityController, AdminIdentityController],
   providers: [
     DbService,
+    IdentityVerificationService,
     SettingsService,
     AvailabilityService,
     SupabaseAdminService,

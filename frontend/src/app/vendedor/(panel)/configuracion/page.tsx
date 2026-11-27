@@ -18,6 +18,7 @@ import { PageLoader } from '@/components/ui/misc';
 import { cityLine, CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { t } from '@/lib/i18n';
 import { SellerTrustList } from '@/components/shop/seller-trust';
+import { IdentityVerificationCard } from '@/components/seller/identity-card';
 import { DestinationsCard } from '@/components/seller/destinations-card';
 
 function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
@@ -192,9 +193,10 @@ export default function StoreSettingsPage() {
             </div>
             <p className="mt-4 font-bold">{t('Insignias públicas de tu tienda')}</p>
             <div className="mt-2"><SellerTrustList trust={s.trust} /></div>
-            <p className="mt-2 text-xs text-muted">{t('«Cobro verificado» aparece cuando Finanzas verifica uno de tus métodos de cobro. Para obtener «Identidad verificada», escribe a soporte y envía un documento de identidad oficial o el registro oficial de tu empresa.')}</p>
+            <p className="mt-2 text-xs text-muted">{t('«Cobro verificado» aparece cuando Finanzas verifica uno de tus métodos de cobro. «Identidad verificada» se solicita en la tarjeta de abajo.')}</p>
             {s.shipFrom && <p className="mt-4 flex gap-2 rounded-lg bg-surface p-3"><MapPin className="size-4 shrink-0 text-brand-600" /> <span><b>{t('Almacén principal:')}</b> {s.shipFrom.line1} · {cityLine(s.shipFrom)}</span></p>}
           </Card>
+          <IdentityVerificationCard canEdit={!!seller?.isOwner} />
           <LegalCard store={s} canEdit={!!seller?.isOwner} onSaved={(r) => qc.setQueryData(['seller-store'], r)} />
           <ShipFromCard store={s} onSaved={() => qc.invalidateQueries({ queryKey: ['seller-store'] })} />
           <DestinationsCard shipFromCountry={s.shipFrom?.countryCode ?? null} />

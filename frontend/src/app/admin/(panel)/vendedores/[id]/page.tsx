@@ -5,7 +5,7 @@ import { cityLine } from '@/components/shop/geo-fields';
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BadgeCheck, Ban, Check, Eye, ExternalLink, Landmark, RotateCcw, ShieldCheck, ShieldOff, X } from 'lucide-react';
+import { Ban, Check, Eye, ExternalLink, Landmark, RotateCcw, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { SellerTrustBadges } from '@/components/shop/seller-trust';
 import { PayoutDestination, PAYOUT_METHOD_NAMES } from '@/components/admin/payout-destination';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import { PageHeader } from '@/components/layout/dashboard-shell';
 import { Card, CardHeader, StatCard } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, StatusBadge } from '@/components/ui/badge';
-import { Checkbox, Dialog, Empty, ErrorBox, PageLoader } from '@/components/ui/misc';
+import { Dialog, Empty, ErrorBox, PageLoader } from '@/components/ui/misc';
 import { Textarea } from '@/components/ui/input';
 import { statusInfo } from '@/lib/status';
 
@@ -25,21 +25,18 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
   const { isAdmin } = useAuth();
   const q = useQuery({ queryKey: ['admin-seller', id], queryFn: () => get(`/admin/sellers/${id}`) });
   const [dlg, setDlg] = useState<null | 'REJECT' | 'SUSPEND' | 'REJECT_VERIFICATION' | 'REVOKE_IDENTITY'>(null);
-  const [idDlg, setIdDlg] = useState(false);
-  const [idMethod, setIdMethod] = useState<'GOVERNMENT_ID' | 'BUSINESS_REGISTRY' | null>(null);
-  const [idChecked, setIdChecked] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [shown, setShown] = useState<string | null>(null);
   if (q.isLoading) return <PageLoader />;
   if (q.isError) return <ErrorBox message="Vendedor no encontrado." />;
   const { store, owner, finance, payoutAccounts, history } = q.data;
-  const act = async (action: string, r?: string, method?: string) => {
+  const act = async (action: string, r?: string) => {
     setBusy(action);
     try {
-      await post(`/admin/sellers/${id}/action`, { action, reason: r || undefined, method });
+      await post(`/admin/sellers/${id}/action`, { action, reason: r || undefined });
       toast.success(t('Tienda actualizada.'));
-      setDlg(null); setReason(''); setIdDlg(false); setIdMethod(null); setIdChecked(false);
+      setDlg(null); setReason('');
       q.refetch();
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(null); }
   };
@@ -55,8 +52,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
           {['PENDING_VERIFICATION', 'DRAFT'].includes(store.status) && <Button variant="danger" onClick={() => setDlg('REJECT')}><X /> {t('Rechazar')}</Button>}
           {store.status === 'ACTIVE' && store.verificationStatus !== 'VERIFIED' && store.legalName && <Button onClick={() => act('VERIFY')} loading={busy === 'VERIFY'}><ShieldCheck /> {t('Verificar datos fiscales')}</Button>}
           {store.status === 'ACTIVE' && store.verificationStatus !== 'VERIFIED' && store.verificationStatus !== 'FAILED' && store.legalName && <Button variant="danger" onClick={() => setDlg('REJECT_VERIFICATION')}><X /> {t('Rechazar verificación')}</Button>}
-          {store.status === 'ACTIVE' && !store.identityVerifiedAt && <Button onClick={() => setIdDlg(true)}><BadgeCheck /> {t('Verificar identidad')}</Button>}
-          {store.identityVerifiedAt && <Button variant="danger" onClick={() => setDlg('REVOKE_IDENTITY')}><ShieldOff /> {t('Retirar identidad verificada')}</Button>}
+          {store.identityVerifiedAt && isAdmin && <Button variant="danger" onClick={() => setDlg('REVOKE_IDENTITY')}><ShieldOff /> {t('Retirar identidad verificada')}</Button>}
           {store.status === 'ACTIVE' && <Button variant="danger" onClick={() => setDlg('SUSPEND')}><Ban /> {t('Suspender')}</Button>}
           {store.status === 'SUSPENDED' && <Button onClick={() => act('REACTIVATE')} loading={busy === 'REACTIVATE'}><RotateCcw /> {t('Reactivar')}</Button>}
         </>} />
@@ -78,6 +74,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
             <div><dt className="text-muted">{t('Tipo de entidad')}</dt><dd className="font-semibold">{entityLabel(store.entityType)}{store.countryCode ? ` · ${countryName(store.countryCode)}` : ''}</dd></div>
             <div><dt className="text-muted">{t('Datos fiscales (revisión interna)')}</dt><dd><StatusBadge status={store.verificationStatus === 'VERIFIED' ? 'VERIFIED' : store.verificationStatus === 'FAILED' ? 'FAILED' : 'PENDING'} /></dd></div>
             <div className="sm:col-span-2"><dt className="text-muted">{t('Insignias públicas')}</dt><dd className="mt-1"><SellerTrustBadges trust={store.trust} />
+              {!store.identityVerifiedAt && <p className="mt-1 text-xs text-muted">{t('«Identidad verificada» se concede al aprobar una solicitud con documentos en')}{' '}<Link href="/admin/identidad" className="font-semibold text-brand-700">{t('Verificación de identidad')}</Link>.</p>}
               {store.identityVerifiedAt && <p className="mt-1 text-xs text-muted">{t('Identidad verificada el {d} con {m}.', { d: fmtDate(store.identityVerifiedAt), m: store.identityVerificationMethod === 'GOVERNMENT_ID' ? t('un documento de identidad oficial') : t('un registro oficial de empresas') })}</p>}</dd></div>
             <div><dt className="text-muted">{t('Despacho')}</dt><dd className="font-semibold">{store.shipFrom ? `${store.shipFrom.line1} · ${cityLine(store.shipFrom)}` : '—'}</dd></div>
             {store.shortDescription && <div className="sm:col-span-2"><dt className="text-muted">{t('Descripción')}</dt><dd>{store.shortDescription}</dd></div>}
@@ -114,20 +111,6 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
         <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('Motivo…')} maxLength={300} />
         {dlg === 'SUSPEND' && <p className="mt-2 text-xs text-muted">{t('Los productos publicados de la tienda quedarán pausados.')}</p>}
         {dlg === 'REVOKE_IDENTITY' && <p className="mt-2 text-xs text-muted">{t('La insignia «Identidad verificada» deja de mostrarse en la tienda y sus productos.')}</p>}
-      </Dialog>
-      <Dialog open={idDlg} onOpenChange={(o) => { if (!o) { setIdDlg(false); setIdChecked(false); } }} title={t('Verificar identidad')}
-        description={t('Concede la insignia pública «Identidad verificada». Hazlo solo después de comprobar la identidad con un documento o registro oficial; revisar los datos que la tienda escribió no basta.')}
-        footer={<><Button variant="secondary" onClick={() => setIdDlg(false)}>{t('Cancelar')}</Button><Button onClick={() => act('VERIFY_IDENTITY', reason, idMethod!)} loading={busy === 'VERIFY_IDENTITY'} disabled={!idMethod || !idChecked}>{t('Confirmar')}</Button></>}>
-        <p className="text-sm font-semibold">{t('¿Cómo verificaste la identidad?')}</p>
-        <div className="mt-2 space-y-2">
-          {([['GOVERNMENT_ID', t('Documento de identidad oficial del propietario (vigente y coincide con el titular)')], ['BUSINESS_REGISTRY', t('Registro oficial de empresas (la razón social y la identificación fiscal coinciden)')]] as const).map(([m, label]) => (
-            <label key={m} className="flex cursor-pointer items-start gap-2 rounded-xl border border-line p-3 text-sm">
-              <input type="radio" name="id-method" className="mt-0.5" checked={idMethod === m} onChange={() => setIdMethod(m)} /> <span>{label}</span>
-            </label>
-          ))}
-        </div>
-        <Textarea className="mt-3" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('Nota interna (opcional): documento revisado, referencia del registro…')} maxLength={300} />
-        <Checkbox className="mt-3" checked={idChecked} onChange={setIdChecked} label={t('Confirmo que comprobé la identidad con el método indicado.')} />
       </Dialog>
     </>
   );

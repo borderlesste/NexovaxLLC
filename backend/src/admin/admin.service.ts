@@ -32,7 +32,7 @@ import { PaypalService } from '../payments/paypal.service';
 import { paymentsLive, realOrder, TEST_PENDING } from '../common/live-orders';
 import { inPreviousWindow, inWindow, orderRefunds, orderSellerNetExpr, sellerNetExpr, sellerOrderRefunds, soldOrder, soldSellerOrder } from '../common/sales-sql';
 
-export type SellerAdminAction = 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION' | 'VERIFY_IDENTITY' | 'REVOKE_IDENTITY';
+export type SellerAdminAction = 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION' | 'REVOKE_IDENTITY';
 
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
 
@@ -97,7 +97,8 @@ export class AdminService {
                 (select count(*) from public.seller_payout_accounts where verification_status = 'PENDING' and status <> 'DISABLED')::int as payout_accounts_pending,
                 (select count(*) from public.return_requests where status in ('REQUESTED','UNDER_REVIEW','RECEIVED','INSPECTING'))::int as returns_pending,
                 (select count(*) from public.nx_order_cancellations where status = 'APPROVED')::int as cancellations_pending,
-                (select count(distinct referrer_id) from public.referral_commissions where status = 'AVAILABLE')::int as affiliates_payable`,
+                (select count(distinct referrer_id) from public.referral_commissions where status = 'AVAILABLE')::int as affiliates_payable,
+                (select count(*) from public.nx_identity_verification_requests where status = 'PENDING')::int as identity_pending`,
       ),
     ]);
     const recent = await this.db.many(
@@ -135,6 +136,7 @@ export class AdminService {
         payout_accounts_pending: keep('payout_accounts_pending', admin),
         cancellations_pending: keep('cancellations_pending', admin),
         affiliates_payable: keep('affiliates_payable', admin),
+        identity_pending: keep('identity_pending', admin),
       },
     };
   }
@@ -353,37 +355,34 @@ export class AdminService {
   }
 
   /**
-   * «Identidad verificada»: only staff, after checking an official ID document of the owner (GOVERNMENT_ID)
-   * or the business in an official registry (BUSINESS_REGISTRY). Never automatic, never from declared data alone.
+   * Withdraws «Identidad verificada» (administrators only). Granting it goes through a reviewed request
+   * with documents (IdentityVerificationService), never through this action.
    */
-  private async identityVerification(admin: RequestUser, sellerId: string, grant: boolean, method?: string, reason?: string) {
-    if (grant && !method) throw badRequest('METHOD_REQUIRED', 'Indica cómo verificaste la identidad.');
-    if (!grant && !reason?.trim()) throw badRequest('REASON_REQUIRED', 'Indica el motivo.');
+  private async revokeIdentity(admin: RequestUser, sellerId: string, reason?: string) {
+    if (!admin.roles.includes('ADMIN') && !admin.roles.includes('SUPER_ADMIN')) throw forbidden('Solo un administrador puede retirar la identidad verificada.');
+    if (!reason?.trim()) throw badRequest('REASON_REQUIRED', 'Indica el motivo.');
     await this.db.tx(async (c) => {
-      const s = await this.db.one(`select status, identity_verified_at from public.sellers where id = $1 for update`, [sellerId], c);
+      const s = await this.db.one(`select identity_verified_at from public.sellers where id = $1 for update`, [sellerId], c);
       if (!s) throw notFound('Vendedor');
-      if (grant && s.status !== 'ACTIVE') throw conflict('INVALID_TRANSITION', 'Acción no válida para el estado actual de la tienda.');
-      if (grant === !!s.identity_verified_at) return;
+      if (!s.identity_verified_at) return;
       await this.db.exec(
-        `update public.sellers set identity_verified_at = case when $2 then now() end, identity_verified_by = case when $2 then $3::uuid end,
-                identity_verification_method = case when $2 then $4 end, version = version + 1 where id = $1`,
-        [sellerId, grant, admin.id, grant ? method : null],
+        `update public.sellers set identity_verified_at = null, identity_verified_by = null, identity_verification_method = null, version = version + 1 where id = $1`,
+        [sellerId],
         c,
       );
-      const label = method === 'GOVERNMENT_ID' ? 'documento de identidad oficial' : 'registro oficial de la empresa';
       await this.db.exec(
         `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason)
          select id, status, status, $2, $3 from public.sellers where id = $1`,
-        [sellerId, admin.id, grant ? `Identidad verificada (${label})${reason?.trim() ? `: ${reason.trim()}` : ''}` : `Identidad verificada retirada: ${reason!.trim()}`],
+        [sellerId, admin.id, `Identidad verificada retirada: ${reason.trim()}`],
         c,
       );
     });
     return this.sellerDetail(admin, sellerId);
   }
 
-  async sellerAction(admin: RequestUser, sellerId: string, action: SellerAdminAction, reason?: string, method?: string) {
+  async sellerAction(admin: RequestUser, sellerId: string, action: SellerAdminAction, reason?: string) {
     if (action === 'VERIFY' || action === 'REJECT_VERIFICATION') return this.sellerVerification(admin, sellerId, action === 'VERIFY', reason);
-    if (action === 'VERIFY_IDENTITY' || action === 'REVOKE_IDENTITY') return this.identityVerification(admin, sellerId, action === 'VERIFY_IDENTITY', method, reason);
+    if (action === 'REVOKE_IDENTITY') return this.revokeIdentity(admin, sellerId, reason);
     await this.db.tx(async (c) => {
       const s = await this.db.one(`select status, owner_user_id, suspended_at from public.sellers where id = $1 for update`, [sellerId], c);
       if (!s) throw notFound('Vendedor');

@@ -11,6 +11,7 @@ import { AlertsService } from './analytics/alerts.service';
 import { RecommendationsService } from './analytics/recommendations.service';
 import { PoliciesService } from './account/policies.service';
 import { StripeTaxService } from './tax/stripe-tax.service';
+import { IdentityVerificationService } from './seller/identity-verification.service';
 
 /**
  * Scheduled maintenance (in-process worker for the MVP):
@@ -30,6 +31,7 @@ export class JobsService {
     private readonly recommendations: RecommendationsService,
     private readonly policies: PoliciesService,
     private readonly stripeTax: StripeTaxService,
+    private readonly identity: IdentityVerificationService,
   ) {}
 
   /**
@@ -151,6 +153,18 @@ export class JobsService {
       if (n) this.logger.log(`Analytics events purged: ${n}`);
     } catch (e: any) {
       this.logger.warn(`purgeAnalytics: ${e.message}`);
+    }
+  }
+
+  /** «Identidad verificada» documents past their retention period (Admin → Configuración → Seguridad). */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async purgeIdentityDocuments() {
+    if (process.env.DISABLE_JOBS === 'true') return;
+    try {
+      const n = await this.identity.purgeExpired();
+      if (n) this.logger.log(`Identity documents purged for ${n} request(s)`);
+    } catch (e: any) {
+      this.logger.warn(`purgeIdentityDocuments: ${e.message}`);
     }
   }
 

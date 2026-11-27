@@ -393,6 +393,36 @@ export class SupabaseAdminService {
     }
   }
 
+  /**
+   * «Identidad verificada» document: PDF (header checked, active content refused) or photo
+   * (re-encoded to WebP, metadata such as GPS stripped). Private identity bucket, never in public.assets,
+   * so only the identity-verification endpoints (administrators) can read it.
+   */
+  async uploadIdentityFile(sellerId: string, file: UploadFile): Promise<{ key: string; name: string; size: number; mime: string }> {
+    const name = (file.originalname ?? 'documento').normalize('NFC').replace(/[^\p{L}\p{N} ._()-]/gu, '_').slice(0, 120) || 'documento';
+    let body: Buffer;
+    let mime: string;
+    if (file.mimetype === 'application/pdf') {
+      if (file.size > MAX_ATTACHMENT_BYTES || file.buffer.length > MAX_ATTACHMENT_BYTES) throw new AppError('ATTACHMENT_TOO_LARGE', 'El documento supera 10 MB.');
+      if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') throw new AppError('INVALID_ATTACHMENT', 'El archivo no es un PDF válido.');
+      if (/\/(JavaScript|JS|Launch|EmbeddedFile|OpenAction)\b/.test(file.buffer.toString('latin1')))
+        throw new AppError('INVALID_ATTACHMENT', 'El PDF contiene contenido activo (scripts o archivos incrustados) y no se puede adjuntar.');
+      body = file.buffer;
+      mime = 'application/pdf';
+    } else if (ALLOWED_IMAGE.includes(file.mimetype)) {
+      // Larger than chat photos so small print on an ID stays legible.
+      body = (await this.processImage(file, (img) => img.resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true }))).out;
+      mime = 'image/webp';
+    } else throw new AppError('UNSUPPORTED_ATTACHMENT', 'Formato no permitido. Adjunta fotos (JPG, PNG, WebP) o documentos PDF.');
+    const key = `${sellerId}/${randomUUID()}.${mime === 'application/pdf' ? 'pdf' : 'webp'}`;
+    const { error } = await this.admin.storage.from(config.identityBucket).upload(key, body, { contentType: mime, upsert: false });
+    if (error) {
+      this.logger.warn(`identity file upload failed: ${error.message}`);
+      throw new AppError('UPLOAD_FAILED', 'No se pudo subir el archivo. Inténtalo de nuevo.', HttpStatus.BAD_GATEWAY);
+    }
+    return { key, name, size: body.length, mime };
+  }
+
   /** Removes stored objects (best effort; missing objects are ignored). */
   async removeObjects(bucket: string, keys: string[]) {
     for (let i = 0; i < keys.length; i += 100) {

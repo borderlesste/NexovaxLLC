@@ -11,6 +11,8 @@ export interface SecurityControls {
   bankTransferMaxOpenOrders: number;
   /** Password-recovery e-mails per address per hour. */
   passwordRecoveryPerHour: number;
+  /** Days «Identidad verificada» documents are kept after the decision, then deleted. */
+  identityDocRetentionDays: number;
 }
 
 export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
@@ -18,6 +20,7 @@ export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: numbe
   bankTransferReserveHours: [1, 72, 24],
   bankTransferMaxOpenOrders: [1, 20, 3],
   passwordRecoveryPerHour: [1, 10, 3],
+  identityDocRetentionDays: [7, 180, 30],
 };
 
 export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(

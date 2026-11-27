@@ -15,6 +15,8 @@ const RULES = {
   sellers: ['MODERATOR'],
   'sellers.create': [],
   'payoutAccounts.verify': [],
+  /** «Identidad verificada» documents and decisions: administrators only. */
+  identity: [],
   orders: ['SUPPORT', 'MODERATOR'],
   'orders.tracking': ['SUPPORT'],
   'orders.refundWithoutReturn': [],
@@ -52,6 +54,7 @@ export const SECTIONS: { href: string; label: string; perm: Permission }[] = [
   { href: '/admin/productos', label: 'Productos', perm: 'products' },
   { href: '/admin/pedidos', label: 'Pedidos', perm: 'orders' },
   { href: '/admin/categorias', label: 'Categorías', perm: 'categories' },
+  { href: '/admin/identidad', label: 'Verificación de identidad', perm: 'identity' },
   { href: '/admin/vendedores', label: 'Vendedores', perm: 'sellers' },
   { href: '/admin/moderacion', label: 'Moderación', perm: 'moderation' },
   { href: '/admin/reportes', label: 'Reportes y soporte', perm: 'tickets' },

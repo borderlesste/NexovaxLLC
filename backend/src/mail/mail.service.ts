@@ -667,6 +667,44 @@ export class MailService {
     });
   }
 
+  /** «Identidad verificada» request decided by an administrator. */
+  async identityVerificationDecided(sellerId: string, approved: boolean, reason?: string | null, note?: string | null) {
+    const s = await this.sellerContact(sellerId);
+    if (!s) return;
+    const t = tr(s.locale);
+    const reasons: Record<string, string> = {
+      ILLEGIBLE: t('El documento no se puede leer bien.', 'The document can’t be read clearly.', 'Le document n’est pas lisible.', 'Dokiman an pa ka li byen.'),
+      EXPIRED: t('El documento está vencido.', 'The document has expired.', 'Le document est expiré.', 'Dokiman an ekspire.'),
+      MISMATCH: t('Los datos del documento no coinciden con los de la tienda.', 'The document’s details don’t match the store’s.', 'Les informations du document ne correspondent pas à celles de la boutique.', 'Enfòmasyon dokiman an pa koresponn ak pa boutik la.'),
+      INCOMPLETE: t('Falta una parte del documento (por ejemplo, el reverso).', 'Part of the document is missing (for example, the back).', 'Une partie du document manque (par exemple, le verso).', 'Gen yon pati dokiman an ki manke (pa egzanp, do a).'),
+      OTHER: t('Otro motivo.', 'Another reason.', 'Autre motif.', 'Lòt rezon.'),
+    };
+    const subject = approved
+      ? t(`${s.store}: identidad verificada`, `${s.store}: identity verified`, `${s.store} : identité vérifiée`, `${s.store}: idantite verifye`)
+      : t(`${s.store}: no pudimos verificar tu identidad`, `${s.store}: we couldn’t verify your identity`, `${s.store} : nous n’avons pas pu vérifier votre identité`, `${s.store}: nou pa t ka verifye idantite w`);
+    const body = approved
+      ? t('Revisamos tus documentos y tu tienda ya muestra la insignia «Identidad verificada».', 'We reviewed your documents and your store now shows the “Identity verified” badge.', 'Nous avons examiné vos documents et votre boutique affiche désormais le badge « Identité vérifiée ».', 'Nou revize dokiman w yo epi boutik ou montre badj «Idantite verifye» a kounye a.')
+      : t('Revisamos tus documentos y no pudimos verificar tu identidad. Puedes enviar una nueva solicitud desde Configuración.', 'We reviewed your documents and couldn’t verify your identity. You can send a new request from Settings.', 'Nous avons examiné vos documents et n’avons pas pu vérifier votre identité. Vous pouvez envoyer une nouvelle demande depuis Paramètres.', 'Nou revize dokiman w yo epi nou pa t ka verifye idantite w. Ou ka voye yon nouvo demann nan Paramèt.');
+    const why = !approved && reason ? `${reasons[reason] ?? ''}${note?.trim() ? ` ${note.trim()}` : ''}`.trim() : '';
+    await this.send({
+      template: approved ? 'SELLER_IDENTITY_VERIFIED' : 'SELLER_IDENTITY_REJECTED',
+      dedupeKey: `seller-identity:${sellerId}:${randomUUID()}`,
+      to: s.email,
+      userId: s.ownerUserId,
+      entityType: 'SELLER',
+      entityId: sellerId,
+      message: layout({
+        locale: s.locale,
+        subject,
+        preheader: body,
+        title: approved ? t('Identidad verificada', 'Identity verified', 'Identité vérifiée', 'Idantite verifye') : t('Identidad no verificada', 'Identity not verified', 'Identité non vérifiée', 'Idantite pa verifye'),
+        body: p(`${t('Hola', 'Hi', 'Bonjour', 'Bonjou')} ${esc(s.name)}, ${esc(body.charAt(0).toLowerCase() + body.slice(1))}`) + (why ? p(`<b>${t('Motivo', 'Reason', 'Motif', 'Rezon')}:</b> ${esc(why)}`) : ''),
+        cta: { label: t('Ir a Configuración', 'Go to Settings', 'Aller aux Paramètres', 'Ale nan Paramèt'), url: `${webUrl()}/vendedor/configuracion` },
+        text: `${body}${why ? `\n${t('Motivo', 'Reason', 'Motif', 'Rezon')}: ${why}` : ''}`,
+      }),
+    });
+  }
+
   async productModerated(productId: string, decision: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES', note?: string) {
     const pr = await this.db.one(`select id, seller_id, coalesce(title, slug) as title from public.products where id = $1`, [productId]);
     if (!pr) return;

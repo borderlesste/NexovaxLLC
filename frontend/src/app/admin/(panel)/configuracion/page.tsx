@@ -49,6 +49,7 @@ const SECURITY_FIELDS = [
   ['bankTransferReserveHours', 'Horas de reserva por transferencia', 'Cuánto tiempo queda apartado el inventario mientras se espera una transferencia bancaria.', 1, 72],
   ['bankTransferMaxOpenOrders', 'Transferencias abiertas por comprador', 'Máximo de pedidos por transferencia sin confirmar que puede tener una misma cuenta.', 1, 20],
   ['passwordRecoveryPerHour', 'Correos de recuperación por hora', 'Máximo de correos para restablecer la contraseña que recibe una cuenta en una hora.', 1, 10],
+  ['identityDocRetentionDays', 'Días que se guardan los documentos de identidad', 'Tras aprobar o rechazar una solicitud de «Identidad verificada», sus archivos se borran pasado este plazo. El registro de la decisión se conserva.', 7, 180],
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {

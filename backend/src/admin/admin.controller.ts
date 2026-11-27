@@ -41,11 +41,9 @@ export class ReasonDto {
   @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class SellerActionDto {
-  @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE', 'VERIFY', 'REJECT_VERIFICATION', 'VERIFY_IDENTITY', 'REVOKE_IDENTITY'])
+  @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE', 'VERIFY', 'REJECT_VERIFICATION', 'REVOKE_IDENTITY'])
   action: SellerAdminAction;
   @IsOptional() @IsCleanText(0, 300) reason?: string;
-  /** VERIFY_IDENTITY only: how staff checked who the store is. */
-  @IsOptional() @IsIn(['GOVERNMENT_ID', 'BUSINESS_REGISTRY']) method?: 'GOVERNMENT_ID' | 'BUSINESS_REGISTRY';
 }
 export class CreateSellerDto extends OnboardingDto {
   @IsPersonName(3, 120) ownerName: string;
@@ -255,7 +253,7 @@ export class AdminController {
   @Roles('MODERATOR')
   @Post('sellers/:id/action')
   sellerAction(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SellerActionDto) {
-    return this.admin.sellerAction(user, id, dto.action, dto.reason, dto.method);
+    return this.admin.sellerAction(user, id, dto.action, dto.reason);
   }
 
   @Roles('ADMIN')

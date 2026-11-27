@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Coins, Layers, LayoutGrid, Lock, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign, X, Scale, FileText } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Check, Coins, Layers, LayoutGrid, Lock, Package, RotateCcw, Settings, Shield, ShoppingCart, Users, UserCog, DollarSign, X, Scale, FileText } from 'lucide-react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader, Empty } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { ROLE_SCOPE, SECTIONS, roleList, sectionFor } from '@/lib/permissions';
 
 const ICONS: Record<string, any> = {
   '/admin/dashboard': LayoutGrid, '/admin/productos': Package, '/admin/pedidos': ShoppingCart, '/admin/categorias': Layers,
-  '/admin/vendedores': Users, '/admin/moderacion': Shield, '/admin/reportes': AlertTriangle, '/admin/devoluciones': RotateCcw,
+  '/admin/identidad': BadgeCheck, '/admin/vendedores': Users, '/admin/moderacion': Shield, '/admin/reportes': AlertTriangle, '/admin/devoluciones': RotateCcw,
   '/admin/finanzas': DollarSign, '/admin/incidencias-pago': Scale, '/admin/comisiones': Coins, '/admin/usuarios': UserCog, '/admin/configuracion': Settings, '/admin/politicas': FileText,
 };
 
@@ -66,6 +66,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const badges: Record<string, number | null> = {
     '/admin/pedidos': a?.cancellations_pending || null,
     '/admin/vendedores': a?.sellers_pending || null,
+    '/admin/identidad': a?.identity_pending || null,
     '/admin/moderacion': a?.products_pending || null,
     '/admin/reportes': a?.open_tickets || null,
     // Admins act on refunds; support on the review / receive / inspect queue.
