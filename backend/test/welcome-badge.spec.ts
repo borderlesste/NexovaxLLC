@@ -28,6 +28,7 @@ type Row = typeof fields & { photo: Buffer };
 describe('private welcome badges over HTTP', () => {
   let app: INestApplication;
   let image: Buffer;
+  let badgeStorageError: string | undefined;
   const statuses = new Map<string, string>();
   const badges = new Map<string, Row>();
   const db = {
@@ -35,6 +36,9 @@ describe('private welcome badges over HTTP', () => {
       const [id, publicName, zoom, x, y, photo] = params;
       if (sql.includes('email_verified_at from public.users')) return { id, email: `${id}@example.com`, status: statuses.get(id), email_verified_at: 'now' };
       if (sql.includes('for no key update')) return statuses.get(id) === 'ACTIVE' ? { active: true } : null;
+      if (badgeStorageError && sql.includes('public.nx_welcome_badges')) {
+        throw Object.assign(new Error('Local fixture schema failure'), { code: badgeStorageError });
+      }
       const row = badges.get(id);
       if (sql.includes('select b.photo')) return row ? { photo: row.photo } : null;
       if (sql.includes('insert into public.nx_welcome_badges') || (sql.includes('update public.nx_welcome_badges') && row)) {
@@ -66,6 +70,7 @@ describe('private welcome badges over HTTP', () => {
     await app.init();
   });
   beforeEach(() => {
+    badgeStorageError = undefined;
     badges.clear();
     statuses.set(owner, 'ACTIVE');
     statuses.set(other, 'ACTIVE');
@@ -111,6 +116,20 @@ describe('private welcome badges over HTTP', () => {
     const replaced = await get(owner, '/photo').expect(200);
     expect(await sharp(replaced.body).metadata()).toMatchObject({ width: 420, height: 650, format: 'webp' });
     expect(db.one.mock.calls.some(([sql]) => sql.includes('public.user_profiles'))).toBe(false);
+  });
+
+  it.each(['42P01', '42501'])('handles unavailable storage (%s) and recovers once it is restored', async (code) => {
+    badgeStorageError = code;
+    const metadata = await get(owner).expect(503).expect('Cache-Control', 'private, no-store');
+    expect(metadata.body).toMatchObject({ code: 'WELCOME_BADGE_STORAGE_UNAVAILABLE' });
+    expect(metadata.text).not.toContain('Local fixture schema failure');
+    expect((await get(owner, '/photo').expect(503)).body.code).toBe('WELCOME_BADGE_STORAGE_UNAVAILABLE');
+    expect((await save(owner).attach('file', image, 'member.jpg').expect(503)).body.code).toBe('WELCOME_BADGE_STORAGE_UNAVAILABLE');
+    expect(badges.size).toBe(0);
+
+    badgeStorageError = undefined;
+    expect((await get(owner).expect(200)).body).toBeNull();
+    await save(owner).attach('file', image, 'member.jpg').expect(201);
   });
 
   it('rejects missing first photo, out-of-range crop values and non-image uploads', async () => {

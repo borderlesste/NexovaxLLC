@@ -1,9 +1,9 @@
 import { webUrl } from '../mail/mail.templates';
 import { PoliciesService } from './policies.service';
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
-import { badRequest, forbidden, notFound } from '../common/errors';
+import { AppError, badRequest, forbidden, notFound } from '../common/errors';
 import { RequestUser, invalidateUserCache } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { MailService } from '../mail/mail.service';
@@ -40,6 +40,8 @@ const WELCOME_BADGE_FIELDS = 'public_name as "publicName", zoom, x, y';
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
+
   constructor(
     private readonly db: DbService,
     private readonly supa: SupabaseAdminService,
@@ -178,20 +180,20 @@ export class AccountService {
 
   async getWelcomeBadge(user: RequestUser) {
     if (user.status !== 'ACTIVE') throw forbidden('Tu cuenta aún no está activa en el marketplace.');
-    return this.db.one<WelcomeBadge>(
+    return this.withWelcomeBadgeStorage(() => this.db.one<WelcomeBadge>(
       `select ${WELCOME_BADGE_FIELDS} from public.nx_welcome_badges b
         join public.users u on u.id = b.user_id where b.user_id = $1 and u.status = 'ACTIVE'`,
       [user.id],
-    );
+    ));
   }
 
   async getWelcomeBadgePhoto(user: RequestUser) {
     if (user.status !== 'ACTIVE') throw forbidden('Tu cuenta aún no está activa en el marketplace.');
-    const badge = await this.db.one<{ photo: Buffer }>(
+    const badge = await this.withWelcomeBadgeStorage(() => this.db.one<{ photo: Buffer }>(
       `select b.photo from public.nx_welcome_badges b
         join public.users u on u.id = b.user_id where b.user_id = $1 and u.status = 'ACTIVE'`,
       [user.id],
-    );
+    ));
     if (!badge) throw notFound('Archivo');
     return badge.photo;
   }
@@ -200,7 +202,7 @@ export class AccountService {
     if (user.status !== 'ACTIVE') throw forbidden('Tu cuenta aún no está activa en el marketplace.');
     const photo = file ? await this.supa.normalizeWelcomeBadgePhoto(file) : null;
     const fields = [user.id, input.publicName, input.zoom, input.x, input.y];
-    return this.db.tx(async (c) => {
+    return this.withWelcomeBadgeStorage(() => this.db.tx(async (c) => {
       const active = await this.db.one(`select 1 from public.users where id = $1 and status = 'ACTIVE' for no key update`, [user.id], c);
       if (!active) throw forbidden('Tu cuenta aún no está activa en el marketplace.');
       if (photo) {
@@ -218,7 +220,17 @@ export class AccountService {
       );
       if (!updated) throw badRequest('WELCOME_BADGE_PHOTO_REQUIRED', 'Elige una foto para tu insignia.');
       return updated;
-    });
+    }));
+  }
+
+  private async withWelcomeBadgeStorage<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!(error instanceof Error) || !('code' in error) || (error.code !== '42P01' && error.code !== '42501')) throw error;
+      this.logger.warn(`Welcome badge storage unavailable (SQLSTATE ${error.code}); check migration 20261127100000 and API role grants.`);
+      throw new AppError('WELCOME_BADGE_STORAGE_UNAVAILABLE', 'El guardado de la insignia no está disponible en este momento.', HttpStatus.SERVICE_UNAVAILABLE);
+    }
   }
 
   async setAvatar(user: RequestUser, file?: Express.Multer.File) {

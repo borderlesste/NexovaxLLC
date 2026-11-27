@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type P
 import { useQuery } from '@tanstack/react-query';
 import { Check, Copy, Download, ImagePlus, Share2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, fetchBlob, get, upload } from '@/lib/api';
+import { ApiError, errorMessage, fetchBlob, get, upload } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import {
   drawWelcomeBadge, welcomeBadgeCropFrame, WELCOME_BADGE_HEIGHT, WELCOME_BADGE_LOGO, WELCOME_BADGE_PHOTO, WELCOME_BADGE_WIDTH,
@@ -21,6 +21,8 @@ const filename = 'nexovax-welcome-badge.png';
 
 type BadgeDetails = WelcomeBadgeCrop & { publicName: string };
 type BadgePhoto = { image: HTMLImageElement; file?: File };
+
+const isStorageUnavailable = (error: unknown) => error instanceof ApiError && error.code === 'WELCOME_BADGE_STORAGE_UNAVAILABLE';
 
 async function loadImage(url: string) {
   const image = new Image();
@@ -42,19 +44,29 @@ export function WelcomeBadgeEditor({ userId, initialName, avatarUrl }: { userId:
       if (!details) return null;
       return { details, photo: { image: await decodePhoto(await fetchBlob(`${endpoint}/photo`)) } };
     },
+    retry: (count, error) => count < 1 && !isStorageUnavailable(error) && !(error instanceof ApiError && [401, 403, 404].includes(error.status)),
     staleTime: Infinity,
     gcTime: 0,
   });
 
   if (badge.isPending) return <Skeleton className="h-64" />;
-  if (badge.isError) return <ErrorBox message={t('No se pudo cargar la insignia.')} onRetry={() => void badge.refetch()} />;
-  return <BadgeForm initial={badge.data} initialName={initialName} avatarUrl={avatarUrl} />;
+  const storageUnavailable = isStorageUnavailable(badge.error);
+  if (badge.isError && !storageUnavailable) return <ErrorBox message={t('No se pudo cargar la insignia.')} onRetry={() => void badge.refetch()} />;
+  return (
+    <>
+      {storageUnavailable && <p role="status" className="mb-3 rounded-xl border border-line bg-white p-4 text-sm text-muted">
+        {t('El guardado de la insignia no está disponible en este momento. Puedes crearla, descargarla y compartirla.')}
+      </p>}
+      <BadgeForm initial={badge.data ?? null} initialName={initialName} avatarUrl={avatarUrl} storageUnavailable={storageUnavailable} />
+    </>
+  );
 }
 
-function BadgeForm({ initial, initialName, avatarUrl }: {
+function BadgeForm({ initial, initialName, avatarUrl, storageUnavailable }: {
   initial: { details: BadgeDetails; photo: BadgePhoto } | null;
   initialName: string;
   avatarUrl?: string | null;
+  storageUnavailable: boolean;
 }) {
   const [saved, setSaved] = useState(initial?.details ?? null);
   const [name, setName] = useState(initial?.details.publicName ?? Array.from(initialName.trim()).slice(0, 64).join(''));
@@ -139,7 +151,7 @@ function BadgeForm({ initial, initialName, avatarUrl }: {
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!photo || !validName || !dirty || busy) return;
+    if (storageUnavailable || !photo || !validName || !dirty || busy) return;
     setSaving(true);
     try {
       const data = new FormData();
@@ -268,7 +280,7 @@ function BadgeForm({ initial, initialName, avatarUrl }: {
         </fieldset>}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" loading={saving} disabled={!photo || !validName || busy || !dirty}><Check /> {t('Guardar insignia')}</Button>
+          <Button type="submit" loading={saving} disabled={storageUnavailable || !photo || !validName || busy || !dirty}><Check /> {t('Guardar insignia')}</Button>
           <Button type="button" variant="outline" disabled={!canExport} onClick={download}><Download /> {t('Descargar PNG')}</Button>
           <Button type="button" variant="outline" disabled={!canExport || sharing} onClick={() => void share()}><Share2 /> {t('Compartir insignia')}</Button>
         </div>

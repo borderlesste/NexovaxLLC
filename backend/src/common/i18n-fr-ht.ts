@@ -2,6 +2,7 @@
 export const FR: Record<string, string> = {
 "Elige una foto para tu insignia.": "Choisissez une photo pour votre badge.",
 "Elige una foto más pequeña para tu insignia.": "Choisissez une photo plus petite pour votre badge.",
+"El guardado de la insignia no está disponible en este momento.": "L’enregistrement du badge est temporairement indisponible.",
   "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "La devise de la boutique a changé. Vérifiez le minimum avant d’enregistrer.",
   "Indica un importe positivo o cero con hasta dos decimales.": "Saisissez zéro ou un montant positif avec deux décimales au maximum.",
   "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Votre boutique prend en charge cette livraison gratuite. Renseignez votre propre numéro de suivi.",
@@ -392,6 +393,7 @@ export const FR: Record<string, string> = {
 export const HT: Record<string, string> = {
 "Elige una foto para tu insignia.": "Chwazi yon foto pou badj ou.",
 "Elige una foto más pequeña para tu insignia.": "Chwazi yon foto ki pi piti pou badj ou.",
+"El guardado de la insignia no está disponible en este momento.": "Ou pa ka anrejistre badj la pou le moman.",
   "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "Lajan boutik la chanje. Verifye minimòm nan anvan ou anrejistre.",
   "Indica un importe positivo o cero con hasta dos decimales.": "Antre zewo oswa yon montan pozitif ki gen de desimal pou pi plis.",
   "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Boutik ou kouvri livrezon gratis sa a. Anrejistre livrezon an ak pwòp nimewo swivi ou.",
