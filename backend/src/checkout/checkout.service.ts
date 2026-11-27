@@ -272,7 +272,7 @@ export class CheckoutService {
             const origin = originId
               ? await this.db.one<OriginAddress>(
                   `select id, contact_name, company_name, line1, line2, city, region, postal_code, country_code, phone
-                     from public.seller_ship_from_addresses where id = $1 and seller_id = $2`,
+                     from public.seller_ship_from_addresses where id = $1 and seller_id = $2 and status = 'ACTIVE'`,
                   [originId, g.sellerId],
                 )
               : fallback;
@@ -289,7 +289,7 @@ export class CheckoutService {
         const canOfferFree = policy && items.length > 0
           && !items.some((item: any) => blocked?.has(item.variantId))
           && purchasableDims.some((line) => line.seller_id === g.sellerId && line.requires_shipping !== false)
-          && warehouses.every((q) => q.id && q.res.options.some((o) => o.code !== 'PICKUP'))
+          && warehouses.every((q) => q.id)
           && qualifiesForFreeShipping(policy, address.country_code, currency,
             items.reduce((sum: Minor, item: any) => sum + toMinor(item.unitPrice) * BigInt(item.quantity), 0n));
         // Keep live/cached rates as-is. The store uses its own carrier on this additional route.

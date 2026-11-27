@@ -163,6 +163,7 @@ export function availabilityText(a: Availability, country: string, tr: (es: stri
     case 'STORE_DOMESTIC_ONLY': return { title: tr('No disponible para envío a {c}', { c }), detail: o ? tr('Esta tienda solo envía dentro de {o}.', { o }) : tr('Esta tienda solo hace envíos nacionales.') };
     case 'STORE_EXCLUDED': return { title: tr('No disponible para envío a {c}', { c }), detail: tr('Esta tienda no envía a este destino.') };
     case 'PRODUCT_EXCLUDED': return { title: tr('No disponible para envío a {c}', { c }), detail: tr('Este producto no se envía a este destino.') };
+    case 'FREE_SHIPPING_MINIMUM': return { title: tr('Envío a {c} por confirmar', { c }), detail: tr('El envío gratis depende del subtotal de esta tienda.') };
     case 'NO_SHIPPING_OPTION': return { title: tr('No disponible para envío a {c}', { c }), detail: tr('No hay opciones de envío a este destino por ahora.') };
     case 'NO_ORIGIN': return { title: tr('Envío a {c} por confirmar', { c }), detail: tr('La tienda aún no indica desde dónde despacha.') };
     default: return { title: tr('Envío a {c} por confirmar', { c }), detail: tr('Indica tu dirección al pagar para confirmar el envío y su costo.') };

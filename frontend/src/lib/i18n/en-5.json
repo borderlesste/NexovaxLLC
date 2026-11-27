@@ -530,6 +530,7 @@
 "Idioma del navegador": "Browser language",
 "En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "On a first visit, show the site in the browser's language when it is one of the four available. The visitor's choice in the language selector always takes priority.",
 "Envío gratis": "Free shipping",
+"El envío gratis depende del subtotal de esta tienda.": "Free shipping depends on your subtotal from this store.",
 "La tienda paga el envío y registra su propia guía.": "Your store pays for shipping and provides its own tracking number.",
 "Ofrecer envío gratis": "Offer free shipping",
 "Subtotal mínimo ({currency})": "Minimum subtotal ({currency})",

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DbService, Queryable } from '../db/db.service';
 import { REAL_COUNTRY } from '../common/geo';
 import { badRequest } from '../common/errors';
+import { toMinor } from '../common/money';
 import { rateCoversRoute, SettingsService, ShippingRate } from '../settings/settings.service';
 import { ShippoService } from '../shipping/shippo.service';
 
@@ -15,6 +16,7 @@ export type AvailabilityReason =
   | 'STORE_DOMESTIC_ONLY'
   | 'STORE_EXCLUDED'
   | 'PRODUCT_EXCLUDED'
+  | 'FREE_SHIPPING_MINIMUM'
   | 'NO_SHIPPING_OPTION'
   | 'NO_ORIGIN'
   | 'NEEDS_ADDRESS'
@@ -42,6 +44,8 @@ export interface RouteFacts {
   store: Restriction | null;
   product: Restriction | null;
   flatRates: ShippingRate[];
+  /** Null when there is no promotion for this route; zero when there is no minimum. */
+  sellerFreeShippingMinimum?: string | null;
   liveRates: boolean;
   /** The store got live carrier rates to this country recently. */
   knownLane: boolean;
@@ -71,9 +75,13 @@ export function evaluateRoute(f: RouteFacts): Availability {
   if (!f.origin) return out('UNCONFIRMED', 'NO_ORIGIN');
   const dest = { country_code: f.destination, region: null };
   const flat = f.flatRates.some((r) => r.code !== 'PICKUP' && rateCoversRoute({ ...r, regions: undefined }, f.origin, dest));
-  if (flat || (f.liveRates && f.knownLane)) return out('AVAILABLE', 'ROUTE_OK');
+  const freeMinimum = f.sellerFreeShippingMinimum;
+  if (flat || (f.liveRates && f.knownLane) || (freeMinimum != null && toMinor(freeMinimum) === 0n))
+    return out('AVAILABLE', 'ROUTE_OK');
+  if (!f.liveRates && f.origin === f.destination && f.flatRates.some((r) => r.code === 'PICKUP'))
+    return out('AVAILABLE', 'PICKUP_ONLY');
+  if (freeMinimum != null) return out('UNCONFIRMED', 'FREE_SHIPPING_MINIMUM');
   if (f.liveRates) return out('UNCONFIRMED', 'NEEDS_ADDRESS');
-  if (f.origin === f.destination && f.flatRates.some((r) => r.code === 'PICKUP')) return out('AVAILABLE', 'PICKUP_ONLY');
   return out('UNAVAILABLE', 'NO_SHIPPING_OPTION');
 }
 
@@ -132,13 +140,14 @@ export class AvailabilityService {
       : [];
     const allIds = [...new Set([...ids, ...vrows.map((v) => v.product_id)])];
     const rows = await this.db.many<{
-      id: string; seller_id: string; requires_shipping: boolean; origin: string | null;
+      id: string; seller_id: string; requires_shipping: boolean; origin: string | null; free_shipping_minimum: string | null;
       store_mode: RestrictionMode | null; store_countries: string[] | null; product_mode: RestrictionMode | null; product_countries: string[] | null; lane: boolean;
     }>(
       `select p.id, p.seller_id, p.requires_shipping,
               (select a.country_code from public.seller_ship_from_addresses a where a.seller_id = p.seller_id and a.status = 'ACTIVE'
                 order by a.is_default desc, a.created_at limit 1) as origin,
               sr.mode as store_mode, sr.countries::text[] as store_countries, pr.mode as product_mode, pr.countries::text[] as product_countries,
+              (case when fs.seller_id is not null then coalesce(fs.minimum_subtotal, 0) end)::text as free_shipping_minimum,
               ($3 and exists (select 1 from public.shipping_quote_requests q
                          join public.shipping_rate_options o on o.quote_request_id = q.id and o.shipping_provider_code = 'SHIPPO'
                         where q.seller_id = p.seller_id and q.request_snapshot -> 'destination' ->> 'country' = $2
@@ -146,8 +155,10 @@ export class AvailabilityService {
          from public.products p
          left join public.destination_restrictions sr on sr.seller_id = p.seller_id and sr.product_id is null
          left join public.destination_restrictions pr on pr.product_id = p.id
+         left join public.nx_seller_free_shipping fs on fs.seller_id = p.seller_id and fs.enabled
+           and fs.currency_code = $5 and $2 = any(fs.country_codes)
         where p.id = any($1::uuid[]) and p.status = 'ACTIVE'`,
-      [allIds, country, liveRates, days], client,
+      [allIds, country, liveRates, days, s['marketplace.currency'] || 'USD'], client,
     );
     const offered = (geo.countries ?? []).map((c: string) => c.toUpperCase());
     const facts = (r: (typeof rows)[number], origin: string | null): RouteFacts => ({
@@ -158,6 +169,7 @@ export class AvailabilityService {
       store: r.store_mode ? { mode: r.store_mode, countries: r.store_countries ?? [] } : null,
       product: r.product_mode ? { mode: r.product_mode, countries: r.product_countries ?? [] } : null,
       flatRates: s['shipping.rates'] ?? [],
+      sellerFreeShippingMinimum: r.free_shipping_minimum,
       liveRates,
       knownLane: r.lane,
     });

@@ -46,6 +46,7 @@ function FreeShippingSettings({ sellerId }: { sellerId: string }) {
     onSuccess: (policy) => {
       qc.setQueryData(queryKey, policy);
       void qc.invalidateQueries({ queryKey: ['checkout-quote'] });
+      void qc.invalidateQueries({ queryKey: ['availability'] });
       setDraft(null);
       toast.success(t('Configuración de envío gratis guardada.'));
     },

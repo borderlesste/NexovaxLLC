@@ -64,8 +64,13 @@ describe('checkout: physical origins', () => {
     expect(r.origins.map((o: any) => o.options[0].serviceToken)).toEqual([SELLER_FREE_SHIPPING, SELLER_FREE_SHIPPING]);
   });
 
+  it('keeps pickup and offers free delivery when a warehouse has no paid rate', async () => {
+    const self = ctx({ A: [opt('PICKUP', '0.00'), opt('FLAT:STD', '6.99')], B: [opt('PICKUP', '0.00')] }, [policy]);
+    const r = (await groupOptions.call(self, 'cart', groups, { country_code: 'US' }, 'USD')).get('s1');
+    expect(r.options.map((option: any) => [option.code, option.amount])).toEqual([[SELLER_FREE_SHIPPING, '0.00'], ['PICKUP', '0.00']]);
+  });
+
   it.each([
-    ['pickup only at one origin', ['US'], 'USD', '45.00', 'PICKUP'],
     ['country outside the promotion', ['CA'], 'USD', '45.00', 'FLAT:STD'],
     ['policy in an old currency', ['US'], 'CAD', '45.00', 'FLAT:STD'],
     ['subtotal below the minimum, even with an unavailable line', ['US'], 'USD', '45.01', 'FLAT:STD'],

@@ -3290,6 +3290,7 @@
 "Idioma del navegador": "Langue du navigateur",
 "En la primera visita, muestra el sitio en el idioma del navegador si es uno de los cuatro disponibles. La elección del visitante en el selector siempre tiene prioridad.": "Lors de la première visite, affiche le site dans la langue du navigateur si elle fait partie des quatre disponibles. Le choix du visiteur dans le sélecteur de langue est toujours prioritaire.",
 "Envío gratis": "Livraison gratuite",
+"El envío gratis depende del subtotal de esta tienda.": "La livraison gratuite dépend du sous-total de cette boutique.",
 "La tienda paga el envío y registra su propia guía.": "Votre boutique paie la livraison et renseigne son propre numéro de suivi.",
 "Ofrecer envío gratis": "Offrir la livraison gratuite",
 "Subtotal mínimo ({currency})": "Sous-total minimum ({currency})",

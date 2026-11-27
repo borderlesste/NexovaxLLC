@@ -89,7 +89,7 @@ describe('checkout address version', () => {
     return {
       svc, db, shipping, availability, payments, rateFor, client,
       updateAddress: (next: typeof address | null) => { storedAddress = next; },
-      enableFreeShipping: () => { freeShipping = { seller_id: 'seller', country_codes: ['US'], minimum_subtotal: '10.00', currency_code: 'USD' }; },
+      enableFreeShipping: (minimum = '10.00') => { freeShipping = { seller_id: 'seller', country_codes: ['US'], minimum_subtotal: minimum, currency_code: 'USD' }; },
       changeInTransaction: (change: 'disable' | 'reprice' | 'destination') => { beforeTx = () => {
         if (change === 'disable') freeShipping = null;
         if (change === 'reprice') checkoutUnitPrice = '9.99';
@@ -162,6 +162,30 @@ describe('checkout address version', () => {
       expect.arrayContaining([SELLER_FREE_SHIPPING, 'MARKETPLACE', '0.00']), f.client);
     expect(f.db.exec).toHaveBeenCalledWith(expect.stringContaining('select_checkout_shipping_rate'),
       expect.arrayContaining(['0.00']), f.client);
+  });
+
+  it('allows the store to ship for free without a paid rate for the confirmed address', async () => {
+    const f = checkout();
+    f.enableFreeShipping();
+    f.shipping.options.mockResolvedValue({ options: [], liveRates: false, messages: [] });
+
+    const q = await f.quote();
+    expect(q.groups[0]).toMatchObject({ selectedShipping: SELLER_FREE_SHIPPING, destinationBlocked: [] });
+    expect(q.shipping).toBe('0.00');
+    await expect(f.place(q.addressVersion, SELLER_FREE_SHIPPING)).resolves.toMatchObject({ checkoutId: 'checkout' });
+    expect(f.db.exec).toHaveBeenCalledWith(expect.stringContaining('select_checkout_shipping_rate'),
+      expect.arrayContaining(['0.00']), f.client);
+  });
+
+  it('still refuses free delivery below the minimum when there is no paid rate', async () => {
+    const f = checkout();
+    f.enableFreeShipping('10.01');
+    f.shipping.options.mockResolvedValue({ options: [], liveRates: false, messages: [] });
+
+    const q = await f.quote();
+    expect(q.groups[0]).toMatchObject({ selectedShipping: null, shippingOptions: [] });
+    await expect(f.place(q.addressVersion, SELLER_FREE_SHIPPING)).rejects.toMatchObject({ code: 'SHIPPING_OPTION_UNAVAILABLE' });
+    expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
   });
 
   it.each(['disable', 'reprice'] as const)('checks confirmed promotion eligibility after a concurrent %s', async (change) => {
