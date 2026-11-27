@@ -113,6 +113,8 @@ export const EXTRA: Record<string, [en: string, fr: string, ht: string]> = {
   'Uno de los productos no pertenece a esta venta.': ['One of the products doesn’t belong to this sale.', 'L’un des produits n’appartient pas à cette vente.', 'Youn nan pwodwi yo pa fè pati vant sa a.'],
   'Usuario de X inválido (ej.: @nexovax).': ['Invalid X username (e.g. @nexovax).', 'Nom d’utilisateur X non valable (ex. : @nexovax).', 'Non itilizatè X la pa valab (egz.: @nexovax).'],
   'Ya tienes una solicitud de eliminación en revisión.': ['You already have a deletion request under review.', 'Vous avez déjà une demande de suppression en cours d’examen.', 'Ou deja gen yon demann efasman k ap revize.'],
+  'Selecciona al menos un producto y la cantidad a devolver.': ['Select at least one product and the quantity to return.', 'Sélectionnez au moins un produit et la quantité à retourner.', 'Chwazi omwen yon pwodwi ak kantite pou retounen.'],
+  'Formato no permitido. Adjunta fotos (JPG, PNG, WebP) o documentos PDF.': ['Format not allowed. Attach photos (JPG, PNG, WebP) or PDF documents.', 'Format non autorisé. Joignez des photos (JPG, PNG, WebP) ou des documents PDF.', 'Fòma sa a pa otorize. Tache foto (JPG, PNG, WebP) oswa dokiman PDF.'],
   // Reasons an account can't be deleted yet (admin review).
   'Tiene pedidos en curso (pagados y sin entregar, o con pago pendiente).': ['Has orders in progress (paid and not delivered, or awaiting payment).', 'A des commandes en cours (payées et non livrées, ou en attente de paiement).', 'Gen kòmand k ap fèt (peye men poko livre, oswa k ap tann peman).'],
   'Tiene devoluciones abiertas.': ['Has open returns.', 'A des retours ouverts.', 'Gen retou ki louvri.'],
