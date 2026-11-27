@@ -1,16 +1,16 @@
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { requestLocale } from '../common/i18n-errors';
 import { badRequest } from '../common/errors';
 import { PoliciesService } from './policies.service';
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Headers, Param, ParseUUIDPipe, Post, Put, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AlertsService } from '../analytics/alerts.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength, IsArray, ArrayMinSize, ArrayMaxSize, IsUUID } from 'class-validator';
-import { Type } from 'class-transformer';
-import { CurrentUser, Public, RequestUser } from '../auth/auth';
+import { IsBoolean, IsEmail, IsIn, IsNumber, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, MinLength, IsArray, ArrayMinSize, ArrayMaxSize, IsUUID } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { CurrentUser, FreshUser, Public, RequestUser } from '../auth/auth';
 import { TurnstileGuard } from '../auth/turnstile.guard';
 import { IsAddressLine, IsBusinessName, IsCleanText, IsCountryCode, IsEmailAddress, IsOptionalPersonName, IsPersonName, IsPhone, IsPlaceName, IsPostalCode } from '../common/validators';
 import { AccountService } from './account.service';
@@ -23,6 +23,7 @@ export class RegisterDto {
   @IsEmailAddress() email: string;
   @IsString() @MinLength(8) @MaxLength(72) password: string;
   @IsOptional() @IsIn(['es', 'en', 'fr', 'ht']) locale?: string;
+  @IsOptional() @IsString() @MaxLength(1024) next?: string;
   /** The Terms and the Privacy policy shown next to the checkbox (current versions). */
   @IsBoolean() acceptTerms: boolean;
 }
@@ -43,6 +44,10 @@ export class RecoveryDto {
   @IsEmailAddress() email: string;
 }
 
+export class ResendVerificationDto extends RecoveryDto {
+  @IsOptional() @IsString() @MaxLength(1024) next?: string;
+}
+
 export class LoginDto {
   @IsEmailAddress() email: string;
   @IsString() @MinLength(1) @MaxLength(128) password: string;
@@ -52,6 +57,15 @@ export class ProfileDto {
   @IsOptional() @IsOptionalPersonName(80) firstName?: string;
   @IsOptional() @IsOptionalPersonName(80) lastName?: string;
   @IsOptional() @IsPhone() phone?: string;
+}
+
+const cropNumber = () => Transform(({ value }) => typeof value === 'string' && value.trim() ? Number(value) : value);
+
+export class WelcomeBadgeDto {
+  @IsCleanText(1, 64) publicName: string;
+  @cropNumber() @IsNumber() @Min(1) @Max(3) zoom: number;
+  @cropNumber() @IsNumber() @Min(-1) @Max(1) x: number;
+  @cropNumber() @IsNumber() @Min(-1) @Max(1) y: number;
 }
 
 export class PasswordDto {
@@ -126,8 +140,8 @@ export class AccountController {
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @UseGuards(TurnstileGuard)
   @Post('auth/resend-verification')
-  resendVerification(@Body() dto: RecoveryDto) {
-    return this.account.resendVerification(dto.email);
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.account.resendVerification(dto.email, dto.next);
   }
 
   @Public()
@@ -158,6 +172,31 @@ export class AccountController {
   @Delete('me/avatar')
   removeAvatar(@CurrentUser() user: RequestUser) {
     return this.account.removeAvatar(user);
+  }
+
+  @FreshUser()
+  @Get('me/welcome-badge')
+  async welcomeBadge(@CurrentUser() user: RequestUser, @Res() res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    const badge = await this.account.getWelcomeBadge(user);
+    res.json(badge);
+  }
+
+  @FreshUser()
+  @Get('me/welcome-badge/photo')
+  async welcomeBadgePhoto(@CurrentUser() user: RequestUser, @Res() res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    const photo = await this.account.getWelcomeBadgePhoto(user);
+    res.type('image/webp').send(photo);
+  }
+
+  @FreshUser()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Header('Cache-Control', 'private, no-store')
+  @Post('me/welcome-badge')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024, fieldSize: 1024, files: 1, fields: 4, parts: 6 } }))
+  saveWelcomeBadge(@CurrentUser() user: RequestUser, @Body() dto: WelcomeBadgeDto, @UploadedFile() file?: Express.Multer.File) {
+    return this.account.saveWelcomeBadge(user, dto, file);
   }
 
   @Put('me/password')

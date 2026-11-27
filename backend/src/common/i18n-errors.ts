@@ -5,6 +5,8 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Elige una foto para tu insignia.": "Choose a photo for your badge.",
+  "Elige una foto más pequeña para tu insignia.": "Choose a smaller photo for your badge.",
   "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "The store currency changed. Review the minimum before saving.",
   "Indica un importe positivo o cero con hasta dos decimales.": "Enter zero or a positive amount with up to two decimal places.",
   "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Your store covers this free delivery. Record the shipment with your own tracking number.",

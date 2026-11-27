@@ -9,8 +9,8 @@ export function safeNextPath(raw: string | null | undefined, fallback = '/'): st
   try {
     const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     const url = new URL(value, base);
-    if (url.origin !== base || !/^https?:$/.test(url.protocol)) return fallback;
-    if (url.pathname.startsWith('/auth/')) return fallback; // never bounce back into the auth pages
+    if (url.origin !== base || !/^https?:$/.test(url.protocol) || url.pathname.startsWith('//')) return fallback;
+    if (url.pathname === '/auth' || url.pathname.startsWith('/auth/')) return fallback;
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return fallback;

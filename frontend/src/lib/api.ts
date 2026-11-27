@@ -76,13 +76,17 @@ export function errorMessage(e: unknown) {
   return (e as any)?.message ?? tr('Ocurrió un error inesperado.');
 }
 
-/** Downloads a private file (attachments, evidence) with the session token and returns a blob URL. */
-export async function fetchBlobUrl(path: string): Promise<string> {
+/** Downloads a private file with the session token. */
+export async function fetchBlob(path: string): Promise<Blob> {
   const headers = new Headers();
   const t = await token();
   if (t) headers.set('Authorization', `Bearer ${t}`);
   if (sellerContext) headers.set('x-seller-id', sellerContext);
   const res = await fetch(apiUrl(path, true), { headers, cache: 'no-store' });
   if (!res.ok) throw new ApiError(res.status, 'FILE_ERROR', tr('No se pudo abrir el archivo.'));
-  return URL.createObjectURL(await res.blob());
+  return res.blob();
+}
+
+export async function fetchBlobUrl(path: string): Promise<string> {
+  return URL.createObjectURL(await fetchBlob(path));
 }

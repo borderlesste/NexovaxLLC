@@ -1,5 +1,7 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+"Elige una foto para tu insignia.": "Choisissez une photo pour votre badge.",
+"Elige una foto más pequeña para tu insignia.": "Choisissez une photo plus petite pour votre badge.",
   "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "La devise de la boutique a changé. Vérifiez le minimum avant d’enregistrer.",
   "Indica un importe positivo o cero con hasta dos decimales.": "Saisissez zéro ou un montant positif avec deux décimales au maximum.",
   "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Votre boutique prend en charge cette livraison gratuite. Renseignez votre propre numéro de suivi.",
@@ -388,6 +390,8 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+"Elige una foto para tu insignia.": "Chwazi yon foto pou badj ou.",
+"Elige una foto más pequeña para tu insignia.": "Chwazi yon foto ki pi piti pou badj ou.",
   "La moneda de la tienda cambió. Revisa el mínimo antes de guardar.": "Lajan boutik la chanje. Verifye minimòm nan anvan ou anrejistre.",
   "Indica un importe positivo o cero con hasta dos decimales.": "Antre zewo oswa yon montan pozitif ki gen de desimal pou pi plis.",
   "Este envío gratuito corre por cuenta de tu tienda. Registra el envío con tu propia guía.": "Boutik ou kouvri livrezon gratis sa a. Anrejistre livrezon an ak pwòp nimewo swivi ou.",

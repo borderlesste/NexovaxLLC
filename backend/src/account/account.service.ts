@@ -3,7 +3,7 @@ import { PoliciesService } from './policies.service';
 import { Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
-import { badRequest, notFound } from '../common/errors';
+import { badRequest, forbidden, notFound } from '../common/errors';
 import { RequestUser, invalidateUserCache } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { MailService } from '../mail/mail.service';
@@ -29,6 +29,15 @@ const clean = (v?: string | null) => (v && v.trim() ? v.trim() : null);
 export const LOCALES = ['es', 'en', 'fr', 'ht'] as const;
 export type Locale = (typeof LOCALES)[number];
 
+interface WelcomeBadge {
+  publicName: string;
+  zoom: number;
+  x: number;
+  y: number;
+}
+
+const WELCOME_BADGE_FIELDS = 'public_name as "publicName", zoom, x, y';
+
 @Injectable()
 export class AccountService {
   constructor(
@@ -39,7 +48,7 @@ export class AccountService {
   ) {}
 
   /** Creates the Supabase identity; DB trigger provisions marketplace user + CUSTOMER role. */
-  async register(input: { fullName: string; email: string; password: string; locale?: string; acceptTerms?: boolean }, client: { ip?: string | null; userAgent?: string | null } = {}) {
+  async register(input: { fullName: string; email: string; password: string; locale?: string; acceptTerms?: boolean; next?: string }, client: { ip?: string | null; userAgent?: string | null } = {}) {
     // The checkbox is the legal consent: no account without it.
     if (input.acceptTerms !== true) throw badRequest('TERMS_REQUIRED', 'Debes aceptar los términos y la política de privacidad.');
     await assertPasswordAcceptable(input.password);
@@ -56,14 +65,23 @@ export class AccountService {
     await this.policies.acceptAccountPolicies(user.id, { method: 'REGISTRATION', locale: input.locale ?? 'es', ip: client.ip, userAgent: client.userAgent });
     const confirmed = !!user.email_confirmed_at;
     if (confirmed) this.mail.fire(() => this.mail.welcome(user.id));
-    else this.mail.fire(() => this.sendVerification(user.id, user.email!));
+    else this.mail.fire(() => this.sendVerification(user.id, user.email!, input.next));
     return { email: user.email, confirmed, verificationSent: !confirmed };
   }
 
-  private async sendVerification(userId: string, email: string) {
+  private async sendVerification(userId: string, email: string, next?: string) {
     const tokenHash = await this.supa.emailVerificationTokenHash(email);
     if (!tokenHash) return;
-    await this.mail.emailVerification(userId, email, `${webUrl()}/auth/confirmar?token_hash=${encodeURIComponent(tokenHash)}&type=email`);
+    const confirmation = new URL(`${webUrl()}/auth/confirmar`);
+    confirmation.searchParams.set('token_hash', tokenHash);
+    confirmation.searchParams.set('type', 'email');
+    if (next?.startsWith('/') && !next.startsWith('//') && !/[\\\u0000-\u001f]/.test(next)) {
+      const destination = new URL(next, confirmation.origin);
+      if (destination.origin === confirmation.origin && !destination.pathname.startsWith('//') && !/^\/auth(?:\/|$)/.test(destination.pathname)) {
+        confirmation.searchParams.set('next', `${destination.pathname}${destination.search}${destination.hash}`);
+      }
+    }
+    await this.mail.emailVerification(userId, email, confirmation.href);
   }
 
   /** Password sign-in on behalf of the browser (see AccountController.login). */
@@ -76,14 +94,14 @@ export class AccountService {
    * New accounts stay in PENDING_VERIFICATION until the address is confirmed, so
    * those are exactly the ones that need it (suspended or deleted accounts never get one).
    */
-  async resendVerification(email: string) {
+  async resendVerification(email: string, next?: string) {
     const normalized = email.trim().toLowerCase();
     const u = await this.db.one<{ id: string }>(
       `select id from public.users
         where lower(email::text) = $1 and email_verified_at is null and status in ('PENDING_VERIFICATION', 'ACTIVE')`,
       [normalized],
     );
-    if (u) this.mail.fire(() => this.sendVerification(u.id, normalized));
+    if (u) this.mail.fire(() => this.sendVerification(u.id, normalized, next));
     return { ok: true };
   }
 
@@ -156,6 +174,51 @@ export class AccountService {
     );
     invalidateUserCache(user.id);
     return this.me(user);
+  }
+
+  async getWelcomeBadge(user: RequestUser) {
+    if (user.status !== 'ACTIVE') throw forbidden('Tu cuenta aún no está activa en el marketplace.');
+    return this.db.one<WelcomeBadge>(
+      `select ${WELCOME_BADGE_FIELDS} from public.nx_welcome_badges b
+        join public.users u on u.id = b.user_id where b.user_id = $1 and u.status = 'ACTIVE'`,
+      [user.id],
+    );
+  }
+
+  async getWelcomeBadgePhoto(user: RequestUser) {
+    if (user.status !== 'ACTIVE') throw forbidden('Tu cuenta aún no está activa en el marketplace.');
+    const badge = await this.db.one<{ photo: Buffer }>(
+      `select b.photo from public.nx_welcome_badges b
+        join public.users u on u.id = b.user_id where b.user_id = $1 and u.status = 'ACTIVE'`,
+      [user.id],
+    );
+    if (!badge) throw notFound('Archivo');
+    return badge.photo;
+  }
+
+  async saveWelcomeBadge(user: RequestUser, input: WelcomeBadge, file?: Express.Multer.File) {
+    if (user.status !== 'ACTIVE') throw forbidden('Tu cuenta aún no está activa en el marketplace.');
+    const photo = file ? await this.supa.normalizeWelcomeBadgePhoto(file) : null;
+    const fields = [user.id, input.publicName, input.zoom, input.x, input.y];
+    return this.db.tx(async (c) => {
+      const active = await this.db.one(`select 1 from public.users where id = $1 and status = 'ACTIVE' for no key update`, [user.id], c);
+      if (!active) throw forbidden('Tu cuenta aún no está activa en el marketplace.');
+      if (photo) {
+        return this.db.one<WelcomeBadge>(
+          `insert into public.nx_welcome_badges (user_id, public_name, zoom, x, y, photo) values ($1, $2, $3, $4, $5, $6)
+           on conflict (user_id) do update set public_name = excluded.public_name, zoom = excluded.zoom, x = excluded.x, y = excluded.y,
+              photo = excluded.photo returning ${WELCOME_BADGE_FIELDS}`,
+          [...fields, photo], c,
+        );
+      }
+      const updated = await this.db.one<WelcomeBadge>(
+        `update public.nx_welcome_badges set public_name = $2, zoom = $3, x = $4, y = $5
+          where user_id = $1 returning ${WELCOME_BADGE_FIELDS}`,
+        fields, c,
+      );
+      if (!updated) throw badRequest('WELCOME_BADGE_PHOTO_REQUIRED', 'Elige una foto para tu insignia.');
+      return updated;
+    });
   }
 
   async setAvatar(user: RequestUser, file?: Express.Multer.File) {

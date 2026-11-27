@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { StorefrontIllustration } from '@/components/layout/auth-illustration';
 import { getLocale, t } from '@/lib/i18n';
-import { PENDING_EMAIL_KEY } from '@/lib/auth-pending';
+import { PENDING_EMAIL_KEY, rememberBadgeSignup, takeBadgeSignup, verificationDestination, welcomeBadgeIntro } from '@/lib/auth-pending';
 
 function RegisterForm() {
   const { signIn } = useAuth();
@@ -35,16 +35,22 @@ function RegisterForm() {
     if (!captcha.ready) return setError(t('Completa la verificación de seguridad.'));
     setBusy(true);
     try {
-      const r = await postWithCaptcha('/auth/register', { fullName: f.fullName, email: f.email, password: f.password, acceptTerms: terms, locale: getLocale() }, captcha.token);
+      const r = await postWithCaptcha('/auth/register', { fullName: f.fullName, email: f.email, password: f.password, acceptTerms: terms, locale: getLocale(), next: verificationDestination(next) }, captcha.token);
+      rememberBadgeSignup(f.email, next);
       // Each Turnstile token is single-use: with the check on, sign in from the login page with a fresh one.
       if (r.confirmed && !captcha.required) {
-        await signIn(f.email, f.password);
-        router.replace(next);
-      } else {
-        // Lets the login page prefill the address for "Reenviar enlace" (kept out of the URL).
-        try { sessionStorage.setItem(PENDING_EMAIL_KEY, f.email.trim()); } catch {}
-        router.replace('/auth/iniciar-sesion?registered=1');
+        try {
+          await signIn(f.email, f.password);
+          takeBadgeSignup(f.email);
+          router.replace(welcomeBadgeIntro(next));
+          return;
+        } catch {
+          // Registration succeeded. Let the member retry sign-in there.
+        }
       }
+      // Lets the login page prefill the address without placing it in the URL.
+      try { sessionStorage.setItem(PENDING_EMAIL_KEY, f.email.trim()); } catch {}
+      router.replace(`/auth/iniciar-sesion?registered=${r.confirmed ? 'confirmed' : '1'}${next === '/' ? '' : `&next=${encodeURIComponent(next)}`}`);
     } catch (err) {
       setError(errorMessage(err));
       captcha.reset();

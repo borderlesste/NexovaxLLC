@@ -267,6 +267,13 @@ export class SupabaseAdminService {
     return { out, meta };
   }
 
+  /** Keeps the member's framing options while stripping original photo metadata. */
+  async normalizeWelcomeBadgePhoto(file: UploadFile): Promise<Buffer> {
+    const { out } = await this.processImage(file, (img) => img.resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true }));
+    if (out.length > 2 * 1024 * 1024) throw new AppError('WELCOME_BADGE_PHOTO_TOO_LARGE', 'Elige una foto más pequeña para tu insignia.');
+    return out;
+  }
+
   /**
    * Profile photo: square 512×512 WebP in the private avatars bucket (served by
    * /api/media/:id). Replaces and deletes the previous photo.

@@ -1,7 +1,9 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Check, Shield, ShoppingBag, Store, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { WelcomeBadgeEditor } from '@/components/account/welcome-badge-editor';
 import { del, errorMessage, put, upload } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fmtDate } from '@/lib/utils';
@@ -10,16 +12,28 @@ import { Field, Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/misc';
 import { Badge } from '@/components/ui/badge';
 import { t } from '@/lib/i18n';
+import { safeNextPath } from '@/lib/safe-redirect';
 
 export default function ProfilePage() {
   const { me, refresh, seller } = useAuth();
   const [f, setF] = useState({ firstName: '', lastName: '', phone: '' });
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [badgeNext, setBadgeNext] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const welcomeBadgeRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (me) setF({ firstName: me.firstName ?? '', lastName: me.lastName ?? '', phone: me.phone ?? '' });
   }, [me]);
+  const memberId = me?.id;
+  useEffect(() => {
+    const section = welcomeBadgeRef.current;
+    if (memberId && section && window.location.hash === '#welcome-badge') {
+      setBadgeNext(safeNextPath(new URLSearchParams(window.location.search).get('badgeNext'), '') || null);
+      section.scrollIntoView();
+      section.focus({ preventScroll: true });
+    }
+  }, [memberId]);
   if (!me) return null;
   const save = async () => {
     setBusy(true);
@@ -106,6 +120,12 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <section ref={welcomeBadgeRef} id="welcome-badge" aria-labelledby="welcome-badge-title" tabIndex={-1}
+        className="mt-6 min-w-0 scroll-mt-24 focus:outline-none">
+        <h2 id="welcome-badge-title" lang="en" className="mb-3 text-xl font-extrabold">My Welcome Badge</h2>
+        <WelcomeBadgeEditor key={me.id} userId={me.id} initialName={me.displayName === me.email ? '' : me.displayName} avatarUrl={me.avatarUrl} />
+        {badgeNext && <div className="mt-3 flex justify-end"><Button asChild variant="secondary"><Link href={badgeNext}>{t('Continuar')}</Link></Button></div>}
+      </section>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { safeNextPath } from '@/lib/safe-redirect';
 import { Eye, EyeOff, Lock, Mail, ShieldCheck, ShoppingCart, Store } from 'lucide-react';
@@ -15,13 +15,14 @@ import { Field, Input } from '@/components/ui/input';
 import { LogoMark } from '@/components/layout/logo';
 import { StorefrontIllustration } from '@/components/layout/auth-illustration';
 import { t } from '@/lib/i18n';
-import { PENDING_EMAIL_KEY } from '@/lib/auth-pending';
+import { PENDING_EMAIL_KEY, takeBadgeSignup, verificationDestination, welcomeBadgeIntro } from '@/lib/auth-pending';
 
 function LoginForm() {
   const { signIn, session } = useAuth();
   const router = useRouter();
   const sp = useSearchParams();
   const next = safeNextPath(sp.get('next'));
+  const registrationConfirmed = sp.get('registered') === 'confirmed';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
@@ -29,6 +30,8 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [unverified, setUnverified] = useState(sp.get('registered') === '1');
   const [resending, setResending] = useState(false);
+  const routedUser = useRef<string | null>(null);
+  const submittedHere = useRef(false);
   const captcha = useCaptcha('login');
   const needCaptcha = () => {
     if (captcha.ready) return false;
@@ -40,7 +43,7 @@ function LoginForm() {
     if (needCaptcha()) return;
     setResending(true);
     try {
-      await postWithCaptcha('/auth/resend-verification', { email: email.trim() }, captcha.token);
+      await postWithCaptcha('/auth/resend-verification', { email: email.trim(), next: verificationDestination(next) }, captcha.token);
       setError('');
       toast.success(t('Si la cuenta existe y no está confirmada, te enviamos un nuevo enlace.'));
     } catch (err) {
@@ -59,24 +62,33 @@ function LoginForm() {
     staleTime: Infinity,
   });
   useEffect(() => {
-    if (!unverified) return;
+    if (!unverified && !registrationConfirmed) return;
     try {
       const saved = sessionStorage.getItem(PENDING_EMAIL_KEY);
       if (saved) setEmail((cur) => cur || saved);
     } catch {}
-  }, [unverified]);
+  }, [unverified, registrationConfirmed]);
   useEffect(() => {
-    if (session) router.replace(next);
-  }, [session, next, router]);
+    if (!session || routedUser.current === session.user.id) return;
+    routedUser.current = session.user.id;
+    const signupNext = takeBadgeSignup(session.user.email);
+    if (signupNext !== null && (registrationConfirmed || submittedHere.current)) {
+      router.replace(welcomeBadgeIntro(next === '/' ? signupNext : next));
+    } else {
+      // A verification tab can start this session too. It shows the welcome offer itself.
+      router.replace(next);
+    }
+  }, [session, next, router, registrationConfirmed]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (needCaptcha()) return;
     setBusy(true);
+    submittedHere.current = true;
     try {
       await signIn(email, password, captcha.token);
-      router.replace(next);
     } catch (err: any) {
+      submittedHere.current = false;
       setError(err.message);
       if (err?.code === 'EMAIL_NOT_CONFIRMED') {
         setUnverified(true);
