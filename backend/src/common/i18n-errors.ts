@@ -214,6 +214,7 @@ const EN: Record<string, string> = {
   'Tu cuenta aún no está activa en el marketplace.': 'Your account is not active on the marketplace yet.',
   'Indica el motivo para el vendedor.': 'Enter the reason for the seller.',
   'Indica el motivo.': 'Enter the reason.',
+  'Indica cómo verificaste la identidad.': 'Say how you verified the identity.',
   'Referencia inválida o en uso.': 'Invalid or already used reference.',
   'Indica la referencia bancaria recibida.': 'Enter the bank reference received.',
   'Indica la referencia de la transferencia bancaria.': 'Enter the bank transfer reference.',

@@ -1,6 +1,7 @@
 import { realOrder } from '../common/live-orders';
 import { productHasPreorderSql } from '../preorders/preorders.sql';
 import { activeAffiliateProgramSql } from '../promotions/affiliates.sql';
+import { SELLER_TRUST_SQL, sellerTrust } from '../common/seller-trust';
 /**
  * Shared SQL fragments for catalog read models.
  * Prices come from the pricing domain (active variant_price_versions); stock is
@@ -27,7 +28,7 @@ export const PRODUCT_CARD_SELECT = (currencyParam: string) => `
   p.id, p.slug, p.title, p.short_description, p.status, p.created_at, p.published_at,
   p.category_id, c.name as category_name, c.slug as category_slug,
   s.id as seller_id, s.slug as seller_slug, coalesce(ssp.display_name, s.slug) as seller_name,
-  (s.verification_status = 'VERIFIED') as seller_verified,
+  ${SELLER_TRUST_SQL('s', 'seller_')},
   pr.min_amount as price, pr.compare_at as compare_at_price,
   (select pm.asset_id from public.product_media pm
      where pm.product_id = p.id and pm.media_role in ('COVER','GALLERY')
@@ -77,7 +78,7 @@ export function mapProductCard(r: any) {
     shortDescription: r.short_description,
     status: r.status,
     category: { id: r.category_id, name: r.category_name, slug: r.category_slug },
-    seller: { id: r.seller_id, slug: r.seller_slug, name: r.seller_name, verified: r.seller_verified },
+    seller: { id: r.seller_id, slug: r.seller_slug, name: r.seller_name, trust: sellerTrust(r, 'seller_') },
     price: r.price,
     compareAtPrice: r.compare_at_price,
     discountPercent:

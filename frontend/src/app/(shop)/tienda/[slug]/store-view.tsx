@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, Box, Calendar, Grid2X2, Headphones, Info, List, MessageSquare, Plus, Settings, Share2, ShieldCheck, Star, Tag, Truck, Users, Zap, Check } from 'lucide-react';
+import { Box, Calendar, Grid2X2, Headphones, Info, List, MessageSquare, Plus, Settings, Share2, Star, Tag, Truck, Users, Zap, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -17,6 +17,7 @@ import { ShareDialog } from '@/components/shop/share-button';
 import { useRequireAuth } from '@/components/shop/hooks';
 import { LogoMark } from '@/components/layout/logo';
 import { t, getIntlLocale } from '@/lib/i18n';
+import { IdentityMark, SellerTrustList } from '@/components/shop/seller-trust';
 
 export function StoreView({ initial }: { initial: any }) {
   const { session } = useAuth();
@@ -95,7 +96,7 @@ export function StoreView({ initial }: { initial: any }) {
             {store.logoUrl ? <img src={store.logoUrl} alt={store.name} className="size-full object-cover" /> : <LogoMark className="size-16" />}
           </div>
           <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-3xl font-extrabold">{store.name} {store.verified && <BadgeCheck className="size-7 fill-brand-600 text-white" />}</h1>
+            <h1 className="flex items-center gap-2 text-3xl font-extrabold">{store.name} <IdentityMark trust={store.trust} className="size-7" /></h1>
             {store.shortDescription && <p className="mt-1 text-ink/80">{store.shortDescription}</p>}
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
               <button type="button" onClick={() => showReviews()} className="inline-flex items-center gap-1 hover:underline"><Star className="size-4 fill-amber-400 text-amber-400" /> <b>{store.stats.rating ? store.stats.rating.toFixed(1) : '—'}</b> ({reviewsTotal.toLocaleString(getIntlLocale())} {t('valoraciones)')}</button>
@@ -229,9 +230,12 @@ export function StoreView({ initial }: { initial: any }) {
             <p className="text-lg font-bold">{t('Sobre la tienda')}</p>
             <ul className="mt-3 space-y-2.5 text-sm">
               <li className="flex items-center gap-2"><Calendar className="size-4 text-muted" /> {t('Vendedor desde:')}{' '}{fmtDate(store.memberSince)}</li>
-              {store.verified && <li className="flex items-center gap-2"><ShieldCheck className="size-4 text-muted" /> {t('Tienda verificada')}</li>}
               {shipsFrom && <li className="flex items-center gap-2"><Truck className="size-4 text-muted" /> {t('Envía desde:')}{' '}<b>{shipsFrom}</b></li>}
             </ul>
+          </div>
+          <div className="card p-5">
+            <p className="text-lg font-bold">{t('Verificaciones de la tienda')}</p>
+            <div className="mt-3"><SellerTrustList trust={store.trust} /></div>
           </div>
           <div className="card p-5">
             <p className="text-lg font-bold">{t('Calificación de la tienda')}</p>

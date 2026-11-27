@@ -73,7 +73,7 @@ export default function SellerOnboardingPage() {
             <Field label={t('Teléfono de atención')}><PhoneInput countryCode={f.countryCode || geo.countryCode} value={f.supportPhone} onChange={(v) => setF((s) => ({ ...s, supportPhone: v }))} /></Field>
           </div>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')} <span className="text-sm font-normal text-muted">{t('(opcional)')}</span></h2>
-          <p className="text-sm text-muted">{t('Puedes completarlos ahora o más tarde desde Configuración. Con los datos fiscales completos tu tienda aparece como verificada y tus recibos muestran tu razón social e identificación fiscal.')}</p>
+          <p className="text-sm text-muted">{t('Puedes completarlos ahora o más tarde desde Configuración. Con los datos fiscales completos, tus recibos muestran tu razón social e identificación fiscal. Escribirlos no verifica tu identidad.')}</p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('Nombre o razón social')} hint={f.taxId ? t('(requerido con la identificación fiscal)') : undefined}><Input rule="businessName" value={f.legalName} onChange={set('legalName')} placeholder={t('Ej. Urban Style LLC')} /></Field>
             <Field label={t('Tipo de entidad')}>

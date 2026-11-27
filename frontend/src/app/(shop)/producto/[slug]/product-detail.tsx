@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowRight, BadgeCheck, Box, Check, CreditCard, ExternalLink, HelpCircle, List, MessageSquare, Minus, Plus, RotateCcw, ShieldCheck,
+  ArrowRight, Box, Check, CreditCard, ExternalLink, HelpCircle, List, MessageSquare, Minus, Plus, RotateCcw, ShieldCheck,
   ShoppingCart, Star, Store, Truck, Zap,
 } from 'lucide-react';
 import { get } from '@/lib/api';
@@ -33,6 +33,7 @@ import { ProductGallery } from './product-gallery';
 import { isColorOption } from '@/lib/variant-words';
 import { productMetadataLabels } from '@/lib/product-metadata';
 import { t, getIntlLocale, getLocale } from '@/lib/i18n';
+import { IdentityMark, SellerTrustBadges } from '@/components/shop/seller-trust';
 
 export function ProductDetail({ initial }: { initial: any }) {
   const router = useRouter();
@@ -222,8 +223,8 @@ export function ProductDetail({ initial }: { initial: any }) {
             <div className="mt-3 flex items-center gap-3">
               <div className="grid size-14 place-items-center rounded-full bg-brand-50 text-brand-600"><Store className="size-7" /></div>
               <div>
-                <p className="flex items-center gap-1 text-lg font-bold">{p.seller.name} {p.seller.verified && <BadgeCheck className="size-5 fill-brand-600 text-white" />}</p>
-                <p className="text-sm text-muted">{p.seller.verified ? t('Vendedor verificado') : t('Vendedor')}</p>
+                <p className="flex items-center gap-1 text-lg font-bold">{p.seller.name} <IdentityMark trust={p.seller.trust} /></p>
+                <SellerTrustBadges trust={p.seller.trust} className="mt-1" />
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">

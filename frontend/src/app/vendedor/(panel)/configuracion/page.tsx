@@ -17,6 +17,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { PageLoader } from '@/components/ui/misc';
 import { cityLine, CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { t } from '@/lib/i18n';
+import { SellerTrustList } from '@/components/shop/seller-trust';
 import { DestinationsCard } from '@/components/seller/destinations-card';
 
 function ShipFromCard({ store, onSaved }: { store: any; onSaved: () => void }) {
@@ -71,7 +72,7 @@ function LegalCard({ store, canEdit, onSaved }: { store: any; canEdit: boolean; 
   return (
     <Card className="p-5 text-sm" data-seller-legal>
       <p className="flex items-center gap-2 text-lg font-bold"><FileText className="size-5 text-brand-600" /> {t('Datos fiscales')}</p>
-      <p className="mt-1 text-muted">{store.fiscalComplete ? t('Completos. Aparecen en los recibos de tus clientes.') : t('Opcionales. Con la razón social, la identificación fiscal y el país completos tu tienda aparece como verificada y tus recibos los muestran.')}</p>
+      <p className="mt-1 text-muted">{store.fiscalComplete ? t('Completos. Aparecen en los recibos de tus clientes.') : t('Opcionales. Con la razón social, la identificación fiscal y el país completos, tus recibos los muestran. Escribirlos no verifica tu identidad.')}</p>
       <div className="mt-4 grid gap-3">
         <Field label={t('Nombre o razón social')} required><Input rule="businessName" value={f.legalName} onChange={(e) => setF({ ...f, legalName: e.target.value })} disabled={!canEdit} /></Field>
         <Field label={t('Tipo de entidad')}><Select value={f.entityType} onChange={(e) => setF({ ...f, entityType: e.target.value })} disabled={!canEdit}>{ENTITY_TYPES.map((e) => <option key={e} value={e}>{entityLabel(e)}</option>)}</Select></Field>
@@ -186,10 +187,12 @@ export default function StoreSettingsPage() {
             <p className="text-lg font-bold">{t('Estado de la cuenta')}</p>
             <div className="mt-3 space-y-2">
               <div className="flex justify-between"><span className="text-muted">{t('Estado')}</span><StatusBadge status={s.status} /></div>
-              <div className="flex justify-between"><span className="text-muted">{t('Verificación')}</span><StatusBadge status={s.verificationStatus === 'VERIFIED' ? 'VERIFIED' : 'PENDING'} /></div>
               <div className="flex justify-between"><span className="text-muted">{t('Razón social')}</span>{s.legalName ? <b>{s.legalName}</b> : <span className="text-amber-700">{t('Pendiente')}</span>}</div>
               <div className="flex justify-between"><span className="text-muted">{t('Registrada')}</span><b>{fmtDate(s.createdAt)}</b></div>
             </div>
+            <p className="mt-4 font-bold">{t('Insignias públicas de tu tienda')}</p>
+            <div className="mt-2"><SellerTrustList trust={s.trust} /></div>
+            <p className="mt-2 text-xs text-muted">{t('«Cobro verificado» aparece cuando Finanzas verifica uno de tus métodos de cobro. Para obtener «Identidad verificada», escribe a soporte y envía un documento de identidad oficial o el registro oficial de tu empresa.')}</p>
             {s.shipFrom && <p className="mt-4 flex gap-2 rounded-lg bg-surface p-3"><MapPin className="size-4 shrink-0 text-brand-600" /> <span><b>{t('Almacén principal:')}</b> {s.shipFrom.line1} · {cityLine(s.shipFrom)}</span></p>}
           </Card>
           <LegalCard store={s} canEdit={!!seller?.isOwner} onSaved={(r) => qc.setQueryData(['seller-store'], r)} />
