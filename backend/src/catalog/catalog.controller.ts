@@ -88,7 +88,9 @@ export class CatalogController {
         bodyHt: c.bodyHt ?? null,
         rate: c.showRate && rate ? Number(rate.rate) : null,
         payoutMinimum: c.showPayoutMinimum && payout ? payout.minimum : null,
-        holdDays: payout ? Math.round(Number(payout.hold) / 86400) : null,
+        // Funds wait for the longer of the payout policy's hold and the dispute window (Admin → Configuración →
+        // Seguridad), the same rule the release job applies, so the help center and legal pages quote the real wait.
+        holdDays: Math.max(payout ? Math.round(Number(payout.hold) / 86400) : 0, Number(s['security.controls']?.payoutHoldDays ?? 0)),
         currency,
       },
       social: s['social.links'] ?? [],

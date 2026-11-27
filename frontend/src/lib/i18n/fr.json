@@ -3213,5 +3213,6 @@
 "Máximo de pedidos por transferencia sin confirmar que puede tener una misma cuenta.": "Nombre maximal de commandes par virement non confirmées pour un même compte.",
 "Rechazar verificación": "Refuser la vérification",
 "Transferencias abiertas por comprador": "Virements ouverts par acheteur",
-"Verificar datos fiscales": "Vérifier les informations fiscales"
+"Verificar datos fiscales": "Vérifier les informations fiscales",
+"{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta. Reembolso tras la inspección.": "{n} jours après la livraison. Si le problème vient de la boutique, elle paie le retour. Remboursement après inspection."
 }

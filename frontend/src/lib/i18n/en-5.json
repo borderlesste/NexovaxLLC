@@ -593,5 +593,6 @@
 "Máximo de pedidos por transferencia sin confirmar que puede tener una misma cuenta.": "Maximum unconfirmed bank-transfer orders one account can have.",
 "Rechazar verificación": "Reject verification",
 "Transferencias abiertas por comprador": "Open transfers per buyer",
-"Verificar datos fiscales": "Verify tax details"
+"Verificar datos fiscales": "Verify tax details",
+"{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta. Reembolso tras la inspección.": "{n} days from delivery. If the problem is the store’s, it pays the return shipping. Refund after inspection."
 }

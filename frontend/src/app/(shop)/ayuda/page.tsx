@@ -56,7 +56,7 @@ export default async function HelpPage() {
         {TOPICS.map(([I, title, d]) => {
           // Returns: the window and who pays the return shipping come from the return rules in force.
           const desc = title === 'Devoluciones' && returns?.windowDays
-            ? t(returns.labelPayer === 'CUSTOMER' ? '{n} días desde la entrega. El cliente paga el envío de vuelta. Reembolso tras la inspección.' : '{n} días desde la entrega. Cómo devolver un producto y reembolsos.', { n: returns.windowDays })
+            ? t(returns.labelPayer === 'CUSTOMER' ? '{n} días desde la entrega. El cliente paga el envío de vuelta. Reembolso tras la inspección.' : returns.labelPayer === 'BY_REASON' ? '{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta. Reembolso tras la inspección.' : '{n} días desde la entrega. Cómo devolver un producto y reembolsos.', { n: returns.windowDays })
             : t(d);
           const body = <><I className="size-8 text-brand-600" /><p className="mt-3 text-lg font-bold">{t(title)}</p><p className="text-sm text-muted">{desc}</p></>;
           const href = title === 'Envíos' ? '/politica-de-envios' : title === 'Devoluciones' ? '/politica-de-devoluciones' : title === 'Seguridad' ? '/proteccion-al-comprador' : null;
