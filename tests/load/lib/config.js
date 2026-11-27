@@ -11,7 +11,10 @@ export const PROFILE = (__ENV.PROFILE || 'smoke').toLowerCase();
  * synthetic IP (198.18.0.0/15, reserved for benchmarks), the way our web proxy does for real visitors.
  * Without the secret, expect 429 responses beyond ~5 req/s: they are counted apart, not as errors.
  */
-const SECRET = __ENV.PROXY_SHARED_SECRET || '';
+// The secret is only ever sent to our own API (or a local one), never to a host typed by hand.
+const TRUSTED_HOSTS = ['api.nexovax.com', 'localhost', '127.0.0.1'];
+const API_HOST = (/^https?:\/\/([^/:]+)/i.exec(API) || [])[1] || '';
+const SECRET = TRUSTED_HOSTS.includes(API_HOST.toLowerCase()) ? __ENV.PROXY_SHARED_SECRET || '' : '';
 
 export function visitorHeaders() {
   const h = { Accept: 'application/json', 'x-locale': 'es', 'User-Agent': 'nexovax-k6' };

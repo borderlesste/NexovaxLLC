@@ -7,7 +7,13 @@ import { isAdminRole, ROLE_SCOPE } from '@/lib/permissions';
 import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Empty, Segmented } from '@/components/ui/misc';
-import { GUIDES, type GuideRole } from './content';
+import { useQuery } from '@tanstack/react-query';
+import { get } from '@/lib/api';
+
+// The guide text comes from the API (staff only), so it never ships in the public bundle.
+type GuideRole = 'SUPPORT' | 'MODERATOR' | 'ADMIN';
+type GuideSection = { id: string; title: string; href?: string; intro?: string; steps?: string[]; tips?: string[] };
+type Guide = { role: GuideRole; title: string; summary: string; sections: GuideSection[] };
 
 /**
  * Guía de uso del panel para el equipo: solo Soporte, Moderador y Administrador.
@@ -26,6 +32,8 @@ export default function GuidePage() {
     if (!role || !available.includes(role)) setRole(available[0]);
   }, [available, role]);
 
+  const q = useQuery({ queryKey: ['staff-guides'], queryFn: () => get<Guide[]>('/admin/guides'), enabled: available.length > 0 });
+
   if (!me) return null;
   if (!available.length || !role) {
     return (
@@ -35,7 +43,8 @@ export default function GuidePage() {
       </div>
     );
   }
-  const guide = GUIDES.find((g) => g.role === role)!;
+  const guide = q.data?.find((g) => g.role === role);
+  if (!guide) return null;
   const scope = role !== 'ADMIN' ? ROLE_SCOPE[role] : undefined;
   const label = (r: GuideRole) => (r === 'ADMIN' ? 'Administrador' : r === 'SUPPORT' ? 'Soporte' : 'Moderador');
 
@@ -50,8 +59,8 @@ export default function GuidePage() {
       )}
 
       <div className="card p-6">
-        <h2 className="text-xl font-bold">{t(guide.title)}</h2>
-        <p className="mt-2 text-ink/90">{t(guide.summary)}</p>
+        <h2 className="text-xl font-bold">{guide.title}</h2>
+        <p className="mt-2 text-ink/90">{guide.summary}</p>
         {scope && (
           <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-xl bg-emerald-50 p-4">
@@ -66,7 +75,7 @@ export default function GuidePage() {
         )}
         <nav className="mt-5 flex flex-wrap gap-2 text-sm">
           {guide.sections.map((s, i) => (
-            <a key={s.id} href={`#${role}-${s.id}`} className="rounded-full border border-line px-3 py-1 font-semibold hover:bg-brand-50">{i + 1}. {t(s.title)}</a>
+            <a key={s.id} href={`#${role}-${s.id}`} className="rounded-full border border-line px-3 py-1 font-semibold hover:bg-brand-50">{i + 1}. {s.title}</a>
           ))}
         </nav>
       </div>
@@ -74,19 +83,19 @@ export default function GuidePage() {
       {guide.sections.map((s, i) => (
         <section key={s.id} id={`${role}-${s.id}`} className="card scroll-mt-24 p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h3 className="text-lg font-bold"><span className="mr-2 text-brand-600">{i + 1}.</span>{t(s.title)}</h3>
+            <h3 className="text-lg font-bold"><span className="mr-2 text-brand-600">{i + 1}.</span>{s.title}</h3>
             {s.href && <Button asChild size="sm" variant="secondary"><Link href={s.href}>{t('Abrir')} <ArrowRight /></Link></Button>}
           </div>
-          {s.intro && <p className="mt-2 text-ink/90">{t(s.intro)}</p>}
+          {s.intro && <p className="mt-2 text-ink/90">{s.intro}</p>}
           {s.steps && (
             <ol className="mt-3 space-y-2">
               {s.steps.map((step, n) => (
-                <li key={n} className="flex gap-3 text-sm"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">{n + 1}</span><span className="pt-0.5">{t(step)}</span></li>
+                <li key={n} className="flex gap-3 text-sm"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">{n + 1}</span><span className="pt-0.5">{step}</span></li>
               ))}
             </ol>
           )}
           {s.tips?.map((tip) => (
-            <p key={tip} className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-sm"><Lightbulb className="size-4 shrink-0 text-amber-600" /> {t(tip)}</p>
+            <p key={tip} className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-sm"><Lightbulb className="size-4 shrink-0 text-amber-600" /> {tip}</p>
           ))}
         </section>
       ))}

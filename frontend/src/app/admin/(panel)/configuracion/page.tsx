@@ -39,7 +39,16 @@ const TABS = [
   ['help', 'Ayuda y redes', BookOpen],
   ['seo', 'SEO', Search],
   ['google', 'Google', BarChart3],
+  ['security', 'Seguridad', Shield],
   ['roles', 'Roles y permisos', Users],
+] as const;
+
+/** Ranges enforced by the API (backend/src/common/security-controls.ts). */
+const SECURITY_FIELDS = [
+  ['payoutHoldDays', 'Días de retención antes de liberar fondos', 'Días que espera el dinero de un pedido entregado antes de pasar al saldo de la tienda (margen para reclamos).', 1, 90],
+  ['bankTransferReserveHours', 'Horas de reserva por transferencia', 'Cuánto tiempo queda apartado el inventario mientras se espera una transferencia bancaria.', 1, 72],
+  ['bankTransferMaxOpenOrders', 'Transferencias abiertas por comprador', 'Máximo de pedidos por transferencia sin confirmar que puede tener una misma cuenta.', 1, 20],
+  ['passwordRecoveryPerHour', 'Correos de recuperación por hora', 'Máximo de correos para restablecer la contraseña que recibe una cuenta en una hora.', 1, 10],
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {
@@ -322,6 +331,19 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between rounded-xl border border-line p-4"><span><b className="block">{t('Notificaciones por correo')}</b><span className="text-xs text-muted">{t('Pedidos, pagos, envíos, moderación, retiros y soporte, en el idioma de cada usuario.')}</span></span><Switch checked={!!s['features.email_notifications']} onCheckedChange={(v) => set('features.email_notifications', v)} /></div>
                 <div className="rounded-xl bg-emerald-50 p-4 text-emerald-800">{t('Los correos se envían con Resend desde el dominio verificado del marketplace.')}</div>
                 <div className="flex items-center justify-between rounded-xl border border-line p-4"><span><b className="block">{t('Mensajería en la plataforma')}</b><span className="text-xs text-muted">{t('Avisos de mensajes nuevos en el panel y la campana.')}</span></span><Badge tone="green">{t('Activo')}</Badge></div>
+              </div>
+            </Card>
+          )}
+          {tab === 'security' && (
+            <Card>
+              <CardHeader icon={<Shield />} title={t('Controles de seguridad')} subtitle={t('Límites contra fraude y abuso. Se aplican al guardar.')} />
+              <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                {SECURITY_FIELDS.map(([key, label, hint, min, max]) => (
+                  <Field key={key} label={t(label)} required hint={`${t(hint)} ${t('Entre {a} y {b}.', { a: min, b: max })}`}>
+                    <Input inputMode="numeric" value={String(s['security.controls']?.[key] ?? '')}
+                      onChange={(e) => set('security.controls', { ...(s['security.controls'] ?? {}), [key]: Number(e.target.value.replace(/[^\d]/g, '')) || '' })} />
+                  </Field>
+                ))}
               </div>
             </Card>
           )}

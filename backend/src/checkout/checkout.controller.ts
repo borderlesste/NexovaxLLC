@@ -19,7 +19,7 @@ export class QuoteDto {
 export class CardDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s-]/g, '') : value)) @Matches(/^\d{12,19}$/, { message: 'Número de tarjeta inválido.' }) number: string;
   @ToNumber() @IsInt() @Min(1) @Max(12) expMonth: number;
-  @ToNumber() @IsInt() @Min(2000) @Max(2100) expYear: number;
+  @ToNumber() @IsInt() @Min(0) @Max(2100) expYear: number; // YY or YYYY (normalized in validateSandboxCard)
   @Matches(/^\d{3,4}$/, { message: 'CVC inválido.' }) cvc: string;
   @IsPersonName(2, 80) name: string;
 }

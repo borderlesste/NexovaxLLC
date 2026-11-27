@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, ParseUUIDPipe, Post, Put, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -7,6 +7,8 @@ import { IsCleanText, IsCountryCode, IsEmailAddress, IsPaymentReference, IsPerso
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
 import { badRequest } from '../common/errors';
 import { AdminService } from './admin.service';
+import { staffGuides } from './staff-guides';
+import { requestLocale } from '../common/i18n-errors';
 import { OrdersService } from '../orders/orders.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { OnboardingDto } from '../seller/seller.controller';
@@ -144,6 +146,14 @@ export class AdminController {
   recheckCarrier(@Param('id') id: string) {
     if (!/^[a-zA-Z0-9_-]{6,64}$/.test(id)) throw badRequest('CARRIER_INVALID', 'Transportadora inválida.');
     return this.shipping.recheckCarrier(id);
+  }
+
+  /** Panel guides for the staff roles the caller has (kept out of the public web bundle). */
+  @Roles('MODERATOR', 'SUPPORT')
+  @Header('Cache-Control', 'private, no-store')
+  @Get('guides')
+  guides(@CurrentUser() u: RequestUser, @Req() req: any) {
+    return staffGuides(u.roles, requestLocale(req));
   }
 
   @Roles('MODERATOR', 'SUPPORT')

@@ -91,3 +91,6 @@ returns boolean language sql stable security definer set search_path = pg_catalo
       or exists (select 1 from public.conversation_messages m where m.sender_user_id = p_user)
       or exists (select 1 from public.support_tickets t where t.requester_user_id = p_user);
 $$;
+
+-- 7) "Volver a comprobar" a carrier deletes its status row: the API role needs DELETE on it.
+grant delete on public.shipping_carrier_status to nexovax_api_runtime;

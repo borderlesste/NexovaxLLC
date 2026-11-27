@@ -580,5 +580,18 @@
 "Envío gratis del producto guardado.": "Product free shipping saved.",
 "Elige al menos un país para el envío gratis.": "Choose at least one country for free shipping.",
 "Contraseña actual": "Current password",
-"Si entraste con Google o Apple y aún no tienes contraseña, déjalo vacío.": "If you signed in with Google or Apple and don’t have a password yet, leave it blank."
+"Si entraste con Google o Apple y aún no tienes contraseña, déjalo vacío.": "If you signed in with Google or Apple and don’t have a password yet, leave it blank.",
+"Controles de seguridad": "Security controls",
+"Correos de recuperación por hora": "Recovery e-mails per hour",
+"Cuánto tiempo queda apartado el inventario mientras se espera una transferencia bancaria.": "How long inventory stays reserved while waiting for a bank transfer.",
+"Días de retención antes de liberar fondos": "Hold days before releasing funds",
+"Días que espera el dinero de un pedido entregado antes de pasar al saldo de la tienda (margen para reclamos).": "Days the money from a delivered order waits before reaching the store balance (time for claims).",
+"Entre {a} y {b}.": "Between {a} and {b}.",
+"Horas de reserva por transferencia": "Reservation hours for bank transfers",
+"Límites contra fraude y abuso. Se aplican al guardar.": "Limits against fraud and abuse. They apply when you save.",
+"Máximo de correos para restablecer la contraseña que recibe una cuenta en una hora.": "Maximum password-reset e-mails an account receives in one hour.",
+"Máximo de pedidos por transferencia sin confirmar que puede tener una misma cuenta.": "Maximum unconfirmed bank-transfer orders one account can have.",
+"Rechazar verificación": "Reject verification",
+"Transferencias abiertas por comprador": "Open transfers per buyer",
+"Verificar datos fiscales": "Verify tax details"
 }

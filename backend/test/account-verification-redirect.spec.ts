@@ -13,7 +13,7 @@ function fixture() {
   };
   const mail = { fire: (send: () => Promise<unknown>) => pending.push(send), emailVerification: jest.fn() };
   const policies = { acceptAccountPolicies: jest.fn() };
-  const account = new AccountService(db as never, supabase as never, mail as never, policies as never);
+  const account = new AccountService(db as never, supabase as never, mail as never, policies as never, {} as never);
 
   const confirmationLink = async () => {
     await pending[0]();

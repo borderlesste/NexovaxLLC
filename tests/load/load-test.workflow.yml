@@ -14,7 +14,10 @@ on:
         options: [smoke, load, stress, spike]
         default: smoke
       api_url:
-        description: API base URL, ending in /api
+        # A fixed list: the proxy secret must never be sent to an arbitrary host.
+        description: API base URL
+        type: choice
+        options: [https://api.nexovax.com/api]
         default: https://api.nexovax.com/api
 
 permissions:

@@ -300,7 +300,10 @@ export class OrdersService {
 
     const cancellations = await this.cancellations.forOrder(o.id, scope.kind === 'admin' ? 'staff' : scope.kind);
     const activity = await this.orderActivity(scope, o.id, sellerFilter);
-    const history = await this.orderHistory(scope, o, sellerOrders, cancellations, activity.issues);
+    // Only the requesting store's cancellations (sellerOrders is already scoped to it).
+    const ownIds = new Set(sellerOrders.map((so: any) => so.id));
+    const scopedCancellations = Object.fromEntries(Object.entries(cancellations).filter(([soId]) => ownIds.has(soId)));
+    const history = await this.orderHistory(scope, o, sellerOrders, scopedCancellations, activity.issues);
     const timeline = this.buildTimeline(o, shipments);
     // A seller only sees its own part of a multi-store order: its seller-order totals,
     // never the whole basket, and no payment instrument details.

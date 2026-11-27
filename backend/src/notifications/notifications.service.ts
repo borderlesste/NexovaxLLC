@@ -161,13 +161,15 @@ export class NotificationsService {
 
   async setPreferences(userId: string, prefs: { code: string; inApp?: boolean; email?: boolean }[]) {
     const cats = new Map((await this.db.many(`select code, user_configurable from public.notification_categories where is_active`)).map((c: any) => [c.code, c.user_configurable]));
-    const cats_: string[] = [], chans: string[] = [], vals: boolean[] = [];
+    // One row per (category, channel); a repeated category keeps the last value sent (one upsert can't touch a row twice).
+    const rows = new Map<string, { c: string; ch: string; v: boolean }>();
     for (const p of prefs) {
       if (!cats.has(p.code)) throw badRequest('CATEGORY_INVALID', 'Categoría de notificación no válida.');
       if (!cats.get(p.code)) continue;
       for (const [channel, value] of [['IN_APP', p.inApp], ['EMAIL', p.email]] as const)
-        if (typeof value === 'boolean') (cats_.push(p.code), chans.push(channel), vals.push(value));
+        if (typeof value === 'boolean') rows.set(`${p.code}:${channel}`, { c: p.code, ch: channel, v: value });
     }
+    const cats_ = [...rows.values()].map((r) => r.c), chans = [...rows.values()].map((r) => r.ch), vals = [...rows.values()].map((r) => r.v);
     if (cats_.length)
       await this.db.exec(
         `insert into public.notification_preferences (user_id, category_code, channel_code, enabled)

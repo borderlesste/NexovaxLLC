@@ -9,7 +9,7 @@ import type { RequestUser } from './auth';
  * health checks, public config (the web needs the flag), sign-in and the current user
  * (so an admin can log in), and payment/shipping webhooks (money and tracking keep flowing).
  */
-const ALWAYS_OPEN = /^\/api\/(health(\/|$)|config\/public$|auth\/|me$|stripe\/webhook$|paypal\/webhook$|webhooks\/)/;
+const ALWAYS_OPEN = /^\/api\/(health(\/|$)|config\/public$|auth\/login$|me$|stripe\/webhook$|paypal\/webhook$|webhooks\/)/;
 
 @Injectable()
 export class MaintenanceGuard implements CanActivate {

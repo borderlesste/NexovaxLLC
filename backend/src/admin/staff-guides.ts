@@ -1,7 +1,11 @@
+import type { ApiLocale } from '../common/i18n-errors';
+import { STAFF_GUIDES_I18N } from './staff-guides.i18n';
+
 /**
  * Guías de uso del panel de administración por rol del equipo (Soporte, Moderador, Administrador).
+ * Viven en la API (no en el bundle público de la web): solo el equipo las recibe, por GET /admin/guides.
  * Describen lo que cada rol puede hacer hoy en /admin; si cambian los permisos
- * (lib/permissions.ts) o las pantallas, actualiza también este texto.
+ * (frontend/src/lib/permissions.ts) o las pantallas, actualiza también este texto y staff-guides.i18n.ts.
  */
 export type GuideRole = 'SUPPORT' | 'MODERATOR' | 'ADMIN';
 
@@ -325,3 +329,28 @@ export const GUIDES: Guide[] = [
     ],
   },
 ];
+
+
+const CHAIN: Record<Exclude<ApiLocale, 'es'>, ('en' | 'fr' | 'ht')[]> = { en: ['en'], fr: ['fr', 'en'], ht: ['ht', 'fr', 'en'] };
+
+/** The guides the given staff roles may read, translated to the request language. */
+export function staffGuides(roles: string[], locale: ApiLocale): Guide[] {
+  const admin = roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
+  const allowed = GUIDES.filter((g) => admin || roles.includes(g.role));
+  if (locale === 'es') return allowed;
+  const tr = (s: string) => {
+    for (const l of CHAIN[locale]) {
+      const v = STAFF_GUIDES_I18N[l][s];
+      if (v !== undefined) return v;
+    }
+    return s;
+  };
+  const sec = (s: GuideSection): GuideSection => ({
+    ...s,
+    title: tr(s.title),
+    intro: s.intro && tr(s.intro),
+    steps: s.steps?.map(tr),
+    tips: s.tips?.map(tr),
+  });
+  return allowed.map((g) => ({ ...g, title: tr(g.title), summary: tr(g.summary), sections: g.sections.map(sec) }));
+}

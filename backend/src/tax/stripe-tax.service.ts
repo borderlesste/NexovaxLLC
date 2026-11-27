@@ -104,7 +104,8 @@ export class StripeTaxService {
         ? { shipping_cost: { amount: toStripeAmount(fromMinor(shipTotal), currency), tax_behavior: 'exclusive' as const, tax_code: TAX_CODE.SHIPPING } }
         : {}),
     };
-    const key = createHash('sha256').update(JSON.stringify(params)).digest('hex');
+    // The per-seller shipping split is part of the result, so it is part of the key too.
+    const key = createHash('sha256').update(JSON.stringify([params, shipLines.map((l) => [l.reference, l.amount.toString()])])).digest('hex');
     const hit = opts.cache ? this.cache.get(key) : undefined;
     if (hit && Date.now() - hit.at < 10 * 60_000) return hit.value;
     try {

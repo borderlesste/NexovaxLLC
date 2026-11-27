@@ -28,6 +28,9 @@ function fulfillmentFixture(packages: (typeof paidPackage)[]) {
     exec: jest.fn(),
   };
   const shipping = { shippoEnabled: true, buyLabel: jest.fn().mockResolvedValue({ labelId: 'label' }), manualTrackingProvider: jest.fn() };
+  // The tracking number is not used by another shipment.
+  const lookup = db.one;
+  db.one = jest.fn((sql: string, ...rest: unknown[]) => (/upper\(st\.tracking_number\)/.test(sql) ? Promise.resolve(null) : lookup(sql, ...rest))) as any;
   const settlement = { settle: jest.fn() };
   const mail = { fire: jest.fn() };
   const orders = new OrdersService(db as any, mail as any, shipping as any, settlement as any, null!);
