@@ -378,8 +378,9 @@ export class ReturnsService {
       if (st2 === 'APPROVED') await this.db.exec(`select public.start_refund_processing($1)`, [rid], c);
       return rid;
     });
-    const r = await this.db.one(`select status, refund_amount::text as amount, currency_code, provider_refund_id, public_number from public.refunds where id = $1`, [refundId]);
+    const r = await this.db.one(`select status, refund_amount::text as amount, currency_code, provider_refund_id, public_number, metadata->>'pending_provider_refund_id' as pending_id from public.refunds where id = $1`, [refundId]);
     if (r!.status === 'COMPLETED') return this.detail(user, id, { as: 'staff' });
+    const pendingId: string | null = r!.pending_id ?? null;
     let providerId: string | null = null;
     let providerStatus: string | null = null;
     if (Number(r!.amount) > 0) {
@@ -390,16 +391,23 @@ export class ReturnsService {
           ({ providerId, providerStatus } = testRefundReference(refundId));
         } else if (pay.provider_code === 'STRIPE') {
           if (!pay.external_charge_id) throw conflict('CHARGE_NOT_FOUND', 'No se encontró el cargo de la tarjeta.');
-          const sr = await this.stripe.refund({ chargeOrIntent: pay.external_charge_id, amount: r!.amount, currency: r!.currency_code, refundId });
+          // A refund already created and still pending is re-read, never created again.
+          const sr = pendingId?.startsWith('re_')
+            ? await this.stripe.retrieveRefund(pendingId)
+            : await this.stripe.refund({ chargeOrIntent: pay.external_charge_id, amount: r!.amount, currency: r!.currency_code, refundId });
           if (sr.status === 'failed' || sr.status === 'canceled') throw new AppError('REFUND_PROVIDER_FAILED', 'Stripe rechazó el reembolso.', HttpStatus.BAD_GATEWAY, { status: sr.status });
           providerId = sr.id;
           providerStatus = sr.status ?? 'succeeded';
+          if (providerStatus !== 'succeeded') await this.refundStillPending(refundId, providerId, providerStatus);
         } else if (pay.provider_code === 'PAYPAL') {
           if (!pay.external_charge_id) throw conflict('CHARGE_NOT_FOUND', 'No se encontró la captura de PayPal.');
-          const pr = await this.paypal.refundCapture(pay.external_charge_id, r!.amount, r!.currency_code, refundId, `Reembolso de la devolución ${returnRef(rr.public_number)}`);
+          const pr = pendingId && !pendingId.startsWith('re_')
+            ? await this.paypal.refundDetails(pendingId)
+            : await this.paypal.refundCapture(pay.external_charge_id, r!.amount, r!.currency_code, refundId, `Reembolso de la devolución ${returnRef(rr.public_number)}`);
           if (!['COMPLETED', 'PENDING'].includes(pr?.status)) throw new AppError('REFUND_PROVIDER_FAILED', 'PayPal rechazó el reembolso.', HttpStatus.BAD_GATEWAY, { status: pr?.status });
           providerId = pr.id;
           providerStatus = pr.status;
+          if (providerStatus !== 'COMPLETED') await this.refundStillPending(refundId, providerId!, providerStatus!);
         } else {
           // Bank transfer / sandbox: finance sends the money and records the reference.
           const ref = input.manualReference?.trim();
@@ -408,7 +416,8 @@ export class ReturnsService {
           providerStatus = 'MANUAL';
         }
       } catch (e: any) {
-        await this.db.exec(`update public.refunds set metadata = metadata || jsonb_build_object('last_provider_error', $2::text) where id = $1`, [refundId, String(e?.message ?? e).slice(0, 300)]).catch(() => undefined);
+        if (e?.code !== 'REFUND_PROVIDER_PENDING')
+          await this.db.exec(`update public.refunds set metadata = metadata || jsonb_build_object('last_provider_error', $2::text) where id = $1`, [refundId, String(e?.message ?? e).slice(0, 300)]).catch(() => undefined);
         throw e;
       }
     }
@@ -737,6 +746,19 @@ export class ReturnsService {
       throw Object.assign(e instanceof Error ? e : new Error(String(e)), { labelPurchased: true });
     });
     this.mail.fire(() => this.mail.returnEvent(id, 'LABEL_READY'));
+  }
+
+  /**
+   * The processor accepted the refund but has not completed it (Stripe pending / requires_action, PayPal
+   * PENDING): nothing is booked and the return stays "refund pending". Retrying later re-reads that same
+   * refund and books it only once the money actually went back.
+   */
+  private async refundStillPending(refundId: string, providerId: string, providerStatus: string): Promise<never> {
+    await this.db.exec(
+      `update public.refunds set metadata = metadata || jsonb_build_object('pending_provider_refund_id', $2::text, 'pending_provider_status', $3::text, 'pending_checked_at', now()) where id = $1`,
+      [refundId, providerId, providerStatus],
+    );
+    throw new AppError('REFUND_PROVIDER_PENDING', 'El procesador aún está completando el reembolso. Vuelve a pulsar «Reembolsar» más tarde para confirmarlo.', HttpStatus.CONFLICT, { status: providerStatus });
   }
 
   // ------------------------------------------------------------------ refund without return (staff)

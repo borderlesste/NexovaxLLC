@@ -1,3 +1,4 @@
+import { decrypt, encrypt } from '../common/crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -300,7 +301,7 @@ export class AffiliatesService {
         status: Number(e.reversed) >= Number(e.amount) ? 'REVERSED' : e.status,
       })),
       balances,
-      payoutProfile: profile ? { method: profile.method, paypalEmail: profile.paypal_email, bank: profile.bank } : null,
+      payoutProfile: profile ? { method: profile.method, paypalEmail: profile.paypal_email, bank: openBank(profile.bank, false) } : null,
     };
   }
 
@@ -332,12 +333,19 @@ export class AffiliatesService {
       const b = i.bank ?? {};
       const clean = (v: unknown, max: number) => String(v ?? '').trim().replace(/\s+/g, ' ').slice(0, max);
       const bank = { holderName: clean(b.holderName, 80), bankName: clean(b.bankName, 80), accountNumber: clean(b.accountNumber, 40), accountType: clean(b.accountType, 20), routingCode: clean(b.routingCode, 20), country: clean(b.country, 2).toUpperCase() };
+      // The form shows the saved numbers masked ("••••1234"): sent back unchanged, keep the stored ones.
+      if (bank.accountNumber.startsWith('••••') || bank.routingCode.startsWith('••••')) {
+        const cur = await this.db.one(`select bank from public.nx_affiliate_payout_profiles where user_id = $1 and method = 'BANK'`, [user.id]);
+        const old = cur ? openBank(cur.bank, true) : null;
+        if (bank.accountNumber.startsWith('••••')) bank.accountNumber = old?.accountNumber ?? '';
+        if (bank.routingCode.startsWith('••••')) bank.routingCode = old?.routingCode ?? '';
+      }
       if (bank.holderName.length < 3 || bank.bankName.length < 2 || !/^[A-Za-z0-9-]{4,40}$/.test(bank.accountNumber) || !/^[A-Z]{2}$/.test(bank.country))
         throw badRequest('PAYOUT_BANK_INVALID', 'Completa el titular, el banco, el número de cuenta y el país.');
       await this.db.exec(
         `insert into public.nx_affiliate_payout_profiles (user_id, method, paypal_email, bank, updated_at) values ($1,'BANK',null,$2::jsonb,now())
          on conflict (user_id) do update set method = 'BANK', paypal_email = null, bank = excluded.bank, updated_at = now()`,
-        [user.id, JSON.stringify(bank)],
+        [user.id, JSON.stringify(sealBank(bank))],
       );
     } else if ((WALLET_METHODS as readonly string[]).includes(i.method)) {
       const holderName = String(i.wallet?.holderName ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
@@ -372,8 +380,19 @@ export class AffiliatesService {
        having sum(public.ledger_account_posted_balance(la.id)) > 0
         order by 7 desc`,
     );
+    void this.resealLegacyBanks();
     return rows.map((r: any) => ({ userId: r.id, name: r.name, email: r.email, available: r.available, earnings: r.earnings,
-      payoutProfile: r.method ? { method: r.method, paypalEmail: r.paypal_email, bank: r.bank } : null }));
+      payoutProfile: r.method ? { method: r.method, paypalEmail: r.paypal_email, bank: openBank(r.bank, false) } : null }));
+  }
+
+  /** Encrypts bank details saved before they were sealed (one-off, idempotent). */
+  async resealLegacyBanks() {
+    const rows = await this.db.many(
+      `select user_id, bank from public.nx_affiliate_payout_profiles where method = 'BANK' and bank ? 'accountNumber' and not bank ? 'sealed' limit 500`,
+    ).catch(() => []);
+    for (const r of rows)
+      await this.db.exec(`update public.nx_affiliate_payout_profiles set bank = $2::jsonb where user_id = $1 and not bank ? 'sealed'`, [r.user_id, JSON.stringify(sealBank(r.bank))]).catch(() => undefined);
+    return rows.length;
   }
 
   /** Admin pays the affiliate everything available (outside the platform) and records the reference. */
@@ -474,4 +493,35 @@ export class AffiliatesService {
     );
     return r;
   }
+}
+
+type BankDetails = { holderName: string; bankName: string; accountNumber: string; accountType: string; routingCode: string; country: string };
+
+/** Bank destination at rest: account and routing numbers are AES-256-GCM encrypted; only display data stays readable. */
+function sealBank(bank: BankDetails) {
+  const last4 = (v: string) => (v ? v.slice(-4) : '');
+  return {
+    holderName: bank.holderName, bankName: bank.bankName, accountType: bank.accountType, country: bank.country,
+    accountLast4: last4(bank.accountNumber), routingLast4: last4(bank.routingCode),
+    sealed: encrypt(JSON.stringify({ accountNumber: bank.accountNumber, routingCode: bank.routingCode })).toString('base64'),
+  };
+}
+
+/** Readable bank details: masked for the affiliate, full (decrypted) for staff paying out. Handles legacy plaintext rows. */
+function openBank(raw: any, reveal: boolean) {
+  if (!raw || typeof raw !== 'object' || (!raw.sealed && !raw.accountNumber)) return raw ?? null;
+  let secret: { accountNumber?: string; routingCode?: string } = { accountNumber: raw.accountNumber, routingCode: raw.routingCode };
+  if (raw.sealed) {
+    try {
+      secret = JSON.parse(decrypt(Buffer.from(raw.sealed, 'base64')));
+    } catch {
+      secret = {};
+    }
+  }
+  const mask = (v?: string) => (v ? `••••${v.slice(-4)}` : '');
+  return {
+    holderName: raw.holderName, bankName: raw.bankName, accountType: raw.accountType, country: raw.country,
+    accountNumber: reveal ? secret.accountNumber ?? '' : mask(secret.accountNumber ?? raw.accountLast4),
+    routingCode: reveal ? secret.routingCode ?? '' : mask(secret.routingCode ?? raw.routingLast4),
+  };
 }

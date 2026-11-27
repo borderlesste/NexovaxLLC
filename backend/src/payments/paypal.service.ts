@@ -109,6 +109,11 @@ export class PaypalService {
     );
   }
 
+  /** Current state of a refund already created (to confirm a pending one). */
+  refundDetails(refundId: string) {
+    return this.call<any>('GET', `/v2/payments/refunds/${encodeURIComponent(refundId)}`);
+  }
+
   async verifyWebhook(headers: Record<string, any>, event: unknown) {
     if (!config.paypalWebhookId) return false;
     // Reject obviously forged/incomplete deliveries before any outbound call to PayPal.

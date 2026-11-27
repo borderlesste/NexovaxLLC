@@ -2,6 +2,7 @@ import { webUrl } from '../mail/mail.templates';
 import { PoliciesService } from './policies.service';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
+import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { AppError, badRequest, forbidden, notFound } from '../common/errors';
 import { RequestUser, invalidateUserCache } from '../auth/auth';
@@ -47,6 +48,7 @@ export class AccountService {
     private readonly supa: SupabaseAdminService,
     private readonly mail: MailService,
     private readonly policies: PoliciesService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Creates the Supabase identity; DB trigger provisions marketplace user + CUSTOMER role. */
@@ -115,6 +117,18 @@ export class AccountService {
   async requestPasswordRecovery(email: string) {
     const normalized = email.trim().toLowerCase();
     const userId = await this.supa.findUserIdByEmail(normalized);
+    // Per-account limit (Admin → Configuración → Seguridad), whatever IP the requests come from: a new
+    // recovery token replaces the previous one, so floods would keep breaking the victim's link.
+    if (userId) {
+      const perHour = (await this.settings.get('security.controls')).passwordRecoveryPerHour;
+      const recent = await this.db.one<{ n: number; last: string | null }>(
+        `select count(*)::int as n, max(created_at) as last from public.email_deliveries
+          where template_code = 'PASSWORD_RECOVERY' and to_email = $1 and created_at > now() - interval '1 hour'`,
+        [normalized],
+      );
+      const tooSoon = recent?.last && Date.now() - new Date(recent.last).getTime() < 2 * 60_000;
+      if ((recent?.n ?? 0) >= perHour || tooSoon) return { ok: true };
+    }
     if (userId) {
       this.mail.fire(async () => {
         const tokenHash = await this.supa.recoveryTokenHash(normalized);

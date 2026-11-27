@@ -119,6 +119,11 @@ export class StripeService {
     );
   }
 
+  /** Current state of a refund already created (to confirm a pending one). */
+  retrieveRefund(id: string) {
+    return this.stripe.refunds.retrieve(id);
+  }
+
   // ---- disputes: evidence and acceptance (the card network decides; Stripe relays)
   uploadDisputeFile(data: Buffer, name: string, type: string) {
     return this.stripe.files.create({ purpose: 'dispute_evidence', file: { data, name, type } });

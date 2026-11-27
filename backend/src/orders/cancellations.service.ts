@@ -344,11 +344,14 @@ export class CancellationsService {
     const fs = await this.db.many(`select id from public.fulfillments where seller_order_id = $1 and status <> 'CANCELLED'`, [sellerOrderId], c);
     for (const f of fs) await this.db.exec(`select public.cancel_fulfillment($1)`, [f.id], c);
     const lines = await this.db.many(
-      `select oi.variant_id, oi.seller_id, oi.quantity::int as qty, g.inventory_location_id as location
+      // One row per order item: an item split across several shipping groups / locations must be
+      // restocked once with its quantity, not once per group (that would create phantom stock).
+      `select distinct on (oi.id) oi.variant_id, oi.seller_id, oi.quantity::int as qty, g.inventory_location_id as location
          from public.order_items oi
          left join public.order_shipping_group_items gi on gi.order_item_id = oi.id
          left join public.order_shipping_groups g on g.id = gi.order_shipping_group_id
-        where oi.seller_order_id = $1`,
+        where oi.seller_order_id = $1
+        order by oi.id, g.created_at nulls last`,
       [sellerOrderId],
       c,
     );
