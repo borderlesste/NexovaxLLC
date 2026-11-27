@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { DbService, Queryable } from '../db/db.service';
 import { badRequest } from '../common/errors';
 import { defaultHomeLayout, HomeLayout, normalizeHomeLayout } from '../catalog/home-layout';
+import { DEFAULT_RECEIPT_TAX_ID, normalizeReceiptTaxId, ReceiptTaxIdSettings } from '../orders/receipt-tax-id';
 
 export interface ShippingRate {
   code: string;
@@ -170,6 +171,8 @@ export interface PlatformSettings {
   'home.layout': HomeLayout;
   /** Public catalog listings (/catalogo, categories, search): products per page. */
   'catalog.listing': CatalogListingSettings;
+  /** Seller entity types whose tax ID is printed on buyers' receipts (businesses only). */
+  'receipts.seller_tax_id': ReceiptTaxIdSettings;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -224,6 +227,7 @@ const DEFAULTS: PlatformSettings = {
   'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', taxId: '', legalRepresentative: '', phone: '', supportHours: '', footerText: '' },
   'home.layout': defaultHomeLayout(),
   'catalog.listing': { pageSize: 12 },
+  'receipts.seller_tax_id': DEFAULT_RECEIPT_TAX_ID,
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */
@@ -256,6 +260,7 @@ export class SettingsService {
     out['company.info'] = { ...DEFAULTS['company.info'], ...(out['company.info'] ?? {}) };
     out['home.layout'] = normalizeHomeLayout(out['home.layout']);
     out['catalog.listing'] = { ...DEFAULTS['catalog.listing'], ...(out['catalog.listing'] ?? {}) };
+    out['receipts.seller_tax_id'] = normalizeReceiptTaxId(out['receipts.seller_tax_id']);
     if (!client) {
       this.cache = { at: Date.now(), value: out };
       setMailRuntime({

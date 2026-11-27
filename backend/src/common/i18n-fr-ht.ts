@@ -1,5 +1,6 @@
 /* Generated: French and Haitian Creole API messages, keyed by the Spanish source text. */
 export const FR: Record<string, string> = {
+  "Solo se puede mostrar en el recibo la identificación fiscal de sociedades, sociedades de personas y organizaciones sin fines de lucro.": "Seul l'identifiant fiscal des sociétés, des sociétés de personnes et des organisations à but non lucratif peut figurer sur le reçu.",
 "Elige una foto para tu insignia.": "Choisissez une photo pour votre badge.",
 "Elige una foto más pequeña para tu insignia.": "Choisissez une photo plus petite pour votre badge.",
 "El guardado de la insignia no está disponible en este momento.": "L’enregistrement du badge est temporairement indisponible.",
@@ -391,6 +392,7 @@ export const FR: Record<string, string> = {
 "Los envíos internacionales de más de US$ 2.500 desde EE. UU. requieren un número ITN de exportación (AES). Registra este envío con guía manual.": "Les envois internationaux de plus de 2 500 US$ depuis les États-Unis exigent un ITN d’exportation (AES). Enregistrez cet envoi avec un numéro de suivi manuel."
 };
 export const HT: Record<string, string> = {
+  "Solo se puede mostrar en el recibo la identificación fiscal de sociedades, sociedades de personas y organizaciones sin fines de lucro.": "Se sèlman nimewo fiskal sosyete, asosyasyon patnè ak òganizasyon san bi likratif ki ka parèt sou resi a.",
 "Elige una foto para tu insignia.": "Chwazi yon foto pou badj ou.",
 "Elige una foto más pequeña para tu insignia.": "Chwazi yon foto ki pi piti pou badj ou.",
 "El guardado de la insignia no está disponible en este momento.": "Ou pa ka anrejistre badj la pou le moman.",

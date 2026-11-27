@@ -5,6 +5,7 @@ import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
 const EN: Record<string, string> = {
+  "Solo se puede mostrar en el recibo la identificación fiscal de sociedades, sociedades de personas y organizaciones sin fines de lucro.": "Only the tax ID of companies, partnerships and nonprofits can be shown on receipts.",
   "Elige una foto para tu insignia.": "Choose a photo for your badge.",
   "Elige una foto más pequeña para tu insignia.": "Choose a smaller photo for your badge.",
   "El guardado de la insignia no está disponible en este momento.": "Saving your badge is temporarily unavailable.",

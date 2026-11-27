@@ -3,6 +3,12 @@ import { t } from './i18n';
 /** Seller legal entity types (international). Legacy DR codes map to readable labels too. */
 export const ENTITY_TYPES = ['INDIVIDUAL', 'SOLE_PROPRIETOR', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'OTHER'] as const;
 
+/**
+ * Business entity types whose tax ID an admin may allow on buyers' receipts. Individuals, sole proprietors
+ * and "other" are left out on purpose: their tax ID can be a personal ID number (SSN, Cédula, CPF).
+ */
+export const RECEIPT_TAX_ID_TYPES = ['COMPANY', 'PARTNERSHIP', 'NONPROFIT'] as const;
+
 export function entityLabel(code?: string | null) {
   const m: Record<string, string> = {
     INDIVIDUAL: t('Persona física'),

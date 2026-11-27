@@ -3329,5 +3329,8 @@
   "Copiar imagen": "Copier l’image",
   "Descarga el PNG y adjúntalo a una publicación en tu red social.": "Téléchargez le PNG et joignez-le à une publication sur votre réseau social.",
   "Continuar sin insignia": "Continuer sans badge",
-  "Continuar": "Continuer"
+  "Continuar": "Continuer",
+  "Recibos": "Reçus",
+  "Qué tiendas muestran su identificación fiscal en el recibo del comprador.": "Quelles boutiques affichent leur identifiant fiscal sur le reçu de l'acheteur.",
+  "La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.": "L'identifiant fiscal des personnes physiques, des entreprises individuelles / indépendants et de « Autre » n'est jamais affiché, car il peut s'agir d'un numéro d'identité personnel (SSN, Cédula, CPF). Seul l'acheteur le voit sur son reçu ; les vendeurs et le personnel ne le reçoivent pas dans le détail de la commande."
 }

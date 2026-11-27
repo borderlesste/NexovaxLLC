@@ -27,6 +27,12 @@ export class OrdersController {
     return this.orders.list({ kind: 'customer', userId: user.id }, { status: q.status, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 20 });
   }
 
+  /** Receipt-only data (seller tax IDs allowed for printing); the order owner only. */
+  @Get(':id/receipt')
+  receipt(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.orders.receiptTaxIds(user.id, id);
+  }
+
   @Get(':id')
   detail(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.orders.detail({ kind: 'customer', userId: user.id }, id);

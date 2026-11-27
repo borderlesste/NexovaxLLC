@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ShippoCarriers } from '@/components/admin/shippo-carriers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, BarChart3, Bell, LayoutTemplate, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Languages, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Scale, Search, Wrench } from 'lucide-react';
+  Activity, BarChart3, Bell, LayoutTemplate, Check, CheckCircle2, Code2, Coins, CreditCard, Database, Globe2, Languages, Landmark, Layers, Mail, Percent, Plus, Send, Settings, Shield, ShieldCheck, Star, Store, Trash2, Truck, UserPlus, Users, BookOpen, Receipt, Scale, Search, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, put } from '@/lib/api';
 import { cn, fmtDate, money } from '@/lib/utils';
@@ -25,6 +25,7 @@ import { HomeLayoutEditor } from '@/components/admin/home-layout-editor';
 import { FlashDealsAdmin } from '@/components/admin/flash-deals-admin';
 import { TaxRegionsDialog } from '@/components/admin/tax-regions';
 import { ROLE_NAMES, ROLE_SCOPE } from '@/lib/permissions';
+import { entityLabel, RECEIPT_TAX_ID_TYPES } from '@/lib/entities';
 
 const TABS = [
   ['general', 'General', Settings],
@@ -203,6 +204,24 @@ export default function SettingsPage() {
                     <Input inputMode="numeric" value={String(s['catalog.listing']?.pageSize ?? '')} onChange={(e) => set('catalog.listing', { ...(s['catalog.listing'] ?? {}), pageSize: Number(e.target.value.replace(/[^\d]/g, '')) || '' })} />
                   </Field>
                 </div>
+              </Card>
+              <Card>
+                <CardHeader icon={<Receipt />} title={t('Recibos')} subtitle={t('Qué tiendas muestran su identificación fiscal en el recibo del comprador.')} />
+                <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-3">
+                  {RECEIPT_TAX_ID_TYPES.map((code) => {
+                    const list: string[] = s['receipts.seller_tax_id']?.entityTypes ?? [];
+                    return (
+                      <div key={code} className="flex items-center gap-3 rounded-xl border border-line p-4">
+                        <span className="flex-1 text-sm font-semibold">{entityLabel(code)}</span>
+                        <Switch
+                          checked={list.includes(code)}
+                          onCheckedChange={(v) => set('receipts.seller_tax_id', { entityTypes: v ? [...list.filter((c) => c !== code), code] : list.filter((c) => c !== code) })}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="px-5 pb-5 text-xs text-muted">{t('La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.')}</p>
               </Card>
               <DeliveryCountryCard
                 value={s['geo.delivery'] ?? { ipDetection: true, showSelector: true, countries: [] }}

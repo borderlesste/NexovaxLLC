@@ -11,6 +11,8 @@ import { SELLER_FREE_SHIPPING } from '../shipping/free-shipping';
 import { orderRef, parseOrderRef, paymentRef, returnRef, ticketRef } from '../common/refs';
 import { fromMinor, toMinor } from '../common/money';
 import { decrypt } from '../common/crypto';
+import { SettingsService } from '../settings/settings.service';
+import { receiptTaxIdAllowed } from './receipt-tax-id';
 import { carrierTrackingUrl, isKnownCarrier, safeExternalUrl, trackingLink } from '../common/tracking-links';
 import { ShippingSettlementService } from '../shipping/shipping-settlement.service';
 import { CANCELLABLE_SQL, CancellationsService } from './cancellations.service';
@@ -44,20 +46,13 @@ const TICKET_LABELS: Record<string, string> = {
 const DISPUTE_OPEN = ['OPEN', 'UNDER_REVIEW', 'INQUIRY_OPEN'];
 
 /**
- * Seller's fiscal identity for receipts: legal name, country and tax id. The tax id is shown only for
- * businesses (an individual's tax id is usually a personal ID number and stays private).
+ * Seller's public fiscal identity in the order detail: legal name, entity type and country. The tax ID is
+ * never part of it (sellers and staff read this response too); the buyer's receipt gets it, only for
+ * allowed business entity types, from receiptTaxIds().
  */
 function sellerLegal(so: any) {
   if (!so.legal_name) return null;
-  let taxId: string | null = null;
-  if (so.tax_identifier_ciphertext && so.entity_type_code && so.entity_type_code !== 'INDIVIDUAL') {
-    try {
-      taxId = decrypt(so.tax_identifier_ciphertext);
-    } catch {
-      taxId = null;
-    }
-  }
-  return { name: so.legal_name as string, entityType: so.entity_type_code as string | null, countryCode: so.registration_country_code as string | null, taxId };
+  return { name: so.legal_name as string, entityType: so.entity_type_code as string | null, countryCode: so.registration_country_code as string | null };
 }
 
 @Injectable()
@@ -69,6 +64,7 @@ export class OrdersService {
     private readonly shipping: ShippingService,
     private readonly settlement: ShippingSettlementService,
     private readonly cancellations: CancellationsService,
+    private readonly settings?: SettingsService,
   ) {}
 
   // ------------------------------------------------------------------ listings
@@ -177,6 +173,35 @@ export class OrdersService {
   }
 
   // ------------------------------------------------------------------ detail
+  /**
+   * Tax IDs for the buyer's own receipt only: decrypted just for sellers whose entity type an admin allowed
+   * (businesses; never individuals, sole proprietors or "other"). Everyone else gets nothing.
+   */
+  async receiptTaxIds(userId: string, orderId: string) {
+    const o = await this.db.one<{ id: string; customer_id: string }>(
+      `select id, customer_id from public.orders where id::text = $1 or public_number::text = $1`,
+      [parseOrderRef(orderId)],
+    );
+    if (!o || o.customer_id !== userId) throw notFound('Pedido');
+    const allow = await this.settings!.get('receipts.seller_tax_id');
+    const rows = await this.db.many<{ id: string; entity_type_code: string | null; tax_identifier_ciphertext: Buffer }>(
+      `select so.id, slp.entity_type_code, slp.tax_identifier_ciphertext
+         from public.seller_orders so join public.seller_legal_profiles slp on slp.seller_id = so.seller_id
+        where so.order_id = $1 and slp.tax_identifier_ciphertext is not null`,
+      [o.id],
+    );
+    const sellers: { sellerOrderId: string; taxId: string }[] = [];
+    for (const r of rows) {
+      if (!receiptTaxIdAllowed(r.entity_type_code, allow)) continue;
+      try {
+        sellers.push({ sellerOrderId: r.id, taxId: decrypt(r.tax_identifier_ciphertext) });
+      } catch {
+        // Undecryptable (rotated key): leave it off the receipt.
+      }
+    }
+    return { sellers };
+  }
+
   async detail(scope: OrderScope, orderId: string) {
     const o = await this.db.one(
       `select o.*, o.public_number::text as number, ofs.grand_total::text as grand_total, ofs.product_gross_amount::text as gross_subtotal, ofs.discount_total::text as discount_total, ofs.product_net_amount::text as subtotal,
@@ -202,7 +227,7 @@ export class OrdersService {
       this.db.one(`select * from public.order_address_snapshots where order_id = $1 and address_type = 'SHIPPING'`, [o.id]),
       this.db.many(
         `select so.id, so.public_number, so.seller_id, so.lifecycle_status, so.fulfillment_status, s.slug, coalesce(ssp.display_name, s.slug) as name,
-                ssp.support_phone, ssp.support_email, slp.legal_name, slp.entity_type_code, slp.registration_country_code, slp.tax_identifier_ciphertext,
+                ssp.support_phone, ssp.support_email, slp.legal_name, slp.entity_type_code, slp.registration_country_code,
                 sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
                 sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission, sofs.seller_entitlement_estimate::text as seller_net,
                 sofs.product_gross_amount::text as gross_subtotal, sofs.discount_total::text as discount,

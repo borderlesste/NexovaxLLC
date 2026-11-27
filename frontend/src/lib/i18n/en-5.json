@@ -569,5 +569,8 @@
   "Copiar imagen": "Copy image",
   "Descarga el PNG y adjúntalo a una publicación en tu red social.": "Download the PNG and attach it to a social media post.",
   "Continuar sin insignia": "Continue without a badge",
-  "Continuar": "Continue"
+  "Continuar": "Continue",
+  "Recibos": "Receipts",
+  "Qué tiendas muestran su identificación fiscal en el recibo del comprador.": "Which stores show their tax ID on the buyer's receipt.",
+  "La identificación fiscal de personas físicas, empresas individuales / autónomos y «Otro» nunca se muestra, porque puede ser un documento personal (SSN, Cédula, CPF). Solo la ve el comprador en su recibo; vendedores y personal no la reciben en el detalle del pedido.": "The tax ID of individuals, sole proprietors and “Other” is never shown, because it can be a personal ID number (SSN, Cédula, CPF). Only the buyer sees it on their receipt; sellers and staff do not get it in the order detail."
 }

@@ -24,13 +24,16 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const cfg = usePublicConfig();
   const q = useQuery({ queryKey: ['order', id], queryFn: () => get(`/orders/${id}`) });
-  if (q.isLoading) return <PageLoader />;
+  // Seller tax IDs come from a receipt-only endpoint, and only for business entity types the admin allows.
+  const r = useQuery({ queryKey: ['order-receipt', id], queryFn: () => get(`/orders/${id}/receipt`) });
+  if (q.isLoading || r.isLoading) return <PageLoader />;
   if (q.isError || !q.data) return <ErrorBox message={t('No encontramos este pedido.')} />;
   const o = q.data;
   const cur = o.currency;
   const paid = !!o.paidAt;
   const a = o.shippingAddress;
   const brand = cfg?.name || 'NEXOVAX';
+  const taxIds = new Map<string, string>((r.data?.sellers ?? []).map((x: any) => [x.sellerOrderId, x.taxId]));
 
   return (
     <div>
@@ -97,7 +100,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               <p className="mb-2 text-xs text-muted" data-receipt-seller-legal>
                 {[
                   so.seller.legal?.name && `${t('Razón social')}: ${so.seller.legal.name}`,
-                  so.seller.legal?.taxId && `${t('Identificación fiscal')}: ${so.seller.legal.taxId}`,
+                  taxIds.get(so.id) && `${t('Identificación fiscal')}: ${taxIds.get(so.id)}`,
                   so.seller.legal?.countryCode && countryName(so.seller.legal.countryCode),
                   so.seller.email,
                 ].filter(Boolean).join(' · ')}

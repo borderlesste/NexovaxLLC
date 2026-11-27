@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
 import { SettingsService, PlatformSettings, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX } from '../settings/settings.service';
+import { normalizeReceiptTaxId, RECEIPT_TAX_ID_ELIGIBLE_TYPES } from '../orders/receipt-tax-id';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { OnboardingInput, SellerService } from '../seller/seller.service';
 import { TaxService } from '../tax/tax.service';
@@ -932,7 +933,7 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode', 'features.browser_language',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info', 'home.layout', 'catalog.listing']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info', 'home.layout', 'catalog.listing', 'receipts.seller_tax_id']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode', 'features.browser_language'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
@@ -944,6 +945,13 @@ export class AdminService {
       if (!Number.isInteger(n) || n < CATALOG_PAGE_SIZE_MIN || n > CATALOG_PAGE_SIZE_MAX)
         throw badRequest('PAGE_SIZE_INVALID', `Los productos por página deben ser un número entero entre ${CATALOG_PAGE_SIZE_MIN} y ${CATALOG_PAGE_SIZE_MAX}.`);
       s['catalog.listing'] = { pageSize: n };
+    }
+    const rt = s['receipts.seller_tax_id'];
+    if (rt != null) {
+      const list = (rt as any)?.entityTypes;
+      if (!Array.isArray(list) || list.some((c: unknown) => typeof c !== 'string' || !(RECEIPT_TAX_ID_ELIGIBLE_TYPES as readonly string[]).includes(c)))
+        throw badRequest('RECEIPT_TAX_ID_INVALID', 'Solo se puede mostrar en el recibo la identificación fiscal de sociedades, sociedades de personas y organizaciones sin fines de lucro.');
+      s['receipts.seller_tax_id'] = normalizeReceiptTaxId(rt);
     }
     validateHelpAndSocial(s);
     validateCompany(s);
