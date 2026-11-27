@@ -1,7 +1,8 @@
 import { config } from '../config';
 
 /** True once the marketplace takes real money: LIVE payment environment or a live Stripe key. */
-export const paymentsLive = () => config.paymentEnvironment === 'LIVE' || !!config.stripeSecretKey?.startsWith('sk_live_');
+export const paymentsLive = () =>
+  config.paymentEnvironment === 'LIVE' || !!config.stripeSecretKey?.startsWith('sk_live_') || config.paypalEnv === 'live' || !config.testPaymentsAllowed;
 
 /**
  * SQL condition: the order was not paid in the TEST environment (Stripe test mode, sandbox).

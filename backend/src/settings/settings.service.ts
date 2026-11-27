@@ -1,3 +1,4 @@
+import { DEFAULT_SECURITY_CONTROLS, normalizeSecurityControls, SecurityControls } from '../common/security-controls';
 import { Locale, setMailRuntime } from '../mail/mail.templates';
 import { Injectable } from '@nestjs/common';
 import { DbService, Queryable } from '../db/db.service';
@@ -173,6 +174,8 @@ export interface PlatformSettings {
   'catalog.listing': CatalogListingSettings;
   /** Seller entity types whose tax ID is printed on buyers' receipts (businesses only). */
   'receipts.seller_tax_id': ReceiptTaxIdSettings;
+  /** Tunable security controls (payout hold, bank-transfer reservations, recovery e-mails). */
+  'security.controls': SecurityControls;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -228,6 +231,7 @@ const DEFAULTS: PlatformSettings = {
   'home.layout': defaultHomeLayout(),
   'catalog.listing': { pageSize: 12 },
   'receipts.seller_tax_id': DEFAULT_RECEIPT_TAX_ID,
+  'security.controls': DEFAULT_SECURITY_CONTROLS,
 };
 
 /** Reads/writes versioned, typed platform settings (public.system_setting_values). */
@@ -261,6 +265,7 @@ export class SettingsService {
     out['home.layout'] = normalizeHomeLayout(out['home.layout']);
     out['catalog.listing'] = { ...DEFAULTS['catalog.listing'], ...(out['catalog.listing'] ?? {}) };
     out['receipts.seller_tax_id'] = normalizeReceiptTaxId(out['receipts.seller_tax_id']);
+    out['security.controls'] = normalizeSecurityControls(out['security.controls']);
     if (!client) {
       this.cache = { at: Date.now(), value: out };
       setMailRuntime({

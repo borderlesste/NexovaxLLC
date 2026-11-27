@@ -36,7 +36,14 @@ export const config = {
    */
   authAutoConfirm: process.env.AUTH_AUTO_CONFIRM === 'true' && process.env.NODE_ENV !== 'production',
   /** TEST or LIVE. Without PAYMENT_ENVIRONMENT, a live Stripe key (sk_live_) makes the marketplace LIVE. */
-  paymentEnvironment: (process.env.PAYMENT_ENVIRONMENT ?? (secret('STRIPE_SECRET_KEY', 'stripe_secret_key')?.startsWith('sk_live_') ? 'LIVE' : 'TEST')) as 'TEST' | 'LIVE',
+  paymentEnvironment: (process.env.PAYMENT_ENVIRONMENT ??
+    (secret('STRIPE_SECRET_KEY', 'stripe_secret_key')?.startsWith('sk_live_') || process.env.PAYPAL_ENV === 'live' ? 'LIVE' : 'TEST')) as 'TEST' | 'LIVE',
+  /**
+   * Test processors (Stripe test keys, PayPal sandbox) take no real money. In production they
+   * are switched off so a test card can never create a paid, fulfillable order, unless
+   * ALLOW_TEST_PAYMENTS_IN_PRODUCTION=true is set on purpose (a separate staging stack).
+   */
+  testPaymentsAllowed: process.env.NODE_ENV !== 'production' || process.env.ALLOW_TEST_PAYMENTS_IN_PRODUCTION === 'true',
   /**
    * Simulated card captures (no processor) for local development without Stripe.
    * Opt-in only, and never honoured in production or with LIVE payments.

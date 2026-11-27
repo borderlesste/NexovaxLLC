@@ -38,7 +38,8 @@ export class ReasonDto {
   @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class SellerActionDto {
-  @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE']) action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE';
+  @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE', 'VERIFY', 'REJECT_VERIFICATION'])
+  action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION';
   @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class CreateSellerDto extends OnboardingDto {

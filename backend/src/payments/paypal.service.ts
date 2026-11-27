@@ -9,7 +9,7 @@ export class PaypalService {
   private token?: { value: string; exp: number };
 
   get enabled() {
-    return !!config.paypalClientId && !!config.paypalClientSecret;
+    return !!config.paypalClientId && !!config.paypalClientSecret && (this.environment === 'LIVE' || config.testPaymentsAllowed);
   }
 
   get environment(): 'TEST' | 'LIVE' {

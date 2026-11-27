@@ -641,6 +641,21 @@ export class ReturnsService {
   private async ensureLabel(user: RequestUser, id: string) {
     const existing = await this.db.one(`select 1 from public.nx_return_labels where return_request_id = $1`, [id]);
     if (existing) return;
+    // One purchase per return: concurrent requests (or the automatic purchase after approval) must not
+    // each buy a label from Shippo before the first one is recorded.
+    const key = `return-label:${id}`;
+    if (!(await this.db.claim(key))) throw conflict('LABEL_IN_PROGRESS', 'La etiqueta de devolución se está generando. Espera unos segundos.');
+    try {
+      if (await this.db.one(`select 1 from public.nx_return_labels where return_request_id = $1`, [id])) return;
+      await this.purchaseLabel(user, id);
+    } catch (e: any) {
+      // Free the claim only when nothing was bought; after a purchase it stays until it goes stale.
+      if (!e?.labelPurchased) await this.db.releaseClaim(key);
+      throw e;
+    }
+  }
+
+  private async purchaseLabel(user: RequestUser, id: string) {
     const payer = await this.labelPayer(id);
     if (!payer) throw conflict('RETURN_LABEL_NOT_APPLICABLE', 'Según la política, el cliente envía esta devolución por su cuenta.');
     const rr = await this.db.one(`select * from public.return_requests where id = $1`, [id]);
@@ -717,6 +732,9 @@ export class ReturnsService {
       );
       const st = await this.db.one(`select status from public.return_requests where id = $1`, [id], c);
       if (st!.status === 'APPROVED') await this.setStatus(c, id, 'AWAITING_SHIPMENT');
+    }).catch((e: any) => {
+      this.logger.error(`return label ${id}: bought from Shippo (${tx.transactionId}) but not recorded: ${e?.message}`);
+      throw Object.assign(e instanceof Error ? e : new Error(String(e)), { labelPurchased: true });
     });
     this.mail.fire(() => this.mail.returnEvent(id, 'LABEL_READY'));
   }

@@ -32,10 +32,12 @@ services:
       # Visitor IP behind Render's Cloudflare edge (X-Forwarded-For is client-forgeable on Render).
       - key: CLIENT_IP_HEADER
         value: cf-connecting-ip
+      # Production takes real money only: test keys / PayPal sandbox are switched off by the API
+      # (ALLOW_TEST_PAYMENTS_IN_PRODUCTION=true only on a separate staging stack).
       - key: PAYMENT_ENVIRONMENT
-        value: TEST # LIVE only with live Stripe/PayPal keys
+        value: LIVE
       - key: PAYPAL_ENV
-        value: sandbox # live in production with live PayPal keys
+        value: live
       # Public URLs: web on Vercel and this API (custom domain or https://nexovax-api.onrender.com/api).
       - key: WEB_URL
         sync: false

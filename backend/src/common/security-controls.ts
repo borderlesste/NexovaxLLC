@@ -1,0 +1,46 @@
+/**
+ * Security controls an administrator can tune (Admin → Configuración → Seguridad).
+ * Every value is clamped to a safe range so a typo can never switch a protection off entirely.
+ */
+export interface SecurityControls {
+  /** Days a delivered order's seller funds stay pending before they can be paid out (dispute window). */
+  payoutHoldDays: number;
+  /** Hours an unpaid bank-transfer order keeps its inventory reserved. */
+  bankTransferReserveHours: number;
+  /** Most unpaid bank-transfer orders one buyer may have open at once. */
+  bankTransferMaxOpenOrders: number;
+  /** Password-recovery e-mails per address per hour. */
+  passwordRecoveryPerHour: number;
+}
+
+export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
+  payoutHoldDays: [1, 90, 7],
+  bankTransferReserveHours: [1, 72, 24],
+  bankTransferMaxOpenOrders: [1, 20, 3],
+  passwordRecoveryPerHour: [1, 10, 3],
+};
+
+export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(
+  Object.entries(SECURITY_CONTROL_LIMITS).map(([k, [, , d]]) => [k, d]),
+) as unknown as SecurityControls;
+
+export function normalizeSecurityControls(v: unknown): SecurityControls {
+  const out: any = {};
+  for (const [k, [min, max, def]] of Object.entries(SECURITY_CONTROL_LIMITS)) {
+    const n = Number((v as any)?.[k]);
+    out[k] = Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : def;
+  }
+  return out;
+}
+
+/** Strict validation for an admin save: rejects out-of-range values instead of clamping them. */
+export function invalidSecurityControl(v: unknown): string | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return 'security.controls';
+  for (const [k, [min, max]] of Object.entries(SECURITY_CONTROL_LIMITS)) {
+    const n = (v as any)[k];
+    if (n == null) continue;
+    if (!Number.isInteger(n) || n < min || n > max) return k;
+  }
+  for (const k of Object.keys(v)) if (!(k in SECURITY_CONTROL_LIMITS)) return k;
+  return null;
+}

@@ -80,6 +80,43 @@ export class DbService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Runs `fn` inside a savepoint of the open transaction `c`. A failure rolls back only
+   * the savepoint (the transaction stays usable) and returns `undefined`.
+   */
+  async optional<T>(c: PoolClient, fn: () => Promise<T>): Promise<T | undefined> {
+    const name = `sp_${Math.random().toString(36).slice(2, 10)}`;
+    await c.query(`savepoint ${name}`);
+    try {
+      const out = await fn();
+      await c.query(`release savepoint ${name}`);
+      return out;
+    } catch (e: any) {
+      await c.query(`rollback to savepoint ${name}`);
+      this.logger.warn(`optional step skipped: ${e?.message ?? e}`);
+      return undefined;
+    }
+  }
+
+  /**
+   * Durable single-flight claim for a non-idempotent external call (e.g. buying a label). Returns false
+   * when another request holds a fresh claim. `release` frees it (call it when the call failed).
+   */
+  async claim(key: string, staleMinutes = 15): Promise<boolean> {
+    const r = await this.one(
+      `insert into public.nx_purchase_claims (claim_key) values ($1)
+       on conflict (claim_key) do update set claimed_at = now()
+        where nx_purchase_claims.claimed_at < now() - make_interval(mins => $2::int)
+       returning claim_key`,
+      [key, staleMinutes],
+    );
+    return !!r;
+  }
+
+  async releaseClaim(key: string) {
+    await this.exec(`delete from public.nx_purchase_claims where claim_key = $1`, [key]).catch(() => undefined);
+  }
+
   /** Runs `fn` inside a single transaction; rolls back on any error. */
   async tx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();

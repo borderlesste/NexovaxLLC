@@ -40,6 +40,7 @@ const DOMAIN_MESSAGES: Record<string, [number, string]> = {
   INVENTORY_INSUFFICIENT_AVAILABLE: [409, 'No hay suficiente inventario disponible.'],
   PAYMENT_AMOUNT_OR_CURRENCY_MISMATCH: [409, 'El monto del pago no coincide con el pedido.'],
   INSUFFICIENT_AVAILABLE_BALANCE: [409, 'Saldo disponible insuficiente para el retiro.'],
+  PAYOUT_BLOCKED_OPEN_INCIDENT: [409, 'Tienes un contracargo, disputa o reembolso externo abierto. Los retiros se reanudan cuando se resuelva.'],
   PAYOUT_BELOW_MINIMUM: [409, 'El monto es menor al mínimo permitido para retiros.'],
 };
 

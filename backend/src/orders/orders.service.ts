@@ -1,3 +1,4 @@
+import { DEFAULT_SECURITY_CONTROLS } from '../common/security-controls';
 import { Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
@@ -185,9 +186,13 @@ export class OrdersService {
     if (!o || o.customer_id !== userId) throw notFound('Pedido');
     const allow = await this.settings!.get('receipts.seller_tax_id');
     const rows = await this.db.many<{ id: string; entity_type_code: string | null; tax_identifier_ciphertext: Buffer }>(
-      `select so.id, slp.entity_type_code, slp.tax_identifier_ciphertext
-         from public.seller_orders so join public.seller_legal_profiles slp on slp.seller_id = so.seller_id
-        where so.order_id = $1 and slp.tax_identifier_ciphertext is not null`,
+      `select so.id, coalesce(snap.entity_type_code, slp.entity_type_code) as entity_type_code,
+              case when snap.seller_order_id is not null then snap.tax_identifier_ciphertext else slp.tax_identifier_ciphertext end as tax_identifier_ciphertext
+         from public.seller_orders so
+         left join public.nx_seller_order_legal_snapshots snap on snap.seller_order_id = so.id
+         left join public.seller_legal_profiles slp on slp.seller_id = so.seller_id
+        where so.order_id = $1
+          and (case when snap.seller_order_id is not null then snap.tax_identifier_ciphertext else slp.tax_identifier_ciphertext end) is not null`,
       [o.id],
     );
     const sellers: { sellerOrderId: string; taxId: string }[] = [];
@@ -227,7 +232,10 @@ export class OrdersService {
       this.db.one(`select * from public.order_address_snapshots where order_id = $1 and address_type = 'SHIPPING'`, [o.id]),
       this.db.many(
         `select so.id, so.public_number, so.seller_id, so.lifecycle_status, so.fulfillment_status, s.slug, coalesce(ssp.display_name, s.slug) as name,
-                ssp.support_phone, ssp.support_email, slp.legal_name, slp.entity_type_code, slp.registration_country_code,
+                ssp.support_phone, ssp.support_email,
+                case when snap.seller_order_id is not null then snap.legal_name else slp.legal_name end as legal_name,
+                case when snap.seller_order_id is not null then snap.entity_type_code else slp.entity_type_code end as entity_type_code,
+                case when snap.seller_order_id is not null then snap.registration_country_code else slp.registration_country_code end as registration_country_code,
                 sofs.customer_total::text as total, sofs.product_net_amount::text as subtotal, sofs.shipping_amount::text as shipping,
                 sofs.tax_amount::text as tax, sofs.platform_commission_total::text as commission, sofs.seller_entitlement_estimate::text as seller_net,
                 sofs.product_gross_amount::text as gross_subtotal, sofs.discount_total::text as discount,
@@ -241,6 +249,7 @@ export class OrdersService {
            from public.seller_orders so join public.orders o on o.id = so.order_id join public.sellers s on s.id = so.seller_id
            left join public.seller_store_profiles ssp on ssp.seller_id = s.id
            left join public.seller_legal_profiles slp on slp.seller_id = s.id
+           left join public.nx_seller_order_legal_snapshots snap on snap.seller_order_id = so.id
            left join public.seller_order_financial_snapshots sofs on sofs.seller_order_id = so.id
            left join lateral (select * from public.order_shipping_groups g where g.seller_order_id = so.id order by g.created_at limit 1) osg on true
            left join public.seller_ship_from_addresses sfa on sfa.id = osg.ship_from_address_id
@@ -689,6 +698,15 @@ export class OrdersService {
           if (!trackingUrl) throw badRequest('TRACKING_URL_INVALID', 'El enlace de rastreo debe ser una dirección https válida.');
         }
         const provider = this.shipping.manualTrackingProvider(carrier.code);
+        if (!internal) {
+          // A guide number belongs to one parcel: it can't be reused for another shipment.
+          const reused = await this.db.one(
+            `select 1 from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id
+              where upper(st.tracking_number) = upper($1) and st.shipment_id <> $2 and sh.status <> 'CANCELLED' limit 1`,
+            [tracking, p.id],
+          );
+          if (reused) throw conflict('TRACKING_NUMBER_IN_USE', 'Ese número de guía ya está registrado en otro envío.');
+        }
         await this.db.tx(async (c) => {
           await this.db.exec(
             `update public.shipments set actual_carrier_code = $2, actual_carrier_name = $3 where id = $1`,
@@ -857,7 +875,16 @@ export class OrdersService {
       [orderId],
       c,
     );
+    // Dispute window (Admin → Configuración → Seguridad): funds stay pending for a few days after delivery,
+    // whatever the payout policy's own hold, so a false delivery or a chargeback can still be caught.
+    const holdDays = (await this.settings?.get('security.controls'))?.payoutHoldDays ?? DEFAULT_SECURITY_CONTROLS.payoutHoldDays;
     for (const so of sos) {
+      const d = await this.db.one(
+        `select (max(delivered_at) <= now() - make_interval(days => $2::int)) as due from public.shipments where seller_order_id = $1 and status = 'DELIVERED'`,
+        [so.id, holdDays],
+        c,
+      );
+      if (!d?.due) continue;
       try {
         await this.db.exec('savepoint payout_release', [], c);
         const rec = await this.db.one(`select public.ensure_payout_eligibility_record($1, $2, now()) as id`, [so.id, randomUUID()], c);
@@ -883,10 +910,11 @@ export class OrdersService {
           and ($1::uuid is null or so.seller_id = $1::uuid)
           and (per.id is null or (per.status not in ('RELEASED','CANCELLED') and (per.status = 'BLOCKED' or per.hold_until is null or per.hold_until <= now())))
           and public.seller_order_pending_ledger_balance(so.id) > 0
+          and (select max(sh.delivered_at) from public.shipments sh where sh.seller_order_id = so.id and sh.status = 'DELIVERED') <= now() - make_interval(days => $2::int)
           and ${realOrder('so.order_id')}
         group by so.order_id order by max(per.evaluated_at) asc nulls first
         limit 100`,
-      [sellerId ?? null],
+      [sellerId ?? null, (await this.settings?.get('security.controls'))?.payoutHoldDays ?? DEFAULT_SECURITY_CONTROLS.payoutHoldDays],
     );
     for (const r of rows) await this.db.tx((c) => this.releaseDeliveredFunds(c, r.order_id)).catch(() => undefined);
     return rows.length;

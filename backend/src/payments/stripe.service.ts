@@ -19,7 +19,7 @@ export class StripeService {
   private client?: Stripe;
 
   get enabled() {
-    return !!config.stripeSecretKey && !!config.stripePublishableKey;
+    return !!config.stripeSecretKey && !!config.stripePublishableKey && (this.environment === 'LIVE' || config.testPaymentsAllowed);
   }
 
   get environment(): 'TEST' | 'LIVE' {

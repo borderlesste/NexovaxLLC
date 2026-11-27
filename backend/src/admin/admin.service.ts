@@ -1,3 +1,4 @@
+import { invalidSecurityControl, normalizeSecurityControls } from '../common/security-controls';
 import { defaultHomeLayout } from '../catalog/home-layout';
 import { Injectable, Logger } from '@nestjs/common';
 import { decrypt } from '../common/crypto';
@@ -313,7 +314,43 @@ export class AdminService {
     return { store, owner, finance: stats, payoutAccounts: accounts, history };
   }
 
-  async sellerAction(admin: RequestUser, sellerId: string, action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE', reason?: string) {
+  /** KYB review of an active store's fiscal data: only staff grant (or refuse) the public "verified" badge. */
+  private async sellerVerification(admin: RequestUser, sellerId: string, approve: boolean, reason?: string) {
+    if (!approve && !reason?.trim()) throw badRequest('REASON_REQUIRED', 'Indica el motivo.');
+    await this.db.tx(async (c) => {
+      const s = await this.db.one(
+        `select s.verification_status, s.status, slp.legal_name, slp.registration_country_code, (slp.tax_identifier_ciphertext is not null) as has_tax
+           from public.sellers s left join public.seller_legal_profiles slp on slp.seller_id = s.id where s.id = $1 for update of s`,
+        [sellerId],
+        c,
+      );
+      if (!s) throw notFound('Vendedor');
+      if (approve && !(s.legal_name && s.has_tax && s.registration_country_code))
+        throw conflict('SELLER_LEGAL_INCOMPLETE', 'La tienda aún no ha completado sus datos fiscales.');
+      if (approve && s.verification_status === 'VERIFIED') return;
+      await this.db.exec(`update public.sellers set verification_status = $2, version = version + 1 where id = $1`, [sellerId, approve ? 'VERIFIED' : 'FAILED'], c);
+      await this.db.optional(c, () =>
+        this.db.exec(
+          `update public.seller_verifications set status = $2, reviewed_at = now(), reviewed_by = $3,
+                  verified_at = case when $2 = 'VERIFIED' then now() end, rejected_at = case when $2 = 'REJECTED' then now() end,
+                  failure_reason = $4
+            where seller_id = $1 and status in ('PENDING','SUBMITTED','IN_REVIEW')`,
+          [sellerId, approve ? 'VERIFIED' : 'REJECTED', admin.id, approve ? null : reason!.trim()],
+          c,
+        ),
+      );
+      await this.db.exec(
+        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason)
+         select id, status, status, $2, $3 from public.sellers where id = $1`,
+        [sellerId, admin.id, approve ? 'Datos fiscales verificados' : `Verificación rechazada: ${reason!.trim()}`],
+        c,
+      );
+    });
+    return this.sellerDetail(admin, sellerId);
+  }
+
+  async sellerAction(admin: RequestUser, sellerId: string, action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION', reason?: string) {
+    if (action === 'VERIFY' || action === 'REJECT_VERIFICATION') return this.sellerVerification(admin, sellerId, action === 'VERIFY', reason);
     await this.db.tx(async (c) => {
       const s = await this.db.one(`select status, owner_user_id, suspended_at from public.sellers where id = $1 for update`, [sellerId], c);
       if (!s) throw notFound('Vendedor');
@@ -933,7 +970,7 @@ export class AdminService {
     if (s['marketplace.default_country'] != null) s['marketplace.default_country'] = await normalizeCountry(this.db, s['marketplace.default_country']);
     const known = new Set(['marketplace.name', 'marketplace.base_url', 'marketplace.support_email', 'marketplace.currency', 'marketplace.locale', 'marketplace.default_country',
       'shipping.rates', 'shipping.shippo_enabled', 'payments.bank_transfer', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode', 'features.browser_language',
-      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info', 'home.layout', 'catalog.listing', 'receipts.seller_tax_id']);
+      'help.faq', 'help.sellers', 'help.commissions', 'social.links', 'seo.defaults', 'geo.delivery', 'google.integrations', 'company.info', 'home.layout', 'catalog.listing', 'receipts.seller_tax_id', 'security.controls']);
     for (const k of Object.keys(s)) if (!known.has(k)) throw badRequest('SETTING_UNKNOWN', 'Ajuste desconocido.');
     for (const k of ['shipping.shippo_enabled', 'features.featured_products', 'features.seller_registration', 'features.mandatory_moderation', 'features.email_notifications', 'features.maintenance_mode', 'features.browser_language'] as const)
       if (s[k] != null && typeof s[k] !== 'boolean') throw badRequest('SETTING_INVALID', 'Valor inválido.');
@@ -945,6 +982,12 @@ export class AdminService {
       if (!Number.isInteger(n) || n < CATALOG_PAGE_SIZE_MIN || n > CATALOG_PAGE_SIZE_MAX)
         throw badRequest('PAGE_SIZE_INVALID', `Los productos por página deben ser un número entero entre ${CATALOG_PAGE_SIZE_MIN} y ${CATALOG_PAGE_SIZE_MAX}.`);
       s['catalog.listing'] = { pageSize: n };
+    }
+    const sc = s['security.controls'];
+    if (sc != null) {
+      const bad = invalidSecurityControl(sc);
+      if (bad) throw badRequest('SECURITY_CONTROL_INVALID', 'Un valor de seguridad está fuera del rango permitido.');
+      s['security.controls'] = normalizeSecurityControls({ ...(await this.settings.get('security.controls')), ...sc });
     }
     const rt = s['receipts.seller_tax_id'];
     if (rt != null) {
@@ -1262,7 +1305,23 @@ export class AdminService {
       c,
     );
     if (!target) throw notFound('Usuario');
-    const isSuper = admin.roles.includes('SUPER_ADMIN');
+    // Re-check the actor's own authority now, under the lock: the roles on the request may be cached
+    // and the grant may have expired or been revoked (or the account suspended) since.
+    const actor = await this.db.one<{ status: string; roles: string[] }>(
+      `select u.status, coalesce(array_agg(r.code) filter (where r.code is not null), '{}') as roles
+         from public.users u
+         left join public.user_roles ur on ur.user_id = u.id and ur.revoked_at is null and (ur.expires_at is null or ur.expires_at > now())
+         left join public.roles r on r.id = ur.role_id and r.is_active
+        where u.id = $1 group by u.id`,
+      [admin.id],
+      c,
+    );
+    const actorRoles: string[] = actor?.roles ?? [];
+    if (!actor || actor.status !== 'ACTIVE' || !(actorRoles.includes('ADMIN') || actorRoles.includes('SUPER_ADMIN'))) {
+      invalidateUserCache(admin.id);
+      throw forbidden('Tu acceso de administrador ya no está vigente.');
+    }
+    const isSuper = actorRoles.includes('SUPER_ADMIN');
     const targetRoles: string[] = target.roles ?? [];
     const targetIsAdmin = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
     if (!isSuper && (targetIsAdmin || (opts.role && ['ADMIN', 'SUPER_ADMIN'].includes(opts.role))))
@@ -1281,6 +1340,7 @@ export class AdminService {
   }
 
   async setRole(admin: RequestUser, userId: string, role: RoleCode, grant: boolean) {
+    // (guardStaffChange re-validates the actor's current SUPER_ADMIN authority inside the transaction.)
     if (role === 'SUPER_ADMIN' && !admin.roles.includes('SUPER_ADMIN')) throw badRequest('FORBIDDEN_ROLE', 'Solo un super administrador puede asignar este rol.');
     if (userId === admin.id && !grant && ['ADMIN', 'SUPER_ADMIN'].includes(role)) throw badRequest('SELF_REVOKE', 'No puedes quitarte tu propio rol de administrador.');
     await this.db.tx(async (c) => {

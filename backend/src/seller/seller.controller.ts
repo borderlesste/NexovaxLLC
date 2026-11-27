@@ -11,7 +11,7 @@ import {
   ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
   ValidateIf, ValidateNested,
 } from 'class-validator';
-import { CurrentUser, FreshUser, RequestUser, requireSeller, requireSellerOwner, SellerArea } from '../auth/auth';
+import { CurrentUser, FreshUser, RequestUser, requireSeller, requireSellerOwner, SellerArea, sellerCan } from '../auth/auth';
 import { SELLER_PAYOUT_METHODS, SellerPayoutMethod, SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
@@ -208,8 +208,15 @@ export class SellerController {
   }
 
   @Get('store')
-  store(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
-    return this.seller.store(this.sid(user, h));
+  async store(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
+    const id = this.sid(user, h);
+    const store = await this.seller.store(id);
+    if (sellerCan(user, id, 'SETTINGS')) return store;
+    // Team members without the SETTINGS area get the storefront summary only: no fiscal identity
+    // and no street address or phone of the ship-from location.
+    const { legalName, entityType, taxIdLast4, hasTaxId, shipFrom, ...summary } = store;
+    return { ...summary, legalName: null, entityType: null, taxIdLast4: null, hasTaxId,
+      shipFrom: shipFrom ? { id: shipFrom.id, city: shipFrom.city, region: shipFrom.region, countryCode: shipFrom.countryCode } : null };
   }
 
   @Put('store/ship-from')
@@ -371,8 +378,12 @@ export class SellerController {
   }
 
   @Get('orders/:orderId')
-  orderDetail(@CurrentUser() user: RequestUser, @Param('orderId') orderId: string, @Headers('x-seller-id') h?: string) {
-    return this.orders.detail({ kind: 'seller', sellerId: this.sid(user, h, 'ORDERS') }, orderId);
+  async orderDetail(@CurrentUser() user: RequestUser, @Param('orderId') orderId: string, @Headers('x-seller-id') h?: string) {
+    const sellerId = this.sid(user, h, 'ORDERS');
+    const detail: any = await this.orders.detail({ kind: 'seller', sellerId }, orderId);
+    // Conversations are part of the MESSAGES area, not ORDERS.
+    if (!sellerCan(user, sellerId, 'MESSAGES')) detail.conversations = [];
+    return detail;
   }
 
   @Get('carriers')

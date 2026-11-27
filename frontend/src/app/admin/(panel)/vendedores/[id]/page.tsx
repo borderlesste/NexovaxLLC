@@ -23,7 +23,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const { isAdmin } = useAuth();
   const q = useQuery({ queryKey: ['admin-seller', id], queryFn: () => get(`/admin/sellers/${id}`) });
-  const [dlg, setDlg] = useState<null | 'REJECT' | 'SUSPEND'>(null);
+  const [dlg, setDlg] = useState<null | 'REJECT' | 'SUSPEND' | 'REJECT_VERIFICATION'>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [shown, setShown] = useState<string | null>(null);
@@ -49,6 +49,8 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
           {store.status === 'ACTIVE' && <Button variant="secondary" asChild><Link href={`/tienda/${store.slug}`} target="_blank"><ExternalLink /> {t('Ver tienda')}</Link></Button>}
           {['PENDING_VERIFICATION', 'DRAFT', 'REJECTED'].includes(store.status) && <Button onClick={() => act('APPROVE')} loading={busy === 'APPROVE'}><Check /> {t('Aprobar tienda')}</Button>}
           {['PENDING_VERIFICATION', 'DRAFT'].includes(store.status) && <Button variant="danger" onClick={() => setDlg('REJECT')}><X /> {t('Rechazar')}</Button>}
+          {store.status === 'ACTIVE' && store.verificationStatus !== 'VERIFIED' && store.legalName && <Button onClick={() => act('VERIFY')} loading={busy === 'VERIFY'}><ShieldCheck /> {t('Verificar datos fiscales')}</Button>}
+          {store.status === 'ACTIVE' && store.verificationStatus !== 'VERIFIED' && store.verificationStatus !== 'FAILED' && store.legalName && <Button variant="danger" onClick={() => setDlg('REJECT_VERIFICATION')}><X /> {t('Rechazar verificación')}</Button>}
           {store.status === 'ACTIVE' && <Button variant="danger" onClick={() => setDlg('SUSPEND')}><Ban /> {t('Suspender')}</Button>}
           {store.status === 'SUSPENDED' && <Button onClick={() => act('REACTIVATE')} loading={busy === 'REACTIVATE'}><RotateCcw /> {t('Reactivar')}</Button>}
         </>} />
@@ -99,7 +101,7 @@ export default function SellerAdminPage({ params }: { params: Promise<{ id: stri
           ))}</ul>
         ) : <Empty title={t('Sin cambios registrados')} />}
       </Card>
-      <Dialog open={!!dlg} onOpenChange={(o) => !o && setDlg(null)} title={dlg === 'REJECT' ? t('Rechazar solicitud') : t('Suspender tienda')} description={t('El motivo se registra en el historial.')}
+      <Dialog open={!!dlg} onOpenChange={(o) => !o && setDlg(null)} title={dlg === 'REJECT' ? t('Rechazar solicitud') : dlg === 'REJECT_VERIFICATION' ? t('Rechazar verificación') : t('Suspender tienda')} description={t('El motivo se registra en el historial.')}
         footer={<><Button variant="secondary" onClick={() => setDlg(null)}>{t('Cancelar')}</Button><Button variant="dangerSolid" onClick={() => act(dlg!, reason)} loading={!!busy} disabled={!reason.trim()}>{t('Confirmar')}</Button></>}>
         <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('Motivo…')} maxLength={300} />
         {dlg === 'SUSPEND' && <p className="mt-2 text-xs text-muted">{t('Los productos publicados de la tienda quedarán pausados.')}</p>}

@@ -161,7 +161,7 @@ export class SellerService {
         c,
       );
       // Stores go live on sign-up; the admin can still suspend them later. Payout accounts keep their own verification.
-      // The store is only marked "verified" once its fiscal data is complete; without it, it sells as an unverified store.
+      // The store sells as unverified until staff review its fiscal data (Admin → Vendedores → Verificar).
       await this.db.exec(`update public.sellers set status = 'ACTIVE', activated_at = coalesce(activated_at, now()) where id = $1`, [id], c);
       await this.autoVerify(id, legal, c);
       await this.db.exec(
@@ -318,8 +318,9 @@ export class SellerService {
   }
 
   /**
-   * Automatic KYB: a store with complete fiscal data (legal name, tax ID and registration country) is verified.
-   * Stores without it stay NOT_STARTED; a verification the admin rejected (FAILED) is never overridden here.
+   * KYB: a store with complete fiscal data (legal name, tax ID and registration country) is queued for staff
+   * review (Admin → Vendedores). The public "verified" badge is only granted by an administrator; a store never
+   * verifies itself. A verification the admin rejected (FAILED) is re-queued only when the data changes.
    */
   private async autoVerify(sellerId: string, legal: { legalName?: string; entityType?: string; countryCode?: string; taxDigits?: string }, c?: any) {
     const p = await this.db.one<{ legal_name: string | null; has_tax: boolean; country: string | null; last4: string | null; entity: string | null; vstatus: string }>(
@@ -329,15 +330,23 @@ export class SellerService {
       [sellerId],
       c,
     );
-    if (!p || p.vstatus === 'VERIFIED' || p.vstatus === 'FAILED') return;
+    if (!p || p.vstatus === 'VERIFIED') return;
     if (!(p.legal_name && p.has_tax && p.country)) return;
-    await this.db.exec(
-      `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, verified_at, metadata)
-       values ($1,'KYB','AUTO','VERIFIED',now(),now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
-      [sellerId, legal.taxDigits ? last4(legal.taxDigits) : p.last4, p.entity, p.country],
+    const open = await this.db.one(
+      `select 1 from public.seller_verifications where seller_id = $1 and verification_type = 'KYB' and status in ('PENDING','SUBMITTED','IN_REVIEW') limit 1`,
+      [sellerId],
       c,
-    ).catch(() => undefined);
-    await this.db.exec(`update public.sellers set verification_status = 'VERIFIED' where id = $1`, [sellerId], c);
+    );
+    if (open) return;
+    const insert = () =>
+      this.db.exec(
+        `insert into public.seller_verifications (seller_id, verification_type, provider_code, status, requested_at, submitted_at, metadata)
+         values ($1,'KYB','AUTO','SUBMITTED',now(),now(), jsonb_build_object('tax_id_last4', $2::text, 'entity_type', $3::text, 'country', $4::text))`,
+        [sellerId, legal.taxDigits ? last4(legal.taxDigits) : p.last4, p.entity, p.country],
+        c,
+      );
+    if (c) await this.db.optional(c, insert);
+    else await insert().catch(() => undefined);
   }
 
   /** The store completes or corrects its fiscal data from its settings. */
@@ -345,7 +354,37 @@ export class SellerService {
     const legal = await this.normalizeLegal(input);
     if (!legal.legalName) throw badRequest('LEGAL_NAME_REQUIRED', 'Indica el nombre o razón social.');
     await this.db.tx(async (c) => {
+      const before = await this.db.one(
+        `select slp.legal_name, slp.entity_type_code, slp.registration_country_code, slp.tax_identifier_ciphertext
+           from public.seller_legal_profiles slp where slp.seller_id = $1 for update`,
+        [sellerId],
+        c,
+      );
       await this.writeLegal(sellerId, legal, c);
+      // A changed legal identity is a new identity: the store loses its verified badge and goes back to review.
+      const after = await this.db.one(
+        `select slp.legal_name, slp.entity_type_code, slp.registration_country_code, slp.tax_identifier_ciphertext
+           from public.seller_legal_profiles slp where slp.seller_id = $1`,
+        [sellerId],
+        c,
+      );
+      const changed = !before || ['legal_name', 'entity_type_code', 'registration_country_code'].some((k) => (before[k] ?? null) !== (after?.[k] ?? null))
+        || !Buffer.from(before.tax_identifier_ciphertext ?? '').equals(Buffer.from(after?.tax_identifier_ciphertext ?? ''));
+      if (changed) {
+        await this.db.exec(
+          `update public.sellers set verification_status = 'NOT_STARTED', version = version + 1 where id = $1 and verification_status in ('VERIFIED','FAILED')`,
+          [sellerId],
+          c,
+        );
+        await this.db.optional(c, () =>
+          this.db.exec(
+            `update public.seller_verifications set status = 'REJECTED', rejected_at = now(), failure_reason = 'Datos fiscales modificados por la tienda'
+              where seller_id = $1 and verification_type = 'KYB' and status in ('PENDING','SUBMITTED','IN_REVIEW')`,
+            [sellerId],
+            c,
+          ),
+        );
+      }
       await this.autoVerify(sellerId, legal, c);
     });
     return this.store(sellerId);
@@ -522,6 +561,7 @@ export class SellerService {
       let product: any;
       let contentChanged = true;
       let contentBefore: string | null = null;
+      let taxClassChanged = !productId && !!input.taxClass && input.taxClass !== 'STANDARD';
       if (productId) {
         product = await this.db.one(`select * from public.products where id = $1 and seller_id = $2 for update`, [productId, sellerId], c);
         if (!product) throw notFound('Producto');
@@ -529,6 +569,8 @@ export class SellerService {
         contentBefore = await this.contentFingerprint(c, product.id);
         contentChanged =
           product.title !== input.title.trim() || (product.description ?? '') !== input.description.trim() || product.category_id !== input.categoryId;
+        // The tax class decides how much of the price is tax: a change always needs staff review.
+        if (input.taxClass !== undefined && (input.taxClass ?? null) !== (product.tax_class ?? null)) taxClassChanged = true;
         const slug = await this.uniqueSlug(c, input.seo?.slug || input.title, product.id);
         await this.db.exec(
           `update public.products set title = $2, slug = $3, category_id = $4, brand_id = $5, short_description = $6, description = $7, tax_class = $8,
@@ -706,14 +748,14 @@ export class SellerService {
       // Any customer-visible content (brand, texts, attributes, options, variants) counts; price/stock don't.
       if (contentBefore !== null && !contentChanged) contentChanged = contentBefore !== (await this.contentFingerprint(c, product.id));
       const current = (await this.db.one(`select status from public.products where id = $1`, [product.id], c))!.status;
-      const needsReview = ['ACTIVE', 'OUT_OF_STOCK'].includes(current) && contentChanged && moderation;
+      const needsReview = ['ACTIVE', 'OUT_OF_STOCK'].includes(current) && ((contentChanged && moderation) || taxClassChanged);
       if (input.action === 'SUBMIT') {
         if (!['DRAFT', 'REJECTED', 'PAUSED'].includes(current) && !needsReview)
           return product.id;
         const hasMedia = await this.db.one(`select 1 from public.product_media where product_id = $1 limit 1`, [product.id], c);
         if (!hasMedia) throw badRequest('PRODUCT_IMAGE_REQUIRED', 'Agrega al menos una imagen antes de publicar.');
         const sellerActive = seller.status === 'ACTIVE';
-        if (moderation) {
+        if (moderation || taxClassChanged) {
           await this.transition(c, product.id, current, 'PENDING_REVIEW', user.id, 'Enviado a revisión');
           await this.db.exec(`update public.product_moderation_reviews set status = 'CANCELLED', updated_at = now() where product_id = $1 and status = 'PENDING'`, [product.id], c);
           await this.db.exec(
@@ -744,7 +786,7 @@ export class SellerService {
   /** Hash of the moderated, customer-visible content of a product (excludes price and stock). */
   private async contentFingerprint(c: PoolClient, productId: string): Promise<string> {
     const r = await this.db.one<{ h: string }>(
-      `select md5(concat_ws('|', p.title, p.description, p.category_id, p.brand_id, p.short_description, p.item_condition, p.size_guide,
+      `select md5(concat_ws('|', p.title, p.description, p.category_id, p.brand_id, p.short_description, p.item_condition, p.size_guide, p.tax_class,
                 (select string_agg(concat_ws(':', a.attribute_definition_id, a.position, a.value_text, a.value_number, a.value_boolean, a.value_json), ',' order by a.attribute_definition_id, a.position)
                    from public.product_attribute_values a where a.product_id = p.id),
                 (select string_agg(concat_ws(':', o.code, o.name, ov.code, ov.label, ov.swatch_value), ',' order by o.sort_order, o.code, ov.sort_order, ov.code)

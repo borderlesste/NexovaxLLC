@@ -447,6 +447,9 @@ export class ShippingService {
     const existing = await this.db.one(`select id from public.shipping_labels where shipment_id = $1 and status = 'PURCHASED'`, [shipmentId]);
     if (existing) return { labelId: existing.id, alreadyPurchased: true };
     if (s.service_token === SELLER_FREE_SHIPPING || s.requested_service_token === SELLER_FREE_SHIPPING) throw sellerFreeShippingLabelError();
+    // A platform-paid label only for what the buyer chose and paid at checkout: a Shippo service.
+    if (s.shipping_provider_code !== 'SHIPPO' || !s.service_token)
+      throw conflict('LABEL_NOT_AVAILABLE', 'Este envío no se pagó con una etiqueta de la plataforma. Despáchalo por tu cuenta y registra la guía.');
 
     const from = await this.db.one(`select * from public.shipment_address_snapshots where shipment_id = $1 and address_type = 'FROM'`, [shipmentId]);
     const to = await this.db.one(`select * from public.shipment_address_snapshots where shipment_id = $1 and address_type = 'TO'`, [shipmentId]);
@@ -486,10 +489,31 @@ export class ShippingService {
     const quote = await this.shippo.shipment(fromAddr, toAddr, ShippingService.shippoParcel(parcel), { customsDeclarationId: customsId, reference: `NX-${s.public_number}` });
     if (!quote.rates.length)
       throw new AppError('SHIPPING_NO_RATES', 'La transportadora no ofrece servicio para esta ruta en este momento.', HttpStatus.CONFLICT, { messages: quote.messages.slice(0, 3) });
-    const rate = quote.rates.find((r) => r.servicelevel.token === s.service_token) ?? [...quote.rates].sort((a, b) => Number(a.amount) - Number(b.amount))[0];
+    // Only the exact service the buyer paid for; never a silent substitute.
+    const rate = quote.rates.find((r) => r.servicelevel.token === s.service_token);
+    if (!rate) throw conflict('SHIPPING_RATE_UNAVAILABLE', 'El servicio de envío que pagó el comprador ya no está disponible. Despáchalo por tu cuenta y registra la guía.');
 
+    // One purchase per shipment: the label row is claimed under a lock on the shipment before Shippo is
+    // called, so concurrent or retried requests can't buy a second label.
     const corr = randomUUID();
-    const labelId: string = (await this.db.one(`select public.request_shipping_label($1,'SHIPPO',$2,$3,null,$4) as id`, [shipmentId, rate.object_id, `label:${shipmentId}:${rate.object_id}`, corr]))!.id;
+    const labelId: string = await this.db.tx(async (c) => {
+      await this.db.one(`select id from public.shipments where id = $1 for update`, [shipmentId], c);
+      const prior = await this.db.one(
+        `select id, status, (updated_at < now() - interval '15 minutes') as stale from public.shipping_labels
+          where shipment_id = $1 and status in ('PURCHASED','REQUESTED','QUEUED') order by (status = 'PURCHASED') desc, updated_at desc limit 1`,
+        [shipmentId],
+        c,
+      );
+      if (prior?.status === 'PURCHASED') throw conflict('LABEL_ALREADY_PURCHASED', 'La etiqueta de este envío ya fue comprada.');
+      if (prior && !prior.stale) throw conflict('LABEL_IN_PROGRESS', 'La etiqueta de este envío se está generando. Espera unos segundos.');
+      if (prior)
+        await this.db.exec(
+          `update public.shipping_labels set status = 'FAILED', failed_at = now(), failure_code = 'STALE_REQUEST', updated_at = now() where id = $1`,
+          [prior.id],
+          c,
+        );
+      return (await this.db.one(`select public.request_shipping_label($1,'SHIPPO',$2,$3,null,$4) as id`, [shipmentId, rate.object_id, `label:${shipmentId}:${rate.object_id}`, corr], c))!.id;
+    });
     const tx = await this.shippo.buyLabel(rate.object_id, `NX-${s.public_number}`).catch(async (e) => {
       await this.failLabel(labelId, 'PROVIDER_ERROR', e?.details?.provider ?? e?.message);
       throw e;
@@ -606,14 +630,36 @@ export class ShippingService {
     await this.db.tx(async (c) => {
       // Polls and webhooks can report the same event at the same time.
       const shipment = await this.db.one(
-        `select sh.status, sh.shipped_at, st.current_status from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id
+        `select sh.status, sh.shipped_at, sh.created_at as shipment_created_at, st.current_status, st.source_code,
+                (select max(l.id::text) from public.shipping_labels l where l.shipment_id = sh.id and l.status = 'PURCHASED') as platform_label,
+                ta.country_code as to_country, ta.postal_code as to_postal
+           from public.shipment_trackings st join public.shipments sh on sh.id = st.shipment_id
+           left join public.shipment_address_snapshots ta on ta.shipment_id = sh.id and ta.address_type = 'TO'
           where st.id = $1 for update of st, sh`,
         [t.id], c,
       );
       if (!shipment || ['CANCELLED', 'RETURNED'].includes(shipment.status) || shipment.current_status === 'RETURNED') return;
+      // A guide the seller typed in is not bound to this order: its delivery only counts when it happened
+      // after the shipment existed and, when the carrier reports it, at the buyer's country / postal code.
+      const sellerTyped = !shipment.platform_label;
+      const norm = (v: unknown) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const unboundDelivery = (e: NormalizedTrackEvent) => {
+        if (!sellerTyped) return false;
+        const at = new Date(e.at).getTime();
+        if (!Number.isFinite(at) || at < new Date(shipment.shipment_created_at).getTime()) return true;
+        if (e.country && e.country.length === 2 && shipment.to_country && e.country.toUpperCase() !== String(shipment.to_country).toUpperCase()) return true;
+        const pc = norm(e.postalCode);
+        const want = norm(shipment.to_postal);
+        if (pc && want && !(pc.startsWith(want.slice(0, 5)) || want.startsWith(pc.slice(0, 5)))) return true;
+        return false;
+      };
       for (const e of sorted) {
         const status = e.status === 'LABEL_CREATED' ? 'PRE_TRANSIT' : e.substatus === 'out_for_delivery' && e.status === 'IN_TRANSIT' ? 'OUT_FOR_DELIVERY' : e.status;
         if (status === 'DELIVERED' && (!shipment.shipped_at || shipment.status === 'DELIVERED' || shipment.current_status === 'DELIVERED' || delivered)) continue;
+        if (status === 'DELIVERED' && unboundDelivery(e)) {
+          this.logger.warn(`Ignored carrier delivery for tracking ${t.id}: it does not match this order (time or destination).`);
+          continue;
+        }
         const key = `shippo:${e.objectId ?? `${e.providerStatus}:${e.at}`}`;
         const dup = await this.db.one(`select 1 from public.tracking_events where tracking_id = $1 and deduplication_key = $2`, [t.id, key], c);
         if (dup) continue;
