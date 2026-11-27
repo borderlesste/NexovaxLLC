@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, Star, Store } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Star, Store, Wallet } from 'lucide-react';
 import { ProductImage } from './product-card';
 
 /** Title row of a home section: title, optional subtitle/extra and a "Ver todo" link. Strings come translated. */
@@ -21,11 +21,11 @@ export function SectionHeading({ title, subtitle, href, linkLabel, extra }: { ti
 
 export interface HomeStore {
   id: string; slug: string; name: string; shortDescription?: string | null; logoUrl: string | null; bannerUrl: string | null;
-  verified: boolean; products: number; rating: number; reviews: number;
+  trust?: { payoutVerified: boolean; identityVerified: boolean } | null; products: number; rating: number; reviews: number;
 }
 
 /** "Tiendas destacadas": one card per store with logo, rating and product count. */
-export function StoreCards({ stores, labels }: { stores: HomeStore[]; labels: { products: (n: number) => string; noReviews: string; verified: string } }) {
+export function StoreCards({ stores, labels }: { stores: HomeStore[]; labels: { products: (n: number) => string; noReviews: string; identity: string; payout: string } }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:gap-2.5 xl:grid-cols-8" data-top-stores>
       {stores.map((s) => (
@@ -37,12 +37,13 @@ export function StoreCards({ stores, labels }: { stores: HomeStore[]; labels: { 
           )}
           <span className="flex max-w-full items-center gap-1 text-sm font-bold">
             <span className="truncate">{s.name}</span>
-            {s.verified && <BadgeCheck className="size-4 shrink-0 text-brand-600" aria-label={labels.verified} />}
+            {s.trust?.identityVerified && <span title={labels.identity} className="inline-flex shrink-0"><BadgeCheck className="size-4 text-brand-600" aria-label={labels.identity} /></span>}
           </span>
           <span className="inline-flex items-center gap-1 text-xs text-muted">
             {s.reviews > 0 ? <><Star className="size-3.5 fill-amber-400 text-amber-400" /><b className="text-ink">{s.rating.toFixed(1)}</b> ({s.reviews})</> : labels.noReviews}
           </span>
           <span className="text-xs text-muted">{labels.products(s.products)}</span>
+          {s.trust?.payoutVerified && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700"><Wallet className="size-3" /> {labels.payout}</span>}
         </Link>
       ))}
     </div>

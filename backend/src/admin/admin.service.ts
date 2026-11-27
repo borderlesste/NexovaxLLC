@@ -32,6 +32,8 @@ import { PaypalService } from '../payments/paypal.service';
 import { paymentsLive, realOrder, TEST_PENDING } from '../common/live-orders';
 import { inPreviousWindow, inWindow, orderRefunds, orderSellerNetExpr, sellerNetExpr, sellerOrderRefunds, soldOrder, soldSellerOrder } from '../common/sales-sql';
 
+export type SellerAdminAction = 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION' | 'VERIFY_IDENTITY' | 'REVOKE_IDENTITY';
+
 const pct = (a: string | number, b: string | number) => (Number(b) > 0 ? Math.round(((Number(a) - Number(b)) / Number(b)) * 1000) / 10 : null);
 
 /** Products shown in the home page's featured section. */
@@ -315,7 +317,7 @@ export class AdminService {
     return { store, owner, finance: stats, payoutAccounts: accounts, history };
   }
 
-  /** KYB review of an active store's fiscal data: only staff grant (or refuse) the public "verified" badge. */
+  /** Internal review of an active store's declared tax details (receipts, KYB). It gives no public badge. */
   private async sellerVerification(admin: RequestUser, sellerId: string, approve: boolean, reason?: string) {
     if (!approve && !reason?.trim()) throw badRequest('REASON_REQUIRED', 'Indica el motivo.');
     await this.db.tx(async (c) => {
@@ -350,8 +352,38 @@ export class AdminService {
     return this.sellerDetail(admin, sellerId);
   }
 
-  async sellerAction(admin: RequestUser, sellerId: string, action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION', reason?: string) {
+  /**
+   * «Identidad verificada»: only staff, after checking an official ID document of the owner (GOVERNMENT_ID)
+   * or the business in an official registry (BUSINESS_REGISTRY). Never automatic, never from declared data alone.
+   */
+  private async identityVerification(admin: RequestUser, sellerId: string, grant: boolean, method?: string, reason?: string) {
+    if (grant && !method) throw badRequest('METHOD_REQUIRED', 'Indica cómo verificaste la identidad.');
+    if (!grant && !reason?.trim()) throw badRequest('REASON_REQUIRED', 'Indica el motivo.');
+    await this.db.tx(async (c) => {
+      const s = await this.db.one(`select status, identity_verified_at from public.sellers where id = $1 for update`, [sellerId], c);
+      if (!s) throw notFound('Vendedor');
+      if (grant && s.status !== 'ACTIVE') throw conflict('INVALID_TRANSITION', 'Acción no válida para el estado actual de la tienda.');
+      if (grant === !!s.identity_verified_at) return;
+      await this.db.exec(
+        `update public.sellers set identity_verified_at = case when $2 then now() end, identity_verified_by = case when $2 then $3::uuid end,
+                identity_verification_method = case when $2 then $4 end, version = version + 1 where id = $1`,
+        [sellerId, grant, admin.id, grant ? method : null],
+        c,
+      );
+      const label = method === 'GOVERNMENT_ID' ? 'documento de identidad oficial' : 'registro oficial de la empresa';
+      await this.db.exec(
+        `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason)
+         select id, status, status, $2, $3 from public.sellers where id = $1`,
+        [sellerId, admin.id, grant ? `Identidad verificada (${label})${reason?.trim() ? `: ${reason.trim()}` : ''}` : `Identidad verificada retirada: ${reason!.trim()}`],
+        c,
+      );
+    });
+    return this.sellerDetail(admin, sellerId);
+  }
+
+  async sellerAction(admin: RequestUser, sellerId: string, action: SellerAdminAction, reason?: string, method?: string) {
     if (action === 'VERIFY' || action === 'REJECT_VERIFICATION') return this.sellerVerification(admin, sellerId, action === 'VERIFY', reason);
+    if (action === 'VERIFY_IDENTITY' || action === 'REVOKE_IDENTITY') return this.identityVerification(admin, sellerId, action === 'VERIFY_IDENTITY', method, reason);
     await this.db.tx(async (c) => {
       const s = await this.db.one(`select status, owner_user_id, suspended_at from public.sellers where id = $1 for update`, [sellerId], c);
       if (!s) throw notFound('Vendedor');
@@ -374,7 +406,7 @@ export class AdminService {
       );
       await this.db.exec(
         `insert into public.seller_status_history (seller_id, from_status, to_status, changed_by, reason) values ($1,$2,$3,$4,$5)`,
-        [sellerId, s.status, to, admin.id, reason?.trim() || (action === 'APPROVE' ? 'Tienda verificada y aprobada' : 'Reactivada')],
+        [sellerId, s.status, to, admin.id, reason?.trim() || (action === 'APPROVE' ? 'Tienda aprobada' : 'Reactivada')],
         c,
       );
       if (action === 'APPROVE' || action === 'REJECT')

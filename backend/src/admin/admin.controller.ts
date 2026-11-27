@@ -12,6 +12,7 @@ import { requestLocale } from '../common/i18n-errors';
 import { OrdersService } from '../orders/orders.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { OnboardingDto } from '../seller/seller.controller';
+import type { SellerAdminAction } from './admin.service';
 
 export class AttributeOptionDto {
   @IsOptional() @Matches(/^[a-z0-9_]{1,40}$/, { message: 'El código de la opción solo puede contener minúsculas, números y guiones bajos.' }) value?: string;
@@ -40,9 +41,11 @@ export class ReasonDto {
   @IsOptional() @IsCleanText(0, 300) reason?: string;
 }
 export class SellerActionDto {
-  @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE', 'VERIFY', 'REJECT_VERIFICATION'])
-  action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'REACTIVATE' | 'VERIFY' | 'REJECT_VERIFICATION';
+  @IsIn(['APPROVE', 'REJECT', 'SUSPEND', 'REACTIVATE', 'VERIFY', 'REJECT_VERIFICATION', 'VERIFY_IDENTITY', 'REVOKE_IDENTITY'])
+  action: SellerAdminAction;
   @IsOptional() @IsCleanText(0, 300) reason?: string;
+  /** VERIFY_IDENTITY only: how staff checked who the store is. */
+  @IsOptional() @IsIn(['GOVERNMENT_ID', 'BUSINESS_REGISTRY']) method?: 'GOVERNMENT_ID' | 'BUSINESS_REGISTRY';
 }
 export class CreateSellerDto extends OnboardingDto {
   @IsPersonName(3, 120) ownerName: string;
@@ -252,7 +255,7 @@ export class AdminController {
   @Roles('MODERATOR')
   @Post('sellers/:id/action')
   sellerAction(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SellerActionDto) {
-    return this.admin.sellerAction(user, id, dto.action, dto.reason);
+    return this.admin.sellerAction(user, id, dto.action, dto.reason, dto.method);
   }
 
   @Roles('ADMIN')

@@ -18,6 +18,7 @@ import { invalidateUserCache, RequestUser } from '../auth/auth';
 import { mediaUrl } from '../catalog/catalog.sql';
 import { realOrder, TEST_PENDING } from '../common/live-orders';
 import { inPreviousWindow, inWindow, sellerNetExpr, sellerOrderRefunds, soldSellerOrder } from '../common/sales-sql';
+import { SELLER_TRUST_SQL, sellerTrust } from '../common/seller-trust';
 
 type EntityType = 'INDIVIDUAL' | 'SOLE_PROPRIETOR' | 'COMPANY' | 'PARTNERSHIP' | 'NONPROFIT' | 'OTHER';
 
@@ -186,7 +187,8 @@ export class SellerService {
 
   async store(sellerId: string) {
     const s = await this.db.one(
-      `select s.id, s.slug, s.status, s.verification_status, s.created_at, s.activated_at, ssp.*, slp.legal_name, slp.entity_type_code,
+      `select s.id, s.slug, s.status, s.verification_status, s.created_at, s.activated_at, s.identity_verified_at, s.identity_verification_method,
+              ${SELLER_TRUST_SQL('s')}, ssp.*, slp.legal_name, slp.entity_type_code,
               slp.registration_country_code, slp.tax_identifier_last4, (slp.tax_identifier_ciphertext is not null) as has_tax_id,
               a.id as address_id, a.contact_name, a.line1, a.line2, a.city, a.region, a.postal_code, a.country_code, a.phone as address_phone
          from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
@@ -201,6 +203,9 @@ export class SellerService {
       slug: s.slug,
       status: s.status,
       verificationStatus: s.verification_status,
+      trust: sellerTrust(s),
+      identityVerifiedAt: s.identity_verified_at ?? null,
+      identityVerificationMethod: s.identity_verification_method ?? null,
       createdAt: s.created_at,
       activatedAt: s.activated_at,
       displayName: s.display_name,
@@ -372,7 +377,9 @@ export class SellerService {
         || !Buffer.from(before.tax_identifier_ciphertext ?? '').equals(Buffer.from(after?.tax_identifier_ciphertext ?? ''));
       if (changed) {
         await this.db.exec(
-          `update public.sellers set verification_status = 'NOT_STARTED', version = version + 1 where id = $1 and verification_status in ('VERIFIED','FAILED')`,
+          `update public.sellers set verification_status = case when verification_status in ('VERIFIED','FAILED') then 'NOT_STARTED' else verification_status end,
+                  identity_verified_at = null, identity_verified_by = null, identity_verification_method = null, version = version + 1
+            where id = $1 and (verification_status in ('VERIFIED','FAILED') or identity_verified_at is not null)`,
           [sellerId],
           c,
         );

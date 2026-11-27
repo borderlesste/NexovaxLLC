@@ -10,6 +10,7 @@ import { soldOrder } from '../common/sales-sql';
 import { productHasPreorderSql } from '../preorders/preorders.sql';
 import { FLASH_ENDS_SQL, mapProductCard, mediaUrl, PRODUCT_CARD_JOINS, PRODUCT_CARD_SELECT } from './catalog.sql';
 import type { HomeSection, HomeSectionKey } from './home-layout';
+import { SELLER_TRUST_SQL, sellerTrust } from '../common/seller-trust';
 
 export interface ProductQuery {
   q?: string;
@@ -416,7 +417,7 @@ export class CatalogService {
   private async buildSellers(term: string | null) {
     const rows = await this.db.many(
       `select s.id, s.slug, coalesce(ssp.display_name, s.slug) as name, ssp.short_description, ssp.logo_asset_id,
-              (s.verification_status = 'VERIFIED') as verified,
+              ${SELLER_TRUST_SQL('s')},
               (select count(*) from public.products p where p.seller_id = s.id and p.status = 'ACTIVE')::int as products,
               (select coalesce(avg(rating),0)::numeric(3,2)::text from public.product_reviews r where r.seller_id = s.id and r.status='PUBLISHED') as rating,
               (select count(*) from public.product_reviews r where r.seller_id = s.id and r.status='PUBLISHED')::int as reviews
@@ -431,7 +432,7 @@ export class CatalogService {
       name: r.name,
       shortDescription: r.short_description,
       logoUrl: r.logo_asset_id ? mediaUrl(r.logo_asset_id) : null,
-      verified: r.verified,
+      trust: sellerTrust(r),
       products: r.products,
       rating: Number(r.rating),
       reviews: r.reviews,
@@ -440,7 +441,7 @@ export class CatalogService {
 
   async store(slug: string, viewerUserId?: string, viewerSellerIds: string[] = []) {
     const s = await this.db.one(
-      `select s.id, s.slug, s.status, s.verification_status, s.activated_at, s.created_at,
+      `select s.id, s.slug, s.status, s.activated_at, s.created_at, ${SELLER_TRUST_SQL('s')},
               coalesce(ssp.display_name, s.slug) as name, ssp.short_description, ssp.description,
               ssp.support_email, ssp.support_phone, ssp.logo_asset_id, ssp.banner_asset_id
          from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
@@ -491,7 +492,7 @@ export class CatalogService {
       supportPhone: s.support_phone,
       logoUrl: s.logo_asset_id ? mediaUrl(s.logo_asset_id) : null,
       bannerUrl: s.banner_asset_id ? mediaUrl(s.banner_asset_id) : null,
-      verified: s.verification_status === 'VERIFIED',
+      trust: sellerTrust(s),
       memberSince: s.activated_at ?? s.created_at,
       stats,
       offers: offers?.n ?? 0,
@@ -627,14 +628,14 @@ export class CatalogService {
   private async topStores(limit: number, minRating: number) {
     const rows = await this.db.many(
       `select s.id, s.slug, coalesce(ssp.display_name, s.slug) as name, ssp.short_description, ssp.logo_asset_id, ssp.banner_asset_id,
-              (s.verification_status = 'VERIFIED') as verified, x.products, coalesce(r.rating, 0)::numeric(3,2)::text as rating, coalesce(r.reviews, 0)::int as reviews
+              ${SELLER_TRUST_SQL('s')}, x.products, coalesce(r.rating, 0)::numeric(3,2)::text as rating, coalesce(r.reviews, 0)::int as reviews
          from public.sellers s
          left join public.seller_store_profiles ssp on ssp.seller_id = s.id
          join lateral (select count(*)::int as products from public.products p where p.seller_id = s.id and p.status = 'ACTIVE') x on x.products > 0
          left join lateral (select avg(pr.rating) as rating, count(*) as reviews from public.product_reviews pr
                              where pr.seller_id = s.id and pr.status = 'PUBLISHED') r on true
         where s.status = 'ACTIVE' and coalesce(r.rating, 0) >= $1
-        order by coalesce(r.rating, 0) desc, coalesce(r.reviews, 0) desc, (s.verification_status = 'VERIFIED') desc, x.products desc, s.created_at
+        order by coalesce(r.rating, 0) desc, coalesce(r.reviews, 0) desc, (s.identity_verified_at is not null) desc, x.products desc, s.created_at
         limit $2`,
       [minRating, limit],
     );
@@ -642,7 +643,7 @@ export class CatalogService {
       id: r.id, slug: r.slug, name: r.name, shortDescription: r.short_description,
       logoUrl: r.logo_asset_id ? mediaUrl(r.logo_asset_id) : null,
       bannerUrl: r.banner_asset_id ? mediaUrl(r.banner_asset_id) : null,
-      verified: r.verified, products: r.products, rating: Number(r.rating), reviews: r.reviews,
+      trust: sellerTrust(r), products: r.products, rating: Number(r.rating), reviews: r.reviews,
     }));
   }
 

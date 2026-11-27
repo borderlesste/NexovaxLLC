@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, BadgeCheck, ChevronRight, MessageSquare, Package, RotateCcw, Search, Send, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
+import { AlertCircle, ChevronRight, MessageSquare, Package, RotateCcw, Search, Send, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, upload } from '@/lib/api';
 import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
@@ -14,6 +14,7 @@ import { Empty, Spinner, Avatar } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { LogoMark } from '@/components/layout/logo';
 import { t, getIntlLocale } from '@/lib/i18n';
+import { IdentityMark, SellerTrustBadges } from '@/components/shop/seller-trust';
 
 export function MessagesView({ as = 'customer', compact = false }: { as?: 'customer' | 'seller'; compact?: boolean }) {
   const sp = useSearchParams();
@@ -75,7 +76,7 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="flex items-center gap-1 truncate font-bold">{isSeller ? x.customer.name : x.seller.name} {!isSeller && x.seller.verified && <BadgeCheck className="size-4 shrink-0 fill-brand-600 text-white" />}</p>
+                    <p className="flex items-center gap-1 truncate font-bold">{isSeller ? x.customer.name : x.seller.name} {!isSeller && <IdentityMark trust={x.seller.trust} className="size-4" />}</p>
                     <span className="shrink-0 text-xs text-muted">{relative(x.lastMessageAt)}</span>
                   </div>
                   <p className="truncate text-sm text-muted">{x.lastFromMe ? t('Tú: ') : ''}{x.lastMessage ?? '—'}</p>
@@ -103,7 +104,7 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
                 <div className="grid size-11 place-items-center overflow-hidden rounded-xl border border-line bg-white">{c.seller?.logoUrl ? <img src={c.seller.logoUrl} alt="" className="size-full object-cover" /> : <LogoMark className="size-7" />}</div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1 truncate text-lg font-bold">{isSeller ? list.data?.find((x: any) => x.id === c.id)?.customer.name ?? t('Cliente') : c.seller?.name} {!isSeller && c.seller?.verified && <BadgeCheck className="size-5 fill-brand-600 text-white" />}</p>
+                <p className="flex items-center gap-1 truncate text-lg font-bold">{isSeller ? list.data?.find((x: any) => x.id === c.id)?.customer.name ?? t('Cliente') : c.seller?.name} {!isSeller && <IdentityMark trust={c.seller?.trust} />}</p>
                 <p className="text-sm text-muted">{c.subject}</p>
               </div>
               {!isSeller && c.seller && <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex"><Link href={`/tienda/${c.seller.slug}`}><Store /> {t('Ver tienda')}</Link></Button>}
@@ -165,8 +166,8 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
           {!isSeller && c.seller && (
             <div className="card p-5">
               <p className="text-lg font-bold">{t('Sobre el vendedor')}</p>
-              <p className="mt-3 flex items-center gap-1 font-bold">{c.seller.name} {c.seller.verified && <BadgeCheck className="size-4 fill-brand-600 text-white" />}</p>
-              <p className="text-sm text-muted">{c.seller.verified ? t('Vendedor verificado') : t('Vendedor')}</p>
+              <p className="mt-3 flex items-center gap-1 font-bold">{c.seller.name} <IdentityMark trust={c.seller.trust} className="size-4" /></p>
+              <SellerTrustBadges trust={c.seller.trust} className="mt-1" />
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between"><dt className="flex items-center gap-2 text-muted"><Star className="size-4" /> {t('Calificación')}</dt><dd className="font-semibold">{c.seller.rating ? c.seller.rating.toFixed(1) : '—'} ({c.seller.reviews})</dd></div>
                 <div className="flex justify-between"><dt className="flex items-center gap-2 text-muted"><Users className="size-4" /> {t('Seguidores')}</dt><dd className="font-semibold">{c.seller.followers}</dd></div>

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BadgeCheck, Box, Search, Star, Store } from 'lucide-react';
+import { Box, Search, Star, Store } from 'lucide-react';
 import { get } from '@/lib/api';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Empty, Skeleton } from '@/components/ui/misc';
 import { LogoMark } from '@/components/layout/logo';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
+import { IdentityMark, SellerTrustBadges } from '@/components/shop/seller-trust';
 
 export default function SellersPage() {
   const [q, setQ] = useState('');
@@ -18,7 +19,7 @@ export default function SellersPage() {
     <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8">
       <Breadcrumbs items={[{ label: t('Vendedores') }]} />
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div><h1 className="text-3xl font-extrabold">{t('Tiendas del marketplace')}</h1><p className="text-muted">{t('Descubre vendedores verificados de todo el mundo.')}</p></div>
+        <div><h1 className="text-3xl font-extrabold">{t('Tiendas del marketplace')}</h1><p className="text-muted">{t('Descubre las tiendas registradas en el marketplace. Cada insignia indica solo lo que nuestro equipo verificó.')}</p></div>
         <Input icon={<Search />} placeholder={t('Buscar tienda…')} value={q} onChange={(e) => setQ(e.target.value)} className="w-72" />
       </div>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -26,7 +27,8 @@ export default function SellersPage() {
         {sellers.data?.map((s: any) => (
           <Link key={s.id} href={`/tienda/${s.slug}`} className="card flex flex-col items-center p-6 text-center transition hover:-translate-y-0.5 hover:shadow-lg">
             <div className="grid size-20 place-items-center overflow-hidden rounded-2xl bg-brand-50">{s.logoUrl ? <img src={s.logoUrl} alt={s.name} className="size-full object-cover" /> : <LogoMark className="size-10" />}</div>
-            <p className="mt-3 flex items-center gap-1 text-lg font-bold">{s.name} {s.verified && <BadgeCheck className="size-5 fill-brand-600 text-white" />}</p>
+            <p className="mt-3 flex items-center gap-1 text-lg font-bold">{s.name} <IdentityMark trust={s.trust} /></p>
+            <SellerTrustBadges trust={s.trust} className="mt-2 justify-center" />
             {s.shortDescription && <p className="mt-1 line-clamp-2 text-sm text-muted">{s.shortDescription}</p>}
             <div className="mt-3 flex gap-4 text-sm text-muted">
               <span className="inline-flex items-center gap-1"><Star className="size-4 fill-amber-400 text-amber-400" /> {s.rating ? s.rating.toFixed(1) : '—'}</span>

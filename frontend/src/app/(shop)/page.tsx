@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, Globe2, Headphones, LayoutGrid, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
+import { ArrowRight, Globe2, Headphones, LayoutGrid, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import { serverGet } from '@/lib/server-api';
 import { Recommendations } from '@/components/shop/recommendations';
 import { ProductGrid, ProductImage } from '@/components/shop/product-card';
@@ -168,7 +168,7 @@ export default async function HomePage() {
         return s.stores?.length ? (
           <section key={s.key} className={SECTION} data-home-section={s.key}>
             <SectionHeading title={titleOf(s)} subtitle={t('Vendedores con las mejores valoraciones')} href="/vendedores" linkLabel={t('Ver todas las tiendas')} />
-            <StoreCards stores={s.stores} labels={{ products: (n) => t('{n} productos', { n }), noReviews: t('Sin valoraciones'), verified: t('Tienda verificada') }} />
+            <StoreCards stores={s.stores} labels={{ products: (n) => t('{n} productos', { n }), noReviews: t('Sin valoraciones'), identity: t('Identidad verificada'), payout: t('Cobro verificado') }} />
           </section>
         ) : null;
       case 'preorders':
@@ -201,7 +201,7 @@ export default async function HomePage() {
               {[
                 [Truck, 'Costos claros sin sorpresas', 'Visualiza el costo de envío e impuestos antes de pagar, con seguimiento por USPS, UPS, DHL, entre otros.'],
                 [ShieldCheck, 'Protección al comprador', 'Si tu pedido no llega o es distinto a lo descrito, nuestro equipo interviene para reembolsar tu dinero.'],
-                [BadgeCheck, 'Vendedores identificados', 'Cada tienda se registra con su identificación fiscal, sus reseñas son públicas y verificamos su cuenta de cobro antes de pagarle.'],
+                [Store, 'Tiendas registradas', 'Cada tienda se registra en el marketplace, sus reseñas son públicas y verificamos su cuenta de cobro antes de pagarle. Sus insignias indican solo lo que comprobamos.'],
                 [Headphones, 'Atención cercana en tu idioma', '¿Tienes dudas con un pedido o una devolución? Te acompañamos en 4 idiomas en cada paso.'],
               ].map(([Icon, title, d]: any) => (
                 <div key={title} className="flex items-start gap-3">
@@ -227,7 +227,7 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-3 lg:px-8">
           {[
             [ShieldCheck, 'Pagos protegidos', 'Pagas con métodos seguros y la tienda recibe tu dinero solo después de la entrega.'],
-            [BadgeCheck, 'Tiendas identificadas', 'Cada tienda se registra con su identificación fiscal y verificamos su cuenta de cobro antes de pagarle.'],
+            [Store, 'Tiendas registradas', 'Cada tienda se registra en el marketplace y verificamos su cuenta de cobro antes de pagarle. Sus insignias indican solo lo que comprobamos.'],
             [Truck, 'Envíos claros y rastreables', 'Conoce el costo del envío antes de pagar, con tarifas de transportadoras como DHL, UPS y USPS cuando están disponibles.'],
           ].map(([Icon, title, d]: any) => (
             <div key={title} className="flex items-start gap-3">

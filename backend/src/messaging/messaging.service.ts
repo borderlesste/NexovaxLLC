@@ -8,6 +8,7 @@ import { PoolClient } from 'pg';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { config } from '../config';
+import { SELLER_TRUST_SQL, sellerTrust } from '../common/seller-trust';
 
 export type UploadedFile = { buffer: Buffer; mimetype: string; originalname?: string; size: number };
 export const MAX_MESSAGE_FILES = 4;
@@ -130,7 +131,7 @@ export class MessagingService {
     const rows = await this.db.many(
       `select c.id, c.conversation_type, c.status, c.subject, c.last_message_at, c.created_at, c.product_id, c.order_id,
               s.id as seller_id, s.slug as seller_slug, coalesce(ssp.display_name, s.slug) as seller_name, ssp.logo_asset_id,
-              (s.verification_status = 'VERIFIED') as seller_verified,
+              ${SELLER_TRUST_SQL('s', 'seller_')},
               coalesce(up.display_name, u.email::text) as customer_name,
               p.title as product_title, p.slug as product_slug,
               lm.body_text as last_body, lm.sender_user_id as last_sender,
@@ -160,7 +161,7 @@ export class MessagingService {
       lastMessage: r.last_body,
       lastFromMe: r.last_sender === user.id,
       unread: r.unread,
-      seller: { id: r.seller_id, slug: r.seller_slug, name: r.seller_name, verified: r.seller_verified, logoUrl: r.logo_asset_id ? mediaUrl(r.logo_asset_id) : null },
+      seller: { id: r.seller_id, slug: r.seller_slug, name: r.seller_name, trust: sellerTrust(r, 'seller_'), logoUrl: r.logo_asset_id ? mediaUrl(r.logo_asset_id) : null },
       customer: { name: r.customer_name },
       product: r.product_id ? { id: r.product_id, title: r.product_title, slug: r.product_slug } : null,
       orderId: r.order_id,
@@ -194,7 +195,7 @@ export class MessagingService {
       ),
       c.seller_id
         ? this.db.one(
-            `select s.id, s.slug, coalesce(ssp.display_name, s.slug) as name, ssp.logo_asset_id, (s.verification_status='VERIFIED') as verified,
+            `select s.id, s.slug, coalesce(ssp.display_name, s.slug) as name, ssp.logo_asset_id, ${SELLER_TRUST_SQL('s')},
                     (select count(*) from public.seller_followers f where f.seller_id = s.id)::int as followers,
                     (select coalesce(avg(rating),0)::numeric(3,2)::text from public.product_reviews r where r.seller_id = s.id and r.status='PUBLISHED') as rating,
                     (select count(*) from public.product_reviews r where r.seller_id = s.id and r.status='PUBLISHED')::int as reviews
@@ -230,7 +231,7 @@ export class MessagingService {
       orderId: c.order_id,
       viewerRole: c.requester_user_id === user.id ? 'CUSTOMER' : user.sellers.some((s) => s.id === c.seller_id) ? 'SELLER' : 'STAFF',
       seller: seller
-        ? { id: seller.id, slug: seller.slug, name: seller.name, verified: seller.verified, logoUrl: seller.logo_asset_id ? mediaUrl(seller.logo_asset_id) : null, followers: seller.followers, rating: Number(seller.rating), reviews: seller.reviews }
+        ? { id: seller.id, slug: seller.slug, name: seller.name, trust: sellerTrust(seller), logoUrl: seller.logo_asset_id ? mediaUrl(seller.logo_asset_id) : null, followers: seller.followers, rating: Number(seller.rating), reviews: seller.reviews }
         : null,
       product: product
         ? { id: product.id, slug: product.slug, title: product.title, shortDescription: product.short_description, price: product.price, imageUrl: product.image_id ? mediaUrl(product.image_id) : null, rating: Number(product.rating), reviews: product.reviews }
