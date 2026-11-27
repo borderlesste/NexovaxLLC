@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, HttpException } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import * as Sentry from '@sentry/nestjs';
+import { extraMessage } from './i18n-extra';
 import { FR, HT } from './i18n-fr-ht';
 
 /** English versions of API error messages (keyed by the Spanish source text). */
@@ -424,7 +425,8 @@ const NOUNS: Record<string, string> = {
   Aviso: 'Alert', Archivo: 'File', 'Artículo del carrito': 'Cart item', Artículo: 'Item', Categoría: 'Category', Compra: 'Purchase', Conversación: 'Conversation',
   'Dirección de despacho': 'Ship-from address', Dirección: 'Address', Envío: 'Shipment', Imagen: 'Image', Impuesto: 'Tax rate',
   'Método de cobro': 'Payout method', Pago: 'Payment', Pedido: 'Order', Producto: 'Product', Reporte: 'Report', Retiro: 'Payout',
-  Tienda: 'Store', Variante: 'Variant', Vendedor: 'Seller',
+  Tienda: 'Store', Variante: 'Variant', Vendedor: 'Seller', Devolución: 'Return', Tarjeta: 'Card', Solicitud: 'Request', Miembro: 'Member',
+  Usuario: 'User', Oferta: 'Offer', Incidencia: 'Incident', Disputa: 'Dispute', Cupón: 'Coupon', Atributo: 'Attribute', Recurso: 'Resource',
 };
 
 export type ApiLocale = 'es' | 'en' | 'fr' | 'ht';
@@ -434,9 +436,9 @@ function translateFrHt(msg: string, l: 'fr' | 'ht'): string {
   const dict = l === 'fr' ? FR : HT;
   if (dict[msg]) return dict[msg];
   const fr = l === 'fr';
-  const NOUN_FR: Record<string, string> = { Archivo: 'Fichier', Categoría: 'Catégorie', Conversación: 'Conversation', Cuenta: 'Compte', Dirección: 'Adresse', Envío: 'Envoi', Imagen: 'Image', Pago: 'Paiement', Pedido: 'Commande', Producto: 'Produit', Reporte: 'Signalement', Tienda: 'Boutique', Variante: 'Variante', Vendedor: 'Vendeur', Usuario: 'Utilisateur', Incidencia: 'Incident' };
-  const NOUN_HT: Record<string, string> = { Archivo: 'Fichye', Categoría: 'Kategori', Conversación: 'Konvèsasyon', Cuenta: 'Kont', Dirección: 'Adrès', Envío: 'Livrezon', Imagen: 'Imaj', Pago: 'Peman', Pedido: 'Kòmand', Producto: 'Pwodwi', Reporte: 'Rapò', Tienda: 'Boutik', Variante: 'Varyant', Vendedor: 'Machann', Usuario: 'Itilizatè', Incidencia: 'Ensidan' };
-  let m = /^(.+) no encontrado\.$/.exec(msg);
+  const NOUN_FR: Record<string, string> = { Archivo: 'Fichier', Categoría: 'Catégorie', Conversación: 'Conversation', Cuenta: 'Compte', Dirección: 'Adresse', Envío: 'Envoi', Imagen: 'Image', Pago: 'Paiement', Pedido: 'Commande', Producto: 'Produit', Reporte: 'Signalement', Tienda: 'Boutique', Variante: 'Variante', Vendedor: 'Vendeur', Usuario: 'Utilisateur', Incidencia: 'Incident', Devolución: 'Retour', 'Método de cobro': 'Moyen de versement', Tarjeta: 'Carte', Solicitud: 'Demande', Retiro: 'Versement', Miembro: 'Membre', Impuesto: 'Taxe', Compra: 'Achat', 'Artículo del carrito': 'Article du panier', Artículo: 'Article', Oferta: 'Offre', Disputa: 'Litige', 'Dirección de despacho': 'Adresse d’expédition', Cupón: 'Coupon', Aviso: 'Alerte', Atributo: 'Attribut', Recurso: 'Ressource' };
+  const NOUN_HT: Record<string, string> = { Archivo: 'Fichye', Categoría: 'Kategori', Conversación: 'Konvèsasyon', Cuenta: 'Kont', Dirección: 'Adrès', Envío: 'Livrezon', Imagen: 'Imaj', Pago: 'Peman', Pedido: 'Kòmand', Producto: 'Pwodwi', Reporte: 'Rapò', Tienda: 'Boutik', Variante: 'Varyant', Vendedor: 'Machann', Usuario: 'Itilizatè', Incidencia: 'Ensidan', Devolución: 'Retou', 'Método de cobro': 'Metòd peman', Tarjeta: 'Kat', Solicitud: 'Demann', Retiro: 'Peman', Miembro: 'Manm', Impuesto: 'Taks', Compra: 'Acha', 'Artículo del carrito': 'Atik nan panye', Artículo: 'Atik', Oferta: 'Òf', Disputa: 'Diskisyon', 'Dirección de despacho': 'Adrès ekspedisyon', Cupón: 'Koupon', Aviso: 'Alèt', Atributo: 'Atribi', Recurso: 'Resous' };
+  let m = /^(.+) no encontrad[oa]\.$/.exec(msg);
   if (m) return fr ? `${NOUN_FR[m[1]] ?? m[1]} introuvable.` : `Nou pa jwenn ${(NOUN_HT[m[1]] ?? m[1]).toLowerCase()} an.`;
   m = /^(.+): (debe ser un número|elige Sí o No|elige una opción de la lista|el valor no es válido|es obligatorio)\.$/.exec(msg);
   if (m) {
@@ -467,6 +469,8 @@ function translateFrHt(msg: string, l: 'fr' | 'ht'): string {
   }
   m = /^El cupón requiere una compra mínima de ([\d.]+) en esa tienda\.$/.exec(msg);
   if (m) return fr ? `Le coupon exige un achat minimum de ${m[1]} dans cette boutique.` : `Koupon an mande yon acha minimòm ${m[1]} nan boutik sa a.`;
+  const extra = extraMessage(msg, l, (x) => translateFrHt(x, l));
+  if (extra !== undefined) return extra;
   m = /^([A-Z0-9][A-Z0-9_-]{2,23}): (.+)$/.exec(msg);
   if (m) return `${m[1]}: ${translateFrHt(m[2].charAt(0).toUpperCase() + m[2].slice(1), l)}`;
   const P: [RegExp, string, string][] = [
@@ -497,7 +501,7 @@ export function translateMessage(msg: string): string {
   if (dm) return `The processor didn’t accept the answer: ${dm[1]}`;
   const pm = /^Revisa el texto en ([A-Z]{2}): título de 3 a 120 caracteres y texto de 30 a 20 000, sin etiquetas HTML\.$/.exec(msg);
   if (pm) return `Check the ${pm[1]} text: title of 3 to 120 characters and text of 30 to 20,000, no HTML tags.`;
-  let m = /^(.+) no encontrado\.$/.exec(msg);
+  let m = /^(.+) no encontrad[oa]\.$/.exec(msg);
   if (m) return `${NOUNS[m[1]] ?? m[1]} not found.`;
   m = /^(.+): (debe ser un número|elige Sí o No|elige una opción de la lista|el valor no es válido|es obligatorio)\.$/.exec(msg);
   if (m) return `${m[1]}: ${({ 'debe ser un número': 'must be a number', 'elige Sí o No': 'choose Yes or No', 'elige una opción de la lista': 'choose an option from the list', 'el valor no es válido': 'the value is not valid', 'es obligatorio': 'is required' } as Record<string, string>)[m[2]]}.`;
@@ -522,6 +526,8 @@ export function translateMessage(msg: string): string {
   }
   m = /^El cupón requiere una compra mínima de ([\d.]+) en esa tienda\.$/.exec(msg);
   if (m) return `The coupon requires a minimum purchase of ${m[1]} in that store.`;
+  const extra = extraMessage(msg, 'en', translateMessage);
+  if (extra !== undefined) return extra;
   m = /^([A-Z0-9][A-Z0-9_-]{2,23}): (.+)$/.exec(msg);
   if (m) return `${m[1]}: ${translateMessage(m[2].charAt(0).toUpperCase() + m[2].slice(1))}`;
   m = /^No se pudo subir la imagen: (.*)$/.exec(msg);

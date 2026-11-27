@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Headers, Post, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
@@ -6,8 +6,16 @@ import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
 import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
 import { badRequest } from '../common/errors';
+import { localizeMessage, requestLocale } from '../common/i18n-errors';
 import { AlertsService } from '../analytics/alerts.service';
 import { ProductImportService } from './product-import.service';
+
+/** Row errors and warnings in the seller's language (they are returned as data, not as an error response). */
+function localizeRows<T extends { errors: string[]; warnings: string[] }>(items: T[], req: unknown): T[] {
+  const l = requestLocale(req);
+  if (l === 'es') return items;
+  return items.map((i) => ({ ...i, errors: i.errors.map((e) => localizeMessage(e, l)), warnings: i.warnings.map((w) => localizeMessage(w, l)) }));
+}
 
 const short = () => (target: object, key: string) => {
   IsOptional()(target, key);
@@ -57,21 +65,21 @@ export class ProductImportController {
   @Post('preview')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 5, parts: 10 } }))
-  async preview(@CurrentUser() user: RequestUser, @UploadedFile() file: Express.Multer.File, @Headers('x-seller-id') h?: string) {
+  async preview(@CurrentUser() user: RequestUser, @UploadedFile() file: Express.Multer.File, @Req() req: unknown, @Headers('x-seller-id') h?: string) {
     const sellerId = requireSeller(user, h, 'PRODUCTS').id;
     if (!file?.buffer?.length) throw badRequest('NO_FILE', 'Selecciona un archivo .xlsx o .csv.');
     const { rows, unknownColumns } = await this.imports.readFile(file);
     const result = await this.imports.preview(sellerId, rows);
-    return { rows, unknownColumns, ...result };
+    return { rows, unknownColumns, ...result, items: localizeRows(result.items, req) };
   }
 
   @Post('commit')
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
-  async commit(@CurrentUser() user: RequestUser, @Body() dto: ImportCommitDto, @Headers('x-seller-id') h?: string) {
+  async commit(@CurrentUser() user: RequestUser, @Body() dto: ImportCommitDto, @Req() req: unknown, @Headers('x-seller-id') h?: string) {
     const sellerId = requireSeller(user, h, 'PRODUCTS').id;
     const results = await this.imports.commit(user, sellerId, dto.rows, dto.submit);
     const touched = [...new Set(results.filter((r) => r.status === 'UPDATED' && r.productId).map((r) => r.productId!))];
     if (touched.length) this.alerts.touch(touched); // price or stock changed: tell waiting buyers
-    return { results };
+    return { results: localizeRows(results, req) };
   }
 }

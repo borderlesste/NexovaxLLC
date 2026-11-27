@@ -1,0 +1,219 @@
+/**
+ * API messages added after the original catalogs (i18n-errors.ts, i18n-fr-ht.ts): English, French and
+ * Haitian Creole, keyed by the Spanish source text. PATTERNS covers sentences with embedded values;
+ * `$1`, `$2`… are the captured parts, copied as they are (names, numbers, codes).
+ */
+export const EXTRA: Record<string, [en: string, fr: string, ht: string]> = {
+  'Aprueba al menos una unidad o rechaza la devolución.': ['Approve at least one unit or reject the return.', 'Approuvez au moins une unité ou refusez le retour.', 'Apwouve omwen yon inite oswa refize retou a.'],
+  'Cada red social solo puede aparecer una vez.': ['Each social network can only appear once.', 'Chaque réseau social ne peut apparaître qu’une fois.', 'Chak rezo sosyal ka parèt yon sèl fwa.'],
+  'Cada tarifa debe tener un código distinto.': ['Each rate must have a different code.', 'Chaque tarif doit avoir un code différent.', 'Chak tarif dwe gen yon kòd diferan.'],
+  'Categoría de notificación no válida.': ['Invalid notification category.', 'Catégorie de notification non valable.', 'Kategori notifikasyon an pa valab.'],
+  'Configura la dirección de tu almacén (Configuración de la tienda) antes de importar productos.': ['Set up your warehouse address (Store settings) before importing products.', 'Configurez l’adresse de votre entrepôt (Paramètres de la boutique) avant d’importer des produits.', 'Mete adrès depo ou (Paramèt boutik la) anvan ou enpòte pwodwi.'],
+  'Configura primero el impuesto del país.': ['Set up the country tax first.', 'Configurez d’abord la taxe du pays.', 'Mete taks peyi a anvan.'],
+  'Configuración SEO inválida.': ['Invalid SEO settings.', 'Paramètres SEO non valables.', 'Paramèt SEO yo pa valab.'],
+  'Configuración de Google inválida.': ['Invalid Google settings.', 'Paramètres Google non valables.', 'Paramèt Google yo pa valab.'],
+  'Código de estado o provincia inválido.': ['Invalid state or province code.', 'Code d’État ou de province non valable.', 'Kòd eta oswa pwovens lan pa valab.'],
+  'Datos de la empresa inválidos.': ['Invalid company details.', 'Informations de l’entreprise non valables.', 'Enfòmasyon konpayi an pa valab.'],
+  'El ID de medición de GA4 tiene la forma G-XXXXXXXXXX.': ['The GA4 measurement ID looks like G-XXXXXXXXXX.', 'L’ID de mesure GA4 a la forme G-XXXXXXXXXX.', 'ID mezi GA4 a gen fòm G-XXXXXXXXXX.'],
+  'El PDF contiene contenido activo (scripts o archivos incrustados) y no se puede adjuntar.': ['The PDF has active content (scripts or embedded files) and can’t be attached.', 'Le PDF contient du contenu actif (scripts ou fichiers intégrés) et ne peut pas être joint.', 'PDF la gen kontni aktif (script oswa fichye ki ladan l) e ou pa ka tache l.'],
+  'El archivo .xlsx es demasiado grande una vez descomprimido. Divídelo en archivos más pequeños.': ['The .xlsx file is too large once unzipped. Split it into smaller files.', 'Le fichier .xlsx est trop volumineux une fois décompressé. Divisez-le en fichiers plus petits.', 'Fichye .xlsx la twò gwo lè l dekonprese. Divize l an fichye ki pi piti.'],
+  'El archivo .xlsx está dañado. Vuelve a guardarlo desde Excel o Google Sheets.': ['The .xlsx file is damaged. Save it again from Excel or Google Sheets.', 'Le fichier .xlsx est endommagé. Enregistrez-le à nouveau depuis Excel ou Google Sheets.', 'Fichye .xlsx la domaje. Sove l ankò nan Excel oswa Google Sheets.'],
+  'El archivo no es un PDF válido.': ['The file isn’t a valid PDF.', 'Le fichier n’est pas un PDF valable.', 'Fichye a pa yon PDF ki valab.'],
+  'El archivo no es una imagen JPG, PNG, WebP o AVIF.': ['The file isn’t a JPG, PNG, WebP or AVIF image.', 'Le fichier n’est pas une image JPG, PNG, WebP ou AVIF.', 'Fichye a pa yon imaj JPG, PNG, WebP oswa AVIF.'],
+  'El archivo no tiene productos debajo de los encabezados.': ['The file has no products below the headers.', 'Le fichier ne contient aucun produit sous les en-têtes.', 'Fichye a pa gen pwodwi anba tit kolòn yo.'],
+  'El cargo por reposición debe estar entre 0 % y 50 %.': ['The restocking fee must be between 0 % and 50 %.', 'Les frais de remise en stock doivent être compris entre 0 % et 50 %.', 'Frè remete an stòk la dwe ant 0 % ak 50 %.'],
+  'El código de verificación solo admite letras, números y - _ . = + /': ['The verification code only allows letters, numbers and - _ . = + /', 'Le code de vérification n’accepte que des lettres, des chiffres et - _ . = + /', 'Kòd verifikasyon an aksepte sèlman lèt, chif ak - _ . = + /'],
+  'El descuento no cambia el precio de una de las variantes.': ['The discount doesn’t change the price of one of the variants.', 'La remise ne modifie pas le prix de l’une des variantes.', 'Rabè a pa chanje pri youn nan varyant yo.'],
+  'El documento supera 10 MB.': ['The document is larger than 10 MB.', 'Le document dépasse 10 Mo.', 'Dokiman an depase 10 MB.'],
+  'El enlace abre una página web, no la imagen. Usa el enlace directo a la imagen (y si es de Google Drive, compártela con acceso para cualquiera con el enlace).': ['The link opens a web page, not the image. Use the direct link to the image (and if it’s on Google Drive, share it with “Anyone with the link”).', 'Le lien ouvre une page web, pas l’image. Utilisez le lien direct vers l’image (et si elle est sur Google Drive, partagez-la avec « Tous les utilisateurs disposant du lien »).', 'Lyen an louvri yon paj wèb, pa imaj la. Sèvi ak lyen dirèk imaj la (e si li sou Google Drive, pataje l ak « Nenpòt moun ki gen lyen an »).'],
+  'El enlace apunta a una dirección no permitida.': ['The link points to an address that isn’t allowed.', 'Le lien pointe vers une adresse non autorisée.', 'Lyen an mennen sou yon adrès ki pa otorize.'],
+  'El enlace debe empezar por https://.': ['The link must start with https://.', 'Le lien doit commencer par https://.', 'Lyen an dwe kòmanse ak https://.'],
+  'El enlace no puede llevar usuario ni contraseña.': ['The link can’t include a username or password.', 'Le lien ne peut pas contenir d’identifiant ni de mot de passe.', 'Lyen an pa ka gen non itilizatè ni modpas.'],
+  'El enlace redirige demasiadas veces.': ['The link redirects too many times.', 'Le lien redirige trop de fois.', 'Lyen an voye sou lòt paj twòp fwa.'],
+  'El enlace usa un puerto no permitido.': ['The link uses a port that isn’t allowed.', 'Le lien utilise un port non autorisé.', 'Lyen an sèvi ak yon pò ki pa otorize.'],
+  'El feed de Google Merchant Center está desactivado.': ['The Google Merchant Center feed is turned off.', 'Le flux Google Merchant Center est désactivé.', 'Fid Google Merchant Center la dezaktive.'],
+  'El formato .xls (Excel 97-2003) no es compatible. Guárdalo como .xlsx o CSV.': ['The .xls format (Excel 97-2003) isn’t supported. Save it as .xlsx or CSV.', 'Le format .xls (Excel 97-2003) n’est pas pris en charge. Enregistrez-le en .xlsx ou CSV.', 'Fòma .xls (Excel 97-2003) a pa sipòte. Sove l an .xlsx oswa CSV.'],
+  'El inicio no puede estar en el pasado.': ['The start can’t be in the past.', 'Le début ne peut pas être dans le passé.', 'Kòmansman an pa ka nan tan pase.'],
+  'El método de cobro debe estar verificado por el equipo del marketplace para usarlo en retiros automáticos.': ['The payout method must be verified by the marketplace team before it can be used for automatic payouts.', 'Le moyen de versement doit être vérifié par l’équipe de la marketplace pour servir aux versements automatiques.', 'Ekip makèt la dwe verifye metòd peman an anvan ou sèvi avè l pou peman otomatik.'],
+  'El plazo debe estar entre 0 y 365 días.': ['The period must be between 0 and 365 days.', 'Le délai doit être compris entre 0 et 365 jours.', 'Delè a dwe ant 0 ak 365 jou.'],
+  'El producto no tiene precio publicado.': ['The product has no published price.', 'Le produit n’a pas de prix publié.', 'Pwodwi a pa gen pri ki pibliye.'],
+  'El retiro en tienda no usa zonas.': ['Store pickup doesn’t use zones.', 'Le retrait en boutique n’utilise pas de zones.', 'Ranmase nan boutik pa sèvi ak zòn.'],
+  'El servicio de cuentas y archivos no está configurado (falta la clave secreta de Supabase).': ['The accounts and files service isn’t configured (the Supabase secret key is missing).', 'Le service des comptes et des fichiers n’est pas configuré (la clé secrète Supabase manque).', 'Sèvis kont ak fichye yo pa konfigire (kle sekrè Supabase la manke).'],
+  'Elige el día del retiro.': ['Choose the payout day.', 'Choisissez le jour du versement.', 'Chwazi jou peman an.'],
+  'Escribe ELIMINAR para confirmar.': ['Type DELETE to confirm.', 'Tapez SUPPRIMER pour confirmer.', 'Ekri SIPRIME pou konfime.'],
+  'Escribe un mensaje o adjunta un archivo.': ['Write a message or attach a file.', 'Écrivez un message ou joignez un fichier.', 'Ekri yon mesaj oswa tache yon fichye.'],
+  'Esta devolución no está esperando tu envío.': ['This return isn’t waiting for you to ship it.', 'Ce retour n’attend pas votre envoi.', 'Retou sa a pa ap tann ou voye l.'],
+  'Esta devolución no está pendiente de recepción.': ['This return isn’t waiting to be received.', 'Ce retour n’est pas en attente de réception.', 'Retou sa a pa ap tann pou yo resevwa l.'],
+  'Esta devolución ya fue revisada.': ['This return has already been reviewed.', 'Ce retour a déjà été examiné.', 'Yo deja revize retou sa a.'],
+  'Esta devolución ya no se puede cancelar.': ['This return can no longer be canceled.', 'Ce retour ne peut plus être annulé.', 'Ou pa ka anile retou sa a ankò.'],
+  'Esta oferta ya terminó.': ['This deal has ended.', 'Cette offre est terminée.', 'Òf sa a fini.'],
+  'Esta solicitud ya fue procesada.': ['This request has already been processed.', 'Cette demande a déjà été traitée.', 'Yo deja trete demann sa a.'],
+  'Este envío está cerrado.': ['This shipment is closed.', 'Cet envoi est clôturé.', 'Livrezon sa a fèmen.'],
+  'Este pedido se pagó por transferencia: indica la referencia de la devolución del dinero.': ['This order was paid by bank transfer: enter the reference of the money refund.', 'Cette commande a été payée par virement : indiquez la référence du remboursement.', 'Yo te peye kòmand sa a pa transfè: mete referans ranbousman lajan an.'],
+  'Este producto tiene una oferta relámpago activa o programada. Cancélala en Ofertas relámpago para cambiar el precio.': ['This product has an active or scheduled flash deal. Cancel it in Flash deals to change the price.', 'Ce produit a une vente flash active ou programmée. Annulez-la dans Ventes flash pour modifier le prix.', 'Pwodwi sa a gen yon òf flash ki aktif oswa pwograme. Anile l nan Òf flash pou chanje pri a.'],
+  'Faltan direcciones o productos para generar la etiqueta.': ['Addresses or products are missing to create the label.', 'Il manque des adresses ou des produits pour créer l’étiquette.', 'Gen adrès oswa pwodwi ki manke pou kreye etikèt la.'],
+  'Indica el resultado de cada producto recibido.': ['Enter the result for each product received.', 'Indiquez le résultat de chaque produit reçu.', 'Mete rezilta chak pwodwi ou resevwa.'],
+  'Ingresa el ID de medición de GA4 para activarlo.': ['Enter the GA4 measurement ID to turn it on.', 'Saisissez l’ID de mesure GA4 pour l’activer.', 'Mete ID mezi GA4 a pou aktive l.'],
+  'La cantidad aprobada no puede superar la solicitada.': ['The approved quantity can’t exceed the requested one.', 'La quantité approuvée ne peut pas dépasser la quantité demandée.', 'Kantite ki apwouve a pa ka depase sa yo te mande a.'],
+  'La devolución debe estar inspeccionada antes de reembolsar.': ['The return must be inspected before refunding.', 'Le retour doit être inspecté avant le remboursement.', 'Yo dwe enspekte retou a anvan ranbousman.'],
+  'La devolución no está esperando el envío del cliente.': ['The return isn’t waiting for the customer to ship it.', 'Le retour n’attend pas l’envoi du client.', 'Retou a pa ap tann kliyan an voye l.'],
+  'La imagen no es pública: compártela con acceso para cualquiera con el enlace.': ['The image isn’t public: share it with “Anyone with the link”.', 'L’image n’est pas publique : partagez-la avec « Tous les utilisateurs disposant du lien ».', 'Imaj la pa piblik: pataje l ak « Nenpòt moun ki gen lyen an ».'],
+  'La imagen no existe (error 404).': ['The image doesn’t exist (error 404).', 'L’image n’existe pas (erreur 404).', 'Imaj la pa egziste (erè 404).'],
+  'La oferta debe durar al menos 15 minutos.': ['The deal must last at least 15 minutes.', 'L’offre doit durer au moins 15 minutes.', 'Òf la dwe dire omwen 15 minit.'],
+  'La oferta debe empezar en los próximos 30 días.': ['The deal must start within the next 30 days.', 'L’offre doit commencer dans les 30 prochains jours.', 'Òf la dwe kòmanse nan 30 jou k ap vini yo.'],
+  'La plantilla de título debe incluir %s (el título de cada página).': ['The title template must include %s (each page’s title).', 'Le modèle de titre doit inclure %s (le titre de chaque page).', 'Modèl tit la dwe gen %s (tit chak paj).'],
+  'La política de devoluciones de esta tienda pide al menos una foto del producto.': ['This store’s return policy requires at least one photo of the product.', 'La politique de retour de cette boutique exige au moins une photo du produit.', 'Règ retou boutik sa a mande omwen yon foto pwodwi a.'],
+  'La tarjeta guardada está vencida. Elige otra o ingresa una nueva.': ['The saved card has expired. Choose another one or enter a new one.', 'La carte enregistrée a expiré. Choisissez-en une autre ou saisissez-en une nouvelle.', 'Kat ou te sove a ekspire. Chwazi yon lòt oswa mete yon nouvo.'],
+  'La tarjeta guardada ya no está disponible. Elige otra o ingresa una nueva.': ['The saved card is no longer available. Choose another one or enter a new one.', 'La carte enregistrée n’est plus disponible. Choisissez-en une autre ou saisissez-en une nouvelle.', 'Kat ou te sove a pa disponib ankò. Chwazi yon lòt oswa mete yon nouvo.'],
+  'La tarjeta no fue confirmada. Inténtalo de nuevo.': ['The card wasn’t confirmed. Please try again.', 'La carte n’a pas été confirmée. Veuillez réessayer.', 'Kat la pa t konfime. Eseye ankò.'],
+  'Las devoluciones no están disponibles en este momento.': ['Returns aren’t available right now.', 'Les retours ne sont pas disponibles pour le moment.', 'Retou pa disponib kounye a.'],
+  'Las etiquetas de devolución no están disponibles (Shippo no está configurado).': ['Return labels aren’t available (Shippo isn’t configured).', 'Les étiquettes de retour ne sont pas disponibles (Shippo n’est pas configuré).', 'Etikèt retou pa disponib (Shippo pa konfigire).'],
+  'Las evidencias de la devolución deben ser fotos (JPG, PNG o WebP).': ['Return evidence must be photos (JPG, PNG or WebP).', 'Les justificatifs du retour doivent être des photos (JPG, PNG ou WebP).', 'Prèv retou a dwe foto (JPG, PNG oswa WebP).'],
+  'Las ofertas relámpago no están disponibles en este momento.': ['Flash deals aren’t available right now.', 'Les ventes flash ne sont pas disponibles pour le moment.', 'Òf flash pa disponib kounye a.'],
+  'Las unidades aceptadas no pueden superar las recibidas.': ['Accepted units can’t exceed the units received.', 'Les unités acceptées ne peuvent pas dépasser les unités reçues.', 'Inite ki aksepte yo pa ka depase sa ou resevwa yo.'],
+  'Máximo 12 secciones de ayuda para vendedores.': ['Up to 12 seller help sections.', '12 sections d’aide aux vendeurs maximum.', '12 seksyon èd pou machann maksimòm.'],
+  'Máximo 40 preguntas frecuentes.': ['Up to 40 frequently asked questions.', '40 questions fréquentes maximum.', '40 kesyon moun poze souvan maksimòm.'],
+  'Máximo 8 redes sociales.': ['Up to 8 social networks.', '8 réseaux sociaux maximum.', '8 rezo sosyal maksimòm.'],
+  'Ninguna transportadora ofrece etiqueta de devolución para esta ruta.': ['No carrier offers a return label for this route.', 'Aucun transporteur ne propose d’étiquette de retour pour ce trajet.', 'Pa gen transpòtè ki ofri etikèt retou pou wout sa a.'],
+  'No encontramos la fila de encabezados. Usa la plantilla: la primera fila debe tener las columnas SKU, Nombre, Precio, etc.': ['We couldn’t find the header row. Use the template: the first row must have the columns SKU, Nombre, Precio, etc.', 'Nous n’avons pas trouvé la ligne d’en-têtes. Utilisez le modèle : la première ligne doit contenir les colonnes SKU, Nombre, Precio, etc.', 'Nou pa jwenn liy tit kolòn yo. Sèvi ak modèl la: premye liy lan dwe gen kolòn SKU, Nombre, Precio, elatriye.'],
+  'No existe el sitio del enlace.': ['The link’s website doesn’t exist.', 'Le site du lien n’existe pas.', 'Sit lyen an pa egziste.'],
+  'No hay unidades recibidas para inspeccionar.': ['There are no received units to inspect.', 'Aucune unité reçue à inspecter.', 'Pa gen inite yo resevwa pou enspekte.'],
+  'No pudimos leer el archivo. Usa la plantilla y guárdala como .xlsx o CSV.': ['We couldn’t read the file. Use the template and save it as .xlsx or CSV.', 'Nous n’avons pas pu lire le fichier. Utilisez le modèle et enregistrez-le en .xlsx ou CSV.', 'Nou pa t ka li fichye a. Sèvi ak modèl la epi sove l an .xlsx oswa CSV.'],
+  'No puedes aprobar la eliminación de tu propia cuenta.': ['You can’t approve the deletion of your own account.', 'Vous ne pouvez pas approuver la suppression de votre propre compte.', 'Ou pa ka apwouve efasman pwòp kont ou.'],
+  'No se encontró el cargo de la tarjeta.': ['The card charge wasn’t found.', 'Le débit de la carte est introuvable.', 'Nou pa jwenn chaj kat la.'],
+  'No se encontró el envío original del pedido.': ['The order’s original shipment wasn’t found.', 'L’envoi d’origine de la commande est introuvable.', 'Nou pa jwenn livrezon orijinal kòmand lan.'],
+  'No se encontró el pago original del pedido.': ['The order’s original payment wasn’t found.', 'Le paiement d’origine de la commande est introuvable.', 'Nou pa jwenn peman orijinal kòmand lan.'],
+  'No se encontró la captura de PayPal.': ['The PayPal capture wasn’t found.', 'La capture PayPal est introuvable.', 'Nou pa jwenn kaptire PayPal la.'],
+  'No se pudieron leer los datos cifrados de este método.': ['This method’s encrypted details couldn’t be read.', 'Les données chiffrées de ce moyen n’ont pas pu être lues.', 'Nou pa t ka li done chifre metòd sa a.'],
+  'No se pudo descargar la imagen.': ['The image couldn’t be downloaded.', 'L’image n’a pas pu être téléchargée.', 'Nou pa t ka telechaje imaj la.'],
+  'No se pudo eliminar la cuenta. Revisa el detalle e inténtalo de nuevo.': ['The account couldn’t be deleted. Check the details and try again.', 'Le compte n’a pas pu être supprimé. Vérifiez le détail et réessayez.', 'Nou pa t ka efase kont lan. Gade detay la epi eseye ankò.'],
+  'Operación inválida.': ['Invalid operation.', 'Opération non valable.', 'Operasyon an pa valab.'],
+  'PayPal rechazó el reembolso.': ['PayPal declined the refund.', 'PayPal a refusé le remboursement.', 'PayPal refize ranbousman an.'],
+  'Primero despacha el envío.': ['Ship the package first.', 'Expédiez d’abord le colis.', 'Voye koli a anvan.'],
+  'Primero marca la devolución como recibida.': ['Mark the return as received first.', 'Marquez d’abord le retour comme reçu.', 'Make retou a kòm resevwa anvan.'],
+  'Red social no soportada.': ['Unsupported social network.', 'Réseau social non pris en charge.', 'Rezo sosyal sa a pa sipòte.'],
+  'Referencia inválida (letras, números y - . _ /).': ['Invalid reference (letters, numbers and - . _ /).', 'Référence non valable (lettres, chiffres et - . _ /).', 'Referans lan pa valab (lèt, chif ak - . _ /).'],
+  'Revisa el texto de comisiones (5 a 3.000 caracteres).': ['Check the fees text (5 to 3,000 characters).', 'Vérifiez le texte des commissions (5 à 3 000 caractères).', 'Verifye tèks komisyon yo (5 a 3 000 karaktè).'],
+  'Según la política, el cliente envía esta devolución por su cuenta.': ['Under the policy, the customer ships this return on their own.', 'Selon la politique, le client envoie ce retour par ses propres moyens.', 'Dapre règ la, kliyan an voye retou sa a pou kont li.'],
+  'Selecciona al menos una unidad a reembolsar.': ['Select at least one unit to refund.', 'Sélectionnez au moins une unité à rembourser.', 'Chwazi omwen yon inite pou ranbouse.'],
+  'Selecciona el estado del producto.': ['Select the product’s condition.', 'Sélectionnez l’état du produit.', 'Chwazi eta pwodwi a.'],
+  'Selecciona el motivo del reembolso.': ['Select the refund reason.', 'Sélectionnez le motif du remboursement.', 'Chwazi rezon ranbousman an.'],
+  'Selecciona el motivo.': ['Select the reason.', 'Sélectionnez le motif.', 'Chwazi rezon an.'],
+  'Selecciona un archivo .xlsx o .csv.': ['Select an .xlsx or .csv file.', 'Sélectionnez un fichier .xlsx ou .csv.', 'Chwazi yon fichye .xlsx oswa .csv.'],
+  'Servidor ocupado, inténtalo de nuevo.': ['Server busy, please try again.', 'Serveur occupé, veuillez réessayer.', 'Sèvè a okipe, eseye ankò.'],
+  'Solo puedes devolver productos que ya recibiste.': ['You can only return products you’ve already received.', 'Vous ne pouvez retourner que des produits déjà reçus.', 'Ou ka retounen sèlman pwodwi ou deja resevwa.'],
+  'Solo puedes poner en oferta relámpago productos publicados.': ['Only published products can go on a flash deal.', 'Seuls les produits publiés peuvent être mis en vente flash.', 'Se sèlman pwodwi ki pibliye ou ka mete nan òf flash.'],
+  'Solo puedes reponer al inventario unidades aceptadas.': ['You can only restock accepted units.', 'Vous ne pouvez remettre en stock que les unités acceptées.', 'Ou ka remete an stòk sèlman inite ki aksepte.'],
+  'Solo se pueden guardar tarjetas.': ['Only cards can be saved.', 'Seules les cartes peuvent être enregistrées.', 'Se sèlman kat ou ka sove.'],
+  'Stripe rechazó el reembolso.': ['Stripe declined the refund.', 'Stripe a refusé le remboursement.', 'Stripe refize ranbousman an.'],
+  'Teléfono inválido (ej.: +1 717 555 0100).': ['Invalid phone number (e.g. +1 717 555 0100).', 'Téléphone non valable (ex. : +1 717 555 0100).', 'Telefòn lan pa valab (egz.: +1 717 555 0100).'],
+  'Tu acceso de administrador ya no está vigente.': ['Your administrator access is no longer valid.', 'Votre accès administrateur n’est plus valable.', 'Aksè administratè ou pa valab ankò.'],
+  'Tu tienda debe estar activa para crear ofertas.': ['Your store must be active to create deals.', 'Votre boutique doit être active pour créer des offres.', 'Boutik ou dwe aktif pou kreye òf.'],
+  'Uno de los productos no pertenece a esta compra.': ['One of the products doesn’t belong to this purchase.', 'L’un des produits n’appartient pas à cet achat.', 'Youn nan pwodwi yo pa fè pati acha sa a.'],
+  'Uno de los productos no pertenece a esta venta.': ['One of the products doesn’t belong to this sale.', 'L’un des produits n’appartient pas à cette vente.', 'Youn nan pwodwi yo pa fè pati vant sa a.'],
+  'Usuario de X inválido (ej.: @nexovax).': ['Invalid X username (e.g. @nexovax).', 'Nom d’utilisateur X non valable (ex. : @nexovax).', 'Non itilizatè X la pa valab (egz.: @nexovax).'],
+  'Ya tienes una solicitud de eliminación en revisión.': ['You already have a deletion request under review.', 'Vous avez déjà une demande de suppression en cours d’examen.', 'Ou deja gen yon demann efasman k ap revize.'],
+  // Reasons an account can't be deleted yet (admin review).
+  'Tiene pedidos en curso (pagados y sin entregar, o con pago pendiente).': ['Has orders in progress (paid and not delivered, or awaiting payment).', 'A des commandes en cours (payées et non livrées, ou en attente de paiement).', 'Gen kòmand k ap fèt (peye men poko livre, oswa k ap tann peman).'],
+  'Tiene devoluciones abiertas.': ['Has open returns.', 'A des retours ouverts.', 'Gen retou ki louvri.'],
+  'Su tienda tiene ventas por preparar o enviar.': ['Their store has sales to prepare or ship.', 'Sa boutique a des ventes à préparer ou à expédier.', 'Boutik li gen vant pou prepare oswa voye.'],
+  'Su tienda tiene saldo pendiente o disponible por retirar.': ['Their store has a pending or available balance to withdraw.', 'Sa boutique a un solde en attente ou disponible à retirer.', 'Boutik li gen balans ki an atant oswa disponib pou retire.'],
+  'Su tienda tiene retiros en proceso.': ['Their store has payouts in progress.', 'Sa boutique a des versements en cours.', 'Boutik li gen peman k ap trete.'],
+  'Es parte del equipo del marketplace (quítale los roles de staff primero).': ['Is part of the marketplace team (remove their staff roles first).', 'Fait partie de l’équipe de la marketplace (retirez d’abord ses rôles staff).', 'Li fè pati ekip makèt la (retire wòl staff li yo anvan).'],
+  // Product import: row diagnostics returned with the preview.
+  'Ya existe: solo se actualizarán el precio y el stock.': ['Already exists: only the price and stock will be updated.', 'Existe déjà : seuls le prix et le stock seront mis à jour.', 'Li egziste deja: se pri a ak stòk la sèlman ki pral mete ajou.'],
+  'El producto de esta fila tiene errores (ver la primera fila del grupo).': ['This row’s product has errors (see the first row of the group).', 'Le produit de cette ligne contient des erreurs (voir la première ligne du groupe).', 'Pwodwi liy sa a gen erè (gade premye liy gwoup la).'],
+  'Sin imágenes: se guardará como borrador hasta que agregues al menos una.': ['No images: it will be saved as a draft until you add at least one.', 'Sans images : il sera enregistré comme brouillon jusqu’à ce que vous en ajoutiez au moins une.', 'Pa gen imaj: l ap sove kòm bouyon jiskaske ou ajoute omwen youn.'],
+};
+
+/** Words that appear inside the sentences below. */
+const W: Record<string, [string, string, string]> = {
+  fotos: ['photos', 'photos', 'foto'],
+  archivos: ['files', 'fichiers', 'fichye'],
+};
+
+/** Sentences with embedded values. Order matters: the first match wins. */
+export const PATTERNS: [RegExp, string, string, string][] = [
+  [/^No se puede eliminar todavía: (.+)$/, 'It can’t be deleted yet: $1', 'Suppression impossible pour le moment : $1', 'Ou poko ka efase l: $1'],
+  [/^Los productos por página deben ser un número entero entre (\d+) y (\d+)\.$/, 'Products per page must be a whole number between $1 and $2.', 'Le nombre de produits par page doit être un entier compris entre $1 et $2.', 'Kantite pwodwi pa paj dwe yon nonb antye ant $1 ak $2.'],
+  [/^Zona inválida en la tarifa «(.+)»\.$/, 'Invalid zone in the “$1” rate.', 'Zone non valable dans le tarif « $1 ».', 'Zòn ki pa valab nan tarif « $1 » la.'],
+  [/^Elige al menos un país válido para la tarifa «(.+)»\.$/, 'Choose at least one valid country for the “$1” rate.', 'Choisissez au moins un pays valable pour le tarif « $1 ».', 'Chwazi omwen yon peyi ki valab pou tarif « $1 » la.'],
+  [/^Revisa los estados o provincias de la tarifa «(.+)»\.$/, 'Check the states or provinces of the “$1” rate.', 'Vérifiez les États ou provinces du tarif « $1 ».', 'Verifye eta oswa pwovens tarif « $1 » la.'],
+  [/^Para limitar por estado o provincia, la tarifa «(.+)» debe tener un solo país\.$/, 'To limit by state or province, the “$1” rate must have a single country.', 'Pour limiter par État ou province, le tarif « $1 » doit avoir un seul pays.', 'Pou limite pa eta oswa pwovens, tarif « $1 » la dwe gen yon sèl peyi.'],
+  [/^Puedes destacar hasta (\d+) productos\. Quita alguno antes de agregar otro\.$/, 'You can feature up to $1 products. Remove one before adding another.', 'Vous pouvez mettre en avant jusqu’à $1 produits. Retirez-en un avant d’en ajouter un autre.', 'Ou ka mete an avan jiska $1 pwodwi. Retire youn anvan ou ajoute yon lòt.'],
+  [/^(.+): máximo (\d+) caracteres, sin etiquetas\.$/, '$1: up to $2 characters, no tags.', '$1 : $2 caractères maximum, sans balises.', '$1: $2 karaktè maksimòm, san etikèt.'],
+  [/^(.+): ingresa un enlace válido que empiece por https:\/\/$/, '$1: enter a valid link that starts with https://', '$1 : saisissez un lien valable qui commence par https://', '$1: mete yon lyen ki valab ki kòmanse ak https://'],
+  [/^Revisa la pregunta (\d+): pregunta de 5 a 200 caracteres y respuesta de 5 a 2\.000, sin etiquetas\.$/, 'Check question $1: question of 5 to 200 characters and answer of 5 to 2,000, no tags.', 'Vérifiez la question $1 : question de 5 à 200 caractères et réponse de 5 à 2 000, sans balises.', 'Verifye kesyon $1: kesyon 5 a 200 karaktè ak repons 5 a 2 000, san etikèt.'],
+  [/^Revisa la sección (\d+) de vendedores: título de 3 a 120 caracteres y texto de 5 a 3\.000\.$/, 'Check seller section $1: title of 3 to 120 characters and text of 5 to 3,000.', 'Vérifiez la section vendeurs $1 : titre de 3 à 120 caractères et texte de 5 à 3 000.', 'Verifye seksyon machann $1: tit 3 a 120 karaktè ak tèks 5 a 3 000.'],
+  [/^El enlace de (.+) no es válido\.$/, 'The $1 link isn’t valid.', 'Le lien $1 n’est pas valable.', 'Lyen $1 lan pa valab.'],
+  [/^El enlace de (.+) debe ser (https:\/\/\S+)$/, 'The $1 link must be $2', 'Le lien $1 doit être $2', 'Lyen $1 lan dwe $2'],
+  [/^Solo hay (\d+) unidades disponibles\.$/, 'Only $1 units are available.', 'Seulement $1 unités disponibles.', 'Gen sèlman $1 inite ki disponib.'],
+  [/^El servidor de la imagen respondió con error (\d+)\.$/, 'The image server answered with error $1.', 'Le serveur de l’image a répondu avec l’erreur $1.', 'Sèvè imaj la reponn ak erè $1.'],
+  [/^(.+) debe ser un número\.$/, '$1 must be a number.', '$1 doit être un nombre.', '$1 dwe yon nonb.'],
+  [/^(.+) debe ser mayor que 0\.$/, '$1 must be greater than 0.', '$1 doit être supérieur à 0.', '$1 dwe pi gran pase 0.'],
+  [/^(.+) supera el máximo permitido \((\d+)\)\.$/, '$1 exceeds the maximum allowed ($2).', '$1 dépasse le maximum autorisé ($2).', '$1 depase maksimòm ki otorize a ($2).'],
+  [/^Puedes adjuntar hasta (\d+) (fotos|archivos por mensaje)\.$/, 'You can attach up to $1 $2.', 'Vous pouvez joindre jusqu’à $1 $2.', 'Ou ka tache jiska $1 $2.'],
+  [/^El descuento debe estar entre ([\d.]+) % y 90 %\.$/, 'The discount must be between $1 % and 90 %.', 'La remise doit être comprise entre $1 % et 90 %.', 'Rabè a dwe ant $1 % ak 90 %.'],
+  [/^Una oferta relámpago dura como máximo (\d+) horas\.$/, 'A flash deal lasts up to $1 hours.', 'Une vente flash dure au maximum $1 heures.', 'Yon òf flash dire $1 èdtan maksimòm.'],
+  [/^Puedes tener hasta (\d+) ofertas relámpago activas o programadas a la vez\.$/, 'You can have up to $1 active or scheduled flash deals at a time.', 'Vous pouvez avoir jusqu’à $1 ventes flash actives ou programmées à la fois.', 'Ou ka gen jiska $1 òf flash ki aktif oswa pwograme an menm tan.'],
+  [/^Ya enviaste una oferta de este producto en los últimos (\d+) días\. Podrás enviar otra después\.$/, 'You already sent an offer for this product in the last $1 days. You can send another one later.', 'Vous avez déjà envoyé une offre pour ce produit ces $1 derniers jours. Vous pourrez en envoyer une autre plus tard.', 'Ou deja voye yon òf pou pwodwi sa a nan $1 dènye jou yo. W ap ka voye yon lòt pita.'],
+  [/^El plazo de devolución \((\d+) días desde la entrega\) ya venció\.$/, 'The return period ($1 days from delivery) has ended.', 'Le délai de retour ($1 jours après la livraison) est dépassé.', 'Delè retou a ($1 jou apre livrezon) fini.'],
+  [/^Solo puedes devolver (\d+) unidad\(es\) de «(.+)»\.$/, 'You can only return $1 unit(s) of “$2”.', 'Vous ne pouvez retourner que $1 unité(s) de « $2 ».', 'Ou ka retounen sèlman $1 inite « $2 ».'],
+  [/^Indica el motivo de la devolución de «(.+)»\.$/, 'Give the return reason for “$1”.', 'Indiquez le motif du retour de « $1 ».', 'Bay rezon retou « $1 ».'],
+  [/^Explica el motivo «(.+)» en el comentario\.$/, 'Explain the “$1” reason in the comment.', 'Expliquez le motif « $1 » dans le commentaire.', 'Esplike rezon « $1 » nan kòmantè a.'],
+  [/^Adjunta al menos una foto para el motivo «(.+)»\.$/, 'Attach at least one photo for the “$1” reason.', 'Joignez au moins une photo pour le motif « $1 ».', 'Tache omwen yon foto pou rezon « $1 ».'],
+  [/^Solo hay (\d+) unidad\(es\) entregadas sin reembolsar de ese producto\.$/, 'Only $1 delivered unit(s) of that product haven’t been refunded.', 'Seulement $1 unité(s) livrée(s) de ce produit ne sont pas remboursées.', 'Gen sèlman $1 inite yo livre ki poko ranbouse pou pwodwi sa a.'],
+  [/^Faltan columnas obligatorias: (.+)\.$/, 'Required columns are missing: $1.', 'Colonnes obligatoires manquantes : $1.', 'Gen kolòn obligatwa ki manke: $1.'],
+  [/^El archivo tiene (\d+) filas; el máximo por importación es (\d+)\. Divídelo en varios archivos\.$/, 'The file has $1 rows; the maximum per import is $2. Split it into several files.', 'Le fichier contient $1 lignes ; le maximum par importation est $2. Divisez-le en plusieurs fichiers.', 'Fichye a gen $1 liy; maksimòm pa enpòtasyon se $2. Divize l an plizyè fichye.'],
+  [/^(.+): «(.+)» no existe\. Copia el nombre exacto de la hoja Categorías de la plantilla\.$/, '$1: “$2” doesn’t exist. Copy the exact name from the Categorías sheet of the template.', '$1 : « $2 » n’existe pas. Copiez le nom exact de la feuille Categorías du modèle.', '$1: « $2 » pa egziste. Kopye non egzak la nan fèy Categorías modèl la.'],
+  [/^(.+): «(.+)» existe en varias secciones \((.+)\)\. Escribe la ruta completa, por ejemplo «(.+)»\.$/, '$1: “$2” exists in several sections ($3). Write the full path, for example “$4”.', '$1 : « $2 » existe dans plusieurs sections ($3). Écrivez le chemin complet, par exemple « $4 ».', '$1: « $2 » egziste nan plizyè seksyon ($3). Ekri chemen konplè a, pa egzanp « $4 ».'],
+  [/^(.+): «(.+)» tiene subcategorías; elige una de ellas \(hoja Categorías de la plantilla\)\.$/, '$1: “$2” has subcategories; choose one of them (Categorías sheet of the template).', '$1 : « $2 » a des sous-catégories ; choisissez-en une (feuille Categorías du modèle).', '$1: « $2 » gen sou-kategori; chwazi youn ladan yo (fèy Categorías modèl la).'],
+  [/^(.+): es obligatorio\.$/, '$1: is required.', '$1 : obligatoire.', '$1: obligatwa.'],
+  [/^(.+): «(.+)» está repetido \(también en la fila (\d+)\)\.$/, '$1: “$2” is repeated (also in row $3).', '$1 : « $2 » est en double (aussi à la ligne $3).', '$1: « $2 » repete (li nan liy $3 tou).'],
+  [/^(.+): el producto «(.+)» ya existe en tu tienda\. Para añadirle la variante (.*) usa el editor del producto\.$/, '$1: the product “$2” already exists in your store. To add the variant $3 to it, use the product editor.', '$1 : le produit « $2 » existe déjà dans votre boutique. Pour lui ajouter la variante $3, utilisez l’éditeur du produit.', '$1: pwodwi « $2 » egziste deja nan boutik ou. Pou ajoute varyant $3 la, sèvi ak editè pwodwi a.'],
+  [/^(.+): «(.+)» pertenece a un producto archivado\. Usa otro SKU\.$/, '$1: “$2” belongs to an archived product. Use another SKU.', '$1 : « $2 » appartient à un produit archivé. Utilisez un autre SKU.', '$1: « $2 » se pou yon pwodwi ki achive. Sèvi ak yon lòt SKU.'],
+  [/^(.+): «(.+)» no es un precio válido\.$/, '$1: “$2” isn’t a valid price.', '$1 : « $2 » n’est pas un prix valable.', '$1: « $2 » pa yon pri ki valab.'],
+  [/^(.+): «(.+)» debe ser un número entero de 0 en adelante\.$/, '$1: “$2” must be a whole number from 0 up.', '$1 : « $2 » doit être un nombre entier à partir de 0.', '$1: « $2 » dwe yon nonb antye ki kòmanse nan 0.'],
+  [/^(.+): «(.+)» ya existe en tu tienda; indica el nuevo (.+) o (.+) para actualizarlo\.$/, '$1: “$2” already exists in your store; enter the new $3 or $4 to update it.', '$1 : « $2 » existe déjà dans votre boutique ; indiquez le nouveau $3 ou $4 pour le mettre à jour.', '$1: « $2 » egziste deja nan boutik ou; mete nouvo $3 oswa $4 pou mete l ajou.'],
+  [/^Imagen (\d+): no se pudo descargar\.$/, 'Image $1: couldn’t be downloaded.', 'Image $1 : n’a pas pu être téléchargée.', 'Imaj $1: nou pa t ka telechaje l.'],
+  [/^Imagen (\d+): (.+)$/, 'Image $1: $2', 'Image $1 : $2', 'Imaj $1: $2'],
+  [/^Imágenes: (.+)$/, 'Images: $1', 'Images : $1', 'Imaj: $1'],
+  [/^Quedó como borrador: (.+)$/, 'Saved as a draft: $1', 'Enregistré comme brouillon : $1', 'Li sove kòm bouyon: $1'],
+  [/^El SKU (.+) ya existe en tu tienda\.$/, 'The SKU $1 already exists in your store.', 'Le SKU $1 existe déjà dans votre boutique.', 'SKU $1 la egziste deja nan boutik ou.'],
+  [/^La opción "(.+)" no está definida\.$/, 'The option “$1” isn’t defined.', 'L’option « $1 » n’est pas définie.', 'Opsyon « $1 » lan pa defini.'],
+  [/^(.+): elige un solo valor\.$/, '$1: choose a single value.', '$1 : choisissez une seule valeur.', '$1: chwazi yon sèl valè.'],
+  [/^Hay (\d+) unidades reservadas en pedidos en curso\.$/, 'There are $1 units reserved in orders in progress.', '$1 unités sont réservées dans des commandes en cours.', 'Gen $1 inite ki rezève nan kòmand k ap fèt.'],
+  [/^SKU duplicado: (.+)$/, 'Duplicate SKU: $1', 'SKU en double : $1', 'SKU an doub: $1'],
+  [/^El precio de (.+) debe ser mayor que cero\.$/, 'The price of $1 must be greater than zero.', 'Le prix de $1 doit être supérieur à zéro.', 'Pri $1 la dwe pi gran pase zewo.'],
+  [/^Stock inválido para (.+)\.$/, 'Invalid stock for $1.', 'Stock non valable pour $1.', 'Stòk la pa valab pou $1.'],
+  [/^Tu equipo puede tener hasta (\d+) personas\.$/, 'Your team can have up to $1 people.', 'Votre équipe peut compter jusqu’à $1 personnes.', 'Ekip ou ka gen jiska $1 moun.'],
+  [/^Configuración desconocida: (.+)$/, 'Unknown setting: $1', 'Paramètre inconnu : $1', 'Paramèt sa a enkoni: $1'],
+  [/^Shippo no pudo generar la etiqueta de devolución: (.*)$/, 'Shippo couldn’t create the return label: $1', 'Shippo n’a pas pu créer l’étiquette de retour : $1', 'Shippo pa t ka kreye etikèt retou a: $1'],
+  [/^La imagen es demasiado grande \(máximo (\d+) px por lado\)\.$/, 'The image is too large (up to $1 px per side).', 'L’image est trop grande ($1 px maximum par côté).', 'Imaj la twò gwo ($1 px maksimòm pa bò).'],
+];
+
+const IDX = { en: 0, fr: 1, ht: 2 } as const;
+const word = (w: string, l: keyof typeof IDX) => {
+  const k = w.split(' ')[0];
+  return W[k] ? w.replace(k, W[k][IDX[l]]).replace(' por mensaje', l === 'en' ? ' per message' : l === 'fr' ? ' par message' : ' pa mesaj') : w;
+};
+
+/** Translation from this catalog, or undefined when the message isn't here. */
+export function extraMessage(msg: string, l: 'en' | 'fr' | 'ht', inner?: (s: string) => string): string | undefined {
+  const hit = EXTRA[msg];
+  if (hit) return hit[IDX[l]];
+  for (const [re, ...out] of PATTERNS) {
+    const m = re.exec(msg);
+    if (!m) continue;
+    return out[IDX[l]].replace(/\$(\d)/g, (_, i) => {
+      const v = m[Number(i)] ?? '';
+      if (re.source.startsWith('^Puedes adjuntar') && i === '2') return word(v, l);
+      // A trailing sentence after "Imagen n:", "Imágenes:" or "Quedó como borrador:" is itself an API message.
+      if (inner && /^\^(Imagen|Imágenes|Quedó)/.test(re.source) && Number(i) === m.length - 1) return inner(v);
+      // Several sentences joined with a space (account deletion blockers).
+      if (re.source.startsWith('^No se puede eliminar')) return v.split(/(?<=\.) /).map((x) => EXTRA[x]?.[IDX[l]] ?? x).join(' ');
+      return v;
+    });
+  }
+  return undefined;
+}

@@ -105,7 +105,7 @@ export function ReturnsList({ role }: { role: ReturnRole }) {
           ))}
         </ul>
       )}
-      {q.data?.total > 20 && <div className="border-t border-line p-3"><Pagination page={page} pageSize={20} total={q.data.total} onPage={setPage} label="devoluciones" /></div>}
+      {q.data?.total > 20 && <div className="border-t border-line p-3"><Pagination page={page} pageSize={20} total={q.data.total} onPage={setPage} label={t('devoluciones')} /></div>}
     </Card>
   );
 }

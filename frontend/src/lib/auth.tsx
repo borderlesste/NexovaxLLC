@@ -166,7 +166,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (/invalid login/i.test(error.message)) throw new Error(t('Correo o contraseña incorrectos.'));
       if (/captcha/i.test(error.message)) throw new Error(t('No pudimos verificar que eres una persona. Completa la verificación e inténtalo de nuevo.'));
       if (/email not confirmed/i.test(error.message)) throw Object.assign(new Error(t('Debes confirmar tu correo antes de iniciar sesión.')), { code: 'EMAIL_NOT_CONFIRMED' });
-      throw new Error(error.message);
+      if (/rate limit|too many/i.test(error.message)) throw new Error(t('Demasiados intentos. Espera unos minutos.'));
+      throw new Error(t('Ocurrió un error inesperado.'));
     }
   }, []);
 

@@ -1,13 +1,16 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { Equals, IsOptional } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { CurrentUser, RequestUser, Roles } from '../auth/auth';
 import { IsCleanMultiline } from '../common/validators';
 import { AccountDeletionService } from './account-deletion.service';
 
+/** The confirmation word in each UI language (es, en, fr, ht). */
+export const DELETION_CONFIRM_WORDS = ['ELIMINAR', 'DELETE', 'SUPPRIMER', 'SIPRIME'];
+
 export class DeletionRequestDto {
-  @Equals('ELIMINAR', { message: 'Escribe ELIMINAR para confirmar.' }) confirm: string;
+  @IsIn(DELETION_CONFIRM_WORDS, { message: 'Escribe ELIMINAR para confirmar.' }) confirm: string;
   @IsOptional() @IsCleanMultiline(0, 1000) reason?: string;
 }
 export class DeletionRejectDto {

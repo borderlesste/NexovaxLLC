@@ -75,7 +75,7 @@ export function DeleteAccountCard() {
         <p className="mt-4 flex items-start gap-2 rounded-xl bg-surface p-4 text-sm"><XCircle className="mt-0.5 size-4 shrink-0 text-red-500" /> <span>{t('Tu última solicitud fue rechazada.')}{d.request.decisionNote ? ` ${t('Motivo')}: ${d.request.decisionNote}` : ''}</span></p>
       )}
       <Dialog open={open} onOpenChange={setOpen} title={t('¿Eliminar tu cuenta?')} description={t('El equipo de NEXOVAX revisará tu solicitud y te avisará por correo.')}
-        footer={<><Button variant="outline" onClick={() => setOpen(false)}>{t('Cancelar')}</Button><Button variant="danger" loading={busy} disabled={confirm.trim().toUpperCase() !== 'ELIMINAR'} onClick={submit} data-delete-submit><Trash2 /> {t('Solicitar eliminación')}</Button></>}>
+        footer={<><Button variant="outline" onClick={() => setOpen(false)}>{t('Cancelar')}</Button><Button variant="danger" loading={busy} disabled={confirm.trim().toUpperCase() !== t('ELIMINAR')} onClick={submit} data-delete-submit><Trash2 /> {t('Solicitar eliminación')}</Button></>}>
         <div className="space-y-4 text-sm">
           <ul className="list-disc space-y-1 pl-5 text-muted">
             <li>{t('Se borran tu perfil, foto, direcciones, tarjetas guardadas, favoritos, avisos y tu acceso.')}</li>
@@ -94,7 +94,7 @@ export function DeleteAccountCard() {
             </div>
           )}
           <Field label={t('¿Por qué te vas?')} hint={t('(opcional)')}><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={1000} /></Field>
-          <Field label={t('Escribe ELIMINAR para confirmar')} required><Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="ELIMINAR" autoComplete="off" data-delete-confirm /></Field>
+          <Field label={t('Escribe {w} para confirmar', { w: t('ELIMINAR') })} required><Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t('ELIMINAR')} autoComplete="off" data-delete-confirm /></Field>
         </div>
       </Dialog>
     </div>

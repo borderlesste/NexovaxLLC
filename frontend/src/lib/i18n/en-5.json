@@ -594,5 +594,13 @@
 "Rechazar verificación": "Reject verification",
 "Transferencias abiertas por comprador": "Open transfers per buyer",
 "Verificar datos fiscales": "Verify tax details",
-"{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta. Reembolso tras la inspección.": "{n} days from delivery. If the problem is the store’s, it pays the return shipping. Refund after inspection."
+"{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta. Reembolso tras la inspección.": "{n} days from delivery. If the problem is the store’s, it pays the return shipping. Refund after inspection.",
+"Entrega confirmada.": "Delivery confirmed.",
+"Vendedor no encontrado.": "Seller not found.",
+"La tienda": "The store",
+"La plataforma": "The platform",
+"Compartido": "Shared",
+"devoluciones": "returns",
+"ELIMINAR": "DELETE",
+"Escribe {w} para confirmar": "Type {w} to confirm"
 }
