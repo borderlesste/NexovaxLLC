@@ -51,6 +51,10 @@ const SECURITY_FIELDS = [
   ['passwordRecoveryPerHour', 'Correos de recuperación por hora', 'Máximo de correos para restablecer la contraseña que recibe una cuenta en una hora.', 1, 10],
   ['identityDocRetentionDays', 'Días que se guardan los documentos de identidad', 'Tras aprobar o rechazar una solicitud de «Identidad verificada», sus archivos se borran pasado este plazo. El registro de la decisión se conserva.', 7, 180],
   ['couponFailedAttemptsPerHour', 'Cupones inexistentes por hora', 'Códigos de cupón que no existen que puede probar un comprador en una hora. Al superarlo, los cupones se rechazan durante una hora (evita adivinar códigos).', 3, 50],
+  ['offerProductCooldownDays', 'Ofertas: días entre campañas del mismo producto', 'Cada tienda elige qué producto ofrece; esto solo fija cuántos días deben pasar para volver a enviar una oferta del mismo producto.', 1, 90],
+  ['offerPerStoreDays', 'Ofertas: días sin repetir tienda por comprador', 'Un comprador que recibió una oferta de una tienda no recibe otra de esa misma tienda durante estos días.', 1, 90],
+  ['offerMaxPerBuyerWeek', 'Ofertas: máximo por comprador en 7 días', 'Total de ofertas (de todas las tiendas) que puede recibir un comprador en 7 días.', 1, 20],
+  ['offerMaxRecipients', 'Ofertas: máximo de destinatarios por campaña', 'Número máximo de compradores que alcanza una sola campaña.', 100, 50000],
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {

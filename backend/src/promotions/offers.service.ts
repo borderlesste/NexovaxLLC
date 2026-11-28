@@ -16,11 +16,8 @@ export interface OfferInput {
   message?: string;
 }
 
-/** Same product: at most one campaign a week. Each buyer: one offer per store a week, three in total. */
-const PRODUCT_COOLDOWN_DAYS = 7;
-const PER_STORE_DAYS = 7;
-const MAX_OFFERS_PER_WEEK = 3;
-const MAX_RECIPIENTS = 5000;
+/** Frequency caps (Admin → Configuración → Seguridad): the store picks the product, NEXOVAX protects buyers from spam. */
+interface OfferLimits { cooldownDays: number; perStoreDays: number; maxPerWeek: number; maxRecipients: number }
 
 /**
  * Coupon offers to interested buyers (phase 4): a store sends one of its coupons to the
@@ -39,6 +36,12 @@ export class OffersService {
   ) {}
 
   /** Eligible recipients: interested, active, haven't bought it, not the store, within frequency caps, not opted out. */
+  private async limits(): Promise<OfferLimits> {
+    const sc = await this.settings.get('security.controls');
+    return { cooldownDays: sc.offerProductCooldownDays, perStoreDays: sc.offerPerStoreDays, maxPerWeek: sc.offerMaxPerBuyerWeek, maxRecipients: sc.offerMaxRecipients };
+  }
+
+  /** $1 product, $2 seller, $3 days per store, $4 offers per buyer in 7 days. */
   private eligibleSql(audience: Audience) {
     const fav = `select cf.user_id from public.customer_favorites cf where cf.product_id = $1`;
     const cart = `select ci.customer_id as user_id from public.cart_items ci where ci.product_id = $1 and ci.status = 'ACTIVE' and ci.customer_id is not null`;
@@ -50,8 +53,8 @@ export class OffersService {
          and not exists (select 1 from public.seller_members m where m.seller_id = $2 and m.user_id = u.id and m.status = 'ACTIVE')
          and not exists (select 1 from public.order_items oi join public.orders o on o.id = oi.order_id
                           where o.customer_id = u.id and oi.product_id = $1 and o.paid_at is not null and o.lifecycle_status <> 'CANCELLED')
-         and not exists (select 1 from public.nx_offer_recipients r where r.user_id = u.id and r.seller_id = $2 and r.sent_at > now() - interval '${PER_STORE_DAYS} days')
-         and (select count(*) from public.nx_offer_recipients r where r.user_id = u.id and r.sent_at > now() - interval '7 days') < ${MAX_OFFERS_PER_WEEK}
+         and not exists (select 1 from public.nx_offer_recipients r where r.user_id = u.id and r.seller_id = $2 and r.sent_at > now() - make_interval(days => $3::int))
+         and (select count(*) from public.nx_offer_recipients r where r.user_id = u.id and r.sent_at > now() - interval '7 days') < $4::int
          and not (exists (select 1 from public.notification_preferences p where p.user_id = u.id and p.category_code = 'PRODUCT_ALERTS' and p.channel_code = 'IN_APP' and not p.enabled)
               and exists (select 1 from public.notification_preferences p where p.user_id = u.id and p.category_code = 'PRODUCT_ALERTS' and p.channel_code = 'EMAIL' and not p.enabled))`;
   }
@@ -64,17 +67,20 @@ export class OffersService {
 
   async audience(sellerId: string, productId: string) {
     const p = await this.ownProduct(sellerId, productId);
-    const count = async (a: Audience) => (await this.db.one<{ n: number }>(`select count(*)::int as n from (${this.eligibleSql(a)} limit ${MAX_RECIPIENTS}) x`, [productId, sellerId]))!.n;
+    const lim = await this.limits();
+    const count = async (a: Audience) => (await this.db.one<{ n: number }>(`select count(*)::int as n from (${this.eligibleSql(a)} limit $5::int) x`,
+      [productId, sellerId, lim.perStoreDays, lim.maxPerWeek, lim.maxRecipients]))!.n;
     const [favorites, cart, both, last] = await Promise.all([
       count('FAVORITES'), count('CART'), count('BOTH'),
       this.db.one(`select created_at from public.nx_offer_campaigns where product_id = $1 order by created_at desc limit 1`, [productId]),
     ]);
-    const next = last ? new Date(new Date(last.created_at).getTime() + PRODUCT_COOLDOWN_DAYS * 86400_000) : null;
+    const next = last ? new Date(new Date(last.created_at).getTime() + lim.cooldownDays * 86400_000) : null;
     const coupons = (await this.coupons.list(sellerId)).filter((c: any) => c.state === 'ACTIVE' && (!c.productIds.length || c.productIds.includes(productId)));
     return {
       product: { id: p.id, title: p.title, active: p.status === 'ACTIVE' },
       counts: { FAVORITES: favorites, CART: cart, BOTH: both },
       availableAt: next && next > new Date() ? next.toISOString() : null,
+      cooldownDays: lim.cooldownDays,
       coupons: coupons.map((c: any) => ({ id: c.id, code: c.code, type: c.type, value: c.value, endsAt: c.endsAt })),
     };
   }
@@ -86,9 +92,11 @@ export class OffersService {
     const message = i.message?.trim() || null;
     if (message && (message.length > 280 || /(https?:\/\/|www\.|<[a-z])/i.test(message)))
       throw badRequest('OFFER_MESSAGE_INVALID', 'El mensaje admite hasta 280 caracteres y no puede incluir enlaces.');
-    const last = await this.db.one(`select created_at from public.nx_offer_campaigns where product_id = $1 and created_at > now() - interval '${PRODUCT_COOLDOWN_DAYS} days' limit 1`, [i.productId]);
-    if (last) throw conflict('OFFER_COOLDOWN', `Ya enviaste una oferta de este producto en los últimos ${PRODUCT_COOLDOWN_DAYS} días. Podrás enviar otra después.`);
-    const recipients = (await this.db.many<{ id: string }>(`${this.eligibleSql(i.audience)} limit ${MAX_RECIPIENTS}`, [i.productId, sellerId])).map((r) => r.id);
+    const lim = await this.limits();
+    const eligible = [i.productId, sellerId, lim.perStoreDays, lim.maxPerWeek, lim.maxRecipients];
+    const last = await this.db.one(`select created_at from public.nx_offer_campaigns where product_id = $1 and created_at > now() - make_interval(days => $2::int) limit 1`, [i.productId, lim.cooldownDays]);
+    if (last) throw conflict('OFFER_COOLDOWN', `Ya enviaste una oferta de este producto en los últimos ${lim.cooldownDays} días. Podrás enviar otra después.`);
+    const recipients = (await this.db.many<{ id: string }>(`${this.eligibleSql(i.audience)} limit $5::int`, eligible)).map((r) => r.id);
     if (!recipients.length) throw conflict('OFFER_NO_AUDIENCE', 'No hay personas a quienes enviar esta oferta en este momento.');
 
     // Coupon: one of the store's active coupons that applies to the product, or a new one only for it.
@@ -115,12 +123,12 @@ export class OffersService {
       // (Per-user caps span every store, so the lock is marketplace-wide; campaigns are rare.)
       await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:offer-campaigns'))`, [], c);
       const again = await this.db.one(
-        `select 1 from public.nx_offer_campaigns where product_id = $1 and created_at > now() - interval '${PRODUCT_COOLDOWN_DAYS} days' limit 1`,
-        [i.productId],
+        `select 1 from public.nx_offer_campaigns where product_id = $1 and created_at > now() - make_interval(days => $2::int) limit 1`,
+        [i.productId, lim.cooldownDays],
         c,
       );
-      if (again) throw conflict('OFFER_COOLDOWN', `Ya enviaste una oferta de este producto en los últimos ${PRODUCT_COOLDOWN_DAYS} días. Podrás enviar otra después.`);
-      sendTo = (await this.db.many<{ id: string }>(`${this.eligibleSql(i.audience)} limit ${MAX_RECIPIENTS}`, [i.productId, sellerId], c)).map((r) => r.id);
+      if (again) throw conflict('OFFER_COOLDOWN', `Ya enviaste una oferta de este producto en los últimos ${lim.cooldownDays} días. Podrás enviar otra después.`);
+      sendTo = (await this.db.many<{ id: string }>(`${this.eligibleSql(i.audience)} limit $5::int`, eligible, c)).map((r) => r.id);
       if (!sendTo.length) throw conflict('OFFER_NO_AUDIENCE', 'No hay personas a quienes enviar esta oferta en este momento.');
       const row = await this.db.one<{ id: string }>(
         `insert into public.nx_offer_campaigns (seller_id, product_id, promotion_code_id, audience, message, recipients, created_by)

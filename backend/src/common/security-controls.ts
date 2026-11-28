@@ -15,6 +15,14 @@ export interface SecurityControls {
   identityDocRetentionDays: number;
   /** Distinct non-existent coupon codes one buyer may try per hour before coupons are refused (code guessing). */
   couponFailedAttemptsPerHour: number;
+  /** Ofertas: days before a store can send another campaign for the same product. */
+  offerProductCooldownDays: number;
+  /** Ofertas: days a buyer who got an offer from a store won't get another one from that store. */
+  offerPerStoreDays: number;
+  /** Ofertas: most offers (all stores) one buyer receives in 7 days. */
+  offerMaxPerBuyerWeek: number;
+  /** Ofertas: most buyers one campaign reaches. */
+  offerMaxRecipients: number;
 }
 
 export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
@@ -24,6 +32,10 @@ export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: numbe
   passwordRecoveryPerHour: [1, 10, 3],
   identityDocRetentionDays: [7, 180, 30],
   couponFailedAttemptsPerHour: [3, 50, 10],
+  offerProductCooldownDays: [1, 90, 7],
+  offerPerStoreDays: [1, 90, 7],
+  offerMaxPerBuyerWeek: [1, 20, 3],
+  offerMaxRecipients: [100, 50000, 5000],
 };
 
 export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(

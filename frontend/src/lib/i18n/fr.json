@@ -2203,7 +2203,7 @@
 "Ofrecer cupón a interesados": "Offrir un coupon aux personnes intéressées",
 "Enviar a {n} personas": "Envoyer à {n} personnes",
 "NEXOVAX envía la oferta por ti. Nunca verás quiénes son: solo cuántas personas la reciben y cuántas compran. No se envía a quien ya compró el producto ni a quien recibió muchas ofertas esta semana.": "NEXOVAX envoie l’offre pour vous. Vous ne verrez jamais qui elles sont : seulement combien la reçoivent et combien achètent. Elle n’est pas envoyée à ceux qui ont déjà acheté le produit ni à ceux qui ont reçu beaucoup d’offres cette semaine.",
-"Ya enviaste una oferta de este producto esta semana. Podrás enviar otra desde el {d}.": "Vous avez déjà envoyé une offre pour ce produit cette semaine. Vous pourrez en envoyer une autre à partir du {d}.",
+"Ya enviaste una oferta de este producto en los últimos {n} días. Podrás enviar otra desde el {d}.": "Vous avez déjà envoyé une offre pour ce produit au cours des {n} derniers jours. Vous pourrez en envoyer une autre à partir du {d}.",
 "El producto debe estar publicado para enviar una oferta.": "Le produit doit être publié pour envoyer une offre.",
 "Enviar a": "Envoyer à",
 "personas": "personnes",

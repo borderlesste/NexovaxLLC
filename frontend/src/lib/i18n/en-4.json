@@ -682,7 +682,7 @@
 "Ofrecer cupón a interesados": "Offer a coupon to interested buyers",
 "Enviar a {n} personas": "Send to {n} people",
 "NEXOVAX envía la oferta por ti. Nunca verás quiénes son: solo cuántas personas la reciben y cuántas compran. No se envía a quien ya compró el producto ni a quien recibió muchas ofertas esta semana.": "NEXOVAX sends the offer for you. You’ll never see who they are: only how many people get it and how many buy. It isn’t sent to people who already bought the product or got many offers this week.",
-"Ya enviaste una oferta de este producto esta semana. Podrás enviar otra desde el {d}.": "You already sent an offer for this product this week. You can send another one from {d}.",
+"Ya enviaste una oferta de este producto en los últimos {n} días. Podrás enviar otra desde el {d}.": "You already sent an offer for this product in the last {n} days. You can send another one from {d}.",
 "El producto debe estar publicado para enviar una oferta.": "The product must be published to send an offer.",
 "Enviar a": "Send to",
 "personas": "people",

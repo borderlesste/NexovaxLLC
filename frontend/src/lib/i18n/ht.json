@@ -2203,7 +2203,7 @@
 "Ofrecer cupón a interesados": "Ofri yon koupon bay moun ki enterese",
 "Enviar a {n} personas": "Voye bay {n} moun",
 "NEXOVAX envía la oferta por ti. Nunca verás quiénes son: solo cuántas personas la reciben y cuántas compran. No se envía a quien ya compró el producto ni a quien recibió muchas ofertas esta semana.": "NEXOVAX voye òf la pou ou. Ou p ap janm wè kiyès yo ye: sèlman konbyen moun resevwa l ak konbyen ki achte. Nou pa voye l bay moun ki deja achte pwodwi a oswa ki resevwa anpil òf semèn sa a.",
-"Ya enviaste una oferta de este producto esta semana. Podrás enviar otra desde el {d}.": "Ou deja voye yon òf pou pwodwi sa a semèn sa a. Ou ka voye yon lòt apati {d}.",
+"Ya enviaste una oferta de este producto en los últimos {n} días. Podrás enviar otra desde el {d}.": "Ou deja voye yon òf pou pwodwi sa a nan {n} dènye jou yo. Ou ka voye yon lòt apati {d}.",
 "El producto debe estar publicado para enviar una oferta.": "Pwodwi a dwe pibliye pou w voye yon òf.",
 "Enviar a": "Voye bay",
 "personas": "moun",

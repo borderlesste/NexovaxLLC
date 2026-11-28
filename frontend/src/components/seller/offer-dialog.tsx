@@ -49,7 +49,7 @@ export function OfferDialog({ product, onClose }: { product: { id: string; title
       {!q.data ? <PageLoader /> : (
         <div className="space-y-4" data-offer-dialog>
           <p className="flex items-start gap-2 rounded-xl bg-surface p-3 text-sm text-muted"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand-600" />{t('NEXOVAX envía la oferta por ti. Nunca verás quiénes son: solo cuántas personas la reciben y cuántas compran. No se envía a quien ya compró el producto ni a quien recibió muchas ofertas esta semana.')}</p>
-          {q.data.availableAt && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t('Ya enviaste una oferta de este producto esta semana. Podrás enviar otra desde el {d}.', { d: fmtDateTime(q.data.availableAt) })}</p>}
+          {q.data.availableAt && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t('Ya enviaste una oferta de este producto en los últimos {n} días. Podrás enviar otra desde el {d}.', { n: q.data.cooldownDays ?? 7, d: fmtDateTime(q.data.availableAt) })}</p>}
           {!q.data.product.active && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t('El producto debe estar publicado para enviar una oferta.')}</p>}
           <Field label={t('Enviar a')} required>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
