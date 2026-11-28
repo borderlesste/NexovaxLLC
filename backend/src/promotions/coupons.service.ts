@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
 import { SettingsService } from '../settings/settings.service';
-import { badRequest, conflict, notFound } from '../common/errors';
+import { AppError, badRequest, conflict, notFound } from '../common/errors';
+import { HttpStatus } from '@nestjs/common';
 import { RequestUser } from '../auth/auth';
 import { allocate, applyRate, fromMinor, Minor, toMinor } from '../common/money';
 
@@ -18,6 +19,8 @@ export interface CouponInput {
   perCustomer?: number | null;
   productIds?: string[] | null;
   active?: boolean;
+  /** Personal offer: only the buyers the store sent it to (Ofertas) can redeem it. */
+  recipientsOnly?: boolean;
 }
 
 /** One cart line as the coupon engine sees it (variant id in quotes, checkout item id when placing). */
@@ -96,7 +99,7 @@ export class CouponsService {
 
   async update(user: RequestUser, sellerId: string, id: string, input: CouponInput) {
     const cur = await this.own(sellerId, id);
-    const p = await this.validate(sellerId, { ...input, code: cur.code });
+    const p = await this.validate(sellerId, { ...input, code: cur.code, recipientsOnly: input.recipientsOnly ?? cur.raw.conditions?.recipientsOnly === true });
     await this.db.tx(async (c) => {
       const terms = (r: any) => JSON.stringify([r.benefit_type, Number(r.rate ?? 0), Number(r.fixed_amount ?? 0), Number(r.max_discount ?? 0), r.conditions ?? {}]);
       const next = { benefit_type: p.type === 'PERCENT' ? 'PERCENTAGE_DISCOUNT' : 'FIXED_DISCOUNT', rate: p.type === 'PERCENT' ? p.value / 100 : null,
@@ -138,7 +141,7 @@ export class CouponsService {
    */
   async evaluate(codes: string[], lines: CouponLine[], customerId: string, c?: PoolClient) {
     const results: CouponResult[] = [];
-    const errors: { code: string; message: string }[] = [];
+    const errors: { code: string; message: string; unknown?: boolean }[] = [];
     const seen = new Set<string>();
     for (const raw of codes) {
       const code = raw.trim().toUpperCase();
@@ -161,7 +164,7 @@ export class CouponsService {
         c,
       );
       const fail = (message: string) => errors.push({ code, message });
-      if (!r || r.status === 'REVOKED' || r.group_status === 'ARCHIVED' || !r.version_id) { fail('El cupón no existe.'); continue; }
+      if (!r || r.status === 'REVOKED' || r.group_status === 'ARCHIVED' || !r.version_id) { errors.push({ code, message: 'El cupón no existe.', unknown: true }); continue; }
       if (r.status !== 'ACTIVE' || r.group_status !== 'ACTIVE') { fail('El cupón no está activo.'); continue; }
       if (r.starts_at && new Date(r.starts_at) > new Date()) { fail('El cupón aún no está vigente.'); continue; }
       if (r.ends_at && new Date(r.ends_at) <= new Date()) { fail('El cupón venció.'); continue; }
@@ -169,6 +172,15 @@ export class CouponsService {
       if (r.max_redemptions_per_customer != null && r.used_by_me >= Number(r.max_redemptions_per_customer)) { fail('Ya usaste este cupón el máximo de veces permitido.'); continue; }
       if (r.funding_source_code !== 'SELLER') { fail('El cupón no es válido.'); continue; }
       if (results.some((x) => x.sellerId === r.seller_id)) { fail('Solo puedes usar un cupón por tienda.'); continue; }
+      if (r.conditions?.recipientsOnly === true) {
+        const invited = await this.db.one(
+          `select 1 from public.nx_offer_recipients x join public.nx_offer_campaigns oc on oc.id = x.campaign_id
+            where oc.promotion_code_id = $1 and x.user_id = $2 limit 1`,
+          [r.id, customerId],
+          c,
+        );
+        if (!invited) { fail('Este cupón es una oferta personal y no está disponible para tu cuenta.'); continue; }
+      }
       const products: string[] | null = Array.isArray(r.conditions?.productIds) && r.conditions.productIds.length ? r.conditions.productIds : null;
       const eligible = lines.filter((l) => l.sellerId === r.seller_id && (!products || products.includes(l.productId)));
       if (!eligible.length) { fail('El cupón no aplica a los productos de tu carrito.'); continue; }
@@ -186,6 +198,41 @@ export class CouponsService {
       });
     }
     return { results, errors };
+  }
+
+  /**
+   * Row-locks the typed codes inside the checkout transaction, in a fixed order. Concurrent checkouts
+   * with the same coupon wait here, so the usage limits evaluated next can't be exceeded by a race.
+   */
+  async lockCodes(codes: string[], c: PoolClient) {
+    const list = [...new Set(codes.map((x) => x.trim().toUpperCase()).filter(Boolean))].sort();
+    if (!list.length) return;
+    await this.db.exec(`select id from public.promotion_codes where code = any($1::citext[]) order by id for update`, [list], c);
+  }
+
+  /** Refuses coupon codes once a buyer has typed too many that don't exist (guessing codes). */
+  async guardAttempts(customerId: string, codes: string[]) {
+    if (!codes.some((x) => x.trim())) return;
+    const limit = (await this.settings.get('security.controls')).couponFailedAttemptsPerHour;
+    const r = await this.db.one<{ n: number }>(
+      `select count(*)::int as n from public.nx_coupon_failed_attempts where user_id = $1 and last_attempt_at > now() - interval '1 hour'`,
+      [customerId],
+    ).catch(() => null); // table not migrated yet: never block checkout because of the limiter itself
+    if ((r?.n ?? 0) >= limit)
+      throw new AppError('COUPON_ATTEMPTS_EXCEEDED', 'Probaste demasiados códigos que no existen. Espera una hora antes de intentarlo de nuevo.', HttpStatus.TOO_MANY_REQUESTS);
+  }
+
+  /** Remembers each distinct unknown code a buyer typed in the last hour (counted by guardAttempts). */
+  async recordFailures(customerId: string, errors: { code: string; unknown?: boolean }[]) {
+    const unknown = [...new Set(errors.filter((e) => e.unknown).map((e) => e.code))];
+    if (!unknown.length) return;
+    await this.db.exec(
+      `insert into public.nx_coupon_failed_attempts (user_id, code, last_attempt_at)
+       select $1, x, now() from unnest($2::text[]) x
+       on conflict (user_id, code) do update set last_attempt_at = excluded.last_attempt_at`,
+      [customerId, unknown],
+    ).catch(() => undefined);
+    await this.db.exec(`delete from public.nx_coupon_failed_attempts where user_id = $1 and last_attempt_at < now() - interval '1 day'`, [customerId]).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ helpers
@@ -234,6 +281,7 @@ export class CouponsService {
     const conditions: Record<string, unknown> = {};
     if (minSubtotal != null) conditions.minSubtotal = minSubtotal.toFixed(2);
     if (productIds.length) conditions.productIds = productIds;
+    if (i.recipientsOnly === true) conditions.recipientsOnly = true;
     return {
       code, type: i.type, value, minSubtotal, maxDiscount, startsAt: startsAt?.toISOString() ?? null, endsAt: endsAt?.toISOString() ?? null,
       maxRedemptions, perCustomer, conditions, active: i.active !== false,
@@ -277,6 +325,7 @@ export class CouponsService {
       maxDiscount: r.max_discount != null ? Number(r.max_discount) : null,
       minSubtotal: r.conditions?.minSubtotal != null ? Number(r.conditions.minSubtotal) : null,
       productIds: Array.isArray(r.conditions?.productIds) ? r.conditions.productIds : [],
+      recipientsOnly: r.conditions?.recipientsOnly === true,
       startsAt: r.starts_at,
       endsAt: r.ends_at,
       maxRedemptions: r.max_redemptions != null ? Number(r.max_redemptions) : null,

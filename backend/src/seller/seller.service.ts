@@ -1412,13 +1412,19 @@ export class SellerService {
     if (!acc) throw notFound('Método de cobro');
     if (acc.status !== 'ACTIVE' || acc.verification_status !== 'VERIFIED')
       throw conflict('PAYOUT_ACCOUNT_NOT_VERIFIED', 'El método de cobro debe estar verificado por el equipo del marketplace antes de retirar.');
-    const r = await this.db.tx((c) =>
-      this.db.one(
+    const amount = toMinor(input.amount);
+    if (amount <= 0n) throw badRequest('PAYOUT_AMOUNT_INVALID', 'Indica un monto mayor que 0.');
+    const r = await this.db.tx(async (c) => {
+      // Two withdrawals sent at once must not both spend the same balance: serialize them on the store
+      // (and on its balance row) so request_seller_payout checks the balance the previous one left.
+      await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:payout:' || $1::text))`, [sellerId], c);
+      await this.db.exec(`select 1 from public.seller_balance_projections where seller_id = $1 and currency_code = $2 for update`, [sellerId, currency], c);
+      return this.db.one(
         `select public.request_seller_payout($1,$2,$3,$4,$5,$6,$7,$8,now()) as id`,
-        [sellerId, currency, input.accountId, fromMinor(toMinor(input.amount)), input.idempotencyKey, user.id, 'Solicitud desde el panel del vendedor', randomUUID()],
+        [sellerId, currency, input.accountId, fromMinor(amount), input.idempotencyKey, user.id, 'Solicitud desde el panel del vendedor', randomUUID()],
         c,
-      ),
-    );
+      );
+    });
     return { id: r!.id };
   }
 

@@ -5,7 +5,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { badRequest, conflict } from '../common/errors';
 import { RequestUser } from '../auth/auth';
-import { applyRate, fromMinor, Minor } from '../common/money';
+import { applyRate, fromMinor, Minor, toMinor } from '../common/money';
 import { orderRef } from '../common/refs';
 import { NotificationsService } from '../notifications/notifications.service';
 import { activeAffiliateProgramSql } from './affiliates.sql';
@@ -399,35 +399,43 @@ export class AffiliatesService {
   async pay(admin: RequestUser, userId: string, reference: string) {
     const ref = String(reference ?? '').trim();
     if (ref.length < 3 || ref.length > 80) throw badRequest('PAYOUT_REFERENCE_REQUIRED', 'Indica la referencia del pago realizado.');
-    const earnings = await this.db.many(
-      `select rc.id, coalesce(n.residual_amount, ar.amount)::text as released,
-              coalesce((select sum(sr.amount) from public.referral_user_settlement_reservations sr join public.referral_user_settlement_results st
-                          on st.reservation_id = sr.id and st.result = 'SETTLED' where sr.referral_commission_id = rc.id),0)::text as settled
-         from public.referral_commissions rc join public.referral_availability_records ar on ar.referral_commission_id = rc.id and ar.status = 'RELEASED'
-         left join public.referral_net_release_evidence n on n.availability_record_id = ar.id
-        where rc.referrer_id = $1 and rc.status = 'AVAILABLE' order by rc.available_at`,
-      [userId],
-    );
-    if (!earnings.length) throw conflict('NOTHING_TO_PAY', 'Este afiliado no tiene comisiones disponibles para pagar.');
     const corr = randomUUID();
-    let total = 0;
     const paidAt = new Date(Date.now() - 1000);
-    for (const e of earnings) {
-      const amount = Math.round((Number(e.released) - Number(e.settled)) * 100) / 100;
-      if (amount <= 0) continue;
-      await this.db.exec(`select public.settle_referral_user_manually($1,$2,$3,$4,$5,$6,$7)`, [e.id, admin.id, amount.toFixed(2), `affiliate-pay:${e.id}:${corr}`, ref, paidAt, corr]);
-      total += amount;
-    }
+    // A double click (or two admins) must not settle the same earnings twice: one payment per affiliate
+    // at a time, and what is still owed is read again under that lock.
+    const { total, count } = await this.db.tx(async (c) => {
+      await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:affiliate-pay:' || $1::text))`, [userId], c);
+      const earnings = await this.db.many(
+        `select rc.id, coalesce(n.residual_amount, ar.amount)::text as released,
+                coalesce((select sum(sr.amount) from public.referral_user_settlement_reservations sr join public.referral_user_settlement_results st
+                            on st.reservation_id = sr.id and st.result = 'SETTLED' where sr.referral_commission_id = rc.id),0)::text as settled
+           from public.referral_commissions rc join public.referral_availability_records ar on ar.referral_commission_id = rc.id and ar.status = 'RELEASED'
+           left join public.referral_net_release_evidence n on n.availability_record_id = ar.id
+          where rc.referrer_id = $1 and rc.status = 'AVAILABLE' order by rc.available_at
+          for update of rc`,
+        [userId],
+        c,
+      );
+      let sum = 0n;
+      for (const e of earnings) {
+        const amount = toMinor(e.released) - toMinor(e.settled);
+        if (amount <= 0n) continue;
+        await this.db.exec(`select public.settle_referral_user_manually($1,$2,$3,$4,$5,$6,$7)`, [e.id, admin.id, fromMinor(amount), `affiliate-pay:${e.id}:${corr}`, ref, paidAt, corr], c);
+        sum += amount;
+      }
+      return { total: sum, count: earnings.length };
+    });
+    if (total <= 0n) throw conflict('NOTHING_TO_PAY', 'Este afiliado no tiene comisiones disponibles para pagar.');
     await this.notifications.notify(userId, {
       category: 'PAYMENTS', eventType: 'AFFILIATE_PAID', title: 'Te pagamos tus comisiones de afiliado',
-      body: `Enviamos ${total.toFixed(2)} a tu método de cobro (referencia ${ref}).`,
+      body: `Enviamos ${fromMinor(total)} a tu método de cobro (referencia ${ref}).`,
       localized: {
-        en: { title: 'We paid your affiliate commissions', body: `We sent ${total.toFixed(2)} to your payout method (reference ${ref}).` },
-        fr: { title: 'Nous avons versé vos commissions d’affiliation', body: `Nous avons envoyé ${total.toFixed(2)} sur votre moyen de versement (référence ${ref}).` },
-        ht: { title: 'Nou peye komisyon afilye ou yo', body: `Nou voye ${total.toFixed(2)} sou metòd peman ou (referans ${ref}).` },
+        en: { title: 'We paid your affiliate commissions', body: `We sent ${fromMinor(total)} to your payout method (reference ${ref}).` },
+        fr: { title: 'Nous avons versé vos commissions d’affiliation', body: `Nous avons envoyé ${fromMinor(total)} sur votre moyen de versement (référence ${ref}).` },
+        ht: { title: 'Nou peye komisyon afilye ou yo', body: `Nou voye ${fromMinor(total)} sou metòd peman ou (referans ${ref}).` },
       }, url: '/cuenta/afiliados', entityType: 'USER', entityId: userId, dedupeKey: `affiliate-paid:${corr}`,
     });
-    return { paid: total.toFixed(2), earnings: earnings.length };
+    return { paid: fromMinor(total), earnings: count };
   }
 
   // ------------------------------------------------------------------ jobs

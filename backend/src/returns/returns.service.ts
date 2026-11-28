@@ -165,6 +165,9 @@ export class ReturnsService {
     }
     const corr = randomUUID();
     const id = await this.db.tx(async (c) => {
+      // Requests sent at once (double tap, two tabs) all passed the eligibility read above: serialize them
+      // on the seller order and count again below, so the same units can't be in two open returns.
+      await this.db.one(`select id from public.seller_orders where id = $1 for update`, [so.id], c);
       const rid = (await this.db.one(
         `select public.create_return_request($1,$2,$3,$4,$5::jsonb,$6,'CUSTOMER',$7,$8) as id`,
         [so.order_id, so.id, user.id, pol.versionId, JSON.stringify({ windowDays: pol.windowDays, anchor: pol.anchor, inspection: pol.inspectionRequired, labelPayer: pol.labelPayer, shippingRefund: pol.shippingRefund, restockingFeePercent: pol.restockingFeePercent, scope: pol.scope, version: pol.versionId }),
@@ -173,6 +176,17 @@ export class ReturnsService {
       ))!.id;
       const existing = await this.db.one(`select 1 from public.return_items where return_request_id = $1 limit 1`, [rid], c);
       if (existing) return rid; // idempotent retry
+      const left = await this.db.many<{ id: string; returnable: number }>(
+        `select oi.id, (oi.delivered_quantity - oi.returned_quantity
+                 - coalesce((select sum(ri.requested_quantity) from public.return_items ri join public.return_requests rr on rr.id = ri.return_request_id
+                              where ri.order_item_id = oi.id and rr.status = any($3::text[])), 0))::int as returnable
+           from public.order_items oi where oi.seller_order_id = $1 and oi.id = any($2::uuid[])`,
+        [so.id, wanted.map((w) => w.orderItemId), OPEN_STATES],
+        c,
+      );
+      for (const w of wanted)
+        if (w.quantity > (left.find((x) => x.id === w.orderItemId)?.returnable ?? 0))
+          throw conflict('RETURN_QUANTITY_INVALID', 'Esas unidades ya están en otra devolución en curso. Revisa tus devoluciones.');
       for (const w of wanted) {
         const reason = await this.db.one(`select id from public.return_reason_definitions where seller_id is null and code = $1`, [w.reasonCode], c);
         await this.db.exec(`select public.add_return_item($1,$2,$3,$4,$5,null,'{}'::jsonb)`, [rid, w.orderItemId, w.quantity, reason!.id, w.comment?.trim() || null], c);

@@ -107,6 +107,8 @@ export class FlashDealsService {
     const currency = await this.settings.currency();
 
     const id = await this.db.tx(async (c) => {
+      // Deals for different products of the same store are created one at a time, so the per-store cap holds.
+      await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:flash-deals:' || $1::text))`, [sellerId], c);
       const p = await this.db.one(
         `select p.id, p.status, p.title, s.status as seller_status from public.products p join public.sellers s on s.id = p.seller_id
           where p.id = $1 and p.seller_id = $2 for update of p`,

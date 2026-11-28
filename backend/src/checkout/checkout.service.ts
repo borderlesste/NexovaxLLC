@@ -243,7 +243,7 @@ export class CheckoutService {
    * A store whose items leave from several warehouses is quoted once per origin: it offers only the
    * methods every origin can ship, priced as the sum of each origin's rate (what the order charges).
    */
-  private async groupOptions(cartId: string, groups: any[], address: any, currency: string, blocked?: ReadonlyMap<string, string>) {
+  private async groupOptions(cartId: string, groups: any[], address: any, currency: string, blocked?: ReadonlyMap<string, string>, couponBySeller?: ReadonlyMap<string, Minor>) {
     const addressVersion = checkoutAddressVersion(address);
     const [dims, freePolicies] = await Promise.all([
       this.db.many(
@@ -292,7 +292,7 @@ export class CheckoutService {
           && !items.some((item: any) => blocked?.has(item.variantId))
           && warehouses.every((q) => q.id)
           && qualifiesForFreeShipping(freePolicies, lines, address.country_code, currency,
-            items.reduce((sum: Minor, item: any) => sum + toMinor(item.unitPrice) * BigInt(item.quantity), 0n));
+            items.reduce((sum: Minor, item: any) => sum + toMinor(item.unitPrice) * BigInt(item.quantity), 0n) - (couponBySeller?.get(g.sellerId) ?? 0n));
         // Keep live/cached rates as-is. The store uses its own carrier on this additional route.
         const list = canOfferFree ? warehouses.map((q) => ({
           ...q, res: { ...q.res, options: [sellerFreeShippingOption(currency), ...q.res.options] },
@@ -328,14 +328,17 @@ export class CheckoutService {
     const tax = await this.tax.forDestination(address?.country_code, address?.region);
     const classOf = await this.tax.classesFor(cart.groups.flatMap((g: any) => g.items.map((i: any) => i.productId)));
     const blocked = await this.destinationBlocks(cart.groups, address?.country_code);
+    const lines = cart.groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => ({ key: i.variantId, sellerId: g.sellerId, productId: i.productId, gross: toMinor(i.unitPrice) * BigInt(i.quantity) })));
+    await this.coupons.guardAttempts(userId, input.coupons ?? []);
+    const promo = await this.coupons.evaluate(input.coupons ?? [], lines, userId);
+    await this.coupons.recordFailures(userId, promo.errors);
+    const couponBySeller = new Map(promo.results.map((r) => [r.sellerId, r.discount]));
     // No address yet: no shipping options or amount until the buyer adds one.
     const optionsBySeller = address
-      ? await this.groupOptions(cart.id, cart.groups, address, cart.currency, blocked)
+      ? await this.groupOptions(cart.id, cart.groups, address, cart.currency, blocked, couponBySeller)
       : (new Map(cart.groups.map((g: any) => [g.sellerId, { options: [], messages: [], liveRates: false }])) as unknown as Awaited<ReturnType<CheckoutService['groupOptions']>>);
     const groups = [];
     const totals = { subtotal: 0n, discount: 0n, shipping: 0n, tax: 0n };
-    const lines = cart.groups.flatMap((g: any) => g.items.filter((i: any) => i.purchasable).map((i: any) => ({ key: i.variantId, sellerId: g.sellerId, productId: i.productId, gross: toMinor(i.unitPrice) * BigInt(i.quantity) })));
-    const promo = await this.coupons.evaluate(input.coupons ?? [], lines, userId);
     const discountOf = new Map<string, bigint>();
     for (const r of promo.results) for (const a of r.allocations) discountOf.set(a.key, (discountOf.get(a.key) ?? 0n) + a.discount);
     const viaStripe = tax.calculationProvider === 'STRIPE_TAX' && !!address;
@@ -471,6 +474,7 @@ export class CheckoutService {
         throw conflict('BANK_TRANSFER_LIMIT', 'Ya tienes transferencias pendientes de confirmar. Paga o cancela una antes de crear otra.');
     }
 
+    await this.coupons.guardAttempts(userId, input.coupons ?? []);
     const address = await this.buyerAddress(userId, input.addressId);
     if (!address || checkoutAddressVersion(address) !== input.addressVersion) throw addressChanged();
     // Earlier card/PayPal attempts the buyer abandoned must not block the new checkout.
@@ -490,7 +494,28 @@ export class CheckoutService {
     // Shipping was quoted for exactly these lines; the transaction must bill the same cart.
     const quotedCart = cartSignature(preCart.groups.flatMap((g: any) => g.items.map((i: any) => ({ sellerId: g.sellerId, variantId: i.variantId, quantity: i.quantity }))));
 
+    let replayed = false;
     const checkoutId = await this.db.tx(async (c) => {
+      // One checkout at a time per buyer: a double submit (same or new idempotency key) waits here and
+      // then sees what the first one committed (TOCTOU on the replay lookup, transfer cap and cart).
+      await this.db.one(`select pg_advisory_xact_lock(hashtext('nexovax:checkout:' || $1::text)) as locked`, [userId], c);
+      const replay = await this.db.one<{ id: string }>(
+        `select cs.id from public.checkout_sessions cs where cs.customer_id = $1 and cs.idempotency_key = $2 limit 1`,
+        [userId, input.idempotencyKey],
+        c,
+      );
+      if (replay) { replayed = true; return replay.id; }
+      if (input.paymentMethod === 'BANK_TRANSFER') {
+        const open = await this.db.one<{ n: number }>(
+          `select count(*)::int as n from public.payments p
+            where p.customer_id = $1 and p.status = 'REQUIRES_ACTION' and p.provider_code = 'RD_SANDBOX'
+              and exists (select 1 from public.payment_provider_intents bi where bi.payment_id = p.id and bi.sanitized_metadata->>'method' = 'BANK_TRANSFER')`,
+          [userId],
+          c,
+        );
+        if ((open?.n ?? 0) >= security.bankTransferMaxOpenOrders)
+          throw conflict('BANK_TRANSFER_LIMIT', 'Ya tienes transferencias pendientes de confirmar. Paga o cancela una antes de crear otra.');
+      }
       const corr = randomUUID();
       const cart = await this.carts.ensureMutableCart(userId, c);
       // Wait for concurrent edits, then use the already validated address only if it is still current.
@@ -548,6 +573,14 @@ export class CheckoutService {
       // ---- inventory allocation per location (highest fulfillment priority first)
       type Alloc = { item: any; inventoryItemId: string; locationId: string; shipFrom: string; qty: number };
       const allocations: Alloc[] = [];
+      // Lock every stock row of the cart up front, in id order: two buyers with the same products in a
+      // different cart order can't deadlock, and nobody sells the units between our check and reserve.
+      await this.db.many(
+        `select ii.id from public.inventory_items ii
+          where ii.variant_id = any($1::uuid[]) and ii.status = 'ACTIVE' order by ii.id for update`,
+        [[...new Set(items.map((i: any) => i.variant_id as string))]],
+        c,
+      );
       for (const it of items) {
         const stock = await this.db.many(
           `select ii.id, ii.location_id, ii.available_to_sell::int as available, il.ship_from_address_id
@@ -698,13 +731,27 @@ export class CheckoutService {
 
       // ---- authoritative financial calculation
       // ---- store coupons: validated against the billed lines and reserved for this checkout
+      // Lock the typed codes first: concurrent checkouts redeeming the same coupon queue here, so the
+      // usage counts read by evaluate() already include every reservation committed before us.
+      await this.coupons.lockCodes(input.coupons ?? [], c);
       const promo = await this.coupons.evaluate(
         input.coupons ?? [],
         items.map((i: any) => ({ key: i.id, sellerId: i.seller_id, productId: i.product_id, gross: toMinor(i.unit_price) * BigInt(i.quantity) })),
         userId,
         c,
       );
-      if (promo.errors.length) throw badRequest('COUPON_INVALID', `${promo.errors[0].code}: ${promo.errors[0].message}`);
+      if (promo.errors.length) {
+        await this.coupons.recordFailures(userId, promo.errors); // own connection: survives the rollback
+        throw badRequest('COUPON_INVALID', `${promo.errors[0].code}: ${promo.errors[0].message}`);
+      }
+      // Free shipping is earned on what the buyer pays for the products, after the store's coupon.
+      for (const sellerId of freeSellerIds) {
+        const lines = freeLines.filter((item) => item.seller_id === sellerId);
+        const coupon = promo.results.find((r) => r.sellerId === sellerId)?.discount ?? 0n;
+        const subtotal = lines.reduce((sum, item) => sum + toMinor(item.unit_price) * BigInt(item.quantity), 0n) - coupon;
+        if (!qualifiesForFreeShipping(freePolicies, lines.map((item) => ({ productId: item.product_id, requiresShipping: item.requires_shipping })),
+          address.country_code, currency, subtotal)) throw shippingUnavailable();
+      }
       const reserved: (CouponResult & { reservationId: string })[] = [];
       for (const r of promo.results) {
         try {
@@ -789,6 +836,7 @@ export class CheckoutService {
     });
 
     const result = await this.resultFor(checkoutId, userId);
+    if (replayed) return result;
     if (result.orderId) {
       this.mail.fire(() => this.mail.orderConfirmed(result.orderId!));
       this.stripeTax.fire(result.orderId);

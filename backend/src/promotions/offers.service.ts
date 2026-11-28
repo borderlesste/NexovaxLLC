@@ -104,7 +104,7 @@ export class OffersService {
         throw badRequest('OFFER_COUPON_INVALID', 'El descuento debe ser de 1 % a 90 % y durar de 1 a 30 días.');
       const code = `OFERTA${Array.from(randomBytes(5), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('')}`;
       coupon = await this.coupons.create(user, sellerId, {
-        code, type: 'PERCENT', value: pct, perCustomer: 1, productIds: [i.productId],
+        code, type: 'PERCENT', value: pct, perCustomer: 1, productIds: [i.productId], recipientsOnly: true,
         startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + days * 86400_000).toISOString(), active: true,
       });
     } else throw badRequest('OFFER_COUPON_REQUIRED', 'Elige un cupón o crea uno para esta oferta.');

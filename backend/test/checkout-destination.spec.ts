@@ -82,7 +82,7 @@ describe('checkout address version', () => {
       providerFor: jest.fn(() => ({ code: 'STRIPE', environment: 'TEST' })), releaseAbandoned: jest.fn(), startProviderPayment: jest.fn(),
     };
     const svc = new CheckoutService(db as any, { get: jest.fn() } as any, carts as any, {} as any,
-      tax as any, shipping as any, payments as any, { evaluate: async () => ({ errors: [], results: [] }) } as any,
+      tax as any, shipping as any, payments as any, { evaluate: async () => ({ errors: [], results: [] }), lockCodes: async () => undefined, guardAttempts: async () => undefined, recordFailures: async () => undefined } as any,
       {} as any, {} as any, availability as any);
     jest.spyOn(svc as any, 'calculate').mockResolvedValue(undefined);
     jest.spyOn(svc, 'resultFor').mockResolvedValue({ checkoutId: 'checkout' } as any);
@@ -135,6 +135,33 @@ describe('checkout address version', () => {
     expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
     await expect(f.svc.placeOrder(buyer, { addressId: address.id, addressVersion: q.addressVersion!, shipping: { seller: 'FLAT:STANDARD' },
       paymentMethod: 'CARD', idempotencyKey: 'checkout-total-2', quotedTotal: '15.00' })).resolves.toMatchObject({ checkoutId: 'checkout' });
+  });
+
+  it('free shipping is earned on the subtotal after the store coupon (quote and order)', async () => {
+    const f = checkout();
+    f.enableFreeShipping('10.00');
+    const coupon = { code: 'TENOFF', codeId: 'c', sellerId: 'seller', ruleVersionId: 'v', ruleGroupId: 'g', discount: 100n, allocations: [{ key: 'variant', discount: 100n }] };
+    (f.svc as any).coupons.evaluate = async (_codes: string[], lines: { key: string }[]) =>
+      ({ errors: [], results: [{ ...coupon, allocations: [{ key: lines[0].key, discount: 100n }] }] });
+    const q = await f.svc.quote(buyer, { addressId: address.id, coupons: ['TENOFF'] });
+    expect(q.groups[0].shippingOptions.map((o: any) => o.code)).toEqual(['FLAT:STANDARD']);
+    await expect(f.svc.placeOrder(buyer, { addressId: address.id, addressVersion: q.addressVersion!, shipping: { seller: SELLER_FREE_SHIPPING },
+      paymentMethod: 'CARD', idempotencyKey: 'checkout-free-coupon', coupons: ['TENOFF'] })).rejects.toMatchObject({ code: 'SHIPPING_OPTION_UNAVAILABLE' });
+  });
+
+  it('serializes checkouts of one buyer and replays a key committed by a concurrent request', async () => {
+    const f = checkout();
+    const q = await f.quote();
+    (f.db.one as jest.Mock).mockImplementation(async (sql: string): Promise<any> => {
+      if (sql.includes('from public.addresses')) return { ...address };
+      if (sql.includes('select cs.id from public.checkout_sessions cs where')) return { id: 'first-checkout' };
+      if (sql.includes('cs.idempotency_key')) return null;
+      return { id: 'x' };
+    });
+    await expect(f.place(q.addressVersion)).resolves.toMatchObject({ checkoutId: 'checkout' });
+    expect(f.db.one).toHaveBeenCalledWith(expect.stringContaining('pg_advisory_xact_lock'), [buyer], f.client);
+    expect(f.db.exec).not.toHaveBeenCalledWith(expect.stringContaining('create_checkout_from_cart'), expect.anything(), expect.anything());
+    expect(f.payments.startProviderPayment).not.toHaveBeenCalled();
   });
 
   it('returns a previously created checkout on an idempotent retry without a version', async () => {

@@ -142,18 +142,31 @@ export class PayoutSchedulesService {
         else if (available <= 0n || available < minimum) result = 'SKIPPED_BELOW_MINIMUM';
         else {
           const day = new Date().toISOString().slice(0, 10);
-          const r = await this.db.tx((c) =>
-            this.db.one(
+          const r = await this.db.tx(async (c) => {
+            // Same lock as a manual withdrawal: the amount is re-read under it, never a stale balance.
+            await this.db.exec(`select pg_advisory_xact_lock(hashtext('nexovax:payout:' || $1::text))`, [s.seller_id], c);
+            const now = await this.db.one<{ available: string }>(
+              `select available_amount::text as available from public.seller_balance_projections where seller_id = $1 and currency_code = $2 for update`,
+              [s.seller_id, s.currency_code],
+              c,
+            );
+            const busy = await this.db.one(`select 1 from public.payouts where seller_id = $1 and status = any($2::text[]) limit 1`, [s.seller_id, OPEN_PAYOUT], c);
+            const amount = toMinor(now?.available ?? 0);
+            if (busy || amount <= 0n || amount < minimum) return null;
+            return this.db.one(
               `select public.request_seller_payout($1,$2,$3,$4,$5,$6,$7,$8,now()) as id`,
-              [s.seller_id, s.currency_code, s.payout_account_id, fromMinor(available), `auto-payout:${s.seller_id}:${s.currency_code}:${onlySellerId ? randomUUID() : day}`,
+              [s.seller_id, s.currency_code, s.payout_account_id, fromMinor(amount), `auto-payout:${s.seller_id}:${s.currency_code}:${onlySellerId ? randomUUID() : day}`,
                s.owner_user_id, 'Retiro programado automático', randomUUID()],
               c,
-            ),
-          );
-          payoutId = r!.id;
-          result = 'REQUESTED';
-          created++;
-          this.mail.fire(() => this.mail.payoutScheduled(payoutId!));
+            );
+          });
+          if (!r) result = 'SKIPPED_OPEN_PAYOUT';
+          else {
+            payoutId = r.id;
+            result = 'REQUESTED';
+            created++;
+            this.mail.fire(() => this.mail.payoutScheduled(payoutId!));
+          }
         }
       } catch (e: any) {
         result = `FAILED: ${String(e?.message ?? e).slice(0, 200)}`;

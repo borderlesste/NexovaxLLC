@@ -13,6 +13,8 @@ export interface SecurityControls {
   passwordRecoveryPerHour: number;
   /** Days «Identidad verificada» documents are kept after the decision, then deleted. */
   identityDocRetentionDays: number;
+  /** Distinct non-existent coupon codes one buyer may try per hour before coupons are refused (code guessing). */
+  couponFailedAttemptsPerHour: number;
 }
 
 export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
@@ -21,6 +23,7 @@ export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: numbe
   bankTransferMaxOpenOrders: [1, 20, 3],
   passwordRecoveryPerHour: [1, 10, 3],
   identityDocRetentionDays: [7, 180, 30],
+  couponFailedAttemptsPerHour: [3, 50, 10],
 };
 
 export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(
