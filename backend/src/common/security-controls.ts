@@ -23,6 +23,12 @@ export interface SecurityControls {
   offerMaxPerBuyerWeek: number;
   /** Ofertas: most buyers one campaign reaches. */
   offerMaxRecipients: number;
+  /** Chat: messages one account may report per day. */
+  chatReportsPerDay: number;
+  /** Chat: distinct reports that hide a message automatically until a moderator reviews it. */
+  chatReportsToAutoHide: number;
+  /** Chat: default days a moderator's messaging restriction lasts. */
+  chatRestrictionDays: number;
 }
 
 export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
@@ -36,6 +42,9 @@ export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: numbe
   offerPerStoreDays: [1, 90, 7],
   offerMaxPerBuyerWeek: [1, 20, 3],
   offerMaxRecipients: [100, 50000, 5000],
+  chatReportsPerDay: [5, 100, 20],
+  chatReportsToAutoHide: [2, 20, 3],
+  chatRestrictionDays: [1, 365, 7],
 };
 
 export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(

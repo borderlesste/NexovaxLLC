@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, ChevronRight, MessageSquare, Package, RotateCcw, Search, Send, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
+import { AlertCircle, Ban, ChevronRight, Flag, MessageSquare, Package, RotateCcw, Search, Send, ShieldAlert, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, get, upload } from '@/lib/api';
+import { del, errorMessage, get, post, upload } from '@/lib/api';
 import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
-import { cn, fmtTime, money, relative } from '@/lib/utils';
+import { cn, fmtDate, fmtTime, money, relative } from '@/lib/utils';
+import { ReportMessageDialog, messageText } from '@/components/messaging/chat-safety';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Empty, Spinner, Avatar } from '@/components/ui/misc';
@@ -27,6 +28,21 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
   const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const [reporting, setReporting] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const toggleBlock = async (on: boolean) => {
+    if (on && !window.confirm(isSeller ? t('¿Bloquear a este cliente? No podrá escribirle a tu tienda hasta que lo desbloquees.') : t('¿Bloquear a esta tienda? No podrá escribirte hasta que la desbloquees.'))) return;
+    setBlocking(true);
+    try {
+      await (on ? post(`/conversations/${active}/block`) : del(`/conversations/${active}/block`));
+      toast.success(on ? t('Conversación bloqueada.') : t('Conversación desbloqueada.'));
+      await qc.invalidateQueries({ queryKey: ['conversation', active] });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBlocking(false);
+    }
+  };
   const send = useMutation({
     mutationFn: () => upload(`/conversations/${active}/messages`, formWith({ body: text.trim() }, files)),
     onSuccess: (c) => {
@@ -79,7 +95,7 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
                     <p className="flex items-center gap-1 truncate font-bold">{isSeller ? x.customer.name : x.seller.name} {!isSeller && <IdentityMark trust={x.seller.trust} className="size-4" />}</p>
                     <span className="shrink-0 text-xs text-muted">{relative(x.lastMessageAt)}</span>
                   </div>
-                  <p className="truncate text-sm text-muted">{x.lastFromMe ? t('Tú: ') : ''}{x.lastMessage ?? '—'}</p>
+                  <p className="truncate text-sm text-muted">{x.lastFromMe ? t('Tú: ') : ''}{x.lastMessage ? messageText(x.lastMessage) : '—'}</p>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1 truncate text-xs text-muted"><Package className="size-3.5 shrink-0" /> {x.product?.title ?? x.subject}</span>
                     {x.unread > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] font-bold leading-5 text-white">{x.unread}</span>}
@@ -109,6 +125,11 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
               </div>
               {!isSeller && c.seller && <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex"><Link href={`/tienda/${c.seller.slug}`}><Store /> {t('Ver tienda')}</Link></Button>}
               {c.product && <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex"><Link href={`/producto/${c.product.slug}`}><Package /> {t('Ver producto')}</Link></Button>}
+              {c.safety?.available && (
+                <Button variant="ghost" size="sm" loading={blocking} onClick={() => toggleBlock(!c.safety.blockedByMe)} data-chat-block title={c.safety.blockedByMe ? t('Desbloquear') : isSeller ? t('Bloquear cliente') : t('Bloquear tienda')}>
+                  <Ban /> <span className="hidden md:inline">{c.safety.blockedByMe ? t('Desbloquear') : t('Bloquear')}</span>
+                </Button>
+              )}
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4 scrollbar-thin">
               {c.product && (
@@ -121,19 +142,35 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
                 <div key={g.day} className="space-y-3">
                   <p className="mx-auto w-fit rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">{g.day}</p>
                   {g.items.map((m: any) => (
-                    <div key={m.id} className={cn('flex gap-2', m.mine ? 'justify-end' : 'justify-start')}>
-                      <div className={cn('max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-sm', m.mine ? 'rounded-br-md bg-brand-100/80 text-ink' : 'rounded-bl-md border border-line bg-white')}>
+                    <div key={m.id} className={cn('group flex items-center gap-2', m.mine ? 'justify-end' : 'justify-start')}>
+                      <div className={cn('max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-sm', m.removed ? 'border border-dashed border-line bg-surface italic text-muted' : m.mine ? 'rounded-br-md bg-brand-100/80 text-ink' : 'rounded-bl-md border border-line bg-white')}>
                         {['SUPPORT_AGENT', 'MODERATOR'].includes(m.role) && <p className="mb-1 text-[11px] font-bold text-brand-700">{t('Equipo NEXOVAX')}</p>}
-                        {!(m.attachments?.length && m.body.startsWith('📎')) && <p className="whitespace-pre-line">{m.body}</p>}
+                        {!(m.attachments?.length && m.body.startsWith('📎')) && <p className="whitespace-pre-line">{messageText(m.body)}</p>}
                         <AttachmentList base={`/conversations/${c.id}/attachments`} items={m.attachments} />
                         <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-muted">{fmtTime(m.sentAt)} {m.mine && <CheckCheck className="size-3.5 text-brand-500" />}</p>
                       </div>
+                      {!m.mine && !m.removed && c.safety?.available && !['SUPPORT_AGENT', 'MODERATOR'].includes(m.role) && (
+                        m.reportedByMe
+                          ? <span className="text-[11px] text-muted" title={t('Reportado')}><Flag className="size-3.5 fill-current" /></span>
+                          : <button type="button" onClick={() => setReporting(m.id)} className="rounded-lg p-1 text-muted opacity-60 transition hover:bg-surface hover:text-red-600 group-hover:opacity-100 focus:opacity-100" aria-label={t('Reportar mensaje')} title={t('Reportar mensaje')} data-report-message><Flag className="size-3.5" /></button>
+                      )}
                     </div>
                   ))}
                 </div>
               ))}
               <div ref={endRef} />
             </div>
+            {c.safety && (c.safety.blockedByMe || c.safety.blockedByOther || c.safety.restrictedUntil) ? (
+              <div className="flex items-center gap-3 border-t border-line bg-surface/60 p-4 text-sm" data-chat-locked>
+                <ShieldAlert className="size-5 shrink-0 text-amber-600" />
+                <p className="flex-1">
+                  {c.safety.restrictedUntil
+                    ? t('Tu cuenta no puede enviar mensajes hasta el {d} por una decisión de moderación.', { d: fmtDate(c.safety.restrictedUntil) })
+                    : c.safety.blockedByMe ? t('Bloqueaste esta conversación. No recibirás mensajes nuevos.') : t('No puedes enviar mensajes en esta conversación.')}
+                </p>
+                {c.safety.blockedByMe && !c.safety.restrictedUntil && <Button size="sm" variant="outline" loading={blocking} onClick={() => toggleBlock(false)}>{t('Desbloquear')}</Button>}
+              </div>
+            ) : (
             <form onSubmit={(e) => { e.preventDefault(); if (text.trim() || files.length) send.mutate(); }} className="border-t border-line p-4">
               {files.length > 0 && <FilePicker files={files} onChange={setFiles} className="mb-3 [&>button]:hidden" />}
               <div className="flex items-center gap-2">
@@ -142,6 +179,8 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
                 <Button type="submit" size="icon" className="size-11" loading={send.isPending} disabled={!text.trim() && !files.length} aria-label={t('Enviar')}><Send /></Button>
               </div>
             </form>
+            )}
+            <ReportMessageDialog conversationId={c.id} messageId={reporting} onClose={() => setReporting(null)} onDone={() => { setReporting(null); qc.invalidateQueries({ queryKey: ['conversation', active] }); }} />
           </>
         )}
       </section>

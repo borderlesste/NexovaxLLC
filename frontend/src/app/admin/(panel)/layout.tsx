@@ -59,6 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const dash = useQuery({ queryKey: ['admin-attention'], queryFn: () => get('/admin/dashboard?days=7'), enabled: isStaff, refetchInterval: 60_000 });
   const deletions = useQuery({ queryKey: ['account-deletions', 'REQUESTED'], queryFn: () => get<any[]>('/admin/account-deletions?status=REQUESTED'), enabled: isAdmin, refetchInterval: 120_000 });
   const incidents = useQuery({ queryKey: ['payment-incidents-count'], queryFn: () => get<{ open: number }>('/admin/payment-incidents/count'), enabled: isAdmin, refetchInterval: 60_000 });
+  const chatReports = useQuery({ queryKey: ['chat-reports-count'], queryFn: () => get<{ open: number }>('/admin/chat-reports/count'), enabled: isStaff && can('moderation'), refetchInterval: 60_000 });
   const returns = useQuery({ queryKey: ['admin-returns-count'], queryFn: () => get('/admin/returns?status=REFUND_PENDING'), enabled: isAdmin, refetchInterval: 60_000 });
   if (loading || !session || !me) return <PageLoader />;
   if (!isStaff) return <div className="mx-auto max-w-lg py-20"><Empty icon={<Shield />} title={t('Acceso restringido')} description={t('Esta sección es solo para el equipo del marketplace.')} /></div>;
@@ -67,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     '/admin/pedidos': a?.cancellations_pending || null,
     '/admin/vendedores': a?.sellers_pending || null,
     '/admin/identidad': a?.identity_pending || null,
-    '/admin/moderacion': a?.products_pending || null,
+    '/admin/moderacion': (a?.products_pending ?? 0) + (chatReports.data?.open ?? 0) || null,
     '/admin/reportes': a?.open_tickets || null,
     // Admins act on refunds; support on the review / receive / inspect queue.
     '/admin/devoluciones': (isAdmin ? returns.data?.counts?.refund_pending : a?.returns_pending) || null,

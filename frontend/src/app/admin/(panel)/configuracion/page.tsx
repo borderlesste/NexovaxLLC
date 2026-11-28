@@ -55,6 +55,9 @@ const SECURITY_FIELDS = [
   ['offerPerStoreDays', 'Ofertas: días sin repetir tienda por comprador', 'Un comprador que recibió una oferta de una tienda no recibe otra de esa misma tienda durante estos días.', 1, 90],
   ['offerMaxPerBuyerWeek', 'Ofertas: máximo por comprador en 7 días', 'Total de ofertas (de todas las tiendas) que puede recibir un comprador en 7 días.', 1, 20],
   ['offerMaxRecipients', 'Ofertas: máximo de destinatarios por campaña', 'Número máximo de compradores que alcanza una sola campaña.', 100, 50000],
+  ['chatReportsPerDay', 'Chat: reportes por cuenta al día', 'Mensajes que una misma cuenta puede reportar en un día (evita reportes masivos).', 5, 100],
+  ['chatReportsToAutoHide', 'Chat: reportes para ocultar un mensaje', 'Cuando este número de personas distintas reporta un mensaje, se oculta hasta que un moderador lo revise.', 2, 20],
+  ['chatRestrictionDays', 'Chat: días de restricción por defecto', 'Días que una cuenta no puede enviar mensajes cuando un moderador la restringe (se puede cambiar en cada caso).', 1, 365],
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {

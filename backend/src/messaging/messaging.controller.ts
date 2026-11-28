@@ -1,12 +1,13 @@
-import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 import { IsCleanMultiline } from '../common/validators';
 import { CurrentUser, RequestUser, requireSeller } from '../auth/auth';
 import { MAX_MESSAGE_FILES, MessagingService } from './messaging.service';
+import { ChatModerationService, REPORT_REASONS, type ReportReason } from './chat-moderation.service';
 
 /** Multipart limits: up to 4 files of 10 MB (images are re-encoded, PDFs checked). */
 export const ATTACHMENT_UPLOAD = { limits: { fileSize: 10 * 1024 * 1024, files: MAX_MESSAGE_FILES, fields: 10, parts: 16 } };
@@ -28,6 +29,11 @@ export class StartConversationDto {
   @IsCleanMultiline(1, 4000) message: string;
 }
 
+export class ReportMessageDto {
+  @IsIn(REPORT_REASONS as unknown as string[]) reason: ReportReason;
+  @IsOptional() @IsCleanMultiline(0, 1000) details?: string;
+}
+
 export class SendMessageDto {
   @IsOptional() @IsCleanMultiline(0, 4000) body?: string;
   @IsOptional() @IsString() @MaxLength(100) clientKey?: string;
@@ -36,7 +42,10 @@ export class SendMessageDto {
 @ApiTags('messaging')
 @Controller('conversations')
 export class MessagingController {
-  constructor(private readonly messaging: MessagingService) {}
+  constructor(
+    private readonly messaging: MessagingService,
+    private readonly moderation: ChatModerationService,
+  ) {}
 
   @Get()
   list(@CurrentUser() user: RequestUser, @Query('as') as?: string, @Query('q') q?: string, @Headers('x-seller-id') h?: string) {
@@ -66,5 +75,25 @@ export class MessagingController {
   @Get(':id/attachments/:assetId')
   async attachment(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('assetId', ParseUUIDPipe) assetId: string, @Res() res: Response) {
     sendAttachment(res, await this.messaging.attachmentFile(user, id, assetId));
+  }
+
+  /** Report a message of the other side (spam, harassment, fraud…) to the moderators. */
+  @Post(':id/messages/:messageId/report')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  report(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Param('messageId', ParseUUIDPipe) messageId: string, @Body() dto: ReportMessageDto) {
+    return this.moderation.report(user, id, messageId, dto.reason, dto.details);
+  }
+
+  /** Block / unblock the other side: no new messages between this buyer and this store. */
+  @Post(':id/block')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  block(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.moderation.block(user, id, true);
+  }
+
+  @Delete(':id/block')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  unblock(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.moderation.block(user, id, false);
   }
 }

@@ -38,6 +38,8 @@ import { PreordersController } from './preorders/preorders.controller';
 import { SellerController } from './seller/seller.controller';
 import { MessagingService } from './messaging/messaging.service';
 import { MessagingController } from './messaging/messaging.controller';
+import { ChatModerationController } from './messaging/chat-moderation.controller';
+import { ChatModerationService } from './messaging/chat-moderation.service';
 import { SupportService } from './support/support.service';
 import { SupportController } from './support/support.controller';
 import { AdminService } from './admin/admin.service';
@@ -104,7 +106,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController, PreordersController, SellerIdentityController, AdminIdentityController],
+  controllers: [HealthController, GeoController, CatalogController, MediaController, AccountController, CartController, CheckoutController, OrdersController, SellerController, MessagingController, ChatModerationController, SupportController, AdminController, WebhooksController, PaymentsWebhooksController, PaymentIncidentsController, PoliciesAdminController, ChargebackPolicyController, NotificationsController, ReturnsController, CancellationsController, PromotionsController, AnalyticsController, CardsController, PayoutSchedulesController, AccountDeletionController, TeamController, ProductImportController, PreordersController, SellerIdentityController, AdminIdentityController],
   providers: [
     DbService,
     IdentityVerificationService,
@@ -120,6 +122,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     ProductImportService,
     PreordersService,
     MessagingService,
+    ChatModerationService,
     SupportService,
     AdminService,
     JobsService,

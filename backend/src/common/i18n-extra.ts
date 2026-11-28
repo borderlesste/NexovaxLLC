@@ -130,6 +130,18 @@ export const EXTRA: Record<string, [en: string, fr: string, ht: string]> = {
   'Ya existe: solo se actualizarán el precio y el stock.': ['Already exists: only the price and stock will be updated.', 'Existe déjà : seuls le prix et le stock seront mis à jour.', 'Li egziste deja: se pri a ak stòk la sèlman ki pral mete ajou.'],
   'El producto de esta fila tiene errores (ver la primera fila del grupo).': ['This row’s product has errors (see the first row of the group).', 'Le produit de cette ligne contient des erreurs (voir la première ligne du groupe).', 'Pwodwi liy sa a gen erè (gade premye liy gwoup la).'],
   'Sin imágenes: se guardará como borrador hasta que agregues al menos una.': ['No images: it will be saved as a draft until you add at least one.', 'Sans images : il sera enregistré comme brouillon jusqu’à ce que vous en ajoutiez au moins une.', 'Pa gen imaj: l ap sove kòm bouyon jiskaske ou ajoute omwen youn.'],
+  // Chat reports and moderation.
+  'Mensaje oculto por moderación': ['Message hidden by moderation', 'Message masqué par la modération', 'Mesaj kache pa moderasyon'],
+  'Esta función aún no está disponible. Inténtalo más tarde.': ['This feature isn’t available yet. Please try again later.', 'Cette fonction n’est pas encore disponible. Réessayez plus tard.', 'Fonksyon sa a poko disponib. Eseye ankò pita.'],
+  'Tu cuenta no puede enviar mensajes por ahora por una decisión de moderación.': ['Your account can’t send messages for now because of a moderation decision.', 'Votre compte ne peut pas envoyer de messages pour le moment suite à une décision de modération.', 'Kont ou pa ka voye mesaj pou kounye a akoz yon desizyon moderasyon.'],
+  'Bloqueaste esta conversación. Desbloquéala para volver a escribir.': ['You blocked this conversation. Unblock it to write again.', 'Vous avez bloqué cette conversation. Débloquez-la pour écrire à nouveau.', 'Ou bloke konvèsasyon sa a. Debloke l pou w ka ekri ankò.'],
+  'No puedes enviar mensajes en esta conversación.': ['You can’t send messages in this conversation.', 'Vous ne pouvez pas envoyer de messages dans cette conversation.', 'Ou pa ka voye mesaj nan konvèsasyon sa a.'],
+  'No puedes reportar tus propios mensajes.': ['You can’t report your own messages.', 'Vous ne pouvez pas signaler vos propres messages.', 'Ou pa ka rapòte pwòp mesaj ou.'],
+  'Alcanzaste el límite de reportes por hoy. Si es urgente, escríbenos desde Ayuda.': ['You reached today’s report limit. If it’s urgent, contact us from Help.', 'Vous avez atteint la limite de signalements pour aujourd’hui. Si c’est urgent, contactez-nous depuis Aide.', 'Ou rive nan limit rapò pou jodi a. Si se ijan, ekri nou nan Èd.'],
+  'Escribe el motivo de la decisión.': ['Write the reason for the decision.', 'Indiquez le motif de la décision.', 'Ekri rezon desizyon an.'],
+  'Estos reportes ya fueron resueltos.': ['These reports were already resolved.', 'Ces signalements ont déjà été traités.', 'Rapò sa yo te deja rezoud.'],
+  'No se puede restringir: la cuenta que envió el mensaje ya no existe.': ['Can’t restrict: the account that sent the message no longer exists.', 'Impossible de restreindre : le compte qui a envoyé le message n’existe plus.', 'Pa ka restriksyon: kont ki te voye mesaj la pa egziste ankò.'],
+  'No puedes restringir tu propia cuenta.': ['You can’t restrict your own account.', 'Vous ne pouvez pas restreindre votre propre compte.', 'Ou pa ka restriksyon pwòp kont ou.'],
 };
 
 /** Words that appear inside the sentences below. */

@@ -9,6 +9,7 @@ import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { config } from '../config';
 import { SELLER_TRUST_SQL, sellerTrust } from '../common/seller-trust';
+import { ChatModerationService, HIDDEN_MESSAGE_TEXT } from './chat-moderation.service';
 
 export type UploadedFile = { buffer: Buffer; mimetype: string; originalname?: string; size: number };
 export const MAX_MESSAGE_FILES = 4;
@@ -22,6 +23,7 @@ export class MessagingService {
     private readonly db: DbService,
     private readonly storage: SupabaseAdminService,
     private readonly notifications: NotificationsService,
+    private readonly moderation: ChatModerationService,
   ) {}
 
   // ------------------------------------------------------------------ attachments
@@ -67,12 +69,12 @@ export class MessagingService {
   async attachmentFile(user: RequestUser, conversationId: string, assetId: string) {
     await this.access(user, conversationId);
     const a = await this.db.one(
-      `select s.storage_bucket, s.storage_key, s.mime_type, coalesce(s.original_filename, 'archivo') as name
+      `select a.message_id, s.storage_bucket, s.storage_key, s.mime_type, coalesce(s.original_filename, 'archivo') as name
          from public.conversation_message_attachments a join public.assets s on s.id = a.asset_id
         where a.conversation_id = $1 and a.asset_id = $2 and a.status = 'ACTIVE' and s.status = 'READY' limit 1`,
       [conversationId, assetId],
     );
-    if (!a) throw notFound('Archivo');
+    if (!a || (!isStaff(user, 'MODERATOR') && (await this.moderation.hiddenIds([a.message_id])).size)) throw notFound('Archivo');
     return { buffer: await this.storage.download(a.storage_bucket, a.storage_key), mime: a.mime_type as string, name: a.name as string };
   }
 
@@ -134,7 +136,7 @@ export class MessagingService {
               ${SELLER_TRUST_SQL('s', 'seller_')},
               coalesce(up.display_name, u.email::text) as customer_name,
               p.title as product_title, p.slug as product_slug,
-              lm.body_text as last_body, lm.sender_user_id as last_sender,
+              lm.id as last_id, lm.body_text as last_body, lm.sender_user_id as last_sender,
               (select count(*) from public.conversation_messages m
                 where m.conversation_id = c.id and m.status = 'SENT' and m.sender_user_id is distinct from $1
                   and m.sequence_number > coalesce((select lr.sequence_number from public.conversation_participants cp
@@ -146,19 +148,20 @@ export class MessagingService {
          join public.users u on u.id = c.requester_user_id
          left join public.user_profiles up on up.user_id = u.id
          left join public.products p on p.id = c.product_id
-         left join lateral (select body_text, sender_user_id from public.conversation_messages m
+         left join lateral (select id, body_text, sender_user_id from public.conversation_messages m
                              where m.conversation_id = c.id and m.status = 'SENT' order by m.sequence_number desc limit 1) lm on true
         where ${scope} and c.conversation_type in ('PRODUCT_INQUIRY','ORDER') and c.status <> 'ARCHIVED'
         order by coalesce(c.last_message_at, c.created_at) desc limit 100`,
       params,
     );
+    const hiddenLast = await this.moderation.hiddenIds(rows.map((r: any) => r.last_id).filter(Boolean));
     return rows.map((r: any) => ({
       id: r.id,
       type: r.conversation_type,
       status: r.status,
       subject: r.subject,
       lastMessageAt: r.last_message_at ?? r.created_at,
-      lastMessage: r.last_body,
+      lastMessage: hiddenLast.has(r.last_id) ? HIDDEN_MESSAGE_TEXT : r.last_body,
       lastFromMe: r.last_sender === user.id,
       unread: r.unread,
       seller: { id: r.seller_id, slug: r.seller_slug, name: r.seller_name, trust: sellerTrust(r, 'seller_'), logoUrl: r.logo_asset_id ? mediaUrl(r.logo_asset_id) : null },
@@ -217,7 +220,10 @@ export class MessagingService {
         : null,
     ]);
     const ordered = messages.reverse();
-    const files = await this.attachmentsByMessage(ordered.filter((m: any) => m.status === 'SENT').map((m: any) => m.id));
+    const hidden = await this.moderation.hiddenIds(ordered.map((m: any) => m.id));
+    const files = await this.attachmentsByMessage(ordered.filter((m: any) => m.status === 'SENT' && !hidden.has(m.id)).map((m: any) => m.id));
+    const isParty = c.requester_user_id === user.id || (!!c.seller_id && sellerCan(user, c.seller_id, 'MESSAGES'));
+    const safety = isParty ? await this.moderation.viewerState(user, c).catch(() => null) : null;
     const last = ordered[ordered.length - 1];
     if (last) {
       const part = await this.db.one(`select 1 from public.conversation_participants where conversation_id = $1 and user_id = $2 and status='ACTIVE'`, [c.id, user.id]);
@@ -230,6 +236,7 @@ export class MessagingService {
       subject: c.subject,
       orderId: c.order_id,
       viewerRole: c.requester_user_id === user.id ? 'CUSTOMER' : user.sellers.some((s) => s.id === c.seller_id) ? 'SELLER' : 'STAFF',
+      safety: safety ? { available: safety.available, blockedByMe: safety.blockedByMe, blockedByOther: safety.blockedByOther, restrictedUntil: safety.restrictedUntil } : null,
       seller: seller
         ? { id: seller.id, slug: seller.slug, name: seller.name, trust: sellerTrust(seller), logoUrl: seller.logo_asset_id ? mediaUrl(seller.logo_asset_id) : null, followers: seller.followers, rating: Number(seller.rating), reviews: seller.reviews }
         : null,
@@ -242,7 +249,10 @@ export class MessagingService {
         mine: m.sender_user_id === user.id,
         role: m.role,
         type: m.message_type,
-        body: m.body,
+        body: hidden.has(m.id) ? HIDDEN_MESSAGE_TEXT : m.body,
+        hidden: hidden.has(m.id),
+        removed: m.status !== 'SENT' || hidden.has(m.id),
+        reportedByMe: !!safety?.reportedMessageIds.includes(m.id),
         sentAt: m.sent_at,
         attachments: files.get(m.id) ?? [],
       })),
@@ -285,6 +295,7 @@ export class MessagingService {
       } else subject = p.title;
     }
     if (user.sellers.some((s) => s.id === sellerId)) throw badRequest('SELF_CONVERSATION', 'No puedes escribirte a tu propia tienda.');
+    await this.moderation.assertCanSend(user, sellerId!, user.id);
     // Reuse an open conversation with the same context.
     const existing = await this.db.one(
       `select id from public.conversations where requester_user_id = $1 and seller_id = $2 and conversation_type = $3
@@ -313,7 +324,8 @@ export class MessagingService {
     const text = body?.trim() || (files.length ? `📎 ${files.map((f) => f.originalname ?? 'archivo').join(', ')}`.slice(0, 4000) : '');
     if (!text) throw badRequest('MESSAGE_REQUIRED', 'Escribe un mensaje o adjunta un archivo.');
     if (text.length > 4000) throw badRequest('MESSAGE_TOO_LONG', 'El mensaje es demasiado largo.');
-    await this.access(user, conversationId);
+    const conv = await this.access(user, conversationId);
+    if (['PRODUCT_INQUIRY', 'ORDER'].includes(conv.conversation_type)) await this.moderation.assertCanSend(user, conv.seller_id, conv.requester_user_id);
     const assets = await this.uploadFiles(user.id, files);
     await this.db.tx(async (c) => {
       const msg = await this.db.one(`select public.send_conversation_message($1,$2,$3,null,$4,'{}'::jsonb) as id`, [conversationId, user.id, text, clientKey || randomUUID()], c);

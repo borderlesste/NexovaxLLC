@@ -15,6 +15,7 @@ import { Empty, Pagination, Segmented, Spinner } from '@/components/ui/misc';
 import { ProductImage } from '@/components/shop/product-card';
 import { getLocale, t } from '@/lib/i18n';
 import { productMetadataLabels } from '@/lib/product-metadata';
+import { ModerationTabs } from './tabs';
 
 function Moderation() {
   const sp = useSearchParams();
@@ -52,6 +53,7 @@ function Moderation() {
   return (
     <>
       <PageHeader crumbs={[{ label: t('Panel') }, { label: t('Moderación') }]} title={t('Moderación de productos')} description={t('Revisa, aprueba o rechaza los productos enviados por los vendedores del marketplace.')} />
+      <ModerationTabs active="products" />
       <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="space-y-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
