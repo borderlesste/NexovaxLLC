@@ -431,6 +431,19 @@ export class SupabaseAdminService {
     }
   }
 
+  /** Returns true only when Storage confirms removal or the exact object is already absent. */
+  async purgeIdentityObject(key: string): Promise<boolean> {
+    const bucket = this.admin.storage.from(config.identityBucket);
+    const { data, error } = await bucket.remove([key]);
+    if (error) return false;
+    if (data?.some((object) => object.name === key)) return true;
+
+    // A successful delete can omit an object removed by an earlier attempt.
+    // Do not treat an unqualified 404, a missing bucket or a lookup failure as absence.
+    const { error: lookupError } = await bucket.info(key);
+    return lookupError?.status === 404 && 'code' in lookupError && lookupError.code === 'NoSuchKey';
+  }
+
   async download(bucket: string, key: string): Promise<Buffer> {
     const { data, error } = await this.admin.storage.from(bucket).download(key);
     if (error || !data) throw new AppError('MEDIA_NOT_FOUND', 'Archivo no encontrado.', HttpStatus.NOT_FOUND);

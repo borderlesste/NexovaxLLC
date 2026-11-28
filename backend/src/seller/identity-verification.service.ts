@@ -104,7 +104,7 @@ export class IdentityVerificationService {
     return this.sellerStatus(sellerId);
   }
 
-  /** The owner withdraws a pending request: its files are deleted right away. */
+  /** Attempt deletion on withdrawal; the scheduled job retries anything unconfirmed. */
   async cancel(user: RequestUser, sellerId: string) {
     const r = await this.db.one<{ id: string }>(
       `update public.nx_identity_verification_requests set status = 'CANCELLED', files_purge_after = now()
@@ -236,26 +236,60 @@ export class IdentityVerificationService {
 
   // ------------------------------------------------------------------ retention
 
-  private async purgeRequestFiles(requestId: string) {
+  private async purgeRequestFiles(requestId: string): Promise<boolean> {
     const files = await this.db.many<{ id: string; storage_key: string }>(
       `select id, storage_key from public.nx_identity_verification_files where request_id = $1 and deleted_at is null`,
       [requestId],
     );
-    if (files.length) await this.storage.removeObjects(config.identityBucket, files.map((f) => f.storage_key));
-    await this.db.tx(async (c) => {
-      await this.db.exec(`update public.nx_identity_verification_files set deleted_at = now() where request_id = $1 and deleted_at is null`, [requestId], c);
-      await this.db.exec(`update public.nx_identity_verification_requests set files_purged_at = now() where id = $1`, [requestId], c);
-      await this.log(requestId, 'PURGE_FILES', null, null, c);
+    const confirmedIds: string[] = [];
+    for (const file of files) {
+      // A failure for one file must not prevent confirmed removals from being recorded.
+      if (await this.storage.purgeIdentityObject(file.storage_key).catch(() => false)) confirmedIds.push(file.id);
+    }
+    if (confirmedIds.length !== files.length) {
+      this.logger.warn(`Identity document purge pending for request ${requestId}: ${files.length - confirmedIds.length} file(s) unconfirmed`);
+    }
+    return this.db.tx(async (c) => {
+      // Serialize state updates from the cancellation path and overlapping job runs.
+      const pending = await this.db.one(
+        `select id from public.nx_identity_verification_requests
+          where id = $1 and files_purged_at is null and files_purge_after <= now() for update`,
+        [requestId], c,
+      );
+      if (!pending) return false;
+      if (confirmedIds.length) {
+        await this.db.exec(
+          `update public.nx_identity_verification_files set deleted_at = now()
+            where request_id = $1 and id = any($2::uuid[]) and deleted_at is null`,
+          [requestId, confirmedIds], c,
+        );
+      }
+      const completed = await this.db.exec(
+        `update public.nx_identity_verification_requests set files_purged_at = now()
+          where id = $1 and files_purged_at is null and files_purge_after <= now()
+            and not exists (
+              select 1 from public.nx_identity_verification_files where request_id = $1 and deleted_at is null
+            )`,
+        [requestId], c,
+      );
+      if (completed) await this.log(requestId, 'PURGE_FILES', null, null, c);
+      return completed > 0;
     });
   }
 
-  /** Daily job: deletes the files of requests whose retention period ended. Returns how many requests. */
+  /** Daily job: returns the number of requests whose purge was completed in this run. */
   async purgeExpired() {
     const due = await this.db.many<{ id: string }>(
       `select id from public.nx_identity_verification_requests
         where files_purged_at is null and files_purge_after is not null and files_purge_after <= now() order by files_purge_after limit 200`,
     );
-    for (const r of due) await this.purgeRequestFiles(r.id).catch((e) => this.logger.warn(`purge ${r.id}: ${e.message}`));
-    return due.length;
+    let completed = 0;
+    for (const r of due) {
+      if (await this.purgeRequestFiles(r.id).catch((e) => {
+        this.logger.warn(`purge ${r.id}: ${e.message}`);
+        return false;
+      })) completed++;
+    }
+    return completed;
   }
 }
