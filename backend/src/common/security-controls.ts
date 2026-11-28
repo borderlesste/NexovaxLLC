@@ -29,6 +29,10 @@ export interface SecurityControls {
   chatReportsToAutoHide: number;
   /** Chat: default days a moderator's messaging restriction lasts. */
   chatRestrictionDays: number;
+  /** Chat: saved replies one store can keep. */
+  sellerSavedRepliesMax: number;
+  /** Chat: hours before the same conversation gets the store's automatic reply again. */
+  autoReplyIntervalHours: number;
 }
 
 export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
@@ -45,6 +49,8 @@ export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: numbe
   chatReportsPerDay: [5, 100, 20],
   chatReportsToAutoHide: [2, 20, 3],
   chatRestrictionDays: [1, 365, 7],
+  sellerSavedRepliesMax: [5, 200, 50],
+  autoReplyIntervalHours: [1, 72, 12],
 };
 
 export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(

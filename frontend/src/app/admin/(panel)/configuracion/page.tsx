@@ -58,6 +58,8 @@ const SECURITY_FIELDS = [
   ['chatReportsPerDay', 'Chat: reportes por cuenta al día', 'Mensajes que una misma cuenta puede reportar en un día (evita reportes masivos).', 5, 100],
   ['chatReportsToAutoHide', 'Chat: reportes para ocultar un mensaje', 'Cuando este número de personas distintas reporta un mensaje, se oculta hasta que un moderador lo revise.', 2, 20],
   ['chatRestrictionDays', 'Chat: días de restricción por defecto', 'Días que una cuenta no puede enviar mensajes cuando un moderador la restringe (se puede cambiar en cada caso).', 1, 365],
+  ['sellerSavedRepliesMax', 'Chat: respuestas guardadas por tienda', 'Máximo de respuestas guardadas que puede tener cada tienda para contestar más rápido.', 5, 200],
+  ['autoReplyIntervalHours', 'Chat: horas entre respuestas automáticas', 'Una misma conversación recibe la respuesta automática de la tienda como máximo una vez en este número de horas.', 1, 72],
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {

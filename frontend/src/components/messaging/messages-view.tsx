@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Ban, ChevronRight, Flag, MessageSquare, Package, RotateCcw, Search, Send, ShieldAlert, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
+import { AlertCircle, Ban, Bot, ChevronRight, Flag, MessageSquare, MessageSquareText, Settings2, Package, RotateCcw, Search, Send, ShieldAlert, ShoppingCart, Star, Store, Truck, Users, Zap, CheckCheck, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { del, errorMessage, get, post, upload } from '@/lib/api';
 import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
@@ -29,6 +29,8 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
   const [files, setFiles] = useState<File[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const [reporting, setReporting] = useState<string | null>(null);
+  const [picker, setPicker] = useState(false);
+  const saved = useQuery({ queryKey: ['saved-replies', 'chat'], queryFn: () => get<{ items: { id: string; title: string; body: string }[] }>('/seller/saved-replies'), enabled: as === 'seller' && picker, retry: false });
   const [blocking, setBlocking] = useState(false);
   const toggleBlock = async (on: boolean) => {
     if (on && !window.confirm(isSeller ? t('¿Bloquear a este cliente? No podrá escribirle a tu tienda hasta que lo desbloquees.') : t('¿Bloquear a esta tienda? No podrá escribirte hasta que la desbloquees.'))) return;
@@ -145,6 +147,7 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
                     <div key={m.id} className={cn('group flex items-center gap-2', m.mine ? 'justify-end' : 'justify-start')}>
                       <div className={cn('max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-sm', m.removed ? 'border border-dashed border-line bg-surface italic text-muted' : m.mine ? 'rounded-br-md bg-brand-100/80 text-ink' : 'rounded-bl-md border border-line bg-white')}>
                         {['SUPPORT_AGENT', 'MODERATOR'].includes(m.role) && <p className="mb-1 text-[11px] font-bold text-brand-700">{t('Equipo NEXOVAX')}</p>}
+                        {m.autoReply && <p className="mb-1 flex items-center gap-1 text-[11px] font-bold text-muted"><Bot className="size-3.5" /> {t('Respuesta automática')}</p>}
                         {!(m.attachments?.length && m.body.startsWith('📎')) && <p className="whitespace-pre-line">{messageText(m.body)}</p>}
                         <AttachmentList base={`/conversations/${c.id}/attachments`} items={m.attachments} />
                         <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-muted">{fmtTime(m.sentAt)} {m.mine && <CheckCheck className="size-3.5 text-brand-500" />}</p>
@@ -175,6 +178,33 @@ export function MessagesView({ as = 'customer', compact = false }: { as?: 'custo
               {files.length > 0 && <FilePicker files={files} onChange={setFiles} className="mb-3 [&>button]:hidden" />}
               <div className="flex items-center gap-2">
                 {c.status === 'OPEN' && <FilePicker files={[]} onChange={(f) => setFiles([...files, ...f].slice(0, 4))} max={4 - files.length} />}
+                {isSeller && c.status === 'OPEN' && (
+                  <div className="relative">
+                    <Button type="button" variant="ghost" size="icon" className="size-11" onClick={() => setPicker(!picker)} aria-label={t('Respuestas guardadas')} title={t('Respuestas guardadas')} data-saved-replies-picker><MessageSquareText /></Button>
+                    {picker && (
+                      <div className="absolute bottom-12 left-0 z-20 w-72 rounded-xl border border-line bg-white p-2 shadow-xl" data-saved-replies-menu>
+                        <p className="px-2 pb-1 text-xs font-semibold text-muted">{t('Respuestas guardadas')}</p>
+                        {saved.isLoading ? <div className="grid place-items-center py-4"><Spinner /></div> : saved.isError ? <p className="px-2 py-2 text-sm text-muted">{errorMessage(saved.error)}</p> : !saved.data?.items.length ? (
+                          <p className="px-2 py-2 text-sm text-muted">{t('Aún no tienes respuestas guardadas')}</p>
+                        ) : (
+                          <ul className="max-h-64 overflow-y-auto">
+                            {saved.data.items.map((r) => (
+                              <li key={r.id}>
+                                <button type="button" className="w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-surface" onClick={() => {
+                                  const name = list.data?.find((x: any) => x.id === c.id)?.customer.name ?? '';
+                                  const body = r.body.replace(/\{(cliente|customer|client|kliyan)\}/gi, name.split(' ')[0] || name);
+                                  setText(text.trim() ? `${text.trimEnd()} ${body}` : body);
+                                  setPicker(false);
+                                }}><b className="block truncate">{r.title}</b><span className="line-clamp-1 text-xs text-muted">{r.body}</span></button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <Link href="/vendedor/mensajes/respuestas" className="mt-1 flex items-center gap-2 border-t border-line px-2 pt-2 text-xs font-semibold text-brand-700"><Settings2 className="size-3.5" /> {t('Gestionar respuestas')}</Link>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1"><Input placeholder={c.status === 'OPEN' ? t('Escribe un mensaje...') : t('Esta conversación está cerrada')} disabled={c.status !== 'OPEN'} value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} className="h-11" /></div>
                 <Button type="submit" size="icon" className="size-11" loading={send.isPending} disabled={!text.trim() && !files.length} aria-label={t('Enviar')}><Send /></Button>
               </div>

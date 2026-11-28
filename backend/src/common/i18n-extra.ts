@@ -142,6 +142,14 @@ export const EXTRA: Record<string, [en: string, fr: string, ht: string]> = {
   'Estos reportes ya fueron resueltos.': ['These reports were already resolved.', 'Ces signalements ont déjà été traités.', 'Rapò sa yo te deja rezoud.'],
   'No se puede restringir: la cuenta que envió el mensaje ya no existe.': ['Can’t restrict: the account that sent the message no longer exists.', 'Impossible de restreindre : le compte qui a envoyé le message n’existe plus.', 'Pa ka restriksyon: kont ki te voye mesaj la pa egziste ankò.'],
   'No puedes restringir tu propia cuenta.': ['You can’t restrict your own account.', 'Vous ne pouvez pas restreindre votre propre compte.', 'Ou pa ka restriksyon pwòp kont ou.'],
+  // Seller reply tools.
+  'El horario no es válido.': ['The hours are not valid.', 'Les horaires ne sont pas valides.', 'Orè a pa valab.'],
+  'Puedes indicar hasta 3 tramos por día.': ['You can set up to 3 time ranges per day.', 'Vous pouvez indiquer jusqu’à 3 plages par jour.', 'Ou ka mete jiska 3 tranch pa jou.'],
+  'La hora de cierre debe ser posterior a la de apertura.': ['The closing time must be later than the opening time.', 'L’heure de fermeture doit être postérieure à l’heure d’ouverture.', 'Lè fèmen an dwe apre lè ouvèti a.'],
+  'Los tramos de un mismo día no pueden superponerse.': ['Time ranges on the same day can’t overlap.', 'Les plages d’une même journée ne peuvent pas se chevaucher.', 'Tranch nan menm jou a pa ka chevoche.'],
+  'Llegaste al máximo de respuestas guardadas. Borra alguna para crear otra.': ['You reached the maximum number of saved replies. Delete one to create another.', 'Vous avez atteint le maximum de réponses enregistrées. Supprimez-en une pour en créer une autre.', 'Ou rive nan maksimòm repons anrejistre yo. Efase youn pou kreye yon lòt.'],
+  'Escribe el mensaje de la respuesta automática.': ['Write the automatic reply message.', 'Rédigez le message de la réponse automatique.', 'Ekri mesaj repons otomatik la.'],
+  'Indica al menos un horario de atención o elige «Responder siempre».': ['Set at least one opening time range or choose “Always reply”.', 'Indiquez au moins une plage d’ouverture ou choisissez « Toujours répondre ».', 'Mete omwen yon orè oswa chwazi «Toujou reponn».'],
 };
 
 /** Words that appear inside the sentences below. */

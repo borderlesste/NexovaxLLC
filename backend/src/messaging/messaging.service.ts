@@ -10,6 +10,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { config } from '../config';
 import { SELLER_TRUST_SQL, sellerTrust } from '../common/seller-trust';
 import { ChatModerationService, HIDDEN_MESSAGE_TEXT } from './chat-moderation.service';
+import { SellerRepliesService } from './seller-replies.service';
 
 export type UploadedFile = { buffer: Buffer; mimetype: string; originalname?: string; size: number };
 export const MAX_MESSAGE_FILES = 4;
@@ -24,7 +25,16 @@ export class MessagingService {
     private readonly storage: SupabaseAdminService,
     private readonly notifications: NotificationsService,
     private readonly moderation: ChatModerationService,
+    private readonly replies: SellerRepliesService,
   ) {}
+
+  /** After a buyer's message: the store's automatic reply (if it is closed) and its bell notice. */
+  private afterBuyerMessage(conversationId: string) {
+    void this.replies
+      .maybeAutoReply(conversationId)
+      .then((r) => (r ? this.notifyMessage(conversationId, r.senderId, r.body) : undefined))
+      .catch(() => undefined);
+  }
 
   // ------------------------------------------------------------------ attachments
   /** Stores the files (outside the DB transaction) and returns their asset ids. */
@@ -220,7 +230,7 @@ export class MessagingService {
         : null,
     ]);
     const ordered = messages.reverse();
-    const hidden = await this.moderation.hiddenIds(ordered.map((m: any) => m.id));
+    const [hidden, auto] = await Promise.all([this.moderation.hiddenIds(ordered.map((m: any) => m.id)), this.replies.autoReplyIds(ordered.map((m: any) => m.id))]);
     const files = await this.attachmentsByMessage(ordered.filter((m: any) => m.status === 'SENT' && !hidden.has(m.id)).map((m: any) => m.id));
     const isParty = c.requester_user_id === user.id || (!!c.seller_id && sellerCan(user, c.seller_id, 'MESSAGES'));
     const safety = isParty ? await this.moderation.viewerState(user, c).catch(() => null) : null;
@@ -251,6 +261,7 @@ export class MessagingService {
         type: m.message_type,
         body: hidden.has(m.id) ? HIDDEN_MESSAGE_TEXT : m.body,
         hidden: hidden.has(m.id),
+        autoReply: auto.has(m.id),
         removed: m.status !== 'SENT' || hidden.has(m.id),
         reportedByMe: !!safety?.reportedMessageIds.includes(m.id),
         sentAt: m.sent_at,
@@ -317,6 +328,7 @@ export class MessagingService {
       return convId;
     });
     void this.notifyMessage(id, user.id, input.message.trim()).catch(() => undefined);
+    this.afterBuyerMessage(id);
     return { id };
   }
 
@@ -332,6 +344,7 @@ export class MessagingService {
       await this.attach(c, conversationId, msg!.id, assets);
     });
     void this.notifyMessage(conversationId, user.id, text).catch(() => undefined);
+    if (conv.requester_user_id === user.id) this.afterBuyerMessage(conversationId);
     return this.get(user, conversationId);
   }
 }

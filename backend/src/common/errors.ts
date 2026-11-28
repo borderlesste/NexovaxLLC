@@ -13,7 +13,7 @@ export class AppError extends HttpException {
 }
 
 /** Feminine nouns passed to notFound, so the Spanish reads «Devolución no encontrada.». */
-const FEMININE = new Set(['Devolución', 'Tarjeta', 'Solicitud', 'Oferta', 'Incidencia', 'Disputa', 'Dirección', 'Dirección de despacho', 'Compra', 'Imagen', 'Tienda', 'Variante', 'Categoría', 'Conversación', 'Restricción']);
+const FEMININE = new Set(['Devolución', 'Tarjeta', 'Solicitud', 'Oferta', 'Incidencia', 'Disputa', 'Dirección', 'Dirección de despacho', 'Compra', 'Imagen', 'Tienda', 'Variante', 'Categoría', 'Conversación', 'Restricción', 'Respuesta']);
 export const notFound = (what = 'Recurso') => new AppError('NOT_FOUND', `${what} no ${FEMININE.has(what) ? 'encontrada' : 'encontrado'}.`, HttpStatus.NOT_FOUND);
 export const forbidden = (msg = 'No tienes permiso para realizar esta acción.') =>
   new AppError('FORBIDDEN', msg, HttpStatus.FORBIDDEN);
