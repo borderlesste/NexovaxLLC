@@ -10,7 +10,7 @@ import { SOCIAL_ICONS, SOCIAL_NAMES } from './social-icons';
 // Each link appears once: legal pages live only in the "Legal" column.
 const cols = [
   { title: 'Marketplace', links: [['Inicio', '/'], ['Categorías', '/catalogo'], ['Ofertas', '/catalogo?onSale=true'], ['Vendedores', '/vendedores'], ['Sobre nosotros', '/sobre-nosotros']] },
-  { title: 'Vendedores', links: [['Vender en la plataforma', '/vendedor/registro'], ['Planes y comisiones', '/ayuda#comisiones'], ['Ayuda para vendedores', '/ayuda#vendedores']] },
+  { title: 'Vendedores', links: [['Vender en la plataforma', '/vende-en-nexovax'], ['Planes y comisiones', '/vende-en-nexovax#comisiones'], ['Ayuda para vendedores', '/ayuda#vendedores']] },
   { title: 'Ayuda', links: [['Centro de ayuda', '/ayuda'], ['Preguntas frecuentes', '/ayuda#faq'], ['Contactar a soporte', '/ayuda/reportar']] },
   { title: 'Legal', links: [['Términos y condiciones', '/terminos'], ['Privacidad y cookies', '/privacidad'], ['Protección al comprador', '/proteccion-al-comprador'], ['Política de devoluciones', '/politica-de-devoluciones'], ['Política de envíos', '/politica-de-envios']] },
 ];

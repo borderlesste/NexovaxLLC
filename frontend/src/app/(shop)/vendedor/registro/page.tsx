@@ -145,6 +145,7 @@ export default function SellerOnboardingPage() {
           ))}
         </div>
         <aside className="space-y-4">
+          <Link href="/vende-en-nexovax#comisiones" className="card block p-5 text-sm font-semibold text-brand-700 hover:border-brand-300" data-costs-link>{t('¿Cuánto cuesta vender? Ver comisiones y cobros')}</Link>
           {[[Building2, t('Crea tu tienda'), t('Publica tu catálogo con variantes, fotos e inventario.')], [Users, t('Llega a más clientes'), t('Vende en tu país y al exterior con envíos y pagos integrados.')], [TrendingUp, t('Haz crecer tus ventas'), t('Panel de ventas, inventario y finanzas en tiempo real.')]].map(([I, title, d]: any) => (
             <div key={title} className="card flex gap-3 p-5"><I className="size-8 shrink-0 text-brand-600" /><div><p className="font-bold">{t(title)}</p><p className="text-sm text-muted">{t(d)}</p></div></div>
           ))}

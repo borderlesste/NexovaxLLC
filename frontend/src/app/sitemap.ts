@@ -38,6 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/politica-de-envios`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/politica-de-devoluciones`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/proteccion-al-comprador`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${base}/vende-en-nexovax`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/sobre-nosotros`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/terminos`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/privacidad`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },

@@ -170,7 +170,7 @@ export function UserMenu() {
           {seller ? (
             <Dropdown.Item asChild><Link className={item} href="/vendedor/dashboard"><Store /> {t('Panel de vendedor')}</Link></Dropdown.Item>
           ) : (
-            <Dropdown.Item asChild><Link className={item} href="/vendedor/registro"><Store /> {t('Vender en NEXOVAX')}</Link></Dropdown.Item>
+            <Dropdown.Item asChild><Link className={item} href="/vende-en-nexovax"><Store /> {t('Vender en NEXOVAX')}</Link></Dropdown.Item>
           )}
           {isStaff && <Dropdown.Item asChild><Link className={item} href="/admin/dashboard"><Shield /> {t('Panel de administración')}</Link></Dropdown.Item>}
           <Dropdown.Item asChild><Link className={item} href="/cuenta/seguridad"><Settings /> {t('Seguridad')}</Link></Dropdown.Item>

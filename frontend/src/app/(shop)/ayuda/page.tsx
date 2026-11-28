@@ -84,7 +84,7 @@ export default async function HelpPage() {
             </div>
           ))}
         </div>
-        <Button asChild className="mt-4"><Link href="/vendedor/registro"><Store /> {t('Vender en NEXOVAX')}</Link></Button>
+        <Button asChild className="mt-4"><Link href="/vende-en-nexovax"><Store /> {t('Vender en NEXOVAX')}</Link></Button>
       </section>
       {help?.commissions && (
         <section id="comisiones" className="card mt-6 scroll-mt-24 p-6" data-commissions>

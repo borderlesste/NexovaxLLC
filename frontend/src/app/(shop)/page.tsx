@@ -180,7 +180,7 @@ export default async function HomePage() {
       case 'seller_banner':
         return (
           <section key={s.key} className={SECTION}>
-            <Link href="/vendedor/registro" className="card relative flex flex-col items-start gap-5 overflow-hidden bg-gradient-to-r from-brand-50 to-white p-6 transition hover:shadow-lg sm:flex-row sm:items-center" data-seller-banner>
+            <Link href="/vende-en-nexovax" className="card relative flex flex-col items-start gap-5 overflow-hidden bg-gradient-to-r from-brand-50 to-white p-6 transition hover:shadow-lg sm:flex-row sm:items-center" data-seller-banner>
               <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Store className="size-8" /></div>
               <div className="flex-1">
                 <h3 className="text-xl font-extrabold">{titleOf(s)}</h3>
