@@ -16,12 +16,19 @@ export interface GoogleIntegrations {
   merchantCondition: 'new' | 'used' | 'refurbished';
   merchantIncludeOutOfStock: boolean;
   merchantStoreAsBrand: boolean;
+  merchantHandlingMinDays: number;
+  merchantHandlingMaxDays: number;
+  merchantTransitMinDays: number;
+  merchantTransitMaxDays: number;
 }
 
 const DEFAULTS: GoogleIntegrations = {
   ga4Enabled: false, ga4MeasurementId: '', merchantFeedEnabled: false, merchantShippingCountries: [],
   merchantCondition: 'new', merchantIncludeOutOfStock: false, merchantStoreAsBrand: false,
+  merchantHandlingMinDays: 1, merchantHandlingMaxDays: 3, merchantTransitMinDays: 3, merchantTransitMaxDays: 7,
 };
+
+type DayKey = 'merchantHandlingMinDays' | 'merchantHandlingMaxDays' | 'merchantTransitMinDays' | 'merchantTransitMaxDays';
 
 function Toggle({ title, desc, checked, onChange }: { title: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -74,6 +81,22 @@ export function GoogleEditor({ value, siteUrl, defaultCountry, onChange }: { val
           </Field>
           <Toggle title={t('Incluir productos agotados')} desc={t('Se envían como «agotado» en lugar de quitarlos del feed.')} checked={v.merchantIncludeOutOfStock} onChange={(x) => set('merchantIncludeOutOfStock', x)} />
           <Toggle title={t('Usar el nombre de la tienda como marca')} desc={t('Para productos sin marca. Úsalo solo si las tiendas venden productos propios.')} checked={v.merchantStoreAsBrand} onChange={(x) => set('merchantStoreAsBrand', x)} />
+          <div className="rounded-xl border border-line p-4 sm:col-span-2">
+            <b className="block text-sm">{t('Tiempos de entrega')}</b>
+            <span className="text-xs text-muted">{t('Se envían en el feed y en los datos estructurados de cada producto. Usa los mismos días que en Merchant Center.')}</span>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {([
+                ['merchantHandlingMinDays', t('Preparación mínima (días)')],
+                ['merchantHandlingMaxDays', t('Preparación máxima (días)')],
+                ['merchantTransitMinDays', t('Tránsito mínimo (días)')],
+                ['merchantTransitMaxDays', t('Tránsito máximo (días)')],
+              ] as [DayKey, string][]).map(([k, label]) => (
+                <Field key={k} label={label}>
+                  <Input type="number" min={0} max={60} step={1} value={v[k]} onChange={(e) => set(k, Math.max(0, Math.min(60, Math.trunc(Number(e.target.value) || 0))))} data-days={k} />
+                </Field>
+              ))}
+            </div>
+          </div>
           <div className="space-y-2 sm:col-span-2">
             <Field label={t('Países con precio de envío en el feed')} hint={t('Se usa la tarifa fija más barata del marketplace que cubra la ruta. Vacío: {c}. Sin tarifa fija, aplica la configuración de envío de Merchant Center.', { c: countryName(defaultCountry) })}>
               <Select value="" onChange={(e) => e.target.value && !list.includes(e.target.value) && set('merchantShippingCountries', [...list, e.target.value])}>

@@ -7,7 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { DbService } from '../db/db.service';
-import { SettingsService, PlatformSettings, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX } from '../settings/settings.service';
+import { SettingsService, PlatformSettings, GoogleSettings, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX } from '../settings/settings.service';
 import { normalizeReceiptTaxId, RECEIPT_TAX_ID_ELIGIBLE_TYPES } from '../orders/receipt-tax-id';
 import { SupabaseAdminService } from '../storage/supabase-admin.service';
 import { OnboardingInput, SellerService } from '../seller/seller.service';
@@ -1048,7 +1048,16 @@ export class AdminService {
         const cc = await normalizeCountry(this.db, String(c));
         if (!ship.includes(cc)) ship.push(cc);
       }
+      const days = (k: keyof GoogleSettings, fallback: number) => {
+        const v = gi[k] ?? fallback;
+        if (!Number.isInteger(Number(v)) || Number(v) < 0 || Number(v) > 60) throw badRequest('SETTING_INVALID', 'Los días de preparación y tránsito deben estar entre 0 y 60.');
+        return Number(v);
+      };
+      const hMin = days('merchantHandlingMinDays', 1), hMax = days('merchantHandlingMaxDays', 3);
+      const tMin = days('merchantTransitMinDays', 3), tMax = days('merchantTransitMaxDays', 7);
+      if (hMax < hMin || tMax < tMin) throw badRequest('SETTING_INVALID', 'El máximo de días no puede ser menor que el mínimo.');
       s['google.integrations'] = {
+        merchantHandlingMinDays: hMin, merchantHandlingMaxDays: hMax, merchantTransitMinDays: tMin, merchantTransitMaxDays: tMax,
         ga4Enabled: gi.ga4Enabled === true,
         ga4MeasurementId: id,
         merchantFeedEnabled: gi.merchantFeedEnabled === true,

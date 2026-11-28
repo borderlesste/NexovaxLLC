@@ -19,40 +19,54 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
-/** Product structured data (schema.org) so search results can show price, stock and rating. */
-function productJsonLd(p: any, base: string) {
-  const data: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: p.title,
-    description: p.shortDescription ?? undefined,
-    sku: p.variants?.[0]?.sku ?? undefined,
-    image: (p.images ?? []).slice(0, 5).map((i: any) => `${base}${i.url}`),
-    brand: p.brand?.name ? { '@type': 'Brand', name: p.brand.name } : undefined,
-    category: p.category?.name ?? undefined,
-    offers: p.price
-      ? {
-          '@type': 'Offer',
-          url: `${base}/producto/${p.slug}`,
-          price: String(p.price),
-          priceCurrency: p.currency ?? 'USD',
-          availability: Number(p.stock) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-          seller: p.seller?.name ? { '@type': 'Organization', name: p.seller.name } : undefined,
-        }
-      : undefined,
-    aggregateRating: p.reviewCount > 0 ? { '@type': 'AggregateRating', ratingValue: Number(p.rating).toFixed(1), reviewCount: p.reviewCount } : undefined,
-  };
+/** Plain text from the seller's description (it may hold simple HTML/Markdown). */
+const plain = (s?: string | null) => (s ?? '').replace(/<[^>]*>/g, ' ').replace(/[*_#`>]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * Product structured data (schema.org) so search results can show price, stock, shipping, returns and
+ * rating. The API builds it from the same data and settings as the Google Merchant feed (shipping rates,
+ * handling/transit days, the marketplace return policy, brand/GTIN/MPN); this page only adds the rating.
+ * If the API can't answer, a basic version is built from the product itself.
+ */
+function productJsonLd(p: any, base: string, api: Record<string, any> | null) {
+  const data: Record<string, unknown> = api
+    ? { ...api }
+    : {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: p.title,
+        description: (plain(p.description) || plain(p.shortDescription) || p.title).slice(0, 5000),
+        sku: p.variants?.[0]?.sku ?? undefined,
+        image: (p.images ?? []).slice(0, 5).map((i: any) => `${base}${i.url}`),
+        brand: p.brand?.name ? { '@type': 'Brand', name: p.brand.name } : undefined,
+        category: p.category?.name ?? undefined,
+        offers: p.price
+          ? {
+              '@type': 'Offer',
+              url: `${base}/producto/${p.slug}`,
+              price: String(p.price),
+              priceCurrency: p.currency ?? 'USD',
+              availability: Number(p.stock) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              seller: p.seller?.name ? { '@type': 'Organization', name: p.seller.name } : undefined,
+            }
+          : undefined,
+      };
+  if (p.reviewCount > 0) data.aggregateRating = { '@type': 'AggregateRating', ratingValue: Number(p.rating).toFixed(1), reviewCount: p.reviewCount };
   // Escape "<" so product text can never close the script tag.
   return JSON.stringify(data).replace(/</g, '\\u003c');
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const p = await serverGet<any>(`/products/${slug}`, 0);
+  const [p, ld, seo] = await Promise.all([
+    serverGet<any>(`/products/${slug}`, 0),
+    serverGet<Record<string, any>>(`/products/${slug}/structured-data`, 300),
+    getSeo(),
+  ]);
   if (!p) notFound();
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd(p, (await getSeo()).base) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd(p, seo.base, ld) }} />
       <ProductDetail key={p.id} initial={p} />
     </>
   );

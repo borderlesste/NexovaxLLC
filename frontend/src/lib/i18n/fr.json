@@ -3579,5 +3579,11 @@
   "{n} días desde la entrega.": "{n} jours après la livraison.",
   "Tarjetas de crédito y débito": "Cartes de crédit et de débit",
   "Envíos nacionales": "Livraison nationale",
-  "Medio de pago": "Moyen de paiement"
+  "Medio de pago": "Moyen de paiement",
+  "Tiempos de entrega": "Délais de livraison",
+  "Se envían en el feed y en los datos estructurados de cada producto. Usa los mismos días que en Merchant Center.": "Envoyés dans le flux et dans les données structurées de chaque produit. Utilisez les mêmes jours que dans Merchant Center.",
+  "Preparación mínima (días)": "Préparation minimale (jours)",
+  "Preparación máxima (días)": "Préparation maximale (jours)",
+  "Tránsito mínimo (días)": "Transit minimal (jours)",
+  "Tránsito máximo (días)": "Transit maximal (jours)"
 }

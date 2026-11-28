@@ -3579,5 +3579,11 @@
   "{n} días desde la entrega.": "{n} jou apre livrezon.",
   "Tarjetas de crédito y débito": "Kat kredi ak debi",
   "Envíos nacionales": "Livrezon nasyonal",
-  "Medio de pago": "Metòd peman"
+  "Medio de pago": "Metòd peman",
+  "Tiempos de entrega": "Tan livrezon",
+  "Se envían en el feed y en los datos estructurados de cada producto. Usa los mismos días que en Merchant Center.": "Yo voye yo nan feed la ak nan done estriktire chak pwodwi. Sèvi ak menm jou yo ki nan Merchant Center.",
+  "Preparación mínima (días)": "Preparasyon minimòm (jou)",
+  "Preparación máxima (días)": "Preparasyon maksimòm (jou)",
+  "Tránsito mínimo (días)": "Transpò minimòm (jou)",
+  "Tránsito máximo (días)": "Transpò maksimòm (jou)"
 }

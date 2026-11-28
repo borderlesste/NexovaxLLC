@@ -1,4 +1,4 @@
-import { googleMerchantFeed, validGtin } from '../src/catalog/google-merchant';
+import { googleMerchantFeed, productJsonLd, validGtin } from '../src/catalog/google-merchant';
 
 const row = (over: Record<string, any> = {}) => ({
   id: 'p1', slug: 'bolso-rojo', title: 'Bolso <rojo> & negro', short_description: null, description: '<p>Bolso de **cuero**</p>', requires_shipping: true,
@@ -57,5 +57,59 @@ describe('Google Merchant feed', () => {
     expect(validGtin('4006381333932')).toBeNull();
     expect(validGtin('036000291452')).toBe('036000291452');
     expect(validGtin('ABC')).toBeNull();
+  });
+
+  it('adds handling and transit days to the feed when configured', async () => {
+    const times = { merchantHandlingMinDays: 1, merchantHandlingMaxDays: 3, merchantTransitMinDays: 3, merchantTransitMaxDays: 7 };
+    const x = (await googleMerchantFeed(db([row()]), settings(times) as any))!;
+    expect(x).toContain('<g:price>9.50 USD</g:price><g:min_transit_time>3</g:min_transit_time><g:max_transit_time>7</g:max_transit_time></g:shipping>');
+    expect(x).toContain('<g:min_handling_time>1</g:min_handling_time><g:max_handling_time>3</g:max_handling_time>');
+  });
+});
+
+describe('Product page structured data', () => {
+  const policy = { windowDays: 7, labelPayer: 'CUSTOMER', restockingFeePercent: 0 } as any;
+  const times = { merchantHandlingMinDays: 1, merchantHandlingMaxDays: 3, merchantTransitMinDays: 3, merchantTransitMaxDays: 7 };
+
+  it('includes description, shipping details and the return policy from the settings', async () => {
+    const d: any = await productJsonLd(db([row()]), settings(times) as any, async () => policy, 'bolso-rojo');
+    expect(d.description).toBe('Bolso de cuero');
+    expect(d.offers.price).toBe('35.96');
+    expect(d.offers.shippingDetails).toEqual([
+      {
+        '@type': 'OfferShippingDetails',
+        shippingRate: { '@type': 'MonetaryAmount', value: '9.50', currency: 'USD' },
+        shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'US' },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 3, unitCode: 'DAY' },
+          transitTime: { '@type': 'QuantitativeValue', minValue: 3, maxValue: 7, unitCode: 'DAY' },
+        },
+      },
+    ]);
+    expect(d.offers.hasMerchantReturnPolicy).toMatchObject({
+      '@type': 'MerchantReturnPolicy', applicableCountry: 'US', returnPolicyCountry: 'US', merchantReturnDays: 7,
+      returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow', returnMethod: 'https://schema.org/ReturnByMail',
+      returnFees: 'https://schema.org/ReturnFeesCustomerResponsibility', merchantReturnLink: 'https://nexovax.com/politica-de-devoluciones',
+    });
+    expect(d.brand).toBeUndefined();
+  });
+
+  it('uses brand + GTIN or MPN like the feed, and the title when there is no description', async () => {
+    const a: any = await productJsonLd(db([row({ brand: 'Epson', barcode: '4006381333931', description: null })]), settings({}) as any, async () => policy, 'x');
+    expect(a).toMatchObject({ brand: { '@type': 'Brand', name: 'Epson' }, gtin13: '4006381333931', description: 'Bolso <rojo> & negro' });
+    expect(a.mpn).toBeUndefined();
+    const b: any = await productJsonLd(db([row()]), settings({ merchantStoreAsBrand: true }) as any, async () => policy, 'x');
+    expect(b).toMatchObject({ brand: { name: 'Clif' }, mpn: 'BOL-1' });
+    expect(await productJsonLd(db([]), settings({}) as any, async () => policy, 'x')).toBeNull();
+  });
+
+  it('describes returns paid by reason or not accepted', async () => {
+    const a: any = await productJsonLd(db([row()]), settings({}) as any, async () => ({ ...policy, labelPayer: 'BY_REASON' }), 'x');
+    expect(a.offers.hasMerchantReturnPolicy).toMatchObject({
+      customerRemorseReturnFees: 'https://schema.org/ReturnFeesCustomerResponsibility', itemDefectReturnFees: 'https://schema.org/FreeReturn',
+    });
+    const b: any = await productJsonLd(db([row()]), settings({}) as any, async () => ({ ...policy, windowDays: 0 }), 'x');
+    expect(b.offers.hasMerchantReturnPolicy.returnPolicyCategory).toBe('https://schema.org/MerchantReturnNotPermitted');
   });
 });

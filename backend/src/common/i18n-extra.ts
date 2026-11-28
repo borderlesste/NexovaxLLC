@@ -16,6 +16,8 @@ export const EXTRA: Record<string, [en: string, fr: string, ht: string]> = {
   'Configura primero el impuesto del país.': ['Set up the country tax first.', 'Configurez d’abord la taxe du pays.', 'Mete taks peyi a anvan.'],
   'Configuración SEO inválida.': ['Invalid SEO settings.', 'Paramètres SEO non valables.', 'Paramèt SEO yo pa valab.'],
   'Configuración de Google inválida.': ['Invalid Google settings.', 'Paramètres Google non valables.', 'Paramèt Google yo pa valab.'],
+  'Los días de preparación y tránsito deben estar entre 0 y 60.': ['Handling and transit days must be between 0 and 60.', 'Les jours de préparation et de transit doivent être compris entre 0 et 60.', 'Jou preparasyon ak transpò yo dwe ant 0 ak 60.'],
+  'El máximo de días no puede ser menor que el mínimo.': ['The maximum days cannot be less than the minimum.', 'Le maximum de jours ne peut pas être inférieur au minimum.', 'Maksimòm jou yo pa ka pi piti pase minimòm nan.'],
   'Código de estado o provincia inválido.': ['Invalid state or province code.', 'Code d’État ou de province non valable.', 'Kòd eta oswa pwovens lan pa valab.'],
   'Datos de la empresa inválidos.': ['Invalid company details.', 'Informations de l’entreprise non valables.', 'Enfòmasyon konpayi an pa valab.'],
   'El ID de medición de GA4 tiene la forma G-XXXXXXXXXX.': ['The GA4 measurement ID looks like G-XXXXXXXXXX.', 'L’ID de mesure GA4 a la forme G-XXXXXXXXXX.', 'ID mezi GA4 a gen fòm G-XXXXXXXXXX.'],

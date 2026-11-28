@@ -3,7 +3,8 @@ import { Throttle } from '@nestjs/throttler';
 import { DbService } from '../db/db.service';
 import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { googleMerchantFeed } from './google-merchant';
+import { googleMerchantFeed, productJsonLd } from './google-merchant';
+import { ReturnPolicyService } from '../returns/return-policy.service';
 import { ApiTags } from '@nestjs/swagger';
 import { config } from '../config';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
@@ -23,6 +24,7 @@ export class CatalogController {
     private readonly settings: SettingsService,
     private readonly db: DbService,
     private readonly payments: PaymentsService,
+    private readonly returnPolicies: ReturnPolicyService,
   ) {}
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
@@ -128,6 +130,18 @@ export class CatalogController {
   @Get('products/:slug')
   product(@Param('slug') slug: string, @CurrentUser() user?: RequestUser) {
     return this.catalog.productDetail(slug, user?.id);
+  }
+
+  /**
+   * schema.org Product (JSON-LD) for the product page: the same description, identifiers, shipping
+   * and return policy as the Merchant Center feed. The web caches it for 5 minutes.
+   */
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @Get('products/:slug/structured-data')
+  async structuredData(@Param('slug') slug: string) {
+    const data = await productJsonLd(this.db, this.settings, () => this.returnPolicies.global(), String(slug).slice(0, 200));
+    if (!data) throw new NotFoundException('Producto no encontrado.');
+    return data;
   }
 
   @Get('products/:slug/reviews')

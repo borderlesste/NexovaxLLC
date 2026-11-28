@@ -921,5 +921,11 @@
   "{n} días desde la entrega.": "{n} days from delivery.",
   "Tarjetas de crédito y débito": "Credit and debit cards",
   "Envíos nacionales": "Domestic shipping",
-  "Medio de pago": "Payment method"
+  "Medio de pago": "Payment method",
+  "Tiempos de entrega": "Delivery times",
+  "Se envían en el feed y en los datos estructurados de cada producto. Usa los mismos días que en Merchant Center.": "Sent in the feed and in each product's structured data. Use the same days as in Merchant Center.",
+  "Preparación mínima (días)": "Minimum handling (days)",
+  "Preparación máxima (días)": "Maximum handling (days)",
+  "Tránsito mínimo (días)": "Minimum transit (days)",
+  "Tránsito máximo (días)": "Maximum transit (days)"
 }

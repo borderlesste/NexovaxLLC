@@ -107,6 +107,12 @@ export interface GoogleSettings {
   merchantIncludeOutOfStock: boolean;
   /** Use the store name as brand when a product has no brand. */
   merchantStoreAsBrand: boolean;
+  /** Business days stores take to dispatch an order (feed min/max_handling_time, product page handlingTime). */
+  merchantHandlingMinDays: number;
+  merchantHandlingMaxDays: number;
+  /** Days the carrier takes once dispatched (feed min/max_transit_time, product page transitTime). */
+  merchantTransitMinDays: number;
+  merchantTransitMaxDays: number;
 }
 
 /**
@@ -232,6 +238,7 @@ const DEFAULTS: PlatformSettings = {
   'google.integrations': {
     ga4Enabled: false, ga4MeasurementId: '', merchantFeedEnabled: false, merchantShippingCountries: [],
     merchantCondition: 'new', merchantIncludeOutOfStock: false, merchantStoreAsBrand: false,
+    merchantHandlingMinDays: 1, merchantHandlingMaxDays: 3, merchantTransitMinDays: 3, merchantTransitMaxDays: 7,
   },
   'company.info': { legalName: '', jurisdiction: '', address: '', registrationNumber: '', taxId: '', legalRepresentative: '', phone: '', supportHours: '', footerText: '' },
   'home.layout': defaultHomeLayout(),
