@@ -3569,5 +3569,10 @@
   "Preguntas de vendedores": "Questions des vendeurs",
   "¿Listo para empezar?": "Prêt à commencer ?",
   "Te esperamos cuando reabra el registro.": "Nous vous attendons à la réouverture des inscriptions.",
-  "¿Cuánto cuesta vender? Ver comisiones y cobros": "Combien coûte la vente ? Voir commissions et versements"
+  "¿Cuánto cuesta vender? Ver comisiones y cobros": "Combien coûte la vente ? Voir commissions et versements",
+  "Falta la verificación en dos pasos": "Vérification en deux étapes requise",
+  "El panel del equipo exige un código de tu app de autenticación además de la contraseña. Actívala o escribe el código para continuar.": "Le panneau de l’équipe exige un code de votre application d’authentification en plus du mot de passe. Activez-la ou saisissez le code pour continuer.",
+  "Continuar con la verificación": "Continuer la vérification",
+  "Ir a Mi cuenta › Seguridad": "Aller à Mon compte › Sécurité",
+  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "Impossible d’ouvrir la vérification en deux étapes. Allez à Mon compte › Sécurité."
 }

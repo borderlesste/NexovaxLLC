@@ -8,7 +8,7 @@ import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { PageLoader, Empty } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
 import { useAuth, type Role } from '@/lib/auth';
-import { get } from '@/lib/api';
+import { ApiError, MFA_REQUIRED_EVENT, get } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { ROLE_SCOPE, SECTIONS, roleList, sectionFor } from '@/lib/permissions';
 
@@ -17,6 +17,27 @@ const ICONS: Record<string, any> = {
   '/admin/identidad': BadgeCheck, '/admin/vendedores': Users, '/admin/moderacion': Shield, '/admin/reportes': AlertTriangle, '/admin/devoluciones': RotateCcw,
   '/admin/finanzas': DollarSign, '/admin/incidencias-pago': Scale, '/admin/comisiones': Coins, '/admin/usuarios': UserCog, '/admin/configuracion': Settings, '/admin/politicas': FileText,
 };
+
+/** Shown while the API asks for the second factor: says why and opens the code / set-up dialog. */
+function MfaRequired() {
+  return (
+    <div className="mx-auto max-w-xl py-10" data-mfa-required>
+      <div className="card p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Lock className="size-6" /></span>
+          <div>
+            <h1 className="text-xl font-extrabold">{t('Falta la verificación en dos pasos')}</h1>
+            <p className="mt-1 text-sm text-muted">{t('El panel del equipo exige un código de tu app de autenticación además de la contraseña. Actívala o escribe el código para continuar.')}</p>
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button onClick={() => window.dispatchEvent(new Event(MFA_REQUIRED_EVENT))}>{t('Continuar con la verificación')}</Button>
+          <Button variant="outline" asChild><Link href="/cuenta/seguridad">{t('Ir a Mi cuenta › Seguridad')}</Link></Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Shown instead of a section the user's role can't open: says why and what the role can do. */
 function NoPermission({ section, roles, home }: { section: string; roles: Role[]; home: string }) {
@@ -80,9 +101,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const nav = SECTIONS.filter((x) => can(x.perm)).map((x) => ({ href: x.href, label: t(x.label), icon: ICONS[x.href], badge: badges[x.href] ?? null }));
   const section = sectionFor(pathname);
   const allowed = !section || can(section.perm);
+  const needsMfa = dash.error instanceof ApiError && dash.error.code === 'MFA_REQUIRED';
   return (
     <DashboardShell title="NEXOVAX" subtitle={t('Panel de administración')} nav={nav}>
-      {allowed ? children : <NoPermission section={t(section!.label)} roles={me.roles} home={nav[0]?.href ?? '/'} />}
+      {needsMfa ? <MfaRequired /> : allowed ? children : <NoPermission section={t(section!.label)} roles={me.roles} home={nav[0]?.href ?? '/'} />}
     </DashboardShell>
   );
 }

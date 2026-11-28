@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { KeyRound, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -127,17 +127,28 @@ export function MfaGate() {
   const { session, signOut } = useAuth();
   const qc = useQueryClient();
   const [state, setState] = useState<{ open: boolean; factorId: string | null; reason: 'login' | 'required' }>({ open: false, factorId: null, reason: 'login' });
+  const lastRefresh = useRef(0);
 
   const check = useCallback(async (reason: 'login' | 'required') => {
     const { data } = await supabase().auth.mfa.getAuthenticatorAssuranceLevel();
-    if (data?.currentLevel === 'aal2') return false;
+    if (data?.currentLevel === 'aal2') {
+      // The browser already has the second factor but the API still saw an old token: refresh it once and retry.
+      // If the API keeps refusing right after a refresh, ask for the code again instead of failing silently.
+      if (reason === 'login') return false;
+      if (Date.now() - lastRefresh.current > 30_000) {
+        lastRefresh.current = Date.now();
+        await supabase().auth.refreshSession().catch(() => undefined);
+        qc.invalidateQueries();
+        return false;
+      }
+    }
     // Accounts without a second factor stay at nextLevel aal1: no extra request on every page load.
     if (reason === 'login' && data?.nextLevel !== 'aal2') return false;
     const factors = await verifiedFactors().catch(() => [] as Factor[]);
     if (reason === 'login' && !(data?.nextLevel === 'aal2' && factors.length)) return false;
     setState({ open: true, factorId: factors[0]?.id ?? null, reason });
     return true;
-  }, []);
+  }, [qc]);
 
   useEffect(() => {
     if (!session) { setState((s) => ({ ...s, open: false })); return; }
@@ -145,7 +156,9 @@ export function MfaGate() {
   }, [session?.user.id, check]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const onRequired = () => { check('required').catch(() => undefined); };
+    const onRequired = () => {
+      check('required').catch((e) => toast.error(e?.message || t('No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.')));
+    };
     window.addEventListener(MFA_REQUIRED_EVENT, onRequired);
     return () => window.removeEventListener(MFA_REQUIRED_EVENT, onRequired);
   }, [check]);
