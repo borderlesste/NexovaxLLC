@@ -33,6 +33,8 @@ export interface SecurityControls {
   sellerSavedRepliesMax: number;
   /** Chat: hours before the same conversation gets the store's automatic reply again. */
   autoReplyIntervalHours: number;
+  /** Support: days after a report is resolved during which the customer can rate the help. */
+  supportRatingDays: number;
 }
 
 export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: number, max: number, def: number]> = {
@@ -51,6 +53,7 @@ export const SECURITY_CONTROL_LIMITS: Record<keyof SecurityControls, [min: numbe
   chatRestrictionDays: [1, 365, 7],
   sellerSavedRepliesMax: [5, 200, 50],
   autoReplyIntervalHours: [1, 72, 12],
+  supportRatingDays: [1, 90, 14],
 };
 
 export const DEFAULT_SECURITY_CONTROLS: SecurityControls = Object.fromEntries(

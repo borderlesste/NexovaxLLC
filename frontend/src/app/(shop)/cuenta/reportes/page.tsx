@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { RateSupport } from '@/components/support/support-rating';
 import { AlertCircle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, upload } from '@/lib/api';
@@ -20,6 +21,9 @@ export default function MyReportsPage() {
   const [reply, setReply] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
+  const qc = useQueryClient();
+  // Link from the «report resolved» e-mail: /cuenta/reportes?r=<id> opens it to rate the help.
+  useEffect(() => { const id = new URLSearchParams(window.location.search).get('r'); if (id && /^[0-9a-f-]{36}$/i.test(id)) setOpen(id); }, []);
   const send = async () => {
     setSending(true);
     try {
@@ -63,6 +67,7 @@ export default function MyReportsPage() {
               <AttachmentList base={`/support/conversations/${d.data.conversationId}/attachments`} items={m.attachments} />
             </div>
           ))}
+          {d.data && <RateSupport key={d.data.id} ticketId={d.data.id} rating={d.data.rating} canRate={!!d.data.canRate} onDone={(x) => qc.setQueryData(['my-report', open], x)} />}
           {d.data && !['CLOSED', 'CANCELLED'].includes(d.data.status) && (
             <div>
               <div className="flex gap-2"><Textarea rows={2} value={reply} onChange={(e) => setReply(e.target.value)} placeholder={t('Agregar información…')} /><Button onClick={send} loading={sending} disabled={!reply.trim() && !files.length} size="icon" aria-label={t('Enviar')}><Send /></Button></div>

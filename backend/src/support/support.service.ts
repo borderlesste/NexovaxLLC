@@ -4,7 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { MailService } from '../mail/mail.service';
 import { orderRef, parseOrderRef, parseTicketRef, ticketRef } from '../common/refs';
-import { badRequest, notFound } from '../common/errors';
+import { AppError, badRequest, notFound } from '../common/errors';
+import { HttpStatus } from '@nestjs/common';
+import { SettingsService } from '../settings/settings.service';
+import { ticketTimes } from './support-times';
 import { clampPage } from '../common/paging';
 import { isStaff, RequestUser } from '../auth/auth';
 import { MessagingService, UploadedFile } from '../messaging/messaging.service';
@@ -40,7 +43,28 @@ export class SupportService {
     private readonly mail: MailService,
     private readonly messaging: MessagingService,
     private readonly notifications: NotificationsService,
+    private readonly settings: SettingsService,
   ) {}
+
+  /** Rating of a ticket (null when none, or before migration 20261128140000 runs). */
+  private rating(ticketId: string) {
+    return this.db
+      .one(`select score, comment, created_at, updated_at from public.nx_support_ticket_ratings where ticket_id = $1`, [ticketId])
+      .then((r) => (r ? { score: Number(r.score), comment: r.comment as string | null, at: r.updated_at ?? r.created_at } : null))
+      .catch(() => null);
+  }
+
+  /** Team members who can take reports (support, moderators and admins). */
+  async agents() {
+    const rows = await this.db.many(
+      `select u.id, coalesce(nullif(up.display_name,''), u.email::text) as name, array_agg(distinct r.code order by r.code) as roles
+         from public.users u join public.user_roles ur on ur.user_id = u.id and ur.revoked_at is null
+         join public.roles r on r.id = ur.role_id and r.code in ('SUPPORT','MODERATOR','ADMIN','SUPER_ADMIN')
+         left join public.user_profiles up on up.user_id = u.id
+        where u.status = 'ACTIVE' group by u.id, up.display_name, u.email order by 2 limit 200`,
+    );
+    return rows.map((r: any) => ({ id: r.id, name: r.name, roles: r.roles }));
+  }
 
   catalogs() {
     return Promise.all([
@@ -189,9 +213,17 @@ export class SupportService {
   }
 
   // ------------------------------------------------------------------ admin
-  async adminList(q: { status?: string; priority?: string; category?: string; platform?: string; search?: string; page?: number }) {
+  async adminList(q: { status?: string; priority?: string; category?: string; platform?: string; search?: string; page?: number; assignee?: string; viewerId?: string }) {
     const params: unknown[] = [];
     const where: string[] = [];
+    if (q.assignee === 'none') where.push(`t.current_assignee_user_id is null`);
+    else if (q.assignee === 'me' && q.viewerId) {
+      params.push(q.viewerId);
+      where.push(`t.current_assignee_user_id = $${params.length}`);
+    } else if (q.assignee && /^[0-9a-f-]{36}$/i.test(q.assignee)) {
+      params.push(q.assignee);
+      where.push(`t.current_assignee_user_id = $${params.length}`);
+    }
     if (q.status === 'OPEN_ALL') where.push(`t.status in ('OPEN','IN_PROGRESS','PENDING_CUSTOMER','PENDING_INTERNAL')`);
     else if (q.status === 'IN_PROGRESS_ALL') where.push(`t.status in ('IN_PROGRESS','PENDING_CUSTOMER','PENDING_INTERNAL')`);
     else if (q.status === 'DONE') where.push(`t.status in ('RESOLVED','CLOSED')`);
@@ -236,8 +268,11 @@ export class SupportService {
       `select count(*)::int as total, count(*) filter (where status = 'OPEN')::int as pending,
               count(*) filter (where status = 'OPEN' and priority_code = 'CRITICAL')::int as critical,
               count(*) filter (where status in ('IN_PROGRESS','PENDING_CUSTOMER','PENDING_INTERNAL'))::int as in_progress,
-              count(*) filter (where status in ('RESOLVED','CLOSED'))::int as resolved
+              count(*) filter (where status in ('RESOLVED','CLOSED'))::int as resolved,
+              count(*) filter (where status in ('OPEN','IN_PROGRESS','PENDING_CUSTOMER','PENDING_INTERNAL') and current_assignee_user_id = $1)::int as mine,
+              count(*) filter (where status in ('OPEN','IN_PROGRESS','PENDING_CUSTOMER','PENDING_INTERNAL') and current_assignee_user_id is null)::int as unassigned
          from public.support_tickets`,
+      [q.viewerId ?? null],
     );
     return {
       items: rows.map((r: any) => ({
@@ -293,9 +328,14 @@ export class SupportService {
       ),
     ]);
     const files = await this.messaging.attachmentsByMessage(messages.map((m: any) => m.id));
+    const rating = await this.rating(id);
+    const times = ticketTimes({ createdAt: t.created_at, firstResponseAt: t.first_response_at, status: t.status }, history.map((h: any) => ({ to: h.to_status, at: h.created_at })));
     return {
       id: t.id,
       conversationId: t.conversation_id,
+      assigneeId: t.current_assignee_user_id ?? null,
+      times,
+      rating,
       code: `REP-${t.public_number}`,
       trackingCode: ticketRef(t.public_number),
       status: t.status,
@@ -319,7 +359,7 @@ export class SupportService {
     };
   }
 
-  private async ensureAgent(c: PoolClient, ticketId: string, staff: RequestUser, teamCode = 'SUPPORT') {
+  private async ensureAgent(c: PoolClient, ticketId: string, staff: { id: string }, teamCode = 'SUPPORT') {
     const team = await this.db.one(`select id from public.support_teams where code = $1`, [teamCode], c);
     await this.db.exec(
       `insert into public.support_team_members (team_id, user_id, status) select $1, $2, 'ACTIVE'
@@ -330,10 +370,18 @@ export class SupportService {
     return team!.id;
   }
 
-  async assign(staff: RequestUser, ticketId: string, input: { teamCode?: string; assignToMe?: boolean }) {
+  async assign(staff: RequestUser, ticketId: string, input: { teamCode?: string; assignToMe?: boolean; assigneeUserId?: string; unassign?: boolean }) {
+    let assignee: string | null = input.assignToMe === false || input.unassign ? null : staff.id;
+    if (input.assigneeUserId && !input.unassign) {
+      if (!(await this.agents()).some((a) => a.id === input.assigneeUserId)) throw badRequest('AGENT_INVALID', 'Esa persona no forma parte del equipo de soporte.');
+      assignee = input.assigneeUserId;
+    }
     await this.db.tx(async (c) => {
-      const teamId = await this.ensureAgent(c, ticketId, staff, input.teamCode ?? 'SUPPORT');
-      await this.db.exec(`select public.assign_support_ticket($1,$2,$3,$4,$5)`, [ticketId, teamId, input.assignToMe === false ? null : staff.id, staff.id, 'Asignación desde el panel'], c);
+      const cur = await this.db.one<{ code: string }>(`select tm.code from public.support_tickets t left join public.support_teams tm on tm.id = t.current_team_id where t.id = $1`, [ticketId], c);
+      const teamCode = input.teamCode ?? cur?.code ?? 'SUPPORT';
+      const teamId = await this.ensureAgent(c, ticketId, { id: assignee ?? staff.id }, teamCode);
+      const reason = input.unassign ? 'Sin responsable' : assignee && assignee !== staff.id ? 'Asignado por un compañero' : 'Asignación desde el panel';
+      await this.db.exec(`select public.assign_support_ticket($1,$2,$3,$4,$5)`, [ticketId, teamId, assignee, staff.id, reason], c);
     });
     return this.adminDetail(ticketId);
   }
@@ -387,7 +435,72 @@ export class SupportService {
     const t = await this.db.one(`select requester_user_id from public.support_tickets where id = $1`, [ticketId]);
     if (!t || t.requester_user_id !== user.id) throw notFound('Reporte');
     const d = await this.adminDetail(ticketId);
-    return { ...d, notes: undefined, history: d.history };
+    const canRate = await this.canRate(ticketId, d.status);
+    return { ...d, notes: undefined, history: d.history, assigneeId: undefined, times: undefined, canRate };
+  }
+
+  /** The customer can rate a resolved/closed report for a few days (Admin → Configuración → Seguridad). */
+  private async canRate(ticketId: string, status: string) {
+    if (!['RESOLVED', 'CLOSED'].includes(status)) return false;
+    const days = (await this.settings.get('security.controls')).supportRatingDays;
+    const r = await this.db.one(
+      `select 1 from public.support_ticket_status_history where ticket_id = $1 and to_status in ('RESOLVED','CLOSED') and changed_at > now() - make_interval(days => $2::int) limit 1`,
+      [ticketId, days],
+    ).catch(() => null);
+    return !!r;
+  }
+
+  async rate(user: RequestUser, ticketId: string, score: number, comment?: string) {
+    const t = await this.db.one(`select id, status, requester_user_id, current_assignee_user_id from public.support_tickets where id = $1`, [ticketId]);
+    if (!t || t.requester_user_id !== user.id) throw notFound('Reporte');
+    if (!(await this.canRate(ticketId, t.status))) throw badRequest('RATING_CLOSED', 'Solo puedes calificar un reporte resuelto, durante los días siguientes a su cierre.');
+    try {
+      await this.db.exec(
+        `insert into public.nx_support_ticket_ratings (ticket_id, user_id, score, comment, agent_user_id) values ($1,$2,$3,$4,$5)
+         on conflict (ticket_id) do update set score = excluded.score, comment = excluded.comment, updated_at = now()`,
+        [ticketId, user.id, score, comment?.trim() || null, t.current_assignee_user_id ?? null],
+      );
+    } catch (e: any) {
+      if (e?.code === '42P01') throw new AppError('RATING_UNAVAILABLE', 'Esta función aún no está disponible. Inténtalo más tarde.', HttpStatus.SERVICE_UNAVAILABLE);
+      throw e;
+    }
+    return this.customerDetail(user, ticketId);
+  }
+
+  /** Team performance over the last days: per agent and overall (Admin → Reportes). */
+  async stats(days: number) {
+    const tickets = await this.db.many(
+      `select t.id, t.status, t.created_at, t.first_response_at, t.current_assignee_user_id as agent_id,
+              coalesce(nullif(up.display_name,''), u.email::text) as agent
+         from public.support_tickets t left join public.users u on u.id = t.current_assignee_user_id left join public.user_profiles up on up.user_id = u.id
+        where t.created_at > now() - make_interval(days => $1::int) order by t.created_at desc limit 1000`,
+      [days],
+    );
+    const ids = tickets.map((x: any) => x.id);
+    const [hist, ratings] = await Promise.all([
+      ids.length ? this.db.many(`select ticket_id, to_status, changed_at from public.support_ticket_status_history where ticket_id = any($1::uuid[])`, [ids]).catch(() => []) : [],
+      ids.length ? this.db.many(`select ticket_id, score from public.nx_support_ticket_ratings where ticket_id = any($1::uuid[])`, [ids]).catch(() => []) : [],
+    ]);
+    const byTicket = new Map<string, { to: string; at: string }[]>();
+    for (const h of hist as any[]) (byTicket.get(h.ticket_id) ?? byTicket.set(h.ticket_id, []).get(h.ticket_id)!).push({ to: h.to_status, at: h.changed_at });
+    const score = new Map((ratings as any[]).map((r) => [r.ticket_id, Number(r.score)]));
+    type Acc = { id: string | null; name: string | null; tickets: number; resolved: number; first: number[]; resolution: number[]; scores: number[] };
+    const acc = new Map<string, Acc>();
+    const all: Acc = { id: null, name: null, tickets: 0, resolved: 0, first: [], resolution: [], scores: [] };
+    for (const x of tickets as any[]) {
+      const k = x.agent_id ?? 'none';
+      const a = acc.get(k) ?? acc.set(k, { id: x.agent_id, name: x.agent, tickets: 0, resolved: 0, first: [], resolution: [], scores: [] }).get(k)!;
+      const tm = ticketTimes({ createdAt: x.created_at, firstResponseAt: x.first_response_at, status: x.status }, byTicket.get(x.id) ?? []);
+      for (const b of [a, all]) {
+        b.tickets++;
+        if (tm.firstResponseMinutes != null) b.first.push(tm.firstResponseMinutes);
+        if (tm.resolutionMinutes != null) { b.resolved++; b.resolution.push(tm.resolutionMinutes); }
+        if (score.has(x.id)) b.scores.push(score.get(x.id)!);
+      }
+    }
+    const avg = (v: number[]) => (v.length ? Math.round((v.reduce((s, n) => s + n, 0) / v.length) * 10) / 10 : null);
+    const view = (a: Acc) => ({ agentId: a.id, agent: a.name, tickets: a.tickets, resolved: a.resolved, avgFirstResponseMinutes: avg(a.first), avgResolutionMinutes: avg(a.resolution), avgRating: avg(a.scores), ratings: a.scores.length });
+    return { days, overall: view(all), agents: [...acc.values()].map(view).sort((x, y) => y.tickets - x.tickets) };
   }
 
   /** File attached to an internal note (staff only). */

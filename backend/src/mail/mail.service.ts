@@ -1261,9 +1261,11 @@ export class MailService {
         subject: t(`Tu reporte ${x.code} fue ${word}`, `Your report ${x.code} was ${word}`, `Votre signalement ${x.code} a été ${word}`, `Rapò ou ${x.code} ${word}`),
         preheader: t('Gracias por ayudarnos a mejorar.', 'Thanks for helping us improve.', 'Merci de nous aider à nous améliorer.', 'Mèsi paske w ede nou amelyore.'),
         title: resolved ? t('Reporte resuelto', 'Report resolved', 'Signalement résolu', 'Rapò rezoud') : t('Reporte cerrado', 'Report closed', 'Signalement clôturé', 'Rapò fèmen'),
-        body: p(t(`Hola ${esc(x.u.name)}, marcamos tu reporte <b>«${esc(x.tk.subject)}»</b> (${x.code}) como ${word}. Si el problema continúa, puedes responder desde tus reportes.`,
-                  `Hi ${esc(x.u.name)}, we marked your report <b>“${esc(x.tk.subject)}”</b> (${x.code}) as ${word}. If the problem continues, you can reply from your reports.`, `Bonjour ${esc(x.u.name)}, nous avons marqué votre signalement <b>« ${esc(x.tk.subject)} »</b> (${x.code}) comme ${word}. Si le problème persiste, vous pouvez répondre depuis vos signalements.`, `Bonjou ${esc(x.u.name)}, nou make rapò ou <b>«${esc(x.tk.subject)}»</b> (${x.code}) kòm ${word}. Si pwoblèm nan kontinye, ou ka reponn nan rapò ou yo.`)),
-        cta: { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${webUrl()}/cuenta/reportes` },
+        body: p(t(`Hola ${esc(x.u.name)}, marcamos tu reporte <b>«${esc(x.tk.subject)}»</b> (${x.code}) como ${word}. Si el problema continúa, puedes responder desde tus reportes.${resolved ? ' Cuéntanos cómo te atendimos: puedes calificar la atención en el reporte.' : ''}`,
+                  `Hi ${esc(x.u.name)}, we marked your report <b>“${esc(x.tk.subject)}”</b> (${x.code}) as ${word}. If the problem continues, you can reply from your reports.${resolved ? ' Tell us how we did: you can rate the help on the report.' : ''}`, `Bonjour ${esc(x.u.name)}, nous avons marqué votre signalement <b>« ${esc(x.tk.subject)} »</b> (${x.code}) comme ${word}. Si le problème persiste, vous pouvez répondre depuis vos signalements.${resolved ? ' Dites-nous comment nous vous avons aidé : vous pouvez noter l’assistance dans le signalement.' : ''}`, `Bonjou ${esc(x.u.name)}, nou make rapò ou <b>«${esc(x.tk.subject)}»</b> (${x.code}) kòm ${word}. Si pwoblèm nan kontinye, ou ka reponn nan rapò ou yo.${resolved ? ' Di nou kijan nou te ede w: ou ka bay nòt sèvis la nan rapò a.' : ''}`)),
+        cta: resolved
+          ? { label: t('Calificar la atención', 'Rate the help', 'Noter l’assistance', 'Bay nòt sèvis la'), url: `${webUrl()}/cuenta/reportes?r=${ticketId}` }
+          : { label: t('Ver mis reportes', 'View my reports', 'Voir mes signalements', 'Wè rapò mwen yo'), url: `${webUrl()}/cuenta/reportes` },
         text: `${x.code}: ${word}`,
       }),
     });

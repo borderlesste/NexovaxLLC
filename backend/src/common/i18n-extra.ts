@@ -142,6 +142,9 @@ export const EXTRA: Record<string, [en: string, fr: string, ht: string]> = {
   'Estos reportes ya fueron resueltos.': ['These reports were already resolved.', 'Ces signalements ont déjà été traités.', 'Rapò sa yo te deja rezoud.'],
   'No se puede restringir: la cuenta que envió el mensaje ya no existe.': ['Can’t restrict: the account that sent the message no longer exists.', 'Impossible de restreindre : le compte qui a envoyé le message n’existe plus.', 'Pa ka restriksyon: kont ki te voye mesaj la pa egziste ankò.'],
   'No puedes restringir tu propia cuenta.': ['You can’t restrict your own account.', 'Vous ne pouvez pas restreindre votre propre compte.', 'Ou pa ka restriksyon pwòp kont ou.'],
+  // Support ratings and assignment.
+  'Esa persona no forma parte del equipo de soporte.': ['That person is not part of the support team.', 'Cette personne ne fait pas partie de l’équipe d’assistance.', 'Moun sa a pa fè pati ekip sipò a.'],
+  'Solo puedes calificar un reporte resuelto, durante los días siguientes a su cierre.': ['You can only rate a resolved report, during the days after it was closed.', 'Vous ne pouvez noter qu’un signalement résolu, dans les jours qui suivent sa clôture.', 'Ou ka bay nòt sèlman pou yon rapò ki rezoud, nan jou ki vin apre li fèmen.'],
   // Seller reply tools.
   'El horario no es válido.': ['The hours are not valid.', 'Les horaires ne sont pas valides.', 'Orè a pa valab.'],
   'Puedes indicar hasta 3 tramos por día.': ['You can set up to 3 time ranges per day.', 'Vous pouvez indiquer jusqu’à 3 plages par jour.', 'Ou ka mete jiska 3 tranch pa jou.'],

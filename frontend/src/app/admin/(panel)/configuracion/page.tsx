@@ -60,6 +60,7 @@ const SECURITY_FIELDS = [
   ['chatRestrictionDays', 'Chat: días de restricción por defecto', 'Días que una cuenta no puede enviar mensajes cuando un moderador la restringe (se puede cambiar en cada caso).', 1, 365],
   ['sellerSavedRepliesMax', 'Chat: respuestas guardadas por tienda', 'Máximo de respuestas guardadas que puede tener cada tienda para contestar más rápido.', 5, 200],
   ['autoReplyIntervalHours', 'Chat: horas entre respuestas automáticas', 'Una misma conversación recibe la respuesta automática de la tienda como máximo una vez en este número de horas.', 1, 72],
+  ['supportRatingDays', 'Soporte: días para calificar la atención', 'Días, desde que un reporte se resuelve, en los que el cliente puede calificar la atención recibida.', 1, 90],
 ] as const;
 
 function TaxRatesCard({ rates, onChanged }: { rates: any[]; onChanged: () => void }) {

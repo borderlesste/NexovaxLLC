@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowUpRight, Check, CheckCircle2, Clock, FileText, RotateCcw, Search, Send } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, BarChart3, Check, CheckCircle2, ChevronDown, Clock, FileText, Hand, RotateCcw, Search, Send, Star, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, get, post, upload } from '@/lib/api';
 import { AttachmentList, FilePicker, formWith } from '@/components/attachments/attachments';
@@ -14,6 +14,8 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Avatar, Empty, Pagination, Segmented, Spinner } from '@/components/ui/misc';
 import { t } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth';
+import { Stars, fmtMinutes } from '@/components/support/support-rating';
 
 export default function ReportsAdminPage() {
   const qc = useQueryClient();
@@ -28,8 +30,13 @@ export default function ReportsAdminPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [assignee, setAssignee] = useState('');
+  const [showStats, setShowStats] = useState(false);
+  const { me } = useAuth();
+  const agents = useQuery({ queryKey: ['support-agents'], queryFn: () => get<{ id: string; name: string }[]>('/support/admin/agents'), staleTime: 300_000 });
+  const stats = useQuery({ queryKey: ['support-stats'], queryFn: () => get('/support/admin/stats?days=30'), enabled: showStats });
   const cats = useQuery({ queryKey: ['support-catalogs'], queryFn: () => get('/support/catalogs'), staleTime: Infinity });
-  const list = useQuery({ queryKey: ['tickets', status, priority, category, platform, search, page], queryFn: () => get(`/support/admin/tickets?status=${status}&priority=${priority}&category=${category}&platform=${platform}&search=${encodeURIComponent(search)}&page=${page}`), refetchInterval: 30_000 });
+  const list = useQuery({ queryKey: ['tickets', status, priority, category, platform, assignee, search, page], queryFn: () => get(`/support/admin/tickets?status=${status}&priority=${priority}&category=${category}&platform=${platform}&assignee=${assignee}&search=${encodeURIComponent(search)}&page=${page}`), refetchInterval: 30_000 });
   // Deep link from the bell (/admin/reportes?ticket=…).
   useEffect(() => { const id = new URLSearchParams(window.location.search).get('ticket'); if (id && /^[0-9a-f-]{36}$/i.test(id)) setSel(id); }, []);
   useEffect(() => { if (!sel && list.data?.items[0]) setSel(list.data.items[0].id); }, [list.data, sel]);
@@ -50,6 +57,29 @@ export default function ReportsAdminPage() {
         <StatCard label={t('En proceso')} value={c?.in_progress ?? '—'} icon={<RotateCcw />} hint={t('Asignados al equipo')} />
         <StatCard label={t('Resueltos')} value={c?.resolved ?? '—'} icon={<Check />} tone="green" hint={t('Casos finalizados')} />
       </div>
+      <Card className="mt-5" data-support-stats>
+        <button type="button" onClick={() => setShowStats(!showStats)} className="flex w-full items-center justify-between px-5 py-4 text-left">
+          <span className="flex items-center gap-2 text-lg font-bold"><BarChart3 className="size-5 text-brand-600" /> {t('Rendimiento del equipo (30 días)')}</span>
+          <ChevronDown className={cn('size-5 text-muted transition', showStats && 'rotate-180')} />
+        </button>
+        {showStats && (stats.isLoading ? <div className="grid place-items-center pb-6"><Spinner /></div> : stats.data && (
+          <div className="overflow-x-auto border-t border-line">
+            <p className="px-5 pt-3 text-xs text-muted">{t('Los tiempos no cuentan las horas en que el reporte esperaba la respuesta del usuario.')}</p>
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="text-left text-xs font-semibold text-muted"><tr><th className="px-5 py-2">{t('Responsable')}</th><th>{t('Reportes')}</th><th>{t('Resueltos')}</th><th>{t('Primera respuesta')}</th><th>{t('Tiempo de resolución')}</th><th>{t('Satisfacción')}</th></tr></thead>
+              <tbody className="divide-y divide-line">
+                {[{ ...stats.data.overall, agent: t('Todo el equipo'), total: true }, ...stats.data.agents].map((a: any, i: number) => (
+                  <tr key={a.agentId ?? (a.total ? 'all' : `none-${i}`)} className={a.total ? 'bg-surface/60 font-semibold' : undefined}>
+                    <td className="px-5 py-2">{a.agent ?? t('Sin asignar')}</td><td>{a.tickets}</td><td>{a.resolved}</td>
+                    <td>{fmtMinutes(a.avgFirstResponseMinutes)}</td><td>{fmtMinutes(a.avgResolutionMinutes)}</td>
+                    <td>{a.avgRating != null ? <span className="flex items-center gap-1"><Star className="size-4 fill-amber-400 text-amber-400" /> {a.avgRating.toFixed(1)} <span className="text-xs text-muted">({a.ratings})</span></span> : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </Card>
       <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Card>
           <div className="px-5 pt-4"><p className="text-lg font-bold">{t('Bandeja de reportes')}</p></div>
@@ -58,6 +88,12 @@ export default function ReportsAdminPage() {
             <Input icon={<Search />} placeholder={t('Buscar por ID, asunto o usuario...')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-xs" />
             <Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-40"><option value="">{t('Prioridad: Todas')}</option><option value="CRITICAL">{t('Crítica')}</option><option value="HIGH">{t('Alta')}</option><option value="NORMAL">{t('Media')}</option><option value="LOW">{t('Baja')}</option></Select>
             <Select value={platform} onChange={(e) => { setPlatform(e.target.value); setPage(1); }} className="w-44" data-platform-filter><option value="">{t('Plataforma: Todas')}</option><option value="WEB">{t('Computadora')}</option><option value="MOBILE">{t('Celular o tablet')}</option><option value="OTHER">{t('Otro')}</option></Select>
+            <Select value={assignee} onChange={(e) => { setAssignee(e.target.value); setPage(1); }} className="w-48" data-assignee-filter>
+              <option value="">{t('Responsable: Todos')}</option>
+              <option value="me">{t('Mis reportes abiertos ({n})', { n: c?.mine ?? 0 })}</option>
+              <option value="none">{t('Sin asignar ({n})', { n: c?.unassigned ?? 0 })}</option>
+              {agents.data?.filter((a) => a.id !== me?.id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </Select>
             <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-48"><option value="">{t('Tipo: Todos')}</option>{cats.data?.categories.map((x: any) => <option key={x.code} value={x.code}>{t(x.name)}</option>)}</Select>
           </div>
           {list.isLoading ? <div className="grid place-items-center py-10"><Spinner /></div> : !list.data?.items.length ? <Empty title={t('No hay reportes')} /> : (
@@ -104,9 +140,31 @@ export default function ReportsAdminPage() {
                 ))}
                 {d.notes.map((n: any) => <div key={n.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p className="text-xs font-bold">{t('Nota interna ·')}{' '}{n.author} · {fmtDateTime(n.created_at)}</p>{!(n.attachments?.length && n.body.startsWith('📎')) && <p className="mt-1">{n.body}</p>}<AttachmentList base={`/support/admin/notes/${n.id}/attachments`} items={n.attachments} /></div>)}
               </div>
-              <div className="grid grid-cols-1 gap-3 border-b border-line p-5 sm:grid-cols-2">
-                <Field label={t('Asignar a')}>
-                  <Select value={d.team?.code ?? ''} onChange={(e) => run('assign', () => post(`/support/admin/tickets/${d.id}/assign`, { teamCode: e.target.value, assignToMe: true }), 'Reporte asignado.')}>
+              <div className="space-y-3 border-b border-line p-5 text-sm" data-ticket-times>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl bg-surface p-3"><p className="flex items-center gap-1 text-xs text-muted"><Timer className="size-3.5" /> {t('Primera respuesta')}</p><p className="font-bold">{d.times?.firstResponseMinutes != null ? fmtMinutes(d.times.firstResponseMinutes) : t('Sin responder')}</p></div>
+                  <div className="rounded-xl bg-surface p-3"><p className="flex items-center gap-1 text-xs text-muted"><Clock className="size-3.5" /> {d.times?.resolutionMinutes != null ? t('Tiempo de resolución') : t('Tiempo de atención')}</p><p className="font-bold">{fmtMinutes(d.times?.resolutionMinutes ?? d.times?.workingMinutes)}</p></div>
+                  <div className="rounded-xl bg-surface p-3"><p className="text-xs text-muted">{t('Esperando al usuario (no cuenta)')}</p><p className="font-bold">{fmtMinutes(d.times?.waitingCustomerMinutes)}</p></div>
+                </div>
+                {d.rating && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3" data-ticket-rating>
+                    <p className="flex items-center gap-2 font-bold">{t('Calificación del usuario')} <Stars value={d.rating.score} /></p>
+                    {d.rating.comment && <p className="mt-1 whitespace-pre-line text-muted">{d.rating.comment}</p>}
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 border-b border-line p-5 sm:grid-cols-3">
+                <Field label={t('Responsable')}>
+                  <div className="flex gap-2">
+                    <Select value={d.assigneeId ?? ''} onChange={(e) => run('assign', () => post(`/support/admin/tickets/${d.id}/assign`, e.target.value ? { assigneeUserId: e.target.value } : { unassign: true }), t('Responsable actualizado.'))} data-ticket-assignee>
+                      <option value="">{t('Sin asignar')}</option>
+                      {agents.data?.map((a) => <option key={a.id} value={a.id}>{a.id === me?.id ? t('Yo ({a})', { a: a.name }) : a.name}</option>)}
+                    </Select>
+                    {d.assigneeId !== me?.id && <Button size="sm" variant="outline" className="shrink-0" loading={busy === 'take'} onClick={() => run('take', () => post(`/support/admin/tickets/${d.id}/assign`, { assignToMe: true }), t('Ahora el reporte es tuyo.'))} data-take-ticket><Hand /> {t('Tomar')}</Button>}
+                  </div>
+                </Field>
+                <Field label={t('Equipo')}>
+                  <Select value={d.team?.code ?? ''} onChange={(e) => run('assign', () => post(`/support/admin/tickets/${d.id}/assign`, { teamCode: e.target.value, ...(d.assigneeId ? { assigneeUserId: d.assigneeId } : { unassign: true }) }), t('Reporte asignado.'))}>
                     <option value="" disabled>{t('Selecciona equipo')}</option>{cats.data?.teams.map((x: any) => <option key={x.code} value={x.code}>{x.name}</option>)}
                   </Select>
                 </Field>

@@ -3,13 +3,13 @@ import type { Request } from 'express';
 import { TurnstileGuard } from '../auth/turnstile.guard';
 import { requestLocale } from '../common/i18n-errors';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import type { Response } from 'express';
 import { ATTACHMENT_UPLOAD, sendAttachment } from '../messaging/messaging.controller';
 import { MAX_MESSAGE_FILES, MessagingService } from '../messaging/messaging.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean, IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { CurrentUser, isStaff, Public, RequestUser, Roles } from '../auth/auth';
 import { IsBusinessName, IsCleanMultiline, IsCleanText, IsEmailAddress, IsOrderReference, IsPersonName, IsWebUrl } from '../common/validators';
 import { SupportService } from './support.service';
@@ -44,6 +44,13 @@ export class TransitionDto {
 export class AssignDto {
   @IsOptional() @IsIn(['SUPPORT', 'MODERATION', 'FINANCE']) teamCode?: string;
   @IsOptional() @IsBoolean() assignToMe?: boolean;
+  @IsOptional() @IsUUID() assigneeUserId?: string;
+  @IsOptional() @IsBoolean() unassign?: boolean;
+}
+
+export class RatingDto {
+  @Type(() => Number) @IsInt() @Min(1) @Max(5) score: number;
+  @IsOptional() @IsCleanMultiline(0, 1000) comment?: string;
 }
 
 @ApiTags('support')
@@ -104,6 +111,13 @@ export class SupportController {
     return this.support.customerDetail(user, id);
   }
 
+  /** The customer rates the help once the report is resolved. */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('reports/:id/rating')
+  rate(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RatingDto) {
+    return this.support.rate(user, id, dto.score, dto.comment);
+  }
+
   @Post('reports/:id/messages')
   @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_FILES, ATTACHMENT_UPLOAD))
   reply(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReplyDto, @UploadedFiles() files?: Express.Multer.File[]) {
@@ -113,8 +127,20 @@ export class SupportController {
   // ---- staff
   @Roles('SUPPORT', 'MODERATOR')
   @Get('admin/tickets')
-  adminList(@Query() q: Record<string, string>) {
-    return this.support.adminList({ status: q.status, priority: q.priority, category: q.category, platform: q.platform, search: q.search, page: Number(q.page) || 1 });
+  adminList(@CurrentUser() user: RequestUser, @Query() q: Record<string, string>) {
+    return this.support.adminList({ status: q.status, priority: q.priority, category: q.category, platform: q.platform, search: q.search, page: Number(q.page) || 1, assignee: q.assignee, viewerId: user.id });
+  }
+
+  @Roles('SUPPORT', 'MODERATOR')
+  @Get('admin/agents')
+  agents() {
+    return this.support.agents();
+  }
+
+  @Roles('SUPPORT', 'MODERATOR')
+  @Get('admin/stats')
+  stats(@Query('days') days?: string) {
+    return this.support.stats(Math.min(Math.max(Number(days) || 30, 7), 365));
   }
 
   @Roles('SUPPORT', 'MODERATOR')
