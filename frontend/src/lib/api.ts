@@ -14,6 +14,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Window event fired when the API asks for the second factor (two-step verification). */
+export const MFA_REQUIRED_EVENT = 'nx:mfa-required';
+
 let sellerContext: string | null = null;
 export const setSellerContext = (id: string | null) => {
   sellerContext = id;
@@ -54,6 +57,7 @@ export async function api<T = any>(path: string, init: RequestInit & { json?: un
     const msg =
       (typeof data === 'object' && (data?.message || data?.error)) ||
       (res.status === 401 ? tr('Debes iniciar sesión.') : tr('Ocurrió un error inesperado.'));
+    if (data?.code === 'MFA_REQUIRED' && typeof window !== 'undefined') window.dispatchEvent(new Event(MFA_REQUIRED_EVENT));
     throw new ApiError(res.status, data?.code ?? 'ERROR', Array.isArray(msg) ? msg.join(', ') : msg, data?.details);
   }
   return data as T;

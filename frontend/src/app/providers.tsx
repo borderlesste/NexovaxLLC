@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/auth';
 import { RealtimeInbox } from '@/lib/realtime';
 import { PolicyGate } from '@/components/layout/policy-gate';
 import { MaintenanceGate } from '@/components/layout/maintenance-gate';
+import { MfaGate } from '@/components/account/mfa';
 import { configureI18n, type Locale } from '@/lib/i18n';
 
 export function Providers({ children, locale, currency }: { children: React.ReactNode; locale: Locale; currency: string }) {
@@ -18,7 +19,7 @@ export function Providers({ children, locale, currency }: { children: React.Reac
   );
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider><MaintenanceGate>{children}<PolicyGate /></MaintenanceGate><RealtimeInbox /></AuthProvider>
+      <AuthProvider><MaintenanceGate>{children}<PolicyGate /></MaintenanceGate><MfaGate /><RealtimeInbox /></AuthProvider>
       <Toaster position="top-right" richColors closeButton />
     </QueryClientProvider>
   );

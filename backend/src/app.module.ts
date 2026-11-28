@@ -6,6 +6,7 @@ import { PoliciesService } from './account/policies.service';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { MaintenanceGuard } from './auth/maintenance.guard';
+import { MfaGuard } from './auth/mfa.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ClientIpThrottlerGuard } from './common/client-ip';
 import { UploadBudgetGuard } from './common/upload-budget';
@@ -153,6 +154,7 @@ import { AccountDeletionController } from './account/account-deletion.controller
     AccountDeletionService,
     { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: MfaGuard },
     { provide: APP_GUARD, useClass: MaintenanceGuard },
     { provide: APP_GUARD, useClass: UploadBudgetGuard },
   ],

@@ -11,7 +11,7 @@ import {
   ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min,
   ValidateIf, ValidateNested,
 } from 'class-validator';
-import { CurrentUser, FreshUser, RequestUser, requireSeller, requireSellerOwner, SellerArea, sellerCan } from '../auth/auth';
+import { CurrentUser, FreshUser, RequestUser, RequireMfa, requireSeller, requireSellerOwner, SellerArea, sellerCan } from '../auth/auth';
 import { SELLER_PAYOUT_METHODS, SellerPayoutMethod, SellerService } from './seller.service';
 import { OrdersService } from '../orders/orders.service';
 import { CARRIERS } from '../shipping/shipping.service';
@@ -260,6 +260,7 @@ export class SellerController {
 
   /** Fiscal data: owner only, since it is the store's legal identity. */
   @Put('store/legal')
+  @RequireMfa()
   updateLegal(@CurrentUser() user: RequestUser, @Body() dto: LegalDto, @Headers('x-seller-id') h?: string) {
     return this.seller.updateLegal(this.ownerSid(user, h), dto);
   }
@@ -429,11 +430,13 @@ export class SellerController {
   }
 
   @Post('payout-accounts')
+  @RequireMfa()
   addPayoutAccount(@CurrentUser() user: RequestUser, @Body() dto: PayoutAccountDto, @Headers('x-seller-id') h?: string) {
     return this.seller.addPayoutAccount(user, this.ownerSid(user, h), dto);
   }
 
   @Put('payout-accounts/:id')
+  @RequireMfa()
   updatePayoutAccount(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PayoutAccountActionDto, @Headers('x-seller-id') h?: string) {
     return this.seller.updatePayoutAccount(this.ownerSid(user, h), id, dto.action);
   }
@@ -444,6 +447,7 @@ export class SellerController {
   }
 
   @Post('payouts')
+  @RequireMfa()
   requestPayout(@CurrentUser() user: RequestUser, @Body() dto: PayoutRequestDto, @Headers('x-seller-id') h?: string) {
     return this.seller.requestPayout(user, this.ownerSid(user, h), dto);
   }

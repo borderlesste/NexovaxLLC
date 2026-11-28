@@ -160,6 +160,10 @@ export interface PlatformSettings {
   'features.maintenance_mode': boolean;
   /** First visit without a saved language: use the browser's language when it is one of the four supported. */
   'features.browser_language': boolean;
+  /** Staff (support, moderators, admins) must verify an authenticator code to use the team panel. */
+  'features.mfa_staff_required': boolean;
+  /** Store owners must verify an authenticator code to manage payout accounts and withdrawals. */
+  'features.mfa_seller_payouts_required': boolean;
   'help.faq': HelpFaq[];
   'help.sellers': { sections: HelpSection[] };
   'help.commissions': HelpCommissions;
@@ -194,6 +198,8 @@ const DEFAULTS: PlatformSettings = {
   'features.email_notifications': true,
   'features.maintenance_mode': false,
   'features.browser_language': true,
+  'features.mfa_staff_required': true,
+  'features.mfa_seller_payouts_required': true,
   'help.faq': [
     { q: '¿Cómo compro en NEXOVAX?', a: 'Agrega productos al carrito desde cualquier tienda, ve a "Finalizar compra", elige tu dirección, el método de envío de cada tienda y paga con el método que prefieras.' },
     { q: '¿Qué métodos de pago aceptan?', a: 'En el checkout verás los métodos activos: tarjeta de crédito o débito, transferencia bancaria y PayPal cuando está habilitado. Con transferencia reservamos tu inventario por un tiempo limitado mientras validamos el pago.' },

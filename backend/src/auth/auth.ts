@@ -22,6 +22,8 @@ export interface RequestUser {
   /** Sellers the user owns or is an active member of (owners have every area). */
   sellers: { id: string; slug: string; status: string; isOwner: boolean; areas: SellerArea[] }[];
   sessionId?: string;
+  /** Supabase assurance level of this session: aal2 = the second factor (authenticator code) was verified. */
+  aal?: 'aal1' | 'aal2';
 }
 
 /** Parts of the seller panel a team member can be given (permission codes seller.area.<area lower>). */
@@ -31,6 +33,9 @@ export type SellerArea = (typeof SELLER_AREAS)[number];
 export const IS_PUBLIC = 'rd:isPublic';
 export const ROLES = 'rd:roles';
 const FRESH_USER = 'rd:freshUser';
+export const REQUIRE_MFA = 'rd:requireMfa';
+/** Money destinations of a store (payout accounts, withdrawals, legal identity): second factor required when enabled. */
+export const RequireMfa = () => SetMetadata(REQUIRE_MFA, true);
 /** Route is reachable without a token (a valid token still populates the user). */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
 /** Resolve account status and permissions from the shared database for this request. */
@@ -132,7 +137,8 @@ export class AuthGuard implements CanActivate {
     if (payload.is_anonymous === true) throw new AppError('UNAUTHENTICATED', 'Debes iniciar sesión.', HttpStatus.UNAUTHORIZED);
     const sub = String(payload.sub);
     const cached = fresh ? undefined : userCache.get(sub);
-    if (cached && Date.now() - cached.at < USER_CACHE_MS) return { ...cached.user, sessionId: String(payload.session_id ?? '') };
+    const aal = payload.aal === 'aal2' ? 'aal2' : 'aal1';
+    if (cached && Date.now() - cached.at < USER_CACHE_MS) return { ...cached.user, sessionId: String(payload.session_id ?? ''), aal };
 
     const row = await this.db.one<{ id: string; email: string; status: string; email_verified_at: string | null }>(
       `select id, email::text as email, status, email_verified_at from public.users where id = $1`,
@@ -177,7 +183,7 @@ export class AuthGuard implements CanActivate {
     this.db
       .exec(`update public.users set last_login_at = now() where id = $1 and (last_login_at is null or last_login_at < now() - interval '10 minutes')`, [sub])
       .catch(() => undefined);
-    return { ...user, sessionId: String(payload.session_id ?? '') };
+    return { ...user, sessionId: String(payload.session_id ?? ''), aal };
   }
 }
 

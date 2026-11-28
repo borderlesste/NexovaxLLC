@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { t } from '@/lib/i18n';
 import { DeleteAccountCard } from '@/components/account/delete-account';
+import { MfaCard } from '@/components/account/mfa';
 
 export default function SecurityPage() {
   const { me, signOut } = useAuth();
@@ -57,6 +58,7 @@ export default function SecurityPage() {
           <p className="mt-3 text-sm text-muted">{t('Sesión iniciada como')}{' '}<b className="text-ink">{me?.email}</b>.</p>
           <Button variant="danger" className="mt-4" onClick={signOut}>{t('Cerrar sesión en este dispositivo')}</Button>
         </div>
+        <MfaCard />
       </div>
       <DeleteAccountCard />
     </div>
