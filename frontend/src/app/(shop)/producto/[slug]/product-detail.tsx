@@ -34,6 +34,7 @@ import { isColorOption } from '@/lib/variant-words';
 import { productMetadataLabels } from '@/lib/product-metadata';
 import { t, getIntlLocale, getLocale } from '@/lib/i18n';
 import { IdentityMark, SellerTrustBadges } from '@/components/shop/seller-trust';
+import { usePublicConfig } from '@/lib/config';
 
 export function ProductDetail({ initial }: { initial: any }) {
   const router = useRouter();
@@ -234,19 +235,7 @@ export function ProductDetail({ initial }: { initial: any }) {
             <Button variant="soft" className="mt-4 w-full" onClick={() => (requireAuth() ? setAskOpen(true) : null)}><MessageSquare /> {t('Contactar vendedor')}</Button>
           </div>
           <EarnBox productId={p.id} slug={p.slug} />
-          <div className="card divide-y divide-line px-5">
-            {[
-              [Truck, t('Envíos nacionales e internacionales'), t('Tarifa y tiempo según tu dirección, calculados en el checkout.')],
-              [ShieldCheck, t('Compra segura'), t('Tus datos están protegidos.')],
-              [RotateCcw, t('Devoluciones'), t('Hasta 30 días según políticas de la tienda.')],
-              [CreditCard, t('Múltiples medios de pago'), t('Tarjetas y transferencias bancarias.')],
-            ].map(([Icon, lbl, d]: any) => (
-              <div key={lbl} className="flex gap-3 py-3">
-                <Icon className="size-6 shrink-0 text-brand-600" />
-                <div><p className="font-bold">{t(lbl)}</p><p className="text-sm text-muted">{d}</p></div>
-              </div>
-            ))}
-          </div>
+          <PurchaseFacts />
         </div>
         <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-2">
           <div className="card">
@@ -326,6 +315,51 @@ export function ProductDetail({ initial }: { initial: any }) {
         footer={<><Button variant="secondary" onClick={() => setAskOpen(false)}>{t('Cancelar')}</Button><Button onClick={ask} loading={asking} disabled={question.trim().length < 3}>{t('Enviar mensaje')}</Button></>}>
         <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('Ej. ¿Tienen disponible la talla 42? ¿Cuánto tarda el envío a mi ciudad?')} maxLength={1000} />
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Shipping, security, returns and payment facts, read from the live configuration:
+ * delivery countries (Admin → Configuración → Entregas), the single NexovaX return
+ * policy (Admin → Devoluciones) and the payment methods the checkout really offers.
+ */
+function PurchaseFacts() {
+  const cfg = usePublicConfig();
+  const policy = useQuery({
+    queryKey: ['returns-policy'],
+    queryFn: () => get<{ windowDays: number; labelPayer: string }>('/returns/policy'),
+    staleTime: 300_000,
+  }).data;
+  const domesticOnly = (cfg?.deliveryCountries?.length ?? 0) === 1;
+  const returns = !policy ? null : policy.windowDays <= 0
+    ? t('Esta compra no admite devoluciones.')
+    : t(policy.labelPayer === 'CUSTOMER'
+      ? '{n} días desde la entrega. El cliente paga el envío de vuelta.'
+      : policy.labelPayer === 'BY_REASON'
+        ? '{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta.'
+        : '{n} días desde la entrega.', { n: policy.windowDays });
+  const pm = cfg?.paymentMethods;
+  const methods = pm ? [pm.card && t('Tarjetas de crédito y débito'), pm.paypal && 'PayPal', pm.bankTransfer && t('Transferencia bancaria')].filter(Boolean) as string[] : [];
+  let list = methods.join(', ');
+  try { list = new Intl.ListFormat(getIntlLocale(), { type: 'conjunction' }).format(methods); } catch { /* older browsers: comma list */ }
+  const rows: [any, string, string, string?][] = [
+    [Truck, domesticOnly ? t('Envíos nacionales') : t('Envíos nacionales e internacionales'), t('Tarifa y tiempo según tu dirección, calculados en el checkout.'), '/politica-de-envios'],
+    [ShieldCheck, t('Compra segura'), t('Tus datos están protegidos.')],
+  ];
+  if (returns) rows.push([RotateCcw, t('Devoluciones'), returns, '/politica-de-devoluciones']);
+  if (methods.length) rows.push([CreditCard, methods.length > 1 ? t('Múltiples medios de pago') : t('Medio de pago'), list]);
+  return (
+    <div className="card divide-y divide-line px-5">
+      {rows.map(([Icon, lbl, d, href]) => (
+        <div key={lbl} className="flex gap-3 py-3">
+          <Icon className="size-6 shrink-0 text-brand-600" />
+          <div>
+            <p className="font-bold">{href ? <Link href={href} className="hover:text-brand-700 hover:underline">{lbl}</Link> : lbl}</p>
+            <p className="text-sm text-muted">{d}</p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

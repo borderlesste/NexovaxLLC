@@ -510,7 +510,6 @@
 "Hace un momento": "Kounye a menm",
 "Hace {n} h": "Gen {n} è",
 "Hace {n} min": "Gen {n} min",
-"Hasta 30 días según políticas de la tienda.": "Jiska 30 jou selon règ boutik la.",
 "Historial de estado": "Istorik estati",
 "Historial de eventos": "Istorik evènman",
 "Historial de seguimiento": "Istorik swivi",
@@ -1401,7 +1400,6 @@
 "Stock agotado": "Pa gen stòk",
 "Super administrador": "Super administratè",
 "Suspender tienda": "Sispann boutik la",
-"Tarjetas y transferencias bancarias.": "Kat ak transfè labank.",
 "Todas las tiendas": "Tout boutik",
 "Transacciones confiables y protegidas.": "Tranzaksyon serye e pwoteje.",
 "Transferencia no recibida": "Transfè pa rive",
@@ -3574,5 +3572,12 @@
   "El panel del equipo exige un código de tu app de autenticación además de la contraseña. Actívala o escribe el código para continuar.": "Panèl ekip la mande yon kòd nan app otantifikasyon ou anplis modpas la. Aktive l oswa ekri kòd la pou kontinye.",
   "Continuar con la verificación": "Kontinye verifikasyon an",
   "Ir a Mi cuenta › Seguridad": "Ale nan Kont mwen › Sekirite",
-  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "Nou pa t ka louvri verifikasyon an de etap la. Ale nan Kont mwen › Sekirite."
+  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "Nou pa t ka louvri verifikasyon an de etap la. Ale nan Kont mwen › Sekirite.",
+  "Esta compra no admite devoluciones.": "Acha sa a pa ka retounen.",
+  "{n} días desde la entrega. El cliente paga el envío de vuelta.": "{n} jou apre livrezon. Kliyan an peye retou a.",
+  "{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta.": "{n} jou apre livrezon. Si se fot boutik la, se li ki peye retou a.",
+  "{n} días desde la entrega.": "{n} jou apre livrezon.",
+  "Tarjetas de crédito y débito": "Kat kredi ak debi",
+  "Envíos nacionales": "Livrezon nasyonal",
+  "Medio de pago": "Metòd peman"
 }

@@ -510,7 +510,6 @@
 "Hace un momento": "À l’instant",
 "Hace {n} h": "Il y a {n} h",
 "Hace {n} min": "Il y a {n} min",
-"Hasta 30 días según políticas de la tienda.": "Jusqu’à 30 jours selon la politique de la boutique.",
 "Historial de estado": "Historique des statuts",
 "Historial de eventos": "Historique des événements",
 "Historial de seguimiento": "Historique du suivi",
@@ -1401,7 +1400,6 @@
 "Stock agotado": "Épuisé",
 "Super administrador": "Super administrateur",
 "Suspender tienda": "Suspendre la boutique",
-"Tarjetas y transferencias bancarias.": "Cartes et virements bancaires.",
 "Todas las tiendas": "Toutes les boutiques",
 "Transacciones confiables y protegidas.": "Transactions fiables et protégées.",
 "Transferencia no recibida": "Virement non reçu",
@@ -3574,5 +3572,12 @@
   "El panel del equipo exige un código de tu app de autenticación además de la contraseña. Actívala o escribe el código para continuar.": "Le panneau de l’équipe exige un code de votre application d’authentification en plus du mot de passe. Activez-la ou saisissez le code pour continuer.",
   "Continuar con la verificación": "Continuer la vérification",
   "Ir a Mi cuenta › Seguridad": "Aller à Mon compte › Sécurité",
-  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "Impossible d’ouvrir la vérification en deux étapes. Allez à Mon compte › Sécurité."
+  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "Impossible d’ouvrir la vérification en deux étapes. Allez à Mon compte › Sécurité.",
+  "Esta compra no admite devoluciones.": "Cet achat ne peut pas être retourné.",
+  "{n} días desde la entrega. El cliente paga el envío de vuelta.": "{n} jours après la livraison. Le client paie le retour.",
+  "{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta.": "{n} jours après la livraison. Si la boutique est en faute, elle paie le retour.",
+  "{n} días desde la entrega.": "{n} jours après la livraison.",
+  "Tarjetas de crédito y débito": "Cartes de crédit et de débit",
+  "Envíos nacionales": "Livraison nationale",
+  "Medio de pago": "Moyen de paiement"
 }

@@ -914,5 +914,12 @@
   "El panel del equipo exige un código de tu app de autenticación además de la contraseña. Actívala o escribe el código para continuar.": "The team dashboard needs a code from your authenticator app as well as your password. Turn it on or enter the code to continue.",
   "Continuar con la verificación": "Continue with verification",
   "Ir a Mi cuenta › Seguridad": "Go to My account › Security",
-  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "We couldn’t open two-step verification. Go to My account › Security."
+  "No pudimos abrir la verificación en dos pasos. Ve a Mi cuenta › Seguridad.": "We couldn’t open two-step verification. Go to My account › Security.",
+  "Esta compra no admite devoluciones.": "This purchase can’t be returned.",
+  "{n} días desde la entrega. El cliente paga el envío de vuelta.": "{n} days from delivery. The customer pays return shipping.",
+  "{n} días desde la entrega. Si el problema es de la tienda, ella paga el envío de vuelta.": "{n} days from delivery. If the store is at fault, it pays return shipping.",
+  "{n} días desde la entrega.": "{n} days from delivery.",
+  "Tarjetas de crédito y débito": "Credit and debit cards",
+  "Envíos nacionales": "Domestic shipping",
+  "Medio de pago": "Payment method"
 }

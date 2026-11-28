@@ -9,6 +9,7 @@ import { config } from '../config';
 import { CurrentUser, Public, RequestUser } from '../auth/auth';
 import { CatalogService } from './catalog.service';
 import { SettingsService } from '../settings/settings.service';
+import { PaymentsService } from '../payments/payments.service';
 
 const num = (v?: string) => (v === undefined || v === '' ? undefined : Number(v));
 const bool = (v?: string) => v === 'true' || v === '1';
@@ -21,6 +22,7 @@ export class CatalogController {
     private readonly catalog: CatalogService,
     private readonly settings: SettingsService,
     private readonly db: DbService,
+    private readonly payments: PaymentsService,
   ) {}
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
@@ -45,6 +47,14 @@ export class CatalogController {
       supportEmail: s['marketplace.support_email'],
       liveShippingRates: !!s['shipping.shippo_enabled'],
       bankTransfer: !!s['payments.bank_transfer']?.enabled,
+      // Methods the checkout really offers right now (product page "payment methods" line).
+      paymentMethods: {
+        card: !!this.payments.providerFor('CARD') || config.paymentSandboxEnabled,
+        paypal: !!this.payments.providerFor('PAYPAL'),
+        bankTransfer: !!s['payments.bank_transfer']?.enabled,
+      },
+      // Destinations the marketplace serves (Admin → Configuración → Entregas); empty = every country.
+      deliveryCountries: ((s['geo.delivery']?.countries ?? []) as string[]).map((c) => c.toUpperCase()),
       stripePublishableKey: config.stripePublishableKey && config.stripeSecretKey ? config.stripePublishableKey : null,
       turnstileSiteKey: config.turnstileSiteKey && config.turnstileSecretKey ? config.turnstileSiteKey : null,
       sellerRegistration: s['features.seller_registration'],

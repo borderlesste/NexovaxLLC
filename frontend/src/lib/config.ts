@@ -10,6 +10,10 @@ export interface PublicConfig {
   supportEmail: string;
   liveShippingRates: boolean;
   bankTransfer: boolean;
+  /** Payment methods the checkout offers right now. */
+  paymentMethods?: { card: boolean; paypal: boolean; bankTransfer: boolean };
+  /** Countries the marketplace delivers to; empty = all. */
+  deliveryCountries?: string[];
   sellerRegistration: boolean;
   /** Maintenance mode: only administrators can use the site. */
   maintenance?: boolean;
