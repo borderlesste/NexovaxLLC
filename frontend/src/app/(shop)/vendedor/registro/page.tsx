@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BadgeCheck, Building2, Check, Clock, FileText, MapPin, Store, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +13,17 @@ import { PageLoader } from '@/components/ui/misc';
 import { CountrySelect, GeoFields, PhoneInput } from '@/components/shop/geo-fields';
 import { ENTITY_TYPES, entityLabel, fiscalPayload, taxIdHint } from '@/lib/entities';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
+
+// Draft kept in this browser so a visitor who must create an account first does not lose what they typed.
+// The tax id is never stored here.
+const DRAFT_KEY = 'nx_seller_draft';
+const readDraft = (): Record<string, string> | null => {
+  try { const v = JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? 'null'); return v && typeof v === 'object' ? v : null; } catch { return null; }
+};
+const writeDraft = (v: Record<string, string> | null) => {
+  try { v ? window.localStorage.setItem(DRAFT_KEY, JSON.stringify(v)) : window.localStorage.removeItem(DRAFT_KEY); } catch { /* storage blocked */ }
+};
 
 export default function SellerOnboardingPage() {
   const { session, loading, seller, me, refresh } = useAuth();
@@ -24,6 +35,31 @@ export default function SellerOnboardingPage() {
   const [accept, setAccept] = useState(false);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: any) => setF({ ...f, [k]: e.target.value });
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const d = readDraft();
+    if (d) {
+      const { shipCountry: sc, ...rest } = d;
+      setF((s) => { const n: any = { ...s }; for (const k of Object.keys(s)) if (k !== 'taxId' && typeof rest[k] === 'string') n[k] = rest[k]; return n; });
+      if (typeof sc === 'string') setShipCountry(sc);
+    }
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (!restored || seller) return;
+    const { taxId: _omit, ...rest } = f;
+    writeDraft(Object.values(rest).some((v) => v.trim()) ? { ...rest, shipCountry } : null);
+  }, [f, shipCountry, restored, seller]);
+  const closed = !!cfg.data && !cfg.data.sellerRegistration;
+  const missing = [
+    [!f.storeName.trim(), t('Nombre de la tienda')],
+    [!!f.taxId.trim() && !f.legalName.trim(), t('Nombre o razón social')],
+    [!f.contactName.trim() && !me?.displayName, t('Persona de contacto')],
+    [!f.phone, t('Teléfono')],
+    [!f.line1.trim(), t('Dirección')],
+    [!geo.countryCode, t('País')],
+    [!f.city.trim(), t('Ciudad')],
+  ].filter(([m]) => m).map(([, l]) => l as string);
   if (loading) return <PageLoader />;
   if (seller)
     return (
@@ -31,13 +67,14 @@ export default function SellerOnboardingPage() {
         <div className="card p-8 text-center">
           {seller.status === 'ACTIVE' ? <BadgeCheck className="mx-auto size-14 text-emerald-500" /> : <Clock className="mx-auto size-14 text-amber-500" />}
           <h1 className="mt-4 text-2xl font-extrabold">{seller.status === 'ACTIVE' ? t('Tu tienda está activa') : t('Tu solicitud está en revisión')}</h1>
-          <p className="mt-2 text-muted">{seller.status === 'ACTIVE' ? t('Gestiona productos, pedidos y finanzas desde tu panel.') : t('Nuestro equipo está verificando tu información. Mientras tanto puedes crear tus productos.')}</p>
+          <p className="mt-2 text-muted">{seller.status === 'ACTIVE' ? t('Gestiona productos, pedidos y finanzas desde tu panel.') : t('Nuestro equipo está revisando tu tienda. Mientras tanto puedes preparar tus productos.')}</p>
           <Button className="mt-6" asChild><Link href="/vendedor/dashboard">{t('Ir al panel de vendedor')}</Link></Button>
         </div>
       </div>
     );
   const submit = async () => {
     if (!session) return router.push('/auth/registrarse?next=/vendedor/registro');
+    if (missing.length) return toast.error(t('Falta completar: {a}.', { a: missing.join(', ') }));
     if (!accept) return toast.error(t('Debes aceptar los términos para vendedores.'));
     setBusy(true);
     try {
@@ -49,6 +86,7 @@ export default function SellerOnboardingPage() {
         address: { contactName: f.contactName || me?.displayName, line1: f.line1, line2: f.line2 || undefined, countryCode: geo.countryCode, city: f.city, region: f.region || undefined, postalCode: f.postalCode || undefined, phone: f.phone },
       });
       toast.success(t('¡Tu tienda está activa! Ya puedes publicar tus productos.'));
+      writeDraft(null);
       refresh();
       setTimeout(() => router.push('/vendedor/dashboard'), 600);
     } catch (e) {
@@ -63,8 +101,9 @@ export default function SellerOnboardingPage() {
         <div className="card p-6 sm:p-8">
           <h1 className="text-3xl font-extrabold">{t('Abre tu tienda en NEXOVAX')}</h1>
           <p className="mt-1 text-muted">{t('Completa tus datos y tu tienda quedará activa al instante.')}</p>
-          {!session && <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm">{t('Necesitas una cuenta.')}{' '}<Link href="/auth/registrarse?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('Crea tu cuenta')}</Link>{' '}{t('o')}{' '}<Link href="/auth/iniciar-sesion?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('inicia sesión')}</Link>.</p>}
-          {cfg.data && !cfg.data.sellerRegistration && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{t('El registro de nuevos vendedores está cerrado temporalmente.')}</p>}
+          {!session && <p className="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm" data-need-account>{t('Necesitas una cuenta.')}{' '}<Link href="/auth/registrarse?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('Crea tu cuenta')}</Link>{' '}{t('o')}{' '}<Link href="/auth/iniciar-sesion?next=/vendedor/registro" className="font-semibold text-brand-700 underline">{t('inicia sesión')}</Link>.{' '}{t('Lo que escribas aquí se guarda en este navegador mientras tanto.')}</p>}
+          {closed && <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800" data-registration-closed>{t('El registro de nuevos vendedores está cerrado temporalmente. Vuelve pronto.')}</p>}
+          <fieldset disabled={closed} className={cn('m-0 min-w-0 border-0 p-0', closed && 'pointer-events-none opacity-50')}>
           <h2 className="mt-8 flex items-center gap-2 text-lg font-bold"><Store className="size-5 text-brand-600" /> {t('Tu tienda')}</h2>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('Nombre de la tienda')} required><Input rule="businessName" value={f.storeName} onChange={set('storeName')} placeholder={t('Ej. Urban Style Co.')} /></Field>
@@ -92,7 +131,18 @@ export default function SellerOnboardingPage() {
             <GeoFields value={geo} onChange={(p) => { if (p.countryCode !== undefined) setShipCountry(p.countryCode); setF((s) => ({ ...s, ...('city' in p ? { city: p.city! } : {}), ...('region' in p ? { region: p.region! } : {}), ...('postalCode' in p ? { postalCode: p.postalCode! } : {}) })); }} />
           </div>
           <label className="mt-6 flex items-start gap-2 text-sm"><input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-0.5 size-4 accent-brand-600" data-seller-terms /> <span>{t('Acepto los términos para vendedores, la comisión vigente del marketplace y las políticas de contenido.')}{' '}<Link href="/terminos-vendedores" target="_blank" className="font-semibold text-brand-700 underline">{t('Leer los términos para vendedores')}</Link></span></label>
-          <Button size="lg" className="mt-6 w-full sm:w-auto" onClick={submit} loading={busy} disabled={!f.storeName || (!!f.taxId.trim() && !f.legalName.trim()) || !f.line1 || !f.city || !geo.countryCode || !f.phone}><Check /> {t('Enviar solicitud')}</Button>
+          </fieldset>
+          {!closed && (session ? (
+            <div className="mt-6">
+              <Button size="lg" className="w-full sm:w-auto" onClick={submit} loading={busy} data-open-store><Check /> {t('Abrir mi tienda')}</Button>
+              {missing.length > 0 && <p className="mt-2 text-sm text-muted" data-missing>{t('Falta completar: {a}.', { a: missing.join(', ') })}</p>}
+            </div>
+          ) : (
+            <div className="mt-6">
+              <Button size="lg" className="w-full sm:w-auto" asChild><Link href="/auth/registrarse?next=/vendedor/registro"><Check /> {t('Crear mi cuenta y continuar')}</Link></Button>
+              <p className="mt-2 text-sm text-muted">{t('Al volver encontrarás tus datos tal como los dejaste.')}</p>
+            </div>
+          ))}
         </div>
         <aside className="space-y-4">
           {[[Building2, t('Crea tu tienda'), t('Publica tu catálogo con variantes, fotos e inventario.')], [Users, t('Llega a más clientes'), t('Vende en tu país y al exterior con envíos y pagos integrados.')], [TrendingUp, t('Haz crecer tus ventas'), t('Panel de ventas, inventario y finanzas en tiempo real.')]].map(([I, title, d]: any) => (

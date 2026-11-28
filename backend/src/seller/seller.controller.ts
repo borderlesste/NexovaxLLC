@@ -285,6 +285,11 @@ export class SellerController {
     return this.seller.removeStoreImage(this.sid(user, h, 'SETTINGS'), kind as 'logo' | 'banner');
   }
 
+  @Get('setup-steps')
+  setupSteps(@CurrentUser() user: RequestUser, @Headers('x-seller-id') h?: string) {
+    return this.seller.setupSteps(this.sid(user, h, 'STATS'));
+  }
+
   @Get('dashboard')
   dashboard(@CurrentUser() user: RequestUser, @Query('days') days?: string, @Headers('x-seller-id') h?: string) {
     return this.seller.dashboard(this.sid(user, h, 'STATS'), Math.min(Math.max(Number(days) || 30, 7), 365));

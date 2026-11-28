@@ -1122,6 +1122,31 @@ export class SellerService {
   }
 
   // ------------------------------------------------------------------ dashboard
+  /** First steps for a new store: what is done and what is missing (logo, description, ship-from, payout account, products). */
+  async setupSteps(sellerId: string) {
+    const r = await this.db.one(
+      `select (ssp.logo_asset_id is not null) as logo,
+              (coalesce(btrim(ssp.short_description), '') <> '' or coalesce(btrim(ssp.description), '') <> '') as about,
+              exists (select 1 from public.seller_ship_from_addresses a where a.seller_id = s.id and a.status = 'ACTIVE') as ship_from,
+              exists (select 1 from public.seller_payout_accounts pa where pa.seller_id = s.id and pa.status <> 'DISABLED') as payout,
+              exists (select 1 from public.products p where p.seller_id = s.id and p.status <> 'ARCHIVED') as product,
+              exists (select 1 from public.products p where p.seller_id = s.id and p.status = 'ACTIVE') as published
+         from public.sellers s left join public.seller_store_profiles ssp on ssp.seller_id = s.id
+        where s.id = $1`,
+      [sellerId],
+    );
+    if (!r) throw notFound('Tienda');
+    const steps = [
+      { code: 'LOGO', done: !!r.logo },
+      { code: 'ABOUT', done: !!r.about },
+      { code: 'SHIP_FROM', done: !!r.ship_from },
+      { code: 'PRODUCT', done: !!r.product },
+      { code: 'PUBLISHED', done: !!r.published },
+      { code: 'PAYOUT', done: !!r.payout },
+    ];
+    return { steps, done: steps.filter((x) => x.done).length, total: steps.length };
+  }
+
   async dashboard(sellerId: string, days = 30) {
     // Same rule as Finanzas: paid seller orders in the store currency, net of completed refunds,
     // over the same calendar window as the daily chart (so the chart adds up to the card).

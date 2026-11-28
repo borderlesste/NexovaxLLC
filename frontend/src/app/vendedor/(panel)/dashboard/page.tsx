@@ -14,6 +14,7 @@ import { Empty, PageLoader } from '@/components/ui/misc';
 import { AreaTrend, Donut } from '@/components/charts/charts';
 import { ProductImage } from '@/components/shop/product-card';
 import { useAuth } from '@/lib/auth';
+import { SellerSetupGuide } from '@/components/seller/setup-guide';
 import { t } from '@/lib/i18n';
 
 const MIX: Record<string, string> = { DELIVERED: 'Entregados', FULFILLED: 'Preparando', PARTIALLY_FULFILLED: 'Preparando', UNFULFILLED: 'Pendientes', SHIPPED: 'Enviados', PARTIALLY_SHIPPED: 'Enviados', PARTIALLY_DELIVERED: 'Enviados' };
@@ -32,6 +33,7 @@ export default function SellerDashboard() {
     <>
       <PageHeader crumbs={[{ label: t('Mi tienda') }, { label: t('Dashboard') }]} title={t('Dashboard')} description={t('Bienvenido a {a}. Este es el resumen de tu tienda.', { a: store.data?.displayName ?? t('tu tienda') })}
         actions={<><Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-44"><option value={7}>{t('Últimos 7 días')}</option><option value={30}>{t('Últimos 30 días')}</option><option value={90}>{t('Últimos 90 días')}</option></Select><Button asChild><Link href="/vendedor/productos/nuevo"><Plus /> {t('Agregar producto')}</Link></Button></>} />
+      <SellerSetupGuide />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t('Ventas de mi tienda')} value={money(d.kpis.sales, d.currency)} icon={<CreditCard />} change={d.kpis.salesChange} hint={t('vs. período anterior')} />
         <StatCard label={t('Pedidos recibidos')} value={d.kpis.orders} icon={<ShoppingCart />} change={d.kpis.ordersChange} hint={t('vs. período anterior')} />
